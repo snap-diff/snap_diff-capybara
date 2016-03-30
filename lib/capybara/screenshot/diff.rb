@@ -6,6 +6,9 @@ module Capybara
   module Screenshot
     # Module to track screen shot changes
     module Diff
+      mattr_accessor :enabled
+
+      self.enabled = true
     end
   end
 end

@@ -28,6 +28,7 @@ class ActionDispatch::IntegrationTest
   end
 
   def screenshot(name)
+    return unless Capybara::Screenshot::Diff.enabled
     if Capybara.default_driver == :selenium
       return unless Capybara.current_session.driver.browser.manage.window
             .size == Selenium::WebDriver::Dimension.new(*WINDOW_SIZE)
