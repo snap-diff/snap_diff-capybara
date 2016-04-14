@@ -57,7 +57,7 @@ To store the screen shot history, add the `doc/screenshots` directory to your
 
 ### Screenshot groups
 
-Commonly it is useful to group screenshots around a feature, and records them as
+Commonly it is useful to group screenshots around a feature, and record them as
 a sequence.  To do this, add a `screenshot_group` call to the start of your
 test.
 
@@ -90,7 +90,7 @@ Often it is useful to test your app using different browsers.  To avoid the
 screenshots for different Capybara drivers to overwrite each other, set
 
 ```ruby
-Capybara::Screenshot::Diff.add_driver_path = true
+Capybara::Screenshot.add_driver_path = true
 ```
 
 The example above will then save your screenshots like this
@@ -111,16 +111,61 @@ doc
         02-action_performed
 ```
 
+### Multiple OSs
+
+If you run your tests on multiple operating systems, you will most likely find
+the screen shots differ.  To avoid the screenshots for different OSs to
+overwrite each other, set
+
+```ruby
+Capybara::Screenshot.add_os_path = true
+```
+
+The example above will then save your screenshots like this
+(for Linux and Windows):
+
+```
+doc
+  screenshots
+    linux
+      useful_feature
+        00-welcome_index
+        01-feature_index
+        02-action_performed
+    windows
+      useful_feature
+        00-welcome_index
+        01-feature_index
+        02-action_performed
+```
+
+If you combine this config with the `add_driver_path` config, the driver will be
+put in front of the OS name.
+
 ### Screen size
 
 You can specify the desired screen size using
 
 ```ruby
-Capybara::Screenshot::Diff.window_size = [1024, 768]
+Capybara::Screenshot.window_size = [1024, 768]
 ```
 
 This will force the screen shots to the given size, and skip taking screen shots
 unless the desired window size can be achieved.
+
+### Disabling screen shots
+
+If you want to skip taking screen shots, set
+
+```ruby
+Capybara::Screenshot.enabled = false
+```
+
+You can of course set this by an environment variable
+
+```ruby
+Capybara::Screenshot.enabled = ENV['TAKE_SCREENSHOTS']
+```
 
 ### Disabling diff
 
@@ -130,10 +175,10 @@ If you want to skip the assertion for change in the screen shot, set
 Capybara::Screenshot::Diff.enabled = false
 ```
 
-You can of cource set this by an environment variable
+Using an environment variable
 
 ```ruby
-Capybara::Screenshot::Diff.enabled = ENV[]
+Capybara::Screenshot::Diff.enabled = ENV['COMPARE_SCREENSHOTS']
 ```
 
 ### Screen shot save path
@@ -141,7 +186,7 @@ Capybara::Screenshot::Diff.enabled = ENV[]
 If you would like the screen shots to be saved in a different location set
 
 ```ruby
-Capybara::Screenshot::Diff.save_path = "#{Rails.root}/doc/gui"
+Capybara::Screenshot.save_path = "#{Rails.root}/doc/gui"
 ```
 
 

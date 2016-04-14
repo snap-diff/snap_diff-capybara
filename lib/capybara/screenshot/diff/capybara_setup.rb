@@ -3,10 +3,14 @@ require 'capybara/screenshot/diff/image_compare'
 
 # Add the `screenshot`method to ActionDispatch::IntegrationTest
 class ActionDispatch::IntegrationTest
-  WINDOW_SIZE = [1280, 1024].freeze
+  ON_WINDOWS = RbConfig::CONFIG['host_os'] =~ /mswin|mingw|cygwin/
+  SILENCE_ERRORS = ON_WINDOWS ? '2>nul' : '2>/dev/null'
 
   def self.screenshot_dir
-    "doc/screenshots/#{Capybara.default_driver}".freeze
+    parts = ['doc/screenshots']
+    parts << Capybara.default_driver.to_s if Capybara::Screenshot.add_driver_path
+    parts << RbConfig::CONFIG['host_os'] if Capybara::Screenshot.add_os_path
+    File.join parts
   end
 
   def self.screenshot_dir_abs
@@ -14,35 +18,49 @@ class ActionDispatch::IntegrationTest
   end
 
   setup do
-    if Capybara.default_driver == :selenium
-      Capybara.current_session.driver.browser.manage.window
-          .resize_to(*WINDOW_SIZE)
-      Capybara.current_session.driver.browser.manage.timeouts.page_load = 300
-    else
-      Capybara.current_session.driver.resize(*WINDOW_SIZE)
+    if Capybara::Screenshot.window_size
+      if Capybara.default_driver == :selenium
+        page.driver.browser.manage.window.resize_to(*Capybara::Screenshot.window_size)
+      else
+        page.driver.resize(*Capybara::Screenshot.window_size)
+      end
     end
   end
 
   teardown do
-    fail(@test_screenshot_errors.join("\n")) if @test_screenshot_errors
+    if Capybara::Screenshot::Diff.enabled && @test_screenshots
+      @test_screenshots.each { |args| assert_image_not_changed(*args) }
+    end
+    fail(@test_screenshot_errors.join("\n\n")) if @test_screenshot_errors
+  end
+
+  def screenshot_group(name)
+    @screenshot_group = name
+    @screenshot_counter = 0
+    FileUtils.rm_rf "#{self.class.screenshot_dir_abs}/#{name}" if name.present?
   end
 
   def screenshot(name)
-    return unless Capybara::Screenshot::Diff.enabled
-    if Capybara.default_driver == :selenium
-      return unless Capybara.current_session.driver.browser.manage.window
-            .size == Selenium::WebDriver::Dimension.new(*WINDOW_SIZE)
+    return unless Capybara::Screenshot.enabled || (Capybara::Screenshot.enabled.nil? && Capybara::Screenshot::Diff.enabled)
+    if Capybara.default_driver == :selenium && Capybara::Screenshot.window_size
+      return unless page.driver.browser.manage.window
+          .size == Selenium::WebDriver::Dimension.new(*Capybara::Screenshot.window_size)
     end
+    if @screenshot_counter
+      name = "#{'%02i' % @screenshot_counter}_#{name}"
+      @screenshot_counter += 1
+    end
+    name = "#{@screenshot_group}/#{name}" if @screenshot_group.present?
     file_name = "#{self.class.screenshot_dir_abs}/#{name}.png"
     svn_file_name = "#{self.class.screenshot_dir_abs}/.svn/text-base/#{name}.png.svn-base"
     org_name = "#{self.class.screenshot_dir_abs}/#{name}_0.png~"
     new_name = "#{self.class.screenshot_dir_abs}/#{name}_1.png~"
     FileUtils.mkdir_p File.dirname(org_name)
     unless File.exist?(svn_file_name)
-      svn_info = `svn info #{file_name}`
+      svn_info = `svn info #{file_name} #{SILENCE_ERRORS}`
       if svn_info.blank?
-        # http://www.akikoskinen.info/image-diffs-with-git/
-        puts `git show HEAD~0:#{self.class.screenshot_dir}/#{name}.png > #{org_name}`
+        FileUtils.mkdir_p File.dirname(org_name)
+        puts `git show HEAD~0:#{self.class.screenshot_dir_abs}/#{name}.png > #{org_name} #{SILENCE_ERRORS}`
         if File.size(org_name) == 0
           FileUtils.rm_f org_name
         else
@@ -64,14 +82,13 @@ class ActionDispatch::IntegrationTest
       sleep 0.5
     end
     return unless File.exist?(svn_file_name)
-    if Capybara.default_driver == :selenium
-      comparison = Capybara::Screenshot::Diff::ImageCompare.compare(file_name, svn_file_name)
-    else
-      comparison = Capybara::Screenshot::Diff::ImageCompare.compare(file_name, svn_file_name, WINDOW_SIZE)
-    end
-    if comparison
+    (@test_screenshots ||= []) << [caller[0], file_name, name, new_name, org_name]
+  end
+
+  def assert_image_not_changed(caller, file_name, name, new_name, org_name)
+    if ImageCompare.compare(file_name, org_name, Capybara::Screenshot.window_size)
       (@test_screenshot_errors ||= []) <<
-        "Screenshot does not match for #{name.inspect}\n#{file_name}\n#{org_name}\n#{new_name}\n#{caller[0]}"
+          "Screenshot does not match for #{name.inspect}\n#{file_name}\n#{org_name}\n#{new_name}\nat #{caller}"
     end
   end
 end
