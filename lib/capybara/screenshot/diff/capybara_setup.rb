@@ -60,7 +60,7 @@ class ActionDispatch::IntegrationTest
       svn_info = `svn info #{file_name} #{SILENCE_ERRORS}`
       if svn_info.blank?
         FileUtils.mkdir_p File.dirname(org_name)
-        puts `git show HEAD~0:#{self.class.screenshot_dir_abs}/#{name}.png > #{org_name} #{SILENCE_ERRORS}`
+        `git show HEAD~0:#{self.class.screenshot_dir_abs}/#{name}.png > #{org_name} #{SILENCE_ERRORS}`
         if File.size(org_name) == 0
           FileUtils.rm_f org_name
         else
