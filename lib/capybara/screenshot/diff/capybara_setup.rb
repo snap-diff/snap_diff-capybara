@@ -52,25 +52,26 @@ class ActionDispatch::IntegrationTest
     end
     name = "#{@screenshot_group}/#{name}" if @screenshot_group.present?
     file_name = "#{self.class.screenshot_dir_abs}/#{name}.png"
-    svn_file_name = "#{self.class.screenshot_dir_abs}/.svn/text-base/#{name}.png.svn-base"
     org_name = "#{self.class.screenshot_dir_abs}/#{name}_0.png~"
     new_name = "#{self.class.screenshot_dir_abs}/#{name}_1.png~"
-    FileUtils.mkdir_p File.dirname(org_name)
-    unless File.exist?(svn_file_name)
+
+    FileUtils.mkdir_p File.dirname(file_name)
+    svn_file_name = "#{self.class.screenshot_dir_abs}/.svn/text-base/#{name}.png.svn-base"
+    if File.exist?(svn_file_name)
+      committed_file_name = svn_file_name
+    else
       svn_info = `svn info #{file_name} #{SILENCE_ERRORS}`
-      if svn_info.blank?
-        FileUtils.mkdir_p File.dirname(org_name)
-        `git show HEAD~0:#{self.class.screenshot_dir_abs}/#{name}.png > #{org_name} #{SILENCE_ERRORS}`
-        if File.size(org_name) == 0
-          FileUtils.rm_f org_name
-        else
-          svn_file_name = org_name
-        end
-      else
+      if svn_info.present?
         wc_root = svn_info.slice /(?<=Working Copy Root Path: ).*$/
         checksum = svn_info.slice /(?<=Checksum: ).*$/
         if checksum
-          svn_file_name = "#{wc_root}/.svn/pristine/#{checksum[0..1]}/#{checksum}.svn-base"
+          committed_file_name = "#{wc_root}/.svn/pristine/#{checksum[0..1]}/#{checksum}.svn-base"
+        end
+      else
+        committed_file_name = org_name
+        `git show HEAD~0:#{self.class.screenshot_dir}/#{name}.png > #{committed_file_name} #{SILENCE_ERRORS}`
+        if File.size(committed_file_name) == 0
+          FileUtils.rm_f committed_file_name
         end
       end
     end
@@ -81,12 +82,12 @@ class ActionDispatch::IntegrationTest
       old_file_size = File.size(file_name)
       sleep 0.5
     end
-    return unless File.exist?(svn_file_name)
-    (@test_screenshots ||= []) << [caller[0], file_name, name, new_name, org_name]
+    return unless File.exist?(committed_file_name)
+    (@test_screenshots ||= []) << [caller[0], name, file_name, committed_file_name, new_name, org_name]
   end
 
-  def assert_image_not_changed(caller, file_name, name, new_name, org_name)
-    if ImageCompare.compare(file_name, org_name, Capybara::Screenshot.window_size)
+  def assert_image_not_changed(caller, name, file_name, committed_file_name, new_name, org_name)
+    if Capybara::Screenshot::Diff::ImageCompare.compare(file_name, committed_file_name, Capybara::Screenshot.window_size)
       (@test_screenshot_errors ||= []) <<
           "Screenshot does not match for #{name.inspect}\n#{file_name}\n#{org_name}\n#{new_name}\nat #{caller}"
     end
