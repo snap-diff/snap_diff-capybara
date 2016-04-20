@@ -6,23 +6,10 @@ class ActionDispatch::IntegrationTest
   ON_WINDOWS = RbConfig::CONFIG['host_os'] =~ /mswin|mingw|cygwin/
   SILENCE_ERRORS = ON_WINDOWS ? '2>nul' : '2>/dev/null'
 
-  def self.os_name
-    case RbConfig::CONFIG['host_os']
-    when /darwin/
-      'macos'
-    when /mswin|mingw|cygwin/
-      'windows'
-    when /linux/
-      'linux'
-    else
-      'unknown'
-    end
-  end
-
   def self.screenshot_dir
     parts = ['doc/screenshots']
     parts << Capybara.default_driver.to_s if Capybara::Screenshot.add_driver_path
-    parts << os_name if Capybara::Screenshot.add_os_path
+    parts << RbConfig::CONFIG['host_os'] if Capybara::Screenshot.add_os_path
     File.join parts
   end
 
