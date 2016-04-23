@@ -84,6 +84,44 @@ doc
       02-action_performed
 ```
 
+**All files in the screenshot group directory will be deleted when
+`screenshot_group` is called.**
+
+
+#### Screenshot sections
+
+You can introduce another level above the screenshot group called a
+`screenshot_section`.  The section name is inserted just before the group name
+in the save path.  If called in the setup of the test, all screenshots in
+that test will get the same prefix:
+
+```ruby
+setup do
+  screenshot_section 'my_feature'
+end
+test 'my subfeature' do
+  screenshot_group 'subfeature'
+  visit '/feature'
+  click_button 'Interresting button'
+  screenshot 'subfeature_index'
+  click_button 'Perform action'
+  screenshot 'action_performed'
+end
+```
+
+This will produce a sequence of images like this
+
+```
+doc
+  screenshots
+    my_feature
+      subfeature
+        00-subfeature_index
+        01-action_performed
+```
+
+
+
 ### Multiple Capybara drivers
 
 Often it is useful to test your app using different browsers.  To avoid the

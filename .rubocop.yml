@@ -1,5 +1,11 @@
 inherit_from: .rubocop_todo.yml
 
+AllCops:
+  DisplayCopNames: true
+
+Metrics/LineLength:
+  Max: 130
+
 Style/MultilineMethodCallIndentation:
   EnforcedStyle: indented
   IndentationWidth: 4

@@ -1,6 +1,10 @@
 require 'capybara'
 require 'capybara/screenshot/diff/image_compare'
+require 'action_controller'
+require 'action_dispatch'
 
+# TODO(uwe): Move this code to module Capybara::Screenshot::Diff::TestMethods,
+#            and use Module#prepend/include to insert.
 # Add the `screenshot`method to ActionDispatch::IntegrationTest
 class ActionDispatch::IntegrationTest
   ON_WINDOWS = RbConfig::CONFIG['host_os'] =~ /mswin|mingw|cygwin/
@@ -23,11 +27,16 @@ class ActionDispatch::IntegrationTest
     parts = ['doc/screenshots']
     parts << Capybara.default_driver.to_s if Capybara::Screenshot.add_driver_path
     parts << os_name if Capybara::Screenshot.add_os_path
+    parts << @screenshot_section if @screenshot_section
     File.join parts
   end
 
   def self.screenshot_dir_abs
-    "#{Rails.root}/#{screenshot_dir}".freeze
+    "#{screenshot_root}/#{screenshot_dir}".freeze
+  end
+
+  def self.screenshot_root
+    Rails.root
   end
 
   setup do
@@ -47,14 +56,20 @@ class ActionDispatch::IntegrationTest
     fail(@test_screenshot_errors.join("\n\n")) if @test_screenshot_errors
   end
 
+  def screenshot_section(name)
+    @screenshot_section = name
+  end
+
   def screenshot_group(name)
     @screenshot_group = name
     @screenshot_counter = 0
-    FileUtils.rm_rf "#{self.class.screenshot_dir_abs}/#{name}" if name.present?
+    if Capybara::Screenshot.active? && name.present?
+      FileUtils.rm_rf "#{self.class.screenshot_dir_abs}/#{name}"
+    end
   end
 
   def screenshot(name)
-    return unless Capybara::Screenshot.enabled || (Capybara::Screenshot.enabled.nil? && Capybara::Screenshot::Diff.enabled)
+    return unless Capybara::Screenshot.active?
     if Capybara.default_driver == :selenium && Capybara::Screenshot.window_size
       return unless page.driver.browser.manage.window
           .size == Selenium::WebDriver::Dimension.new(*Capybara::Screenshot.window_size)

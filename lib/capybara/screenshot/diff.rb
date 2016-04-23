@@ -9,6 +9,10 @@ module Capybara
     mattr_accessor :add_driver_path
     mattr_accessor :add_os_path
 
+    def self.active?
+      enabled || (enabled.nil? && Diff.enabled)
+    end
+
     # Module to track screen shot changes
     module Diff
       mattr_accessor :enabled
