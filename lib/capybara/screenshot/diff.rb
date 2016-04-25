@@ -8,6 +8,7 @@ module Capybara
     mattr_accessor :window_size
     mattr_accessor :add_driver_path
     mattr_accessor :add_os_path
+    mattr_accessor :screenshot_root
 
     def self.active?
       enabled || (enabled.nil? && Diff.enabled)

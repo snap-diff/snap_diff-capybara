@@ -6,6 +6,7 @@ require 'action_dispatch'
 # TODO(uwe): Move this code to module Capybara::Screenshot::Diff::TestMethods,
 #            and use Module#prepend/include to insert.
 # Add the `screenshot`method to ActionDispatch::IntegrationTest
+# rubocop:disable Metrics/ClassLength
 class ActionDispatch::IntegrationTest
   ON_WINDOWS = RbConfig::CONFIG['host_os'] =~ /mswin|mingw|cygwin/
   SILENCE_ERRORS = ON_WINDOWS ? '2>nul' : '2>/dev/null'
@@ -31,19 +32,35 @@ class ActionDispatch::IntegrationTest
     File.join parts
   end
 
+  def group_path
+    parts = []
+    parts << @screenshot_section if @screenshot_section.present?
+    parts << @screenshot_group if @screenshot_group.present?
+    File.join parts
+  end
+
+  def full_name(name)
+    File.join group_path, name
+  end
+
+  def screenshot_dir
+    File.join self.class.screenshot_dir, group_path
+  end
+
   def self.screenshot_dir_abs
     "#{screenshot_root}/#{screenshot_dir}".freeze
   end
 
   def self.screenshot_root
-    Rails.root
+    Capybara::Screenshot.screenshot_root ||
+        (defined?(Rails.root) && Rails.root) || File.expand_path('.')
   end
 
   setup do
     if Capybara::Screenshot.window_size
       if Capybara.default_driver == :selenium
         page.driver.browser.manage.window.resize_to(*Capybara::Screenshot.window_size)
-      else
+      elsif Capybara.default_driver == :poltergeist
         page.driver.resize(*Capybara::Screenshot.window_size)
       end
     end
@@ -78,7 +95,7 @@ class ActionDispatch::IntegrationTest
       name = "#{'%02i' % @screenshot_counter}_#{name}"
       @screenshot_counter += 1
     end
-    name = "#{@screenshot_group}/#{name}" if @screenshot_group.present?
+    name = full_name(name)
     file_name = "#{self.class.screenshot_dir_abs}/#{name}.png"
     org_name = "#{self.class.screenshot_dir_abs}/#{name}_0.png~"
     new_name = "#{self.class.screenshot_dir_abs}/#{name}_1.png~"
@@ -90,8 +107,8 @@ class ActionDispatch::IntegrationTest
     else
       svn_info = `svn info #{file_name} #{SILENCE_ERRORS}`
       if svn_info.present?
-        wc_root = svn_info.slice /(?<=Working Copy Root Path: ).*$/
-        checksum = svn_info.slice /(?<=Checksum: ).*$/
+        wc_root = svn_info.slice(/(?<=Working Copy Root Path: ).*$/)
+        checksum = svn_info.slice(/(?<=Checksum: ).*$/)
         if checksum
           committed_file_name = "#{wc_root}/.svn/pristine/#{checksum[0..1]}/#{checksum}.svn-base"
         end
@@ -103,21 +120,27 @@ class ActionDispatch::IntegrationTest
         end
       end
     end
-    old_file_size = nil
-    loop do
-      page.save_screenshot(file_name)
-      break if old_file_size == File.size(file_name)
-      old_file_size = File.size(file_name)
-      sleep 0.5
-    end
+    take_stable_screenshot(file_name)
     return unless File.exist?(committed_file_name)
     (@test_screenshots ||= []) << [caller[0], name, file_name, committed_file_name, new_name, org_name]
   end
 
+  def take_stable_screenshot(file_name)
+    old_file_size = nil
+    loop do
+      save_screenshot(file_name)
+      break if old_file_size == File.size(file_name)
+      old_file_size = File.size(file_name)
+      sleep 0.5
+    end
+  end
+
   def assert_image_not_changed(caller, name, file_name, committed_file_name, new_name, org_name)
-    if Capybara::Screenshot::Diff::ImageCompare.compare(file_name, committed_file_name, Capybara::Screenshot.window_size)
+    if Capybara::Screenshot::Diff::ImageCompare.compare(file_name,
+        committed_file_name, Capybara::Screenshot.window_size)
       (@test_screenshot_errors ||= []) <<
-          "Screenshot does not match for #{name.inspect}\n#{file_name}\n#{org_name}\n#{new_name}\nat #{caller}"
+          "Screenshot does not match for '#{name}'\n#{file_name}\n#{org_name}\n#{new_name}\nat #{caller}"
     end
   end
 end
+# rubocop:enable Metrics/ClassLength

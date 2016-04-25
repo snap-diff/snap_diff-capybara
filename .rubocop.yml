@@ -2,9 +2,16 @@ inherit_from: .rubocop_todo.yml
 
 AllCops:
   DisplayCopNames: true
+  DisplayStyleGuide: true
+
+Lint/Debugger:
+  Enabled: false
+
+Metrics/ClassLength:
+  Max: 101
 
 Metrics/LineLength:
-  Max: 130
+  Max: 110
 
 Style/MultilineMethodCallIndentation:
   EnforcedStyle: indented
@@ -12,3 +19,7 @@ Style/MultilineMethodCallIndentation:
 
 Style/SignalException:
   EnforcedStyle: semantic
+
+Style/AlignParameters:
+  EnforcedStyle: with_fixed_indentation
+  IndentationWidth: 4

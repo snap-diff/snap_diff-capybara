@@ -72,7 +72,8 @@ module Capybara
 
         def sizes_changed?(org_image, new_image, name)
           if org_image.dimension != new_image.dimension
-            puts "Image size has changed for #{name}: #{[org_image, new_image].map { |i| "#{i.width}x#{i.height}" }.join(' => ')}"
+            change_msg = [org_image, new_image].map { |i| "#{i.width}x#{i.height}" }.join(' => ')
+            puts "Image size has changed for #{name}: #{change_msg}"
             return true
           end
         end
