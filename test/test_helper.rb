@@ -1,6 +1,6 @@
 require 'simplecov'
 SimpleCov.start
-SimpleCov.minimum_coverage 58
+SimpleCov.minimum_coverage 57
 
 $LOAD_PATH.unshift File.expand_path('../../lib', __FILE__)
 
