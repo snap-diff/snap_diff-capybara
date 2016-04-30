@@ -8,3 +8,6 @@ rvm:
   - 2.1.8
   - ruby-head
 before_install: gem install bundler -v 1.11.2
+
+env:
+  - JRUBY_OPTS="--dev --debug"
