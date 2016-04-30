@@ -32,19 +32,19 @@ class ActionDispatch::IntegrationTest
     File.join parts
   end
 
-  def group_path
+  def group_parts
     parts = []
     parts << @screenshot_section if @screenshot_section.present?
     parts << @screenshot_group if @screenshot_group.present?
-    File.join parts
+    parts
   end
 
   def full_name(name)
-    File.join group_path, name
+    File.join group_parts + [name]
   end
 
   def screenshot_dir
-    File.join self.class.screenshot_dir, group_path
+    File.join [self.class.screenshot_dir] + group_parts
   end
 
   def self.screenshot_dir_abs
