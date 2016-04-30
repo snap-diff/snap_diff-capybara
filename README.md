@@ -1,11 +1,13 @@
+[![Build Status](https://travis-ci.org/donv/capybara-screenshot-diff.svg?branch=master)](https://travis-ci.org/donv/capybara-screenshot-diff)
+
 # Capybara::Screenshot::Diff
 
 Ever wondered what your project looked like two years ago?  To answer that, you
 start taking screen shots during your tests.  Capybara provides the
 `save_screenshot` method for this.  Very good.
 
-Ever introduced a graphical chnage unintended?  Never want it to happen again?
-Then this gem is gfor you!  Use this gem to detect changes in your pages by
+Ever introduced a graphical change unintended?  Never want it to happen again?
+Then this gem is for you!  Use this gem to detect changes in your pages by
 taking screen shots and comparing them to the previous revision.
 
 ## Installation
