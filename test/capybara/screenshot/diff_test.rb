@@ -49,6 +49,7 @@ class Capybara::Screenshot::DiffTest < ActionDispatch::IntegrationTest
   end
 
   test 'full_name allows symbol' do
-    assert_equal 'a', full_name(:a)
+    screenshot_group :b
+    assert_equal 'b/a', full_name(:a)
   end
 end
