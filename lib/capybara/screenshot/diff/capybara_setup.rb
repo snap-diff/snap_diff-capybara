@@ -40,7 +40,7 @@ class ActionDispatch::IntegrationTest
   end
 
   def full_name(name)
-    File.join group_parts + [name]
+    File.join group_parts + [name.to_s]
   end
 
   def screenshot_dir
