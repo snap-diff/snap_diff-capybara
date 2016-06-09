@@ -28,8 +28,15 @@ class ActionDispatch::IntegrationTest
     parts = ['doc/screenshots']
     parts << Capybara.default_driver.to_s if Capybara::Screenshot.add_driver_path
     parts << os_name if Capybara::Screenshot.add_os_path
-    parts << @screenshot_section if @screenshot_section
     File.join parts
+  end
+
+  def initialize(*)
+    super
+    @screenshot_group = nil
+    @screenshot_section = nil
+    @test_screenshot_errors = nil
+    @test_screenshots = nil
   end
 
   def group_parts
