@@ -6,7 +6,7 @@ rvm:
   - 2.2.5
   - 2.1.8
   - ruby-head
-before_install: gem install bundler
+before_install: gem query -i -n ^bundler$ >/dev/null || gem install bundler
 
 env:
   - JRUBY_OPTS="--dev --debug"
