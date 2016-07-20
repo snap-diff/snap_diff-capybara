@@ -127,9 +127,33 @@ class ActionDispatch::IntegrationTest
         end
       end
     end
+    assert_images_loaded
     take_stable_screenshot(file_name)
     return unless committed_file_name && File.exist?(committed_file_name)
     (@test_screenshots ||= []) << [caller[0], name, file_name, committed_file_name, new_name, org_name]
+  end
+
+  IMAGE_WAIT_SCRIPT = <<EOF
+function pending_image() {
+  var images = document.images;
+  for (var i = 0; i < images.length; i++) {
+    if (!images[i].complete) {
+        return images[i].src;
+    }
+  }
+  return false;
+}()
+EOF
+
+  def assert_images_loaded(timeout: Capybara.default_max_wait_time)
+    start = Time.now
+    loop do
+      pending_image = evaluate_script IMAGE_WAIT_SCRIPT
+      break unless pending_image
+      assert (Time.now - start) < timeout,
+          "Image not loaded after #{timeout}s: #{pending_image.inspect}"
+      sleep 0.1
+    end
   end
 
   def take_stable_screenshot(file_name)
