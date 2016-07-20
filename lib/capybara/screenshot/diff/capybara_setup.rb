@@ -128,7 +128,7 @@ class ActionDispatch::IntegrationTest
       end
     end
     take_stable_screenshot(file_name)
-    return unless File.exist?(committed_file_name)
+    return unless committed_file_name && File.exist?(committed_file_name)
     (@test_screenshots ||= []) << [caller[0], name, file_name, committed_file_name, new_name, org_name]
   end
 
