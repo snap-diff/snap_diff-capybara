@@ -1,8 +1,10 @@
 require 'simplecov'
 SimpleCov.start
-SimpleCov.minimum_coverage 57
+SimpleCov.minimum_coverage 66
 
 $LOAD_PATH.unshift File.expand_path('../../lib', __FILE__)
+
+TEST_IMAGES_DIR = File.expand_path('images', __dir__)
 
 module Rails
   def self.root

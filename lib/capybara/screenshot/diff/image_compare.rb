@@ -10,9 +10,9 @@ module Capybara
           new(*args).compare
         end
 
-        def initialize(file_name, old_file_name, dimensions = nil)
-          @file_name = file_name
+        def initialize(old_file_name, new_file_name, dimensions = nil)
           @old_file_name = old_file_name
+          @file_name = new_file_name
           @dimensions = dimensions
         end
 
@@ -43,11 +43,17 @@ module Capybara
             return false
           end
 
-          bottom, left, right, top = find_diff_rectangle(org_img, new_img)
-          draw_rectangles(images, bottom, left, right, top)
+          @left, @top, @right, @bottom = find_diff_rectangle(org_img, new_img)
+          draw_rectangles(images, @bottom, @left, @right, @top)
           save_images(new_file_name, new_img, org_file_name, org_img)
           true
         end
+
+        def dimensions
+          [@left, @top, @right, @bottom]
+        end
+
+        private
 
         def save_images(new_file_name, new_img, org_file_name, org_img)
           org_img.save(org_file_name)
@@ -58,8 +64,6 @@ module Capybara
           File.delete(org_file_name) if File.exist?(org_file_name)
           File.delete(new_file_name) if File.exist?(new_file_name)
         end
-
-        private
 
         def load_images(old_file_name, file_name)
           old_file = File.read(old_file_name)
@@ -100,11 +104,12 @@ module Capybara
           right = -1
           org_img.height.times do |y|
             (0...left).find do |x|
-              next unless org_img[x, y] != new_img[x, y]
+              next if org_img[x, y] == new_img[x, y]
               top ||= y
               bottom = y
               left = x
               right = x if x > right
+              x
             end
             (org_img.width - 1).step(right + 1, -1).find do |x|
               if org_img[x, y] != new_img[x, y]
@@ -118,7 +123,7 @@ module Capybara
               bottom = y if org_img[x, y] != new_img[x, y]
             end
           end
-          [bottom, left, right, top]
+          [left, top, right, bottom]
         end
       end
     end

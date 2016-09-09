@@ -5,7 +5,7 @@ require 'action_dispatch'
 
 # TODO(uwe): Move this code to module Capybara::Screenshot::Diff::TestMethods,
 #            and use Module#prepend/include to insert.
-# Add the `screenshot`method to ActionDispatch::IntegrationTest
+# Add the `screenshot` method to ActionDispatch::IntegrationTest
 # rubocop:disable Metrics/ClassLength
 class ActionDispatch::IntegrationTest
   ON_WINDOWS = RbConfig::CONFIG['host_os'] =~ /mswin|mingw|cygwin/
@@ -24,11 +24,20 @@ class ActionDispatch::IntegrationTest
     end
   end
 
-  def self.screenshot_dir
+  def self.screenshot_root
+    Capybara::Screenshot.screenshot_root ||
+        (defined?(Rails.root) && Rails.root) || File.expand_path('.')
+  end
+
+  def self.screenshot_area
     parts = ['doc/screenshots']
     parts << Capybara.default_driver.to_s if Capybara::Screenshot.add_driver_path
     parts << os_name if Capybara::Screenshot.add_os_path
     File.join parts
+  end
+
+  def self.screenshot_area_abs
+    "#{screenshot_root}/#{screenshot_area}".freeze
   end
 
   def initialize(*)
@@ -51,16 +60,7 @@ class ActionDispatch::IntegrationTest
   end
 
   def screenshot_dir
-    File.join [self.class.screenshot_dir] + group_parts
-  end
-
-  def self.screenshot_dir_abs
-    "#{screenshot_root}/#{screenshot_dir}".freeze
-  end
-
-  def self.screenshot_root
-    Capybara::Screenshot.screenshot_root ||
-        (defined?(Rails.root) && Rails.root) || File.expand_path('.')
+    File.join [self.class.screenshot_area] + group_parts
   end
 
   setup do
@@ -81,15 +81,14 @@ class ActionDispatch::IntegrationTest
   end
 
   def screenshot_section(name)
-    @screenshot_section = name
+    @screenshot_section = name.to_s
   end
 
   def screenshot_group(name)
-    @screenshot_group = name
+    @screenshot_group = name.to_s
     @screenshot_counter = 0
-    if Capybara::Screenshot.active? && name.present?
-      FileUtils.rm_rf "#{self.class.screenshot_dir_abs}/#{name}"
-    end
+    return unless Capybara::Screenshot.active? && name.present?
+    FileUtils.rm_rf screenshot_dir
   end
 
   def screenshot(name)
@@ -103,12 +102,12 @@ class ActionDispatch::IntegrationTest
       @screenshot_counter += 1
     end
     name = full_name(name)
-    file_name = "#{self.class.screenshot_dir_abs}/#{name}.png"
-    org_name = "#{self.class.screenshot_dir_abs}/#{name}_0.png~"
-    new_name = "#{self.class.screenshot_dir_abs}/#{name}_1.png~"
+    file_name = "#{self.class.screenshot_area_abs}/#{name}.png"
+    org_name = "#{self.class.screenshot_area_abs}/#{name}_0.png~"
+    new_name = "#{self.class.screenshot_area_abs}/#{name}_1.png~"
 
     FileUtils.mkdir_p File.dirname(file_name)
-    svn_file_name = "#{self.class.screenshot_dir_abs}/.svn/text-base/#{name}.png.svn-base"
+    svn_file_name = "#{self.class.screenshot_area_abs}/.svn/text-base/#{name}.png.svn-base"
     if File.exist?(svn_file_name)
       committed_file_name = svn_file_name
     else
@@ -121,19 +120,18 @@ class ActionDispatch::IntegrationTest
         end
       else
         committed_file_name = org_name
-        `git show HEAD~0:#{self.class.screenshot_dir}/#{name}.png > #{committed_file_name} #{SILENCE_ERRORS}`
+        `git show HEAD~0:#{self.class.screenshot_area}/#{name}.png > #{committed_file_name} #{SILENCE_ERRORS}`
         if File.size(committed_file_name) == 0
           FileUtils.rm_f committed_file_name
         end
       end
     end
-    assert_images_loaded
     take_stable_screenshot(file_name)
     return unless committed_file_name && File.exist?(committed_file_name)
     (@test_screenshots ||= []) << [caller[0], name, file_name, committed_file_name, new_name, org_name]
   end
 
-  IMAGE_WAIT_SCRIPT = <<EOF
+  IMAGE_WAIT_SCRIPT = <<EOF.freeze
 function pending_image() {
   var images = document.images;
   for (var i = 0; i < images.length; i++) {
@@ -146,6 +144,7 @@ function pending_image() {
 EOF
 
   def assert_images_loaded(timeout: Capybara.default_max_wait_time)
+    return unless respond_to? :evaluate_script
     start = Time.now
     loop do
       pending_image = evaluate_script IMAGE_WAIT_SCRIPT
@@ -157,18 +156,20 @@ EOF
   end
 
   def take_stable_screenshot(file_name)
+    assert_images_loaded
     old_file_size = nil
     loop do
       save_screenshot(file_name)
-      break if old_file_size == File.size(file_name)
-      old_file_size = File.size(file_name)
-      sleep 0.5
+      new_file_size = File.size(file_name)
+      break if new_file_size == old_file_size
+      old_file_size = new_file_size
+      sleep 0.25
     end
   end
 
   def assert_image_not_changed(caller, name, file_name, committed_file_name, new_name, org_name)
-    if Capybara::Screenshot::Diff::ImageCompare.compare(file_name,
-        committed_file_name, Capybara::Screenshot.window_size)
+    if Capybara::Screenshot::Diff::ImageCompare.compare(committed_file_name, file_name,
+        Capybara::Screenshot.window_size)
       (@test_screenshot_errors ||= []) <<
           "Screenshot does not match for '#{name}'\n#{file_name}\n#{org_name}\n#{new_name}\nat #{caller}"
     end

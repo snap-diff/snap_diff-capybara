@@ -12,4 +12,4 @@ end
 
 RuboCop::RakeTask.new
 
-Rake::Task[:test].enhance [:rubocop]
+Rake::Task[:test].enhance [:'rubocop:auto_correct']

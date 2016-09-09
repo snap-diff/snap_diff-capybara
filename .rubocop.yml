@@ -17,6 +17,9 @@ Style/MultilineMethodCallIndentation:
   EnforcedStyle: indented
   IndentationWidth: 4
 
+Style/NumericPredicate:
+  Enabled: false
+
 Style/SignalException:
   EnforcedStyle: semantic
 
