@@ -229,6 +229,17 @@ If you would like the screen shots to be saved in a different location set
 Capybara::Screenshot.save_path = "#{Rails.root}/doc/gui"
 ```
 
+### Screen shot stability
+
+To ensure that animations are finished before saving a screen shot, you can add
+a stability time limit.  If the stability time limit is set, a second screen
+shot will be taken and compared to the first.  This is repeated until two
+subsequent screen shots are identical.
+
+```ruby
+Capybara::Screenshot.stability_time_limit = 0.5
+```
+
 
 ## Development
 

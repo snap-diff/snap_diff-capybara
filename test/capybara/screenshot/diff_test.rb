@@ -40,6 +40,13 @@ module Capybara
         screenshot 'a'
       end
 
+      def test_screenshot_with_stability_time_limit
+        Capybara::Screenshot.stability_time_limit = 0.001
+        screenshot 'a'
+      ensure
+        Capybara::Screenshot.stability_time_limit = nil
+      end
+
       test 'full_name' do
         assert_equal 'a', full_name('a')
         screenshot_group 'b'

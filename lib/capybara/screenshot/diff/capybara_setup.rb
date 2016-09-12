@@ -42,6 +42,7 @@ class ActionDispatch::IntegrationTest
 
   def initialize(*)
     super
+    @screenshot_counter = nil
     @screenshot_group = nil
     @screenshot_section = nil
     @test_screenshot_errors = nil
@@ -160,10 +161,11 @@ EOF
     old_file_size = nil
     loop do
       save_screenshot(file_name)
+      break unless Capybara::Screenshot.stability_time_limit
       new_file_size = File.size(file_name)
       break if new_file_size == old_file_size
       old_file_size = new_file_size
-      sleep 0.25
+      sleep Capybara::Screenshot.stability_time_limit
     end
   end
 
