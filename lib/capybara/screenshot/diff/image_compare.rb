@@ -66,8 +66,8 @@ module Capybara
         end
 
         def load_images(old_file_name, file_name)
-          old_file = File.read(old_file_name)
-          new_file = File.read(file_name)
+          old_file = File.binread(old_file_name)
+          new_file = File.binread(file_name)
 
           return false if old_file == new_file
 
@@ -75,11 +75,10 @@ module Capybara
         end
 
         def sizes_changed?(org_image, new_image, name)
-          if org_image.dimension != new_image.dimension
-            change_msg = [org_image, new_image].map { |i| "#{i.width}x#{i.height}" }.join(' => ')
-            puts "Image size has changed for #{name}: #{change_msg}"
-            return true
-          end
+          return unless org_image.dimension != new_image.dimension
+          change_msg = [org_image, new_image].map { |i| "#{i.width}x#{i.height}" }.join(' => ')
+          puts "Image size has changed for #{name}: #{change_msg}"
+          true
         end
 
         def crop_images(images, dimensions)

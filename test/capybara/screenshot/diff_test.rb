@@ -14,7 +14,7 @@ module Capybara
       end
 
       def test_screenshot_groups_are_replaced
-        assert_equal nil, @screenshot_group
+        assert_nil @screenshot_group
         screenshot_group 'a'
         assert_equal 'a', @screenshot_group
         screenshot_group 'b'
@@ -22,8 +22,8 @@ module Capybara
       end
 
       def test_screenshot_section_is_prepended
-        assert_equal nil, @screenshot_section
-        assert_equal nil, @screenshot_group
+        assert_nil @screenshot_section
+        assert_nil @screenshot_group
         screenshot_section 'a'
         assert_equal 'a', @screenshot_section
         assert_match %r{doc/screenshots/rack_test/(macos|linux)/a}, screenshot_dir
