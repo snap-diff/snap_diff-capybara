@@ -3,9 +3,11 @@ rvm:
   - jruby-head
   - jruby-9.1.2.0
   - jruby-9.1.5.0
+  - jruby-9.1.6.0
+  - 2.3.3
   - 2.3.1
-  - 2.2.5
-  - 2.1.8
+  - 2.2.6
+  - 2.1.9
   - ruby-head
 before_install: gem query -i -n ^bundler$ >/dev/null || gem install bundler
 
