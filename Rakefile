@@ -8,7 +8,3 @@ Rake::TestTask.new(:test) do |t|
   t.libs << 'lib'
   t.test_files = FileList['test/**/*_test.rb']
 end
-
-require 'rubocop/rake_task'
-RuboCop::RakeTask.new
-Rake::Task[:test].enhance [:'rubocop:auto_correct']
