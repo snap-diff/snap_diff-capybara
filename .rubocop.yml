@@ -13,6 +13,9 @@ Metrics/ClassLength:
 Metrics/LineLength:
   Max: 110
 
+Style/Documentation:
+  Enabled: false
+
 Style/MultilineMethodCallIndentation:
   EnforcedStyle: indented
   IndentationWidth: 4
