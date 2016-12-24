@@ -19,10 +19,14 @@ jdk:
 
 matrix:
   exclude:
+    - rvm: ruby-head # Cannot build json 1.x
+      gemfile: gemfiles/rails42.gemfile
     - rvm: ruby-2.1.9 # Not supported by Rails 5
       gemfile: gemfiles/rails50.gemfile
   allowed_failures:
     - rvm: jruby-head # FIXME: (uwe) Low coverage: https://github.com/jruby/jruby/issues/4404
       gemfile: gemfiles/rails50.gemfile
+    - rvm: jruby-head # FIXME: (uwe) Low coverage: https://github.com/jruby/jruby/issues/4404
+      gemfile: gemfiles/rails42.gemfile
 
 before_install: gem query -i -n ^bundler$ >/dev/null || gem install bundler
