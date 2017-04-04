@@ -1,8 +1,9 @@
 language: ruby
 rvm:
-  - ruby-2.3.3
-  - jruby-9.1.6.0
-  - ruby-2.2.6
+  - ruby-2.4.1
+  - jruby-9.1.8.0
+  - ruby-2.3.4
+  - ruby-2.2.7
   - ruby-2.1.9
   - ruby-head
   - jruby-head
@@ -19,8 +20,6 @@ jdk:
 
 matrix:
   exclude:
-    - rvm: ruby-head # Cannot build json 1.x
-      gemfile: gemfiles/rails42.gemfile
     - rvm: ruby-2.1.9 # Not supported by Rails 5
       gemfile: gemfiles/rails50.gemfile
   allow_failures:
