@@ -130,7 +130,7 @@ module ActionDispatch
         else
           committed_file_name = org_name
           redirect_target = "#{committed_file_name} #{SILENCE_ERRORS}"
-          `git show HEAD~0:#{self.class.screenshot_area}/#{name}.png > #{redirect_target}`
+          `git show HEAD~0:./#{self.class.screenshot_area}/#{name}.png > #{redirect_target}`
           if File.size(committed_file_name) == 0
             FileUtils.rm_f committed_file_name
           end
