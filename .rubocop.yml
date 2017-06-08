@@ -4,6 +4,16 @@ AllCops:
   DisplayCopNames: true
   DisplayStyleGuide: true
 
+Layout/AlignParameters:
+  EnforcedStyle: with_fixed_indentation
+  IndentationWidth: 4
+
+Layout/MultilineMethodCallIndentation:
+  EnforcedStyle: indented
+
+Layout/MultilineOperationIndentation:
+  EnforcedStyle: indented
+
 Lint/Debugger:
   Enabled: false
 
@@ -16,16 +26,8 @@ Metrics/LineLength:
 Style/Documentation:
   Enabled: false
 
-Style/MultilineMethodCallIndentation:
-  EnforcedStyle: indented
-  IndentationWidth: 4
-
 Style/NumericPredicate:
   Enabled: false
 
 Style/SignalException:
   EnforcedStyle: semantic
-
-Style/AlignParameters:
-  EnforcedStyle: with_fixed_indentation
-  IndentationWidth: 4

@@ -25,6 +25,10 @@ module ActionDispatch
       end
     end
 
+    def self.macos?
+      os_name == 'macos'
+    end
+
     def self.screenshot_root
       Capybara::Screenshot.screenshot_root ||
         (defined?(Rails.root) && Rails.root) || File.expand_path('.')
@@ -65,11 +69,24 @@ module ActionDispatch
       File.join [self.class.screenshot_area] + group_parts
     end
 
+    private def current_capybara_driver_class
+      Capybara.drivers[Capybara.current_driver].call({}).class
+    end
+
+    private def selenium?
+      current_capybara_driver_class <= Capybara::Selenium::Driver
+    end
+
+    private def poltergeist?
+      return false unless defined?(Capybara::Poltergeist::Driver)
+      current_capybara_driver_class <= Capybara::Poltergeist::Driver
+    end
+
     setup do
       if Capybara::Screenshot.window_size
-        if Capybara.default_driver == :selenium
+        if selenium?
           page.driver.browser.manage.window.resize_to(*Capybara::Screenshot.window_size)
-        elsif Capybara.default_driver == :poltergeist
+        elsif poltergeist?
           page.driver.resize(*Capybara::Screenshot.window_size)
         end
       end
@@ -95,9 +112,9 @@ module ActionDispatch
 
     def screenshot(name)
       return unless Capybara::Screenshot.active?
-      if Capybara.default_driver == :selenium && Capybara::Screenshot.window_size
-        return unless page.driver.browser.manage.window
-              .size == Selenium::WebDriver::Dimension.new(*Capybara::Screenshot.window_size)
+      if selenium? && Capybara::Screenshot.window_size
+        return unless page.driver.browser.manage.window.size ==
+            Selenium::WebDriver::Dimension.new(*Capybara::Screenshot.window_size)
       end
       if @screenshot_counter
         name = "#{'%02i' % @screenshot_counter}_#{name}"
@@ -168,6 +185,20 @@ EOF
       old_file_size = nil
       loop do
         save_screenshot(file_name)
+
+        # FIXME(uwe): Remove when chromedriver take right size screenshots
+        # Reduce Retina image size
+        if self.class.macos? && selenium? && Capybara::Screenshot.window_size
+          saved_image = ChunkyPNG::Image.from_file(file_name)
+          width = Capybara::Screenshot.window_size[0]
+          if saved_image.width >= width * 2
+            height = (width * saved_image.height) / saved_image.width
+            resized_image = saved_image.resample_bilinear(width, height)
+            resized_image.save(file_name)
+          end
+        end
+        # EMXIF
+
         break unless Capybara::Screenshot.stability_time_limit
         new_file_size = File.size(file_name)
         break if new_file_size == old_file_size

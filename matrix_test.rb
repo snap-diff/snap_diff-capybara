@@ -43,7 +43,7 @@ travis['rvm'].each do |ruby|
   system "#{bundler_gem_check_cmd} || chruby-exec #{ruby} -- gem install bundler" || exit(1)
   travis['gemfile'].each do |gemfile|
     if (travis['matrix']['exclude'].to_a + travis['matrix']['allowed_failures'].to_a)
-          .any? { |f| f['rvm'] == ruby && f['gemfile'] == gemfile }
+        .any? { |f| f['rvm'] == ruby && f['gemfile'] == gemfile }
       puts 'Skipping known failure.'
       next
     end
