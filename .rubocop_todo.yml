@@ -6,21 +6,6 @@
 # Note that changes in the inspected code, or installation of new
 # versions of RuboCop, may require this file to be generated again.
 
-# Offense count: 2
-# Cop supports --auto-correct.
-Layout/EmptyLineAfterMagicComment:
-  Exclude:
-    - 'capybara-screenshot-diff.gemspec'
-    - 'lib/capybara/screenshot/diff/version.rb'
-
-# Offense count: 1
-# Cop supports --auto-correct.
-# Configuration parameters: EnforcedStyle, SupportedStyles.
-# SupportedStyles: auto_detection, squiggly, active_support, powerpack, unindent
-Layout/IndentHeredoc:
-  Exclude:
-    - 'lib/capybara/screenshot/diff/capybara_setup.rb'
-
 # Offense count: 4
 Metrics/AbcSize:
   Max: 31
@@ -53,11 +38,3 @@ Performance/Caller:
 Security/YAMLLoad:
   Exclude:
     - 'matrix_test.rb'
-
-# Offense count: 1
-# Cop supports --auto-correct.
-# Configuration parameters: EnforcedStyle, SupportedStyles.
-# SupportedStyles: format, sprintf, percent
-Style/FormatString:
-  Exclude:
-    - 'lib/capybara/screenshot/diff/capybara_setup.rb'

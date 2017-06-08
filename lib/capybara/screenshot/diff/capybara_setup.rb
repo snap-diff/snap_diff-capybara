@@ -117,7 +117,7 @@ module ActionDispatch
             Selenium::WebDriver::Dimension.new(*Capybara::Screenshot.window_size)
       end
       if @screenshot_counter
-        name = "#{'%02i' % @screenshot_counter}_#{name}"
+        name = "#{format('%02i', @screenshot_counter)}_#{name}"
         @screenshot_counter += 1
       end
       name = full_name(name)
