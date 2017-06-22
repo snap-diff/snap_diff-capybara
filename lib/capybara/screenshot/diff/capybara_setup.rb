@@ -85,7 +85,10 @@ module ActionDispatch
     setup do
       if Capybara::Screenshot.window_size
         if selenium?
-          page.driver.browser.manage.window.resize_to(*Capybara::Screenshot.window_size)
+          # TODO(uwe): Enable for Chrome and non-windows when it works)
+          if !page.driver.chrome? || ON_WINDOWS
+            page.driver.browser.manage.window.resize_to(*Capybara::Screenshot.window_size)
+          end
         elsif poltergeist?
           page.driver.resize(*Capybara::Screenshot.window_size)
         end
@@ -112,10 +115,7 @@ module ActionDispatch
 
     def screenshot(name)
       return unless Capybara::Screenshot.active?
-      if selenium? && Capybara::Screenshot.window_size
-        return unless page.driver.browser.manage.window.size ==
-            Selenium::WebDriver::Dimension.new(*Capybara::Screenshot.window_size)
-      end
+      return if window_size_is_wrong?
       if @screenshot_counter
         name = "#{format('%02i', @screenshot_counter)}_#{name}"
         @screenshot_counter += 1
@@ -130,6 +130,13 @@ module ActionDispatch
       take_stable_screenshot(file_name)
       return unless committed_file_name && File.exist?(committed_file_name)
       (@test_screenshots ||= []) << [caller[0], name, file_name, committed_file_name, new_name, org_name]
+    end
+
+    private def window_size_is_wrong?
+      selenium? && Capybara::Screenshot.window_size &&
+        (!page.driver.chrome? || ON_WINDOWS) && # TODO(uwe): Allow for Chrome when it works
+        page.driver.browser.manage.window.size !=
+          Selenium::WebDriver::Dimension.new(*Capybara::Screenshot.window_size)
     end
 
     def check_vcs(name, file_name, org_name)
