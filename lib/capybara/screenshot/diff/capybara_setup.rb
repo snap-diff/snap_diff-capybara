@@ -97,9 +97,10 @@ module ActionDispatch
 
     teardown do
       if Capybara::Screenshot::Diff.enabled && @test_screenshots
-        @test_screenshots.each { |args| assert_image_not_changed(*args) }
+        test_screenshot_errors =
+          @test_screenshots.map { |args| assert_image_not_changed(*args) }.compact
+        fail(test_screenshot_errors.join("\n\n")) if test_screenshot_errors.any?
       end
-      fail(@test_screenshot_errors.join("\n\n")) if @test_screenshot_errors
     end
 
     def screenshot_section(name)
@@ -227,8 +228,7 @@ EOF
     def assert_image_not_changed(caller, name, file_name, committed_file_name, new_name, org_name)
       if Capybara::Screenshot::Diff::ImageCompare.compare(committed_file_name, file_name,
           Capybara::Screenshot.window_size)
-        (@test_screenshot_errors ||= []) <<
-          "Screenshot does not match for '#{name}'\n#{file_name}\n#{org_name}\n#{new_name}\nat #{caller}"
+        "Screenshot does not match for '#{name}'\n#{file_name}\n#{org_name}\n#{new_name}\nat #{caller}"
       end
     end
   end

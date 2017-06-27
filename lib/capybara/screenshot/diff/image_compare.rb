@@ -99,8 +99,8 @@ module Capybara
 
         def find_diff_rectangle(org_img, new_img)
           top = bottom = nil
-          left = org_img.width
-          right = -1
+          left = org_img.width - 1
+          right = 0
           org_img.height.times do |y|
             (0...left).find do |x|
               next if org_img[x, y] == new_img[x, y]
@@ -118,7 +118,7 @@ module Capybara
             end
           end
           (org_img.height - 1).step(bottom + 1, -1).find do |y|
-            ((left + 1)..(right - 1)).find do |x|
+            (left..right).find do |x|
               bottom = y if org_img[x, y] != new_img[x, y]
             end
           end

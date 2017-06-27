@@ -22,6 +22,12 @@ module Capybara
           assert_equal [11, 3, 48, 20], comp.dimensions
           ImageCompare.compare("#{TEST_IMAGES_DIR}/c.png", "#{TEST_IMAGES_DIR}/c.png")
         end
+
+        test 'compare of 1 pixel wide diff' do
+          comp = ImageCompare.new("#{TEST_IMAGES_DIR}/a.png", "#{TEST_IMAGES_DIR}/d.png")
+          assert comp.compare
+          assert_equal [9, 6, 9, 13], comp.dimensions
+        end
       end
     end
   end

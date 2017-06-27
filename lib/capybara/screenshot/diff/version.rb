@@ -3,7 +3,7 @@
 module Capybara
   module Screenshot
     module Diff
-      VERSION = '0.5.2'.freeze
+      VERSION = '0.5.3'.freeze
     end
   end
 end
