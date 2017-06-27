@@ -127,8 +127,10 @@ module ActionDispatch
 
       FileUtils.mkdir_p File.dirname(file_name)
       committed_file_name = check_vcs(name, file_name, org_name)
-      take_stable_screenshot(file_name)
-      return unless committed_file_name && File.exist?(committed_file_name)
+      previous_file_exists = committed_file_name && File.exist?(committed_file_name)
+      previous_size = File.size(committed_file_name) if previous_file_exists
+      take_stable_screenshot(file_name, previous_size)
+      return unless previous_file_exists
       (@test_screenshots ||= []) << [caller[0], name, file_name, committed_file_name, new_name, org_name]
     end
 
@@ -182,36 +184,44 @@ EOF
         pending_image = evaluate_script IMAGE_WAIT_SCRIPT
         break unless pending_image
         assert (Time.now - start) < timeout,
-            "Image not loaded after #{timeout}s: #{pending_image.inspect}"
+            "Images not loaded after #{timeout}s: #{pending_image.inspect}"
         sleep 0.1
       end
     end
 
-    def take_stable_screenshot(file_name)
+    def take_stable_screenshot(file_name, original_file_size = nil)
       assert_images_loaded
-      old_file_size = nil
+      old_file_size = original_file_size
+      screeenshot_started_at = last_image_change_at = Time.now
       loop do
         save_screenshot(file_name)
 
-        # FIXME(uwe): Remove when chromedriver take right size screenshots
-        # Reduce Retina image size
-        if self.class.macos? && selenium? && Capybara::Screenshot.window_size
-          saved_image = ChunkyPNG::Image.from_file(file_name)
-          width = Capybara::Screenshot.window_size[0]
-          if saved_image.width >= width * 2
-            height = (width * saved_image.height) / saved_image.width
-            resized_image = saved_image.resample_bilinear(width, height)
-            resized_image.save(file_name)
-          end
-        end
+        # TODO(uwe): Remove when chromedriver take right size screenshots
+        reduce_retina_image_size(file_name)
         # EMXIF
 
         break unless Capybara::Screenshot.stability_time_limit
         new_file_size = File.size(file_name)
-        break if new_file_size == old_file_size
+        break if new_file_size == original_file_size
+        break if new_file_size == old_file_size &&
+            (Time.now - last_image_change_at) > Capybara::Screenshot.stability_time_limit
+        last_image_change_at = Time.now if new_file_size != old_file_size
         old_file_size = new_file_size
-        sleep Capybara::Screenshot.stability_time_limit
+        sleep 0.1
+
+        assert (Time.now - screeenshot_started_at) < Capybara.default_max_wait_time,
+            "Could not get stable screenshot within #{Capybara.default_max_wait_time}s"
       end
+    end
+
+    private def reduce_retina_image_size(file_name)
+      return if !self.class.macos? || !selenium? || !Capybara::Screenshot.window_size
+      saved_image = ChunkyPNG::Image.from_file(file_name)
+      width = Capybara::Screenshot.window_size[0]
+      return if saved_image.width < width * 2
+      height = (width * saved_image.height) / saved_image.width
+      resized_image = saved_image.resample_bilinear(width, height)
+      resized_image.save(file_name)
     end
 
     def assert_image_not_changed(caller, name, file_name, committed_file_name, new_name, org_name)
