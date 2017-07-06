@@ -17,8 +17,8 @@ module Capybara
 
     # Module to track screen shot changes
     module Diff
-      mattr_accessor :enabled
-      self.enabled = true
+      mattr_accessor :color_distance_limit
+      mattr_accessor(:enabled) { true }
     end
   end
 end

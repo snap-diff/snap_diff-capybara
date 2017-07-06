@@ -97,8 +97,8 @@ module ActionDispatch
 
     teardown do
       if Capybara::Screenshot::Diff.enabled && @test_screenshots
-        test_screenshot_errors =
-          @test_screenshots.map { |args| assert_image_not_changed(*args) }.compact
+        test_screenshot_errors = @test_screenshots
+            .map { |caller, name, compare| assert_image_not_changed(caller, name, compare) }.compact
         fail(test_screenshot_errors.join("\n\n")) if test_screenshot_errors.any?
       end
     end
@@ -114,7 +114,8 @@ module ActionDispatch
       FileUtils.rm_rf screenshot_dir
     end
 
-    def screenshot(name)
+    def screenshot(name, color_distance_limit: Capybara::Screenshot::Diff.color_distance_limit,
+        area_size_limit: nil)
       return unless Capybara::Screenshot.active?
       return if window_size_is_wrong?
       if @screenshot_counter
@@ -128,11 +129,12 @@ module ActionDispatch
 
       FileUtils.mkdir_p File.dirname(file_name)
       committed_file_name = check_vcs(name, file_name, org_name)
-      previous_file_exists = committed_file_name && File.exist?(committed_file_name)
-      previous_size = File.size(committed_file_name) if previous_file_exists
-      take_stable_screenshot(file_name, previous_size)
-      return unless previous_file_exists
-      (@test_screenshots ||= []) << [caller[0], name, file_name, committed_file_name, new_name, org_name]
+      comparison = Capybara::Screenshot::Diff::ImageCompare.new(committed_file_name, file_name,
+          dimensions: Capybara::Screenshot.window_size, color_distance_limit: color_distance_limit,
+          area_size_limit: area_size_limit)
+      take_stable_screenshot(comparison)
+      return unless comparison.old_file_exists?
+      (@test_screenshots ||= []) << [caller[0], name, comparison]
     end
 
     private def window_size_is_wrong?
@@ -142,7 +144,7 @@ module ActionDispatch
           Selenium::WebDriver::Dimension.new(*Capybara::Screenshot.window_size)
     end
 
-    def check_vcs(name, file_name, org_name)
+    private def check_vcs(name, file_name, org_name)
       svn_file_name = "#{self.class.screenshot_area_abs}/.svn/text-base/#{name}.png.svn-base"
       if File.exist?(svn_file_name)
         committed_file_name = svn_file_name
@@ -155,14 +157,17 @@ module ActionDispatch
             committed_file_name = "#{wc_root}/.svn/pristine/#{checksum[0..1]}/#{checksum}.svn-base"
           end
         else
-          committed_file_name = org_name
-          redirect_target = "#{committed_file_name} #{SILENCE_ERRORS}"
-          `git show HEAD~0:./#{self.class.screenshot_area}/#{name}.png > #{redirect_target}`
-          if File.size(committed_file_name) == 0
-            FileUtils.rm_f committed_file_name
-          end
+          committed_file_name = restore_git_revision(name, org_name)
         end
       end
+      committed_file_name
+    end
+
+    private def restore_git_revision(name, org_name)
+      committed_file_name = org_name
+      redirect_target = "#{committed_file_name} #{SILENCE_ERRORS}"
+      `git show HEAD~0:./#{self.class.screenshot_area}/#{name}.png > #{redirect_target}`
+      FileUtils.rm_f(committed_file_name) if File.size(committed_file_name) == 0
       committed_file_name
     end
 
@@ -190,28 +195,33 @@ EOF
       end
     end
 
-    def take_stable_screenshot(file_name, original_file_size = nil)
+    private def take_stable_screenshot(comparison)
       assert_images_loaded
-      old_file_size = original_file_size
+      previous_file_size = comparison.old_file_size
       screeenshot_started_at = last_image_change_at = Time.now
       loop do
-        save_screenshot(file_name)
+        save_screenshot(comparison.new_file_name)
 
         # TODO(uwe): Remove when chromedriver take right size screenshots
-        reduce_retina_image_size(file_name)
+        reduce_retina_image_size(comparison.new_file_name)
         # EMXIF
 
         break unless Capybara::Screenshot.stability_time_limit
-        new_file_size = File.size(file_name)
-        break if new_file_size == original_file_size
-        break if new_file_size == old_file_size &&
-            (Time.now - last_image_change_at) > Capybara::Screenshot.stability_time_limit
-        last_image_change_at = Time.now if new_file_size != old_file_size
-        old_file_size = new_file_size
-        sleep 0.1
+        break if comparison.quick_equal?
+
+        if comparison.new_file_size == previous_file_size
+          if (Time.now - last_image_change_at) > Capybara::Screenshot.stability_time_limit
+            break
+          end
+        else
+          last_image_change_at = Time.now
+        end
 
         assert (Time.now - screeenshot_started_at) < Capybara.default_max_wait_time,
             "Could not get stable screenshot within #{Capybara.default_max_wait_time}s"
+
+        previous_file_size = comparison.new_file_size
+        comparison.reset
       end
     end
 
@@ -225,10 +235,11 @@ EOF
       resized_image.save(file_name)
     end
 
-    def assert_image_not_changed(caller, name, file_name, committed_file_name, new_name, org_name)
-      if Capybara::Screenshot::Diff::ImageCompare.compare(committed_file_name, file_name,
-          Capybara::Screenshot.window_size)
-        "Screenshot does not match for '#{name}'\n#{file_name}\n#{org_name}\n#{new_name}\nat #{caller}"
+    def assert_image_not_changed(caller, name, comparison)
+      if comparison.different?
+        "Screenshot does not match for '#{name}' (area: #{comparison.size} #{comparison.dimensions}, max_color_distance: #{comparison.max_color_distance.round(1)})\n" \
+        "#{comparison.new_file_name}\n#{comparison.annotated_old_file_name}\n#{comparison.annotated_new_file_name}\n" \
+        "at #{caller}"
       end
     end
   end

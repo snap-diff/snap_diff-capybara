@@ -101,6 +101,7 @@ that test will get the same prefix:
 setup do
   screenshot_section 'my_feature'
 end
+
 test 'my subfeature' do
   screenshot_group 'subfeature'
   visit '/feature'
@@ -238,6 +239,26 @@ subsequent screen shots are identical.
 
 ```ruby
 Capybara::Screenshot.stability_time_limit = 0.5
+```
+
+
+
+### Allowed color distance
+
+Sometimes you want to allow small differences in the images.  You can set set the difference
+threshold for the comparison using the `color_distance_limit` option to the `screenshot` method:
+
+```ruby
+test 'color threshold' do
+  visit '/'
+  screenshot 'index', color_distance_limit: 30
+end
+```
+
+The difference is calculated as the eucledian distance.  You can also set this globally:
+
+```ruby
+Capybara::Screenshot::Diff.color_distance_limit = 42
 ```
 
 

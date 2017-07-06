@@ -47,6 +47,18 @@ module Capybara
         Capybara::Screenshot.stability_time_limit = nil
       end
 
+      def test_screenshot_with_color_threshold
+        a_img = ChunkyPNG::Image.from_blob(File.binread("#{TEST_IMAGES_DIR}/a.png"))
+        a_val = a_img[9, 14]
+        a_img[9, 14] = a_val + 0x010000 + 0x000100 + 0x000001
+        rev_filename = "#{Rails.root}/#{screenshot_dir}/a_0.png~"
+        a_img.save(rev_filename)
+
+        screenshot 'a', color_distance_limit: 3
+      ensure
+        File.delete(rev_filename) if File.exist?(rev_filename)
+      end
+
       test 'full_name' do
         assert_equal 'a', full_name('a')
         screenshot_group 'b'
