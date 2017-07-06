@@ -18,9 +18,6 @@ Layout/MultilineOperationIndentation:
 Lint/Debugger:
   Enabled: false
 
-Metrics/ClassLength:
-  Max: 125
-
 Metrics/LineLength:
   Max: 110
 

@@ -13,7 +13,7 @@ module Capybara
         end
 
         test 'it can be instantiated with dimensions' do
-          assert ImageCompare.new('images/a.png', 'images/b.png', [80, 80])
+          assert ImageCompare.new('images/a.png', 'images/b.png', dimensions: [80, 80])
         end
 
         test 'compare then dimensions and cleanup' do

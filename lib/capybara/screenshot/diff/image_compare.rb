@@ -6,25 +6,31 @@ module Capybara
       class ImageCompare
         include ChunkyPNG::Color
 
-        attr_reader :annotated_new_file_name, :annotated_old_file_name, :max_color_distance,
-            :new_file_name
+        attr_reader :annotated_new_file_name, :annotated_old_file_name, :new_file_name
 
         def self.compare(*args)
           new(*args).different?
         end
 
-        def initialize(old_file_name, new_file_name, dimensions: nil, color_distance_limit: nil, area_size_limit: nil)
+        def self.annotated_old_file_name(new_file_name)
+          "#{new_file_name.chomp('.png')}_0.png~"
+        end
+
+        def initialize(old_file_name, new_file_name, dimensions: nil, color_distance_limit: nil,
+            area_size_limit: nil)
           @old_file_name = old_file_name
           @new_file_name = new_file_name
           @color_distance_limit = color_distance_limit
           @area_size_limit = area_size_limit
           @dimensions = dimensions
+          @annotated_old_file_name = self.class.annotated_old_file_name(new_file_name)
+          @annotated_new_file_name = "#{new_file_name.chomp('.png')}_1.png~"
           reset
         end
 
         def reset
           @max_color_distance = 0 if @color_distance_limit
-          @left= @top= @right= @bottom = nil
+          @left = @top = @right = @bottom = nil
         end
 
         # Compare the two image files and return `true` or `false` as quickly as possible.
@@ -40,13 +46,9 @@ module Capybara
           old_img = images.first
           new_img = images.last
 
-          if sizes_changed?(old_img, new_img)
-            return false
-          end
+          return false if sizes_changed?(old_img, new_img)
 
-          if old_img.pixels == new_img.pixels
-            return true
-          end
+          return true if old_img.pixels == new_img.pixels
 
           @left, @top, @right, @bottom = find_top(old_img, new_img)
 
@@ -60,10 +62,6 @@ module Capybara
         # Return `nil` if the old file does not exist or if the image dimensions do not match.
         def different?
           return nil unless old_file_exists?
-
-          name = @new_file_name.chomp('.png')
-          @annotated_old_file_name = "#{name}_0.png~"
-          @annotated_new_file_name = "#{name}_1.png~"
 
           old_file, new_file = load_image_files(@old_file_name, @new_file_name)
 
@@ -93,7 +91,8 @@ module Capybara
 
           return false if @top.nil?
           annotated_old_img, annotated_new_img = draw_rectangles(images, @bottom, @left, @right, @top)
-          save_images(@annotated_new_file_name, annotated_new_img, @annotated_old_file_name, annotated_old_img)
+          save_images(@annotated_new_file_name, annotated_new_img,
+              @annotated_old_file_name, annotated_old_img)
           true
         end
 
@@ -123,18 +122,8 @@ module Capybara
           return @max_color_distance = 0 if old_file == new_file
 
           old_image, new_image = load_images(old_file, new_file)
-          old_file = new_file = nil
-
-          @max_color_distance = 0
-          old_image.height.times do |y|
-            old_image.width.times do |x|
-              d = ChunkyPNG::Color.euclidean_distance_rgba(old_image[x,y], new_image[x,y])
-              @max_color_distance = d if d > @max_color_distance
-            end
-          end
 
           pixel_pairs = old_image.pixels.zip(new_image.pixels)
-          old_image = new_image = nil
           @max_color_distance = pixel_pairs.inject(0) do |max, (p1, p2)|
             d = ChunkyPNG::Color.euclidean_distance_rgba(p1, p2)
             [max, d].max
@@ -160,7 +149,7 @@ module Capybara
         def load_image_files(old_file_name, file_name)
           old_file = File.binread(old_file_name)
           new_file = File.binread(file_name)
-          return old_file, new_file
+          [old_file, new_file]
         end
 
         def sizes_changed?(org_image, new_image)
@@ -197,9 +186,7 @@ module Capybara
         private def find_top(old_img, new_img)
           old_img.height.times do |y|
             old_img.width.times do |x|
-              if !same_color?(old_img, new_img, x, y)
-                return [x, y, x, y]
-              end
+              return [x, y, x, y] unless same_color?(old_img, new_img, x, y)
             end
           end
         end
@@ -242,7 +229,6 @@ module Capybara
         private def same_color?(old_img, new_img, x, y)
           org_color = old_img[x, y]
           new_color = new_img[x, y]
-          old_img = new_img = nil
           if @color_distance_limit && @color_distance_limit > 0
             distance = ChunkyPNG::Color.euclidean_distance_rgba(org_color, new_color)
             @max_color_distance = distance if distance > @max_color_distance

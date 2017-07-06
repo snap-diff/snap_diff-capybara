@@ -98,7 +98,7 @@ module ActionDispatch
     teardown do
       if Capybara::Screenshot::Diff.enabled && @test_screenshots
         test_screenshot_errors = @test_screenshots
-            .map { |caller, name, compare| assert_image_not_changed(caller, name, compare) }.compact
+          .map { |caller, name, compare| assert_image_not_changed(caller, name, compare) }.compact
         fail(test_screenshot_errors.join("\n\n")) if test_screenshot_errors.any?
       end
     end
@@ -124,11 +124,9 @@ module ActionDispatch
       end
       name = full_name(name)
       file_name = "#{self.class.screenshot_area_abs}/#{name}.png"
-      org_name = "#{self.class.screenshot_area_abs}/#{name}_0.png~"
-      new_name = "#{self.class.screenshot_area_abs}/#{name}_1.png~"
 
       FileUtils.mkdir_p File.dirname(file_name)
-      committed_file_name = check_vcs(name, file_name, org_name)
+      committed_file_name = check_vcs(name, file_name)
       comparison = Capybara::Screenshot::Diff::ImageCompare.new(committed_file_name, file_name,
           dimensions: Capybara::Screenshot.window_size, color_distance_limit: color_distance_limit,
           area_size_limit: area_size_limit)
@@ -144,7 +142,7 @@ module ActionDispatch
           Selenium::WebDriver::Dimension.new(*Capybara::Screenshot.window_size)
     end
 
-    private def check_vcs(name, file_name, org_name)
+    private def check_vcs(name, file_name)
       svn_file_name = "#{self.class.screenshot_area_abs}/.svn/text-base/#{name}.png.svn-base"
       if File.exist?(svn_file_name)
         committed_file_name = svn_file_name
@@ -157,7 +155,8 @@ module ActionDispatch
             committed_file_name = "#{wc_root}/.svn/pristine/#{checksum[0..1]}/#{checksum}.svn-base"
           end
         else
-          committed_file_name = restore_git_revision(name, org_name)
+          committed_file_name = restore_git_revision(name,
+              Capybara::Screenshot::Diff::ImageCompare.annotated_old_file_name(file_name))
         end
       end
       committed_file_name
@@ -236,11 +235,12 @@ EOF
     end
 
     def assert_image_not_changed(caller, name, comparison)
-      if comparison.different?
-        "Screenshot does not match for '#{name}' (area: #{comparison.size} #{comparison.dimensions}, max_color_distance: #{comparison.max_color_distance.round(1)})\n" \
-        "#{comparison.new_file_name}\n#{comparison.annotated_old_file_name}\n#{comparison.annotated_new_file_name}\n" \
+      return unless comparison.different?
+      "Screenshot does not match for '#{name}' (area: #{comparison.size} #{comparison.dimensions}" \
+        ", max_color_distance: #{comparison.max_color_distance.round(1)})\n" \
+        "#{comparison.new_file_name}\n#{comparison.annotated_old_file_name}\n" \
+        "#{comparison.annotated_new_file_name}\n" \
         "at #{caller}"
-      end
     end
   end
 end
