@@ -63,6 +63,7 @@ module Capybara
             a_img = ChunkyPNG::Image.from_blob(File.binread("#{TEST_IMAGES_DIR}/a.png"))
             a_img[9, 6] += 0x010000
             other_img_filename = "#{Rails.root}/a_0.png"
+            FileUtils.mkdir_p(File.dirname(other_img_filename))
             a_img.save(other_img_filename)
 
             comp = ImageCompare.new("#{TEST_IMAGES_DIR}/a.png", other_img_filename)
