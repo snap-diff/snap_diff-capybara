@@ -1,13 +1,12 @@
 language: ruby
 rvm:
   - ruby-2.4.1
-  - jruby-9.1.8.0
+  - jruby-9.1.12.0
   - ruby-2.3.4
   - ruby-2.2.7
-  - ruby-head
-  - jruby-head
 
 gemfile:
+  - gemfiles/rails51.gemfile
   - gemfiles/rails50.gemfile
   - gemfiles/rails42.gemfile
 
@@ -16,12 +15,3 @@ env:
 
 jdk:
   - oraclejdk8
-
-matrix:
-  allow_failures:
-    - rvm: jruby-head # FIXME: (uwe) Low coverage: https://github.com/jruby/jruby/issues/4404
-      gemfile: gemfiles/rails50.gemfile
-    - rvm: jruby-head # FIXME: (uwe) Low coverage: https://github.com/jruby/jruby/issues/4404
-      gemfile: gemfiles/rails42.gemfile
-
-before_install: gem query -i -n ^bundler$ >/dev/null || gem install bundler
