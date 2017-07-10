@@ -29,7 +29,7 @@ module Capybara
         end
 
         def reset
-          @max_color_distance = 0 if @color_distance_limit
+          @max_color_distance = @color_distance_limit ? 0 : nil
           @left = @top = @right = @bottom = nil
         end
 
@@ -229,13 +229,12 @@ module Capybara
         private def same_color?(old_img, new_img, x, y)
           org_color = old_img[x, y]
           new_color = new_img[x, y]
-          if @color_distance_limit && @color_distance_limit > 0
-            distance = ChunkyPNG::Color.euclidean_distance_rgba(org_color, new_color)
-            @max_color_distance = distance if distance > @max_color_distance
-            distance <= @color_distance_limit
-          else
-            org_color == new_color
-          end
+          return true if org_color == new_color
+
+          distance = ChunkyPNG::Color.euclidean_distance_rgba(org_color, new_color)
+          @max_color_distance = distance if !@max_color_distance || distance > @max_color_distance
+
+          @color_distance_limit && @color_distance_limit > 0 && distance <= @color_distance_limit
         end
       end
     end

@@ -243,10 +243,24 @@ Capybara::Screenshot.stability_time_limit = 0.5
 
 
 
+### Removing focus from the active element
+
+In Chrome the screenshot includes the blinking input cursor.  This can make it impossible to get a
+stable screenshot.  To get around this you can set the `blur_active_element` option:
+
+```ruby
+Capybara::Screenshot.blur_active_element = true
+```
+
+This will remove the focus from the active element, removing the blinking cursor.
+
+
+
 ### Allowed color distance
 
-Sometimes you want to allow small differences in the images.  You can set set the difference
-threshold for the comparison using the `color_distance_limit` option to the `screenshot` method:
+Sometimes you want to allow small differences in the images.  For example, Chrome renders the same
+page slightly differently sometimes.  You can set set the difference threshold for the comparison
+using the `color_distance_limit` option to the `screenshot` method:
 
 ```ruby
 test 'color threshold' do

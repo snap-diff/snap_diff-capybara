@@ -196,6 +196,7 @@ EOF
 
     private def take_stable_screenshot(comparison)
       assert_images_loaded
+      execute_script('document.activeElement.blur()') if Capybara::Screenshot.blur_active_element
       previous_file_size = comparison.old_file_size
       screeenshot_started_at = last_image_change_at = Time.now
       loop do
@@ -236,7 +237,7 @@ EOF
 
     def assert_image_not_changed(caller, name, comparison)
       return unless comparison.different?
-      "Screenshot does not match for '#{name}' (area: #{comparison.size} #{comparison.dimensions}" \
+      "Screenshot does not match for '#{name}' (area: #{comparison.size}px #{comparison.dimensions}" \
         ", max_color_distance: #{comparison.max_color_distance.round(1)})\n" \
         "#{comparison.new_file_name}\n#{comparison.annotated_old_file_name}\n" \
         "#{comparison.annotated_new_file_name}\n" \
