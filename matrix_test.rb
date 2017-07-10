@@ -14,7 +14,7 @@ def run_script(ruby, env, gemfile)
   puts '*' * 80
   puts "Testing #{ruby} #{gemfile} #{env}"
   puts
-  system "chruby-exec #{ruby} -- bundle exec rake" || exit(1)
+  system("chruby-exec #{ruby} -- bundle exec rake") || exit(1)
   puts '*' * 80
 end
 

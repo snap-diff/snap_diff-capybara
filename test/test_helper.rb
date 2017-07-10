@@ -1,7 +1,7 @@
 if defined?(Rake) && (RUBY_ENGINE != 'jruby' || org.jruby.RubyInstanceConfig.FULL_TRACE_ENABLED)
   require 'simplecov'
   SimpleCov.start
-  SimpleCov.minimum_coverage 83
+  SimpleCov.minimum_coverage RUBY_ENGINE == 'jruby' ? 82.5 : 83.5
 end
 
 $LOAD_PATH.unshift File.expand_path('../../lib', __FILE__)
