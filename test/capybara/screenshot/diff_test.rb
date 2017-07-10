@@ -52,6 +52,7 @@ module Capybara
         a_val = a_img[9, 14]
         a_img[9, 14] = a_val + 0x010000 + 0x000100 + 0x000001
         rev_filename = "#{Rails.root}/#{screenshot_dir}/a_0.png~"
+        FileUtils.mkdir_p(File.dirname(rev_filename))
         a_img.save(rev_filename)
 
         screenshot 'a', color_distance_limit: 3
