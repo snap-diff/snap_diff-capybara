@@ -196,7 +196,9 @@ EOF
 
     private def take_stable_screenshot(comparison)
       assert_images_loaded
-      execute_script('document.activeElement.blur()') if Capybara::Screenshot.blur_active_element
+      if Capybara::Screenshot.blur_active_element
+        input = page.driver.send :unwrap_script_result, execute_script('ae=document.activeElement;if (ae.nodeName == "INPUT"){ae.blur();return ae};return null')
+      end
       previous_file_size = comparison.old_file_size
       screeenshot_started_at = last_image_change_at = Time.now
       loop do
@@ -223,6 +225,8 @@ EOF
         previous_file_size = comparison.new_file_size
         comparison.reset
       end
+    ensure
+      input.click if input
     end
 
     private def reduce_retina_image_size(file_name)
