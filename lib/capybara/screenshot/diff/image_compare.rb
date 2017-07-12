@@ -65,10 +65,7 @@ module Capybara
 
           old_file, new_file = load_image_files(@old_file_name, @new_file_name)
 
-          if old_file == new_file
-            clean_tmp_files(@annotated_old_file_name, @annotated_new_file_name)
-            return false
-          end
+          return not_different if old_file == new_file
 
           images = load_images(old_file, new_file)
 
@@ -82,18 +79,22 @@ module Capybara
             return true
           end
 
-          if old_img.pixels == new_img.pixels
-            clean_tmp_files(@annotated_new_file_name, @annotated_old_file_name)
-            return false
-          end
+          return not_different if old_img.pixels == new_img.pixels
 
           @left, @top, @right, @bottom = find_diff_rectangle(old_img, new_img)
 
-          return false if @top.nil?
+          return not_different if @top.nil?
+
           annotated_old_img, annotated_new_img = draw_rectangles(images, @bottom, @left, @right, @top)
+
           save_images(@annotated_new_file_name, annotated_new_img,
               @annotated_old_file_name, annotated_old_img)
           true
+        end
+
+        private def not_different
+          clean_tmp_files(@annotated_old_file_name, @annotated_new_file_name)
+          false
         end
 
         def old_file_exists?
