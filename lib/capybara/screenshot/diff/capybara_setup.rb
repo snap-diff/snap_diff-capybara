@@ -194,10 +194,14 @@ EOF
       end
     end
 
-    private def take_stable_screenshot(comparison)
+    private def take_stable_screenshot(comparison) # rubocop: disable Metrics/AbcSize, Metrics/MethodLength
       assert_images_loaded
       if Capybara::Screenshot.blur_active_element
-        input = page.driver.send :unwrap_script_result, execute_script('ae=document.activeElement;if (ae.nodeName == "INPUT"){ae.blur();return ae};return null')
+        active_element =
+          execute_script(
+            'ae=document.activeElement;if (ae.nodeName == "INPUT"){ae.blur();return ae};return null'
+          )
+        input = page.driver.send :unwrap_script_result, active_element
       end
       previous_file_size = comparison.old_file_size
       screeenshot_started_at = last_image_change_at = Time.now
