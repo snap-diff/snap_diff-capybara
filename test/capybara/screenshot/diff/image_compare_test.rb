@@ -93,6 +93,7 @@ module Capybara
         end
 
         def set_test_images(comp, old_img, new_img)
+          FileUtils.mkdir_p File.dirname(comp.old_file_name)
           FileUtils.cp "#{TEST_IMAGES_DIR}/#{old_img}.png", comp.old_file_name
           FileUtils.cp "#{TEST_IMAGES_DIR}/#{new_img}.png", comp.new_file_name
         end
