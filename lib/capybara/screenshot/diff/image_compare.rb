@@ -9,10 +9,6 @@ module Capybara
         attr_reader :annotated_new_file_name, :annotated_old_file_name, :new_file_name,
             :old_file_name
 
-        def self.compare(*args)
-          new(*args).different?
-        end
-
         def initialize(new_file_name, dimensions: nil, color_distance_limit: nil,
             area_size_limit: nil)
           @new_file_name = new_file_name

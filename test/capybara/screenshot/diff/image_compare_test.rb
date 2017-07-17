@@ -4,10 +4,6 @@ module Capybara
   module Screenshot
     module Diff
       class ImageCompareTest < ActionDispatch::IntegrationTest
-        test 'compare class method' do
-          assert ImageCompare.compare("#{TEST_IMAGES_DIR}/b.png")
-        end
-
         test 'it can be instantiated' do
           assert ImageCompare.new('images/b.png')
         end
