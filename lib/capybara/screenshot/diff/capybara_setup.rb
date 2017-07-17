@@ -126,10 +126,10 @@ module ActionDispatch
       file_name = "#{self.class.screenshot_area_abs}/#{name}.png"
 
       FileUtils.mkdir_p File.dirname(file_name)
-      committed_file_name = check_vcs(name, file_name)
-      comparison = Capybara::Screenshot::Diff::ImageCompare.new(committed_file_name, file_name,
+      comparison = Capybara::Screenshot::Diff::ImageCompare.new(file_name,
           dimensions: Capybara::Screenshot.window_size, color_distance_limit: color_distance_limit,
           area_size_limit: area_size_limit)
+      checkout_vcs(name, comparison)
       take_stable_screenshot(comparison)
       return unless comparison.old_file_exists?
       (@test_screenshots ||= []) << [caller[0], name, comparison]
@@ -142,32 +142,30 @@ module ActionDispatch
           Selenium::WebDriver::Dimension.new(*Capybara::Screenshot.window_size)
     end
 
-    private def check_vcs(name, file_name)
+    private def checkout_vcs(name, comparison)
       svn_file_name = "#{self.class.screenshot_area_abs}/.svn/text-base/#{name}.png.svn-base"
       if File.exist?(svn_file_name)
         committed_file_name = svn_file_name
+        FileUtils.cp committed_file_name, comparison.old_file_name
       else
-        svn_info = `svn info #{file_name} #{SILENCE_ERRORS}`
+        svn_info = `svn info #{comparison.new_file_name} #{SILENCE_ERRORS}`
         if svn_info.present?
           wc_root = svn_info.slice(/(?<=Working Copy Root Path: ).*$/)
           checksum = svn_info.slice(/(?<=Checksum: ).*$/)
           if checksum
             committed_file_name = "#{wc_root}/.svn/pristine/#{checksum[0..1]}/#{checksum}.svn-base"
+            FileUtils.cp committed_file_name, comparison.old_file_name
           end
         else
-          committed_file_name = restore_git_revision(name,
-              Capybara::Screenshot::Diff::ImageCompare.annotated_old_file_name(file_name))
+          restore_git_revision(name, comparison.old_file_name)
         end
       end
-      committed_file_name
     end
 
-    private def restore_git_revision(name, org_name)
-      committed_file_name = org_name
-      redirect_target = "#{committed_file_name} #{SILENCE_ERRORS}"
+    private def restore_git_revision(name, target_file_name)
+      redirect_target = "#{target_file_name} #{SILENCE_ERRORS}"
       `git show HEAD~0:./#{self.class.screenshot_area}/#{name}.png > #{redirect_target}`
-      FileUtils.rm_f(committed_file_name) if File.size(committed_file_name) == 0
-      committed_file_name
+      FileUtils.rm_f(target_file_name) unless $? == 0
     end
 
     IMAGE_WAIT_SCRIPT = <<EOF.freeze

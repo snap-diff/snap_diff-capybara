@@ -6,24 +6,21 @@ module Capybara
       class ImageCompare
         include ChunkyPNG::Color
 
-        attr_reader :annotated_new_file_name, :annotated_old_file_name, :new_file_name
+        attr_reader :annotated_new_file_name, :annotated_old_file_name, :new_file_name,
+            :old_file_name
 
         def self.compare(*args)
           new(*args).different?
         end
 
-        def self.annotated_old_file_name(new_file_name)
-          "#{new_file_name.chomp('.png')}_0.png~"
-        end
-
-        def initialize(old_file_name, new_file_name, dimensions: nil, color_distance_limit: nil,
+        def initialize(new_file_name, dimensions: nil, color_distance_limit: nil,
             area_size_limit: nil)
-          @old_file_name = old_file_name
           @new_file_name = new_file_name
           @color_distance_limit = color_distance_limit
           @area_size_limit = area_size_limit
           @dimensions = dimensions
-          @annotated_old_file_name = self.class.annotated_old_file_name(new_file_name)
+          @old_file_name = "#{new_file_name}~"
+          @annotated_old_file_name = "#{new_file_name.chomp('.png')}_0.png~"
           @annotated_new_file_name = "#{new_file_name.chomp('.png')}_1.png~"
           reset
         end
@@ -93,7 +90,7 @@ module Capybara
         end
 
         private def not_different
-          clean_tmp_files(@annotated_old_file_name, @annotated_new_file_name)
+          clean_tmp_files
           false
         end
 
@@ -138,9 +135,11 @@ module Capybara
           new_img.save(new_file_name)
         end
 
-        def clean_tmp_files(old_file_name, new_file_name)
-          File.delete(old_file_name) if File.exist?(old_file_name)
-          File.delete(new_file_name) if File.exist?(new_file_name)
+        def clean_tmp_files
+          FileUtils.cp @old_file_name, @new_file_name
+          File.delete(@old_file_name) if File.exist?(@annotated_old_file_name)
+          File.delete(@annotated_old_file_name) if File.exist?(@annotated_old_file_name)
+          File.delete(@annotated_new_file_name) if File.exist?(@annotated_new_file_name)
         end
 
         def load_images(old_file, new_file)

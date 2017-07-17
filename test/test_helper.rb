@@ -10,7 +10,7 @@ TEST_IMAGES_DIR = File.expand_path('images', __dir__)
 
 module Rails
   def self.root
-    File.expand_path '../tmp/screenshots', __dir__
+    File.expand_path '../tmp', __dir__
   end
 end
 

@@ -5,56 +5,61 @@ module Capybara
     module Diff
       class ImageCompareTest < ActionDispatch::IntegrationTest
         test 'compare class method' do
-          assert ImageCompare.compare("#{TEST_IMAGES_DIR}/a.png", "#{TEST_IMAGES_DIR}/b.png")
+          assert ImageCompare.compare("#{TEST_IMAGES_DIR}/b.png")
         end
 
         test 'it can be instantiated' do
-          assert ImageCompare.new('images/a.png', 'images/b.png')
+          assert ImageCompare.new('images/b.png')
         end
 
         test 'it can be instantiated with dimensions' do
-          assert ImageCompare.new('images/a.png', 'images/b.png', dimensions: [80, 80])
+          assert ImageCompare.new('images/b.png', dimensions: [80, 80])
         end
 
         test 'compare then dimensions and cleanup' do
-          comp = ImageCompare.new("#{TEST_IMAGES_DIR}/a.png", "#{TEST_IMAGES_DIR}/c.png")
+          comp = make_comparison(:a, :c)
           assert comp.different?
           assert_equal [11, 3, 48, 20], comp.dimensions
-          ImageCompare.compare("#{TEST_IMAGES_DIR}/c.png", "#{TEST_IMAGES_DIR}/c.png")
+          assert File.exist?(comp.old_file_name)
+          assert File.exist?(comp.annotated_old_file_name)
+          assert File.exist?(comp.annotated_new_file_name)
+          comp = make_comparison(:c, :c)
+          assert !comp.different?
+          assert !File.exist?(comp.old_file_name)
+          assert !File.exist?(comp.annotated_old_file_name)
+          assert !File.exist?(comp.annotated_new_file_name)
         end
 
         test 'compare of 1 pixel wide diff' do
-          comp = ImageCompare.new("#{TEST_IMAGES_DIR}/a.png", "#{TEST_IMAGES_DIR}/d.png")
+          comp = make_comparison(:a, :d)
           assert comp.different?
           assert_equal [9, 6, 9, 13], comp.dimensions
         end
 
         test 'compare with color_distance_limit above difference' do
-          comp = ImageCompare.new("#{TEST_IMAGES_DIR}/a.png", "#{TEST_IMAGES_DIR}/b.png",
-              color_distance_limit: 223)
+          comp = make_comparison(:a, :b, color_distance_limit: 223)
           assert !comp.different?
           assert_equal 223, comp.max_color_distance.ceil
         end
 
         test 'compare with color_distance_limit below difference' do
-          comp = ImageCompare.new("#{TEST_IMAGES_DIR}/a.png", "#{TEST_IMAGES_DIR}/b.png",
-              color_distance_limit: 222)
+          comp = make_comparison(:a, :b, color_distance_limit: 222)
           assert comp.different?
           assert_equal 223, comp.max_color_distance.ceil
         end
 
         test 'max_color_distance a vs b' do
-          comp = ImageCompare.new("#{TEST_IMAGES_DIR}/a.png", "#{TEST_IMAGES_DIR}/b.png")
+          comp = make_comparison(:a, :b)
           assert_equal 223, comp.max_color_distance.ceil
         end
 
         test 'max_color_distance a vs c' do
-          comp = ImageCompare.new("#{TEST_IMAGES_DIR}/a.png", "#{TEST_IMAGES_DIR}/c.png")
+          comp = make_comparison(:a, :c)
           assert_equal 318, comp.max_color_distance.ceil
         end
 
         test 'max_color_distance a vs d' do
-          comp = ImageCompare.new("#{TEST_IMAGES_DIR}/a.png", "#{TEST_IMAGES_DIR}/d.png")
+          comp = make_comparison(:a, :d)
           assert_equal 271, comp.max_color_distance.ceil
         end
 
@@ -62,15 +67,26 @@ module Capybara
           begin
             a_img = ChunkyPNG::Image.from_blob(File.binread("#{TEST_IMAGES_DIR}/a.png"))
             a_img[9, 6] += 0x010000
-            other_img_filename = "#{Rails.root}/a_0.png"
-            FileUtils.mkdir_p(File.dirname(other_img_filename))
+
+            comp = make_comparison(:a, :b)
+            other_img_filename = comp.new_file_name
             a_img.save(other_img_filename)
 
-            comp = ImageCompare.new("#{TEST_IMAGES_DIR}/a.png", other_img_filename)
             assert_equal 1, comp.max_color_distance
-          ensure
-            File.delete(other_img_filename) if File.exist?(other_img_filename)
           end
+        end
+
+        private
+
+        def make_comparison(old_img, new_img, color_distance_limit: nil)
+          comp = ImageCompare.new("#{Rails.root}/screenshot.png", color_distance_limit: color_distance_limit)
+          set_test_images(comp, old_img, new_img)
+          comp
+        end
+
+        def set_test_images(comp, old_img, new_img)
+          FileUtils.cp "#{TEST_IMAGES_DIR}/#{old_img}.png", comp.old_file_name
+          FileUtils.cp "#{TEST_IMAGES_DIR}/#{new_img}.png", comp.new_file_name
         end
       end
     end
