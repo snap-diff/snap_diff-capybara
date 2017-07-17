@@ -165,7 +165,7 @@ module ActionDispatch
     private def restore_git_revision(name, target_file_name)
       redirect_target = "#{target_file_name} #{SILENCE_ERRORS}"
       `git show HEAD~0:./#{self.class.screenshot_area}/#{name}.png > #{redirect_target}`
-      FileUtils.rm_f(target_file_name) unless $? == 0
+      FileUtils.rm_f(target_file_name) unless $CHILD_STATUS == 0
     end
 
     IMAGE_WAIT_SCRIPT = <<EOF.freeze
@@ -206,25 +206,28 @@ EOF
       loop do
         save_screenshot(comparison.new_file_name)
 
-        # TODO(uwe): Remove when chromedriver take right size screenshots
+        # TODO(uwe): Remove when chromedriver takes right size screenshots
         reduce_retina_image_size(comparison.new_file_name)
         # EMXIF
 
         break unless Capybara::Screenshot.stability_time_limit
         break if comparison.quick_equal?
 
-        if comparison.new_file_size == previous_file_size
-          if (Time.now - last_image_change_at) > Capybara::Screenshot.stability_time_limit
-            break
+        new_file_size = comparison.new_file_size
+        if previous_file_size
+          if new_file_size == previous_file_size
+            if (Time.now - last_image_change_at) > Capybara::Screenshot.stability_time_limit
+              break
+            end
+          else
+            last_image_change_at = Time.now
           end
-        else
-          last_image_change_at = Time.now
+
+          assert (Time.now - screeenshot_started_at) < Capybara.default_max_wait_time,
+              "Could not get stable screenshot within #{Capybara.default_max_wait_time}s"
         end
 
-        assert (Time.now - screeenshot_started_at) < Capybara.default_max_wait_time,
-            "Could not get stable screenshot within #{Capybara.default_max_wait_time}s"
-
-        previous_file_size = comparison.new_file_size
+        previous_file_size = new_file_size
         comparison.reset
       end
     ensure
