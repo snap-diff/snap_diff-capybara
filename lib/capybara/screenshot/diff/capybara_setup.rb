@@ -196,9 +196,11 @@ EOF
       assert_images_loaded
       if Capybara::Screenshot.blur_active_element
         active_element =
-          execute_script(
-            'ae=document.activeElement;if (ae.nodeName == "INPUT"){ae.blur();return ae};return null'
-          )
+          execute_script(<<-JS)
+            ae=document.activeElement
+            if (ae.nodeName == "INPUT" || ae.nodeName == "TEXTAREA"){ae.blur();return ae}
+            return null
+          JS
         input = page.driver.send :unwrap_script_result, active_element
       end
       previous_file_size = comparison.old_file_size
