@@ -1,6 +1,6 @@
 require 'capybara/screenshot/diff/version'
 require 'capybara/screenshot/diff/image_compare'
-require 'capybara/screenshot/diff/capybara_setup'
+require 'capybara/screenshot/diff/test_methods'
 
 module Capybara
   module Screenshot
