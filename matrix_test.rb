@@ -5,7 +5,7 @@ system('rubocop --auto-correct') || exit(1)
 update_gemfiles = ARGV.delete('--update')
 
 require 'yaml'
-travis = YAML.load(File.read('.travis.yml'))
+travis = YAML.safe_load(File.read('.travis.yml'))
 
 def run_script(ruby, env, gemfile)
   env.scan(/\b(?<key>[A-Z_]+)="(?<value>.+?)"/) do |key, value|
