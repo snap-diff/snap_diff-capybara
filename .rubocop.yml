@@ -9,6 +9,9 @@ Layout/AlignParameters:
   EnforcedStyle: with_fixed_indentation
   IndentationWidth: 4
 
+Layout/IndentHeredoc:
+  EnforcedStyle: active_support
+
 Layout/MultilineMethodCallIndentation:
   EnforcedStyle: indented
 

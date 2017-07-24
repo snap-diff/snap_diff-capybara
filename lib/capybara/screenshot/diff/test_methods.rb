@@ -1,8 +1,9 @@
+require 'english'
 require 'capybara'
 require 'capybara/screenshot/diff/image_compare'
 require 'action_controller'
 require 'action_dispatch'
-require 'english'
+require 'active_support/core_ext/string/strip'
 
 # TODO(uwe): Move this code to module Capybara::Screenshot::Diff::TestMethods,
 #            and use Module#prepend/include to insert.
@@ -155,16 +156,16 @@ module Capybara
           FileUtils.rm_f(target_file_name) unless $CHILD_STATUS == 0
         end
 
-        IMAGE_WAIT_SCRIPT = <<-EOF.freeze
-function pending_image() {
-  var images = document.images;
-  for (var i = 0; i < images.length; i++) {
-    if (!images[i].complete) {
-        return images[i].src;
-    }
-  }
-  return false;
-}()
+        IMAGE_WAIT_SCRIPT = <<-EOF.strip_heredoc.freeze
+          function pending_image() {
+            var images = document.images;
+            for (var i = 0; i < images.length; i++) {
+              if (!images[i].complete) {
+                  return images[i].src;
+              }
+            }
+            return false;
+          }()
         EOF
 
         def assert_images_loaded(timeout: Capybara.default_max_wait_time)
