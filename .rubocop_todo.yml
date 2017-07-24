@@ -34,11 +34,6 @@ Metrics/PerceivedComplexity:
   Max: 8
 
 # Offense count: 1
-Performance/Caller:
-  Exclude:
-    - 'lib/capybara/screenshot/diff/test_methods.rb'
-
-# Offense count: 1
 # Cop supports --auto-correct.
 Security/YAMLLoad:
   Exclude:

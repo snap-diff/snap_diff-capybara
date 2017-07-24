@@ -120,7 +120,7 @@ module Capybara
           checkout_vcs(name, comparison)
           take_stable_screenshot(comparison)
           return unless comparison.old_file_exists?
-          (@test_screenshots ||= []) << [caller[0], name, comparison]
+          (@test_screenshots ||= []) << [caller(1..1).first, name, comparison]
         end
 
         private def window_size_is_wrong?
