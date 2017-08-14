@@ -19,7 +19,7 @@ module Capybara
         EOF
 
         def reduce_retina_image_size(file_name)
-          return if !macos? || !selenium? || !Capybara::Screenshot.window_size
+          return if !ON_MAC || !selenium? || !Capybara::Screenshot.window_size
           saved_image = ChunkyPNG::Image.from_file(file_name)
           width = Capybara::Screenshot.window_size[0]
           return if saved_image.width < width * 2
