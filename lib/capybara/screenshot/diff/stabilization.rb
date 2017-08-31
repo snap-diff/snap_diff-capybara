@@ -63,7 +63,7 @@ module Capybara
         def take_stable_screenshot(comparison)
           input = prepare_page_for_screenshot
           previous_file_name = comparison.old_file_name
-          screeenshot_started_at = last_image_change_at = Time.now
+          screenshot_started_at = last_image_change_at = Time.now
           loop.with_index do |_x, i|
             take_right_size_screenshot(comparison)
 
@@ -87,12 +87,12 @@ module Capybara
                 last_image_change_at = Time.now
               end
 
-              assert (Time.now - screeenshot_started_at) < Capybara.default_max_wait_time,
+              assert (Time.now - screenshot_started_at) < Capybara.default_max_wait_time,
                   "Could not get stable screenshot within #{Capybara.default_max_wait_time}s\n" \
                       "#{stabilization_images(comparison.new_file_name).join("\n")}"
             end
 
-            previous_file_name = "#{comparison.new_file_name.chomp('.png')}_x#{i}.png~"
+            previous_file_name = "#{comparison.new_file_name.chomp('.png')}_x#{format('%02i', i)}.png~"
 
             FileUtils.mv comparison.new_file_name, previous_file_name
           end
