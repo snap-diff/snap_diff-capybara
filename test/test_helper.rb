@@ -23,12 +23,30 @@ Minitest::Reporters.use!
 ActiveSupport.test_order = :random
 # ODOT
 
-module ActionDispatch
-  class IntegrationTest
-    def save_screenshot(file_name)
-      source_image = File.basename(file_name)
-      source_image.slice!(/^\d\d_/)
-      FileUtils.cp File.expand_path("images/#{source_image}", __dir__), file_name
+module Capybara
+  module Screenshot
+    module Diff
+      module TestHelper
+        private
+
+        def save_screenshot(file_name)
+          source_image = File.basename(file_name)
+          source_image.slice!(/^\d\d_/)
+          FileUtils.cp File.expand_path("images/#{source_image}", __dir__), file_name
+        end
+
+        def make_comparison(old_img, new_img, color_distance_limit: nil)
+          comp = ImageCompare.new("#{Rails.root}/screenshot.png", color_distance_limit: color_distance_limit)
+          set_test_images(comp, old_img, new_img)
+          comp
+        end
+
+        def set_test_images(comp, old_img, new_img)
+          FileUtils.mkdir_p File.dirname(comp.old_file_name)
+          FileUtils.cp "#{TEST_IMAGES_DIR}/#{old_img}.png", comp.old_file_name
+          FileUtils.cp "#{TEST_IMAGES_DIR}/#{new_img}.png", comp.new_file_name
+        end
+      end
     end
   end
 end

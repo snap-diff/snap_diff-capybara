@@ -3,6 +3,8 @@ require 'test_helper'
 module Capybara
   module Screenshot
     class DiffTest < ActionDispatch::IntegrationTest
+      include Diff::TestHelper
+
       setup do
         Capybara::Screenshot.add_os_path = true
         Capybara::Screenshot.add_driver_path = true

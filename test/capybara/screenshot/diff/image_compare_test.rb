@@ -4,6 +4,8 @@ module Capybara
   module Screenshot
     module Diff
       class ImageCompareTest < ActionDispatch::IntegrationTest
+        include TestHelper
+
         test 'it can be instantiated' do
           assert ImageCompare.new('images/b.png')
         end
@@ -82,20 +84,6 @@ module Capybara
 
             assert_equal 1, comp.max_color_distance
           end
-        end
-
-        private
-
-        def make_comparison(old_img, new_img, color_distance_limit: nil)
-          comp = ImageCompare.new("#{Rails.root}/screenshot.png", color_distance_limit: color_distance_limit)
-          set_test_images(comp, old_img, new_img)
-          comp
-        end
-
-        def set_test_images(comp, old_img, new_img)
-          FileUtils.mkdir_p File.dirname(comp.old_file_name)
-          FileUtils.cp "#{TEST_IMAGES_DIR}/#{old_img}.png", comp.old_file_name
-          FileUtils.cp "#{TEST_IMAGES_DIR}/#{new_img}.png", comp.new_file_name
         end
       end
     end

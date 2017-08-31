@@ -95,8 +95,17 @@ module Capybara
 
         def assert_image_not_changed(caller, name, comparison)
           return unless comparison.different?
+
+          # TODO(uwe): Remove check when we stop supporting Ruby 2.3 and older
+          max_color_distance = if RUBY_VERSION >= '2.4'
+                                 comparison.max_color_distance.ceil(1)
+                               else
+                                 comparison.max_color_distance.ceil
+                               end
+          # ODOT
+
           "Screenshot does not match for '#{name}' (area: #{comparison.size}px #{comparison.dimensions}" \
-            ", max_color_distance: #{comparison.max_color_distance.ceil(1)})\n" \
+            ", max_color_distance: #{max_color_distance})\n" \
             "#{comparison.new_file_name}\n#{comparison.annotated_old_file_name}\n" \
             "#{comparison.annotated_new_file_name}\n" \
             "at #{caller}"
