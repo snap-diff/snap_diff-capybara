@@ -24,6 +24,7 @@ module Capybara
         def reset
           @max_color_distance = @color_distance_limit ? 0 : nil
           @left = @top = @right = @bottom = nil
+          @_old_filesize = nil
         end
 
         # Compare the two image files and return `true` or `false` as quickly as possible.
@@ -46,6 +47,11 @@ module Capybara
           @left, @top, @right, @bottom = find_top(old_img, new_img)
 
           return true if @top.nil?
+
+          if @area_size_limit
+            @left, @top, @right, @bottom = find_diff_rectangle(old_img, new_img)
+            return true if size <= @area_size_limit
+          end
 
           false
         end
@@ -77,6 +83,8 @@ module Capybara
           @left, @top, @right, @bottom = find_diff_rectangle(old_img, new_img)
 
           return not_different if @top.nil?
+
+          return not_different if @area_size_limit && size <= @area_size_limit
 
           annotated_old_img, annotated_new_img = draw_rectangles(images, @bottom, @left, @right, @top)
 

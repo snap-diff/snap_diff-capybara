@@ -7,15 +7,13 @@ require_relative 'image_compare'
 require_relative 'stabilization'
 require_relative 'vcs'
 
-# TODO(uwe): Move this code to module Capybara::Screenshot::Diff::TestMethods,
-#            and use Module#prepend/include to insert.
 # Add the `screenshot` method to ActionDispatch::IntegrationTest
 module Capybara
   module Screenshot
     module Diff
       module TestMethods
-        include Capybara::Screenshot::Diff::Stabilization
-        include Capybara::Screenshot::Diff::Vcs
+        include Stabilization
+        include Vcs
 
         def initialize(*)
           super
@@ -38,7 +36,7 @@ module Capybara
         end
 
         def screenshot_dir
-          File.join [Capybara::Screenshot.screenshot_area] + group_parts
+          File.join [Screenshot.screenshot_area] + group_parts
         end
 
         def current_capybara_driver_class
@@ -61,36 +59,36 @@ module Capybara
         def screenshot_group(name)
           @screenshot_group = name.to_s
           @screenshot_counter = 0
-          return unless Capybara::Screenshot.active? && name.present?
+          return unless Screenshot.active? && name.present?
           FileUtils.rm_rf screenshot_dir
         end
 
-        def screenshot(name, color_distance_limit: Capybara::Screenshot::Diff.color_distance_limit,
-            area_size_limit: nil)
-          return unless Capybara::Screenshot.active?
+        def screenshot(name, color_distance_limit: Diff.color_distance_limit,
+            area_size_limit: Diff.area_size_limit)
+          return unless Screenshot.active?
           return if window_size_is_wrong?
           if @screenshot_counter
             name = "#{format('%02i', @screenshot_counter)}_#{name}"
             @screenshot_counter += 1
           end
           name = full_name(name)
-          file_name = "#{Capybara::Screenshot.screenshot_area_abs}/#{name}.png"
+          file_name = "#{Screenshot.screenshot_area_abs}/#{name}.png"
 
           FileUtils.mkdir_p File.dirname(file_name)
-          comparison = Capybara::Screenshot::Diff::ImageCompare.new(file_name,
-              dimensions: Capybara::Screenshot.window_size, color_distance_limit: color_distance_limit,
-              area_size_limit: area_size_limit)
+          comparison = ImageCompare.new(file_name, dimensions: Screenshot.window_size,
+              color_distance_limit: color_distance_limit, area_size_limit: area_size_limit)
           checkout_vcs(name, comparison)
-          take_stable_screenshot(comparison)
+          take_stable_screenshot(comparison, color_distance_limit: color_distance_limit,
+              area_size_limit: area_size_limit)
           return unless comparison.old_file_exists?
           (@test_screenshots ||= []) << [caller(1..1).first, name, comparison]
         end
 
         def window_size_is_wrong?
-          selenium? && Capybara::Screenshot.window_size &&
+          selenium? && Screenshot.window_size &&
             (!page.driver.chrome? || ON_WINDOWS) && # TODO(uwe): Allow for Chrome when it works
             page.driver.browser.manage.window.size !=
-              Selenium::WebDriver::Dimension.new(*Capybara::Screenshot.window_size)
+              Selenium::WebDriver::Dimension.new(*Screenshot.window_size)
         end
 
         def assert_image_not_changed(caller, name, comparison)

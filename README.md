@@ -259,8 +259,8 @@ This will remove the focus from the active element, removing the blinking cursor
 ### Allowed color distance
 
 Sometimes you want to allow small differences in the images.  For example, Chrome renders the same
-page slightly differently sometimes.  You can set set the difference threshold for the comparison
-using the `color_distance_limit` option to the `screenshot` method:
+page slightly differently sometimes.  You can set set the color difference threshold for the
+comparison using the `color_distance_limit` option to the `screenshot` method:
 
 ```ruby
 test 'color threshold' do
@@ -273,6 +273,25 @@ The difference is calculated as the eucledian distance.  You can also set this g
 
 ```ruby
 Capybara::Screenshot::Diff.color_distance_limit = 42
+```
+
+
+### Allowed difference size
+
+You can set set a threshold for the differing area size for the comparison
+using the `area_size_limit` option to the `screenshot` method:
+
+```ruby
+test 'area threshold' do
+  visit '/'
+  screenshot 'index', area_size_limit: 17
+end
+```
+
+The difference is calculated as `width * height`.  You can also set this globally:
+
+```ruby
+Capybara::Screenshot::Diff.area_size_limit = 42
 ```
 
 

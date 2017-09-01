@@ -60,7 +60,7 @@ module Capybara
           # ODOT
         end
 
-        def take_stable_screenshot(comparison)
+        def take_stable_screenshot(comparison, color_distance_limit: , area_size_limit: )
           input = prepare_page_for_screenshot
           previous_file_name = comparison.old_file_name
           screenshot_started_at = last_image_change_at = Time.now
@@ -76,7 +76,8 @@ module Capybara
 
             if previous_file_name
               stabilization_comparison =
-                Capybara::Screenshot::Diff::ImageCompare.new(comparison.new_file_name, previous_file_name)
+                ImageCompare.new(comparison.new_file_name, previous_file_name,
+                    color_distance_limit: color_distance_limit, area_size_limit: area_size_limit)
               if stabilization_comparison.quick_equal?
                 if (Time.now - last_image_change_at) > Capybara::Screenshot.stability_time_limit
                   clean_stabilization_images(comparison.new_file_name)
