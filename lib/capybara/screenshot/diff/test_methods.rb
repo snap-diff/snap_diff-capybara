@@ -75,11 +75,12 @@ module Capybara
           file_name = "#{Screenshot.screenshot_area_abs}/#{name}.png"
 
           FileUtils.mkdir_p File.dirname(file_name)
-          comparison = ImageCompare.new(file_name, dimensions: Screenshot.window_size,
-              color_distance_limit: color_distance_limit, area_size_limit: area_size_limit)
+          comparison = ImageCompare.new(file_name,
+              dimensions: Screenshot.window_size, color_distance_limit: color_distance_limit,
+              area_size_limit: area_size_limit)
           checkout_vcs(name, comparison)
           take_stable_screenshot(comparison, color_distance_limit: color_distance_limit,
-              area_size_limit: area_size_limit)
+                                             area_size_limit: area_size_limit)
           return unless comparison.old_file_exists?
           (@test_screenshots ||= []) << [caller(1..1).first, name, comparison]
         end

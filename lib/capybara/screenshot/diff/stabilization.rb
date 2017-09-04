@@ -18,49 +18,7 @@ module Capybara
           }()
         EOF
 
-        def reduce_retina_image_size(file_name)
-          return if !ON_MAC || !selenium? || !Capybara::Screenshot.window_size
-          saved_image = ChunkyPNG::Image.from_file(file_name)
-          width = Capybara::Screenshot.window_size[0]
-          return if saved_image.width < width * 2
-          height = (width * saved_image.height) / saved_image.width
-          resized_image = saved_image.resample_bilinear(width, height)
-          resized_image.save(file_name)
-        end
-
-        def stabilization_images(base_file)
-          Dir["#{base_file.chomp('.png')}_x*.png~"]
-        end
-
-        def clean_stabilization_images(base_file)
-          FileUtils.rm stabilization_images(base_file)
-        end
-
-        def prepare_page_for_screenshot
-          assert_images_loaded
-          if Capybara::Screenshot.blur_active_element
-            active_element = execute_script(<<-JS)
-              ae = document.activeElement;
-              if (ae.nodeName == "INPUT" || ae.nodeName == "TEXTAREA") {
-                  ae.blur();
-                  return ae;
-              }
-              return null;
-            JS
-            input = page.driver.send :unwrap_script_result, active_element
-          end
-          input
-        end
-
-        def take_right_size_screenshot(comparison)
-          save_screenshot(comparison.new_file_name)
-
-          # TODO(uwe): Remove when chromedriver takes right size screenshots
-          reduce_retina_image_size(comparison.new_file_name)
-          # ODOT
-        end
-
-        def take_stable_screenshot(comparison, color_distance_limit: , area_size_limit: )
+        def take_stable_screenshot(comparison, color_distance_limit:, area_size_limit:)
           input = prepare_page_for_screenshot
           previous_file_name = comparison.old_file_name
           screenshot_started_at = last_image_change_at = Time.now
@@ -88,9 +46,7 @@ module Capybara
                 last_image_change_at = Time.now
               end
 
-              assert (Time.now - screenshot_started_at) < Capybara.default_max_wait_time,
-                  "Could not get stable screenshot within #{Capybara.default_max_wait_time}s\n" \
-                      "#{stabilization_images(comparison.new_file_name).join("\n")}"
+              check_max_wait_time(comparison, screenshot_started_at)
             end
 
             previous_file_name = "#{comparison.new_file_name.chomp('.png')}_x#{format('%02i', i)}.png~"
@@ -101,7 +57,57 @@ module Capybara
           input.click if input
         end
 
-        def assert_images_loaded(timeout: Capybara.default_max_wait_time)
+        private
+
+        private def reduce_retina_image_size(file_name)
+          return if !ON_MAC || !selenium? || !Capybara::Screenshot.window_size
+          saved_image = ChunkyPNG::Image.from_file(file_name)
+          width = Capybara::Screenshot.window_size[0]
+          return if saved_image.width < width * 2
+          height = (width * saved_image.height) / saved_image.width
+          resized_image = saved_image.resample_bilinear(width, height)
+          resized_image.save(file_name)
+        end
+
+        private def stabilization_images(base_file)
+          Dir["#{base_file.chomp('.png')}_x*.png~"]
+        end
+
+        private def clean_stabilization_images(base_file)
+          FileUtils.rm stabilization_images(base_file)
+        end
+
+        private def prepare_page_for_screenshot
+          assert_images_loaded
+          if Capybara::Screenshot.blur_active_element
+            active_element = execute_script(<<-JS)
+              ae = document.activeElement;
+              if (ae.nodeName == "INPUT" || ae.nodeName == "TEXTAREA") {
+                  ae.blur();
+                  return ae;
+              }
+              return null;
+            JS
+            input = page.driver.send :unwrap_script_result, active_element
+          end
+          input
+        end
+
+        private def take_right_size_screenshot(comparison)
+          save_screenshot(comparison.new_file_name)
+
+          # TODO(uwe): Remove when chromedriver takes right size screenshots
+          reduce_retina_image_size(comparison.new_file_name)
+          # ODOT
+        end
+
+        private def check_max_wait_time(comparison, screenshot_started_at)
+          assert (Time.now - screenshot_started_at) < Capybara.default_max_wait_time,
+              "Could not get stable screenshot within #{Capybara.default_max_wait_time}s\n" \
+                      "#{stabilization_images(comparison.new_file_name).join("\n")}"
+        end
+
+        private def assert_images_loaded(timeout: Capybara.default_max_wait_time)
           return unless respond_to? :evaluate_script
           start = Time.now
           loop do

@@ -3,6 +3,8 @@ require 'chunky_png'
 module Capybara
   module Screenshot
     module Diff
+      # Compare two images and determine if they are equal, different, or within som comparison
+      # range considering color values and difference area size.
       class ImageCompare
         include ChunkyPNG::Color
 
@@ -21,10 +23,11 @@ module Capybara
           reset
         end
 
+        # Resets the calculated data about the comparison with regard to the "new_image".
+        # Data about the original image is kept.
         def reset
           @max_color_distance = @color_distance_limit ? 0 : nil
           @left = @top = @right = @bottom = nil
-          @_old_filesize = nil
         end
 
         # Compare the two image files and return `true` or `false` as quickly as possible.
