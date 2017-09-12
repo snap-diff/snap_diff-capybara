@@ -87,9 +87,8 @@ module Capybara
 
         def window_size_is_wrong?
           selenium? && Screenshot.window_size &&
-            (!page.driver.chrome? || ON_WINDOWS) && # TODO(uwe): Allow for Chrome when it works
             page.driver.browser.manage.window.size !=
-              Selenium::WebDriver::Dimension.new(*Screenshot.window_size)
+              ::Selenium::WebDriver::Dimension.new(*Screenshot.window_size)
         end
 
         def assert_image_not_changed(caller, name, comparison)
@@ -114,30 +113,3 @@ module Capybara
   end
 end
 # rubocop:enable Metrics/ClassLength
-
-module ActionDispatch
-  class IntegrationTest
-    prepend Capybara::Screenshot::Diff::TestMethods
-
-    setup do
-      if Capybara::Screenshot.window_size
-        if selenium?
-          # TODO(uwe): Enable for Chrome and non-windows when it works)
-          if !page.driver.chrome? || ON_WINDOWS
-            page.driver.browser.manage.window.resize_to(*Capybara::Screenshot.window_size)
-          end
-        elsif poltergeist?
-          page.driver.resize(*Capybara::Screenshot.window_size)
-        end
-      end
-    end
-
-    teardown do
-      if Capybara::Screenshot::Diff.enabled && @test_screenshots
-        test_screenshot_errors = @test_screenshots
-          .map { |caller, name, compare| assert_image_not_changed(caller, name, compare) }.compact
-        fail(test_screenshot_errors.join("\n\n")) if test_screenshot_errors.any?
-      end
-    end
-  end
-end

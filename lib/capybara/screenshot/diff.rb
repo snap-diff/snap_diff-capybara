@@ -1,3 +1,4 @@
+require 'capybara/dsl'
 require 'capybara/screenshot/diff/version'
 require 'capybara/screenshot/diff/image_compare'
 require 'capybara/screenshot/diff/test_methods'
@@ -32,9 +33,33 @@ module Capybara
 
     # Module to track screen shot changes
     module Diff
+      include Capybara::DSL
+      include Capybara::Screenshot::Os
+
       mattr_accessor :area_size_limit
       mattr_accessor :color_distance_limit
       mattr_accessor(:enabled) { true }
+
+      def self.included(clas)
+        clas.include TestMethods
+        clas.setup do
+          if Capybara::Screenshot.window_size
+            if selenium?
+              page.driver.browser.manage.window.resize_to(*Capybara::Screenshot.window_size)
+            elsif poltergeist?
+              page.driver.resize(*Capybara::Screenshot.window_size)
+            end
+          end
+        end
+
+        clas.teardown do
+          if Capybara::Screenshot::Diff.enabled && @test_screenshots
+            test_screenshot_errors = @test_screenshots
+                .map { |caller, name, compare| assert_image_not_changed(caller, name, compare) }.compact
+            fail(test_screenshot_errors.join("\n\n")) if test_screenshot_errors.any?
+          end
+        end
+      end
     end
   end
 end
