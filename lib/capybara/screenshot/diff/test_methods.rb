@@ -87,6 +87,11 @@ module Capybara
 
         def window_size_is_wrong?
           selenium? && Screenshot.window_size &&
+
+              # FIXME(uwe): This happens with headless chrome.  Why?!
+              page.driver.browser.manage.window.size.width &&
+              # EMXIF
+
             page.driver.browser.manage.window.size !=
               ::Selenium::WebDriver::Dimension.new(*Screenshot.window_size)
         end
