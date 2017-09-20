@@ -6,7 +6,7 @@ module Capybara
       module Stabilization
         include Os
 
-        IMAGE_WAIT_SCRIPT = <<-EOF.strip_heredoc.freeze
+        IMAGE_WAIT_SCRIPT = <<-JS.strip_heredoc.freeze
           function pending_image() {
             var images = document.images;
             for (var i = 0; i < images.length; i++) {
@@ -16,7 +16,7 @@ module Capybara
             }
             return false;
           }()
-        EOF
+        JS
 
         def take_stable_screenshot(comparison, color_distance_limit:, area_size_limit:)
           input = prepare_page_for_screenshot
