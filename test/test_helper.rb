@@ -46,6 +46,10 @@ module Capybara
           FileUtils.cp "#{TEST_IMAGES_DIR}/#{old_img}.png", comp.old_file_name
           FileUtils.cp "#{TEST_IMAGES_DIR}/#{new_img}.png", comp.new_file_name
         end
+
+        def evaluate_script(*)
+          # Do nothing
+        end
       end
     end
   end

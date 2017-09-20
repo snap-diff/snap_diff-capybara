@@ -3,6 +3,7 @@ require 'test_helper'
 module Capybara
   module Screenshot
     class DiffTest < ActionDispatch::IntegrationTest
+      include Capybara::Screenshot::Diff
       include Diff::TestHelper
 
       setup do
