@@ -28,6 +28,24 @@ Or install it yourself as:
 
 ## Usage
 
+In your test class, include the `Capybara::Screenshot::Diff` module:
+
+```ruby
+class FeatureTest < ActionDispatch::IntegrationTest
+  include Capybara::Screenshot::Diff
+  ...
+end
+```
+
+or if you use the integration test directly:
+
+```ruby
+class ActionDispatch::IntegrationTest
+  include Capybara::Screenshot::Diff
+  ...
+end
+```
+
 Add `screenshot '<my_feature>'` to your tests.  The screenshot will be saved in
 the `doc/screenshots` directory.
 
