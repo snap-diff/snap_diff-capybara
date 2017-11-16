@@ -28,6 +28,8 @@ Or install it yourself as:
 
 ## Usage
 
+### Minitest
+
 In your test class, include the `Capybara::Screenshot::Diff` module:
 
 ```ruby
@@ -45,6 +47,22 @@ class ActionDispatch::IntegrationTest
   ...
 end
 ```
+
+### rspec
+
+```ruby
+describe 'Permissions admin', :type => :feature, :js => true do
+
+  include Capybara::Screenshot::Diff
+
+  it 'works with permissions' do
+    visit('/')
+    screenshot 'home_page'
+  end
+
+end
+```
+
 
 Add `screenshot '<my_feature>'` to your tests.  The screenshot will be saved in
 the `doc/screenshots` directory.
