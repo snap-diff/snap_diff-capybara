@@ -63,6 +63,7 @@ describe 'Permissions admin', :type => :feature, :js => true do
 end
 ```
 
+### Taking screenshots
 
 Add `screenshot '<my_feature>'` to your tests.  The screenshot will be saved in
 the `doc/screenshots` directory.
