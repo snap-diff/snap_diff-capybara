@@ -78,6 +78,10 @@ module Capybara
 
           if sizes_changed?(old_img, new_img)
             save_images(@annotated_new_file_name, new_img, @annotated_old_file_name, old_img)
+            @left = 0
+            @top = 0
+            @right = old_img.dimension.width - 1
+            @bottom = old_img.dimension.height - 1
             return true
           end
 

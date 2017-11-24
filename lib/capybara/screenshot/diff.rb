@@ -21,7 +21,7 @@ module Capybara
 
       def screenshot_area
         parts = ['doc/screenshots']
-        parts << Capybara.default_driver.to_s if Capybara::Screenshot.add_driver_path
+        parts << Capybara.current_driver.to_s if Capybara::Screenshot.add_driver_path
         parts << os_name if Capybara::Screenshot.add_os_path
         File.join parts
       end

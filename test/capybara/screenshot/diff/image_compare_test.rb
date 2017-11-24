@@ -85,6 +85,12 @@ module Capybara
             assert_equal 1, comp.max_color_distance
           end
         end
+
+        test 'size a vs a_cropped' do
+          comp = make_comparison(:a, :a_cropped)
+          comp.different?
+          assert_equal 6400, comp.size
+        end
       end
     end
   end
