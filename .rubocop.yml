@@ -4,6 +4,8 @@ AllCops:
   TargetRubyVersion: 2.2
   DisplayCopNames: true
   DisplayStyleGuide: true
+  Exclude:
+    - gemfiles/vendor
 
 Layout/AlignParameters:
   EnforcedStyle: with_fixed_indentation
