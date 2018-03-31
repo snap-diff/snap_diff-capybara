@@ -10,7 +10,7 @@ module Capybara
     mattr_accessor :add_os_path
     mattr_accessor :blur_active_element
     mattr_accessor :enabled
-    mattr_accessor(:screenshot_root) { (defined?(Rails.root) && Rails.root) || File.expand_path('.') }
+    mattr_accessor(:root) { (defined?(Rails.root) && Rails.root) || File.expand_path('.') }
     mattr_accessor :stability_time_limit
     mattr_accessor :window_size
 
@@ -27,7 +27,7 @@ module Capybara
       end
 
       def screenshot_area_abs
-        "#{screenshot_root}/#{screenshot_area}".freeze
+        "#{root}/#{screenshot_area}".freeze
       end
     end
 
