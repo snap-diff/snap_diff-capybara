@@ -5,7 +5,7 @@ AllCops:
   DisplayCopNames: true
   DisplayStyleGuide: true
   Exclude:
-    - gemfiles/vendor
+    - gemfiles/vendor/**/*
 
 Layout/AlignParameters:
   EnforcedStyle: with_fixed_indentation
