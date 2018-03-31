@@ -27,6 +27,14 @@ Metrics/LineLength:
   Max: 107
   IgnoreCopDirectives: true
 
+# Offense count: 2
+# Configuration parameters: MinNameLength, AllowNamesEndingInNumbers, AllowedNames, ForbiddenNames.
+# AllowedNames: io, id, to
+Naming/UncommunicativeMethodParamName:
+  AllowedNames:
+    - x
+    - y
+
 Security/Eval:
   Exclude:
     - gemfiles/*.gemfile

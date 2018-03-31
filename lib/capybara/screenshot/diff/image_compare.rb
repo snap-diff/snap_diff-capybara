@@ -237,7 +237,7 @@ module Capybara
           bottom
         end
 
-        private def same_color?(old_img, new_img, x, y) # rubocop: disable Naming/UncommunicativeMethodParamName
+        private def same_color?(old_img, new_img, x, y)
           org_color = old_img[x, y]
           new_color = new_img[x, y]
           return true if org_color == new_color
