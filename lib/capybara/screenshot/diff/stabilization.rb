@@ -64,6 +64,11 @@ module Capybara
           saved_image = ChunkyPNG::Image.from_file(file_name)
           width = Capybara::Screenshot.window_size[0]
           return if saved_image.width < width * 2
+          unless @_csd_retina_warned
+            warn 'Halving retina screenshot.  ' \
+                'You should add "force-device-scale-factor=1" to your Chrome chromeOptions args.'
+            @_csd_retina_warned = true
+          end
           height = (width * saved_image.height) / saved_image.width
           resized_image = saved_image.resample_bilinear(width, height)
           resized_image.save(file_name)
