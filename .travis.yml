@@ -18,3 +18,8 @@ env:
 
 jdk:
   - oraclejdk8
+
+# FIXME(uwe): Remove when fixed: https://github.com/travis-ci/travis-ci/issues/9383
+before_install:
+  - gem install bundler
+# EMXIF
