@@ -2,8 +2,8 @@ language: ruby
 sudo: false
 cache: bundler
 rvm:
-  - ruby-2.5.1
   - jruby-9.1.16.0
+  - ruby-2.5.1
   - ruby-2.4.4
   - ruby-2.3.7
   - ruby-2.2.10
