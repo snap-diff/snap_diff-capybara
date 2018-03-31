@@ -117,4 +117,3 @@ module Capybara
     end
   end
 end
-# rubocop:enable Metrics/ClassLength

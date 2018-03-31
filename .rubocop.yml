@@ -21,8 +21,15 @@ Layout/MultilineOperationIndentation:
 Lint/Debugger:
   Enabled: false
 
+# Configuration parameters: AllowHeredoc, AllowURI, URISchemes, IgnoreCopDirectives, IgnoredPatterns.
+# URISchemes: http, https
 Metrics/LineLength:
-  Max: 110
+  Max: 107
+  IgnoreCopDirectives: true
+
+Security/Eval:
+  Exclude:
+    - gemfiles/*.gemfile
 
 Style/Documentation:
   Enabled: false

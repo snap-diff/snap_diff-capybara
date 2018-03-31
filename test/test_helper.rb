@@ -4,7 +4,7 @@ if defined?(Rake) && (RUBY_ENGINE != 'jruby' || org.jruby.RubyInstanceConfig.FUL
   SimpleCov.minimum_coverage RUBY_ENGINE == 'jruby' ? 82.5 : 83.5
 end
 
-$LOAD_PATH.unshift File.expand_path('../../lib', __FILE__)
+$LOAD_PATH.unshift File.expand_path('../lib', __dir__)
 
 TEST_IMAGES_DIR = File.expand_path('images', __dir__)
 
@@ -36,7 +36,8 @@ module Capybara
         end
 
         def make_comparison(old_img, new_img, color_distance_limit: nil)
-          comp = ImageCompare.new("#{Rails.root}/screenshot.png", color_distance_limit: color_distance_limit)
+          comp = ImageCompare
+            .new("#{Rails.root}/screenshot.png", color_distance_limit: color_distance_limit)
           set_test_images(comp, old_img, new_img)
           comp
         end

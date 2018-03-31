@@ -110,7 +110,7 @@ module Capybara
         end
 
         def old_file_size
-          @_old_filesize ||= old_file_exists? && File.size(@old_file_name)
+          @old_file_size ||= old_file_exists? && File.size(@old_file_name)
         end
 
         def new_file_size
