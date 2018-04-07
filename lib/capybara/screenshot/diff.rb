@@ -13,6 +13,7 @@ module Capybara
     mattr_accessor(:root) { (defined?(Rails.root) && Rails.root) || File.expand_path('.') }
     mattr_accessor :stability_time_limit
     mattr_accessor :window_size
+    mattr_accessor(:save_path) { 'doc/screenshots' }
 
     class << self
       def active?
@@ -20,7 +21,7 @@ module Capybara
       end
 
       def screenshot_area
-        parts = ['doc/screenshots']
+        parts = [Capybara::Screenshot.save_path]
         parts << Capybara.current_driver.to_s if Capybara::Screenshot.add_driver_path
         parts << os_name if Capybara::Screenshot.add_os_path
         File.join parts

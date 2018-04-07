@@ -43,6 +43,17 @@ module Capybara
         screenshot 'a'
       end
 
+      def test_screenshot_with_alternate_save_path
+        default_path = Capybara::Screenshot.save_path
+        Capybara::Screenshot.save_path = 'foo/bar'
+        screenshot_section 'a'
+        screenshot_group 'b'
+        screenshot 'a'
+        assert_match %r{foo/bar/rack_test/(macos|linux)/a/b}, screenshot_dir
+      ensure
+        Capybara::Screenshot.save_path = default_path
+      end
+
       def test_screenshot_with_stability_time_limit
         Capybara::Screenshot.stability_time_limit = 0.001
         screenshot 'a'

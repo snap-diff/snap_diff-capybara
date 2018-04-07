@@ -261,10 +261,27 @@ Capybara::Screenshot::Diff.enabled = ENV['COMPARE_SCREENSHOTS']
 
 ### Screen shot save path
 
-If you would like the screen shots to be saved in a different location set
+By default, `Capybara::Screenshot::Diff` saves screenshots to a
+`doc/screenshots` folder, relative to either `Rails.root` (if you're in Rails),
+ or your current directory otherwise.
+
+If you want to change where screenshots are saved to, then there are two
+configuration options that that are relevant.
+
+The most likely one you'll want to modify is ...
 
 ```ruby
-Capybara::Screenshot.save_path = "#{Rails.root}/doc/gui"
+Capybara::Screenshot::Diff.save_path = "other/path"
+```
+
+The `save_path` option is relative to `Capybara::Screenshot.root`.
+
+`Capybara::Screenshot.root` defaults to either `Rails.root` (if you're in
+Rails) or your current directory. You can change it to something entirely
+different if necessary, such as when using an alternative web framework.
+
+```ruby
+Capybara::Screenshot.root = Hanami.root
 ```
 
 ### Screen shot stability
