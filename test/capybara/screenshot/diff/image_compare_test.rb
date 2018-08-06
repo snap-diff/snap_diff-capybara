@@ -46,6 +46,18 @@ module Capybara
           assert_equal 223, comp.max_color_distance.ceil
         end
 
+        test 'compare with shift_distance_limit above difference' do
+          comp = make_comparison(:a, :b, shift_distance_limit: 11)
+          assert !comp.different?
+          assert_equal 11, comp.max_shift_distance.ceil
+        end
+
+        test 'compare with shift_distance_limit below difference' do
+          comp = make_comparison(:a, :b, shift_distance_limit: 9)
+          assert comp.different?
+          assert_equal 11, comp.max_shift_distance.ceil
+        end
+
         test 'quick_equal' do
           comp = make_comparison(:a, :b)
           assert !comp.quick_equal?
@@ -54,7 +66,7 @@ module Capybara
 
         test 'quick_equal with color distance limit' do
           comp = make_comparison(:a, :b, color_distance_limit: 222)
-          assert comp.different?
+          assert !comp.quick_equal?
           assert_equal 223, comp.max_color_distance.ceil
         end
 

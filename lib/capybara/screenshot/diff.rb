@@ -40,6 +40,7 @@ module Capybara
       mattr_accessor :area_size_limit
       mattr_accessor :color_distance_limit
       mattr_accessor(:enabled) { true }
+      mattr_accessor :shift_distance_limit
 
       def self.included(clas)
         clas.include TestMethods

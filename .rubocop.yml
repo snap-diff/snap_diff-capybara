@@ -41,7 +41,13 @@ Security/Eval:
   Exclude:
     - gemfiles/*.gemfile
 
+#Style/AccessModifierDeclarations:
+#  Enabled: false
+
 Style/Documentation:
+  Enabled: false
+
+Style/DoubleNegation:
   Enabled: false
 
 Style/NumericPredicate:

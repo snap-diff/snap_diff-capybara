@@ -12,10 +12,11 @@ module Capybara
             :old_file_name
 
         def initialize(new_file_name, old_file_name = nil, dimensions: nil, color_distance_limit: nil,
-            area_size_limit: nil)
+            area_size_limit: nil, shift_distance_limit: nil)
           @new_file_name = new_file_name
           @color_distance_limit = color_distance_limit
           @area_size_limit = area_size_limit
+          @shift_distance_limit = shift_distance_limit
           @dimensions = dimensions
           @old_file_name = old_file_name || "#{new_file_name}~"
           @annotated_old_file_name = "#{new_file_name.chomp('.png')}_0.png~"
@@ -27,6 +28,7 @@ module Capybara
         # Data about the original image is kept.
         def reset
           @max_color_distance = @color_distance_limit ? 0 : nil
+          @max_shift_distance = @shift_distance_limit ? 0 : nil
           @left = @top = @right = @bottom = nil
         end
 
@@ -100,11 +102,6 @@ module Capybara
           true
         end
 
-        private def not_different
-          clean_tmp_files
-          false
-        end
-
         def old_file_exists?
           @old_file_name && File.exist?(@old_file_name)
         end
@@ -126,9 +123,20 @@ module Capybara
         end
 
         def max_color_distance
-          return @max_color_distance if @max_color_distance
+          calculate_metrics unless @max_color_distance
+          @max_color_distance
+        end
+
+        def max_shift_distance
+          calculate_metrics unless @max_shift_distance
+          @max_shift_distance
+        end
+
+        private
+
+        def calculate_metrics
           old_file, new_file = load_image_files(@old_file_name, @new_file_name)
-          return @max_color_distance = 0 if old_file == new_file
+          @max_color_distance = 0 if old_file == new_file
 
           old_image, new_image = load_images(old_file, new_file)
 
@@ -137,9 +145,17 @@ module Capybara
             d = ChunkyPNG::Color.euclidean_distance_rgba(p1, p2)
             [max, d].max
           end
+
+          (0...new_image.width).each do |_x|
+            (0...new_image.height).each do |y|
+            end
+          end
         end
 
-        private
+        def not_different
+          clean_tmp_files
+          false
+        end
 
         def save_images(new_file_name, new_img, org_file_name, org_img)
           org_img.save(org_file_name)
@@ -170,7 +186,7 @@ module Capybara
           true
         end
 
-        private def crop_images(images, dimensions)
+        def crop_images(images, dimensions)
           images.map! do |i|
             if i.dimension.to_a == dimensions || i.width < dimensions[0] || i.height < dimensions[1]
               i
@@ -180,7 +196,7 @@ module Capybara
           end
         end
 
-        private def draw_rectangles(images, bottom, left, right, top)
+        def draw_rectangles(images, bottom, left, right, top)
           images.map do |image|
             new_img = image.dup
             new_img.rect(left - 1, top - 1, right + 1, bottom + 1, ChunkyPNG::Color.rgb(255, 0, 0))
@@ -188,13 +204,13 @@ module Capybara
           end
         end
 
-        private def find_diff_rectangle(org_img, new_img)
+        def find_diff_rectangle(org_img, new_img)
           left, top, right, bottom = find_left_right_and_top(org_img, new_img)
           bottom = find_bottom(org_img, new_img, left, right, bottom)
           [left, top, right, bottom]
         end
 
-        private def find_top(old_img, new_img)
+        def find_top(old_img, new_img)
           old_img.height.times do |y|
             old_img.width.times do |x|
               return [x, y, x, y] unless same_color?(old_img, new_img, x, y)
@@ -202,7 +218,7 @@ module Capybara
           end
         end
 
-        private def find_left_right_and_top(old_img, new_img)
+        def find_left_right_and_top(old_img, new_img)
           top = @top
           bottom = @bottom
           left = @left || old_img.width - 1
@@ -226,7 +242,7 @@ module Capybara
           [left, top, right, bottom]
         end
 
-        private def find_bottom(old_img, new_img, left, right, bottom)
+        def find_bottom(old_img, new_img, left, right, bottom)
           if bottom
             (old_img.height - 1).step(bottom + 1, -1).find do |y|
               (left..right).find do |x|
@@ -237,15 +253,95 @@ module Capybara
           bottom
         end
 
-        private def same_color?(old_img, new_img, x, y)
+        def same_color?(old_img, new_img, x, y)
+          color_distance =
+            color_distance_at(new_img, old_img, x, y, shift_distance_limit: @shift_distance_limit)
+          shift_distance =
+            shift_distance_at(new_img, old_img, x, y, color_distance_limit: @color_distance_limit)
+          if !@max_color_distance || color_distance > @max_color_distance
+            @max_color_distance = color_distance
+          end
+          if !@max_shift_distance || shift_distance > @max_shift_distance
+            @max_shift_distance = shift_distance
+          end
+          (color_distance == 0 || (@color_distance_limit && @color_distance_limit > 0 &&
+              color_distance <= @color_distance_limit)) &&
+            (shift_distance == 0 || (@shift_distance_limit && @shift_distance_limit > 0 &&
+                shift_distance <= @shift_distance_limit))
+        end
+
+        def color_distance_at(new_img, old_img, x, y, shift_distance_limit:)
           org_color = old_img[x, y]
-          new_color = new_img[x, y]
-          return true if org_color == new_color
+          if shift_distance_limit
+            start_x = [0, x - shift_distance_limit].max
+            end_x = [x + shift_distance_limit, new_img.width - 1].min
+            xs = (start_x..end_x).to_a
+            start_y = [0, y - shift_distance_limit].max
+            end_y = [y + shift_distance_limit, new_img.height - 1].min
+            ys = (start_y..end_y).to_a
+            new_pixels = xs.product(ys)
+            distances = new_pixels.map do |dx, dy|
+              new_color = new_img[dx, dy]
+              ChunkyPNG::Color.euclidean_distance_rgba(org_color, new_color)
+            end
+            distances.min
+          else
+            new_color = new_img[x, y]
+            ChunkyPNG::Color.euclidean_distance_rgba(org_color, new_color)
+          end
+        end
 
-          distance = ChunkyPNG::Color.euclidean_distance_rgba(org_color, new_color)
-          @max_color_distance = distance if !@max_color_distance || distance > @max_color_distance
+        def shift_distance_at(new_img, old_img, x, y, color_distance_limit:)
+          org_color = old_img[x, y]
+          shift_distance = 0
+          loop do
+            if (y - shift_distance) >= 0 # top
+              ([0, x - shift_distance].max..[x + shift_distance, new_img.width - 1].min).each do |dx|
+                if color_matches(new_img, org_color, dx, y - shift_distance, color_distance_limit)
+                  return shift_distance
+                end
+              end
+            end
+            if shift_distance > 0
+              if (x - shift_distance) >= 0 # left
+                ([0, y - shift_distance + 1].max..[y + shift_distance, new_img.height - 2].min)
+                  .each do |dy|
+                  if color_matches(new_img, org_color, x - shift_distance, dy, color_distance_limit)
+                    return shift_distance
+                  end
+                end
+              end
+              if (y + shift_distance) < new_img.height # bottom
+                ([0, x - shift_distance].max..[x + shift_distance, new_img.width - 1].min).each do |dx|
+                  if color_matches(new_img, org_color, dx, y + shift_distance, color_distance_limit)
+                    return shift_distance
+                  end
+                end
+              end
+              if (x + shift_distance) < new_img.width # right
+                ([0, y - shift_distance + 1].max..[y + shift_distance, new_img.height - 2].min)
+                  .each do |dy|
+                  if color_matches(new_img, org_color, x + shift_distance, dy, color_distance_limit)
+                    return shift_distance
+                  end
+                end
+              end
+            end
+            shift_distance += 1
+            # puts "Bumped shift_distance to #{shift_distance}"
+          end
+          shift_distance
+        end
 
-          @color_distance_limit && @color_distance_limit > 0 && distance <= @color_distance_limit
+        def color_matches(new_img, org_color, dx, dy, color_distance_limit)
+          new_color = new_img[dx, dy]
+          return new_color == org_color unless color_distance_limit
+          color_distance = ChunkyPNG::Color.euclidean_distance_rgba(org_color, new_color)
+          # if color_distance > 0
+          #   puts "color_distance: #{dx} #{dy} #{color_distance} #{color_distance_limit} " \
+          #       "#{color_distance <= color_distance_limit}"
+          # end
+          color_distance <= color_distance_limit
         end
       end
     end

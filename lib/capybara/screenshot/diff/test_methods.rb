@@ -64,7 +64,7 @@ module Capybara
         end
 
         def screenshot(name, color_distance_limit: Diff.color_distance_limit,
-            area_size_limit: Diff.area_size_limit)
+            shift_distance_limit: Diff.shift_distance_limit, area_size_limit: Diff.area_size_limit)
           return unless Screenshot.active?
           return if window_size_is_wrong?
           if @screenshot_counter
@@ -80,6 +80,7 @@ module Capybara
               area_size_limit: area_size_limit)
           checkout_vcs(name, comparison)
           take_stable_screenshot(comparison, color_distance_limit: color_distance_limit,
+                                             shift_distance_limit: shift_distance_limit,
                                              area_size_limit: area_size_limit)
           return unless comparison.old_file_exists?
           (@test_screenshots ||= []) << [caller(1..1).first, name, comparison]
@@ -108,7 +109,8 @@ module Capybara
           # ODOT
 
           "Screenshot does not match for '#{name}' (area: #{comparison.size}px #{comparison.dimensions}" \
-            ", max_color_distance: #{max_color_distance})\n" \
+            ", max_color_distance: #{max_color_distance}" \
+            ", max_shift_distance: #{comparison.max_shift_distance})\n" \
             "#{comparison.new_file_name}\n#{comparison.annotated_old_file_name}\n" \
             "#{comparison.annotated_new_file_name}\n" \
             "at #{caller}"

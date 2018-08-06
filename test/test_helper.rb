@@ -35,9 +35,10 @@ module Capybara
           FileUtils.cp File.expand_path("images/#{source_image}", __dir__), file_name
         end
 
-        def make_comparison(old_img, new_img, color_distance_limit: nil)
+        def make_comparison(old_img, new_img, color_distance_limit: nil, shift_distance_limit: nil)
           comp = ImageCompare
-            .new("#{Rails.root}/screenshot.png", color_distance_limit: color_distance_limit)
+            .new("#{Rails.root}/screenshot.png", color_distance_limit: color_distance_limit,
+                                                 shift_distance_limit: shift_distance_limit)
           set_test_images(comp, old_img, new_img)
           comp
         end
