@@ -37,9 +37,10 @@ module Capybara
         def quick_equal?
           return nil unless old_file_exists?
           return true if new_file_size == old_file_size
-          old_file, new_file = load_image_files(@old_file_name, @new_file_name)
-          return true if old_file == new_file
-          images = load_images(old_file, new_file)
+          old_bytes, new_bytes = load_image_files(@old_file_name, @new_file_name)
+          return true if old_bytes == new_bytes
+          images = load_images(old_bytes, new_bytes)
+          old_bytes = new_bytes = nil
           crop_images(images, @dimensions) if @dimensions
 
           old_img = images.first
