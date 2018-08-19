@@ -43,19 +43,17 @@ module Capybara
           old_bytes = new_bytes = nil
           crop_images(images, @dimensions) if @dimensions
 
-          old_img = images.first
-          new_img = images.last
+          return false if sizes_changed?(*images)
+          return true if images.first.pixels == images.last.pixels
 
-          return false if sizes_changed?(old_img, new_img)
+          return false unless @color_distance_limit || @shift_distance_limit
 
-          return true if old_img.pixels == new_img.pixels
-
-          @left, @top, @right, @bottom = find_top(old_img, new_img)
+          @left, @top, @right, @bottom = find_top(*images)
 
           return true if @top.nil?
 
           if @area_size_limit
-            @left, @top, @right, @bottom = find_diff_rectangle(old_img, new_img)
+            @left, @top, @right, @bottom = find_diff_rectangle(*images)
             return true if size <= @area_size_limit
           end
 
@@ -262,7 +260,7 @@ module Capybara
           if !@max_color_distance || color_distance > @max_color_distance
             @max_color_distance = color_distance
           end
-          if !@max_shift_distance || shift_distance > @max_shift_distance
+          if shift_distance.to_i > @max_shift_distance.to_i
             @max_shift_distance = shift_distance
           end
           (color_distance == 0 || (@color_distance_limit && @color_distance_limit > 0 &&
@@ -296,12 +294,15 @@ module Capybara
           org_color = old_img[x, y]
           shift_distance = 0
           loop do
+            bounds_breached = 0
             if (y - shift_distance) >= 0 # top
               ([0, x - shift_distance].max..[x + shift_distance, new_img.width - 1].min).each do |dx|
                 if color_matches(new_img, org_color, dx, y - shift_distance, color_distance_limit)
                   return shift_distance
                 end
               end
+            else
+              bounds_breached += 1
             end
             if shift_distance > 0
               if (x - shift_distance) >= 0 # left
@@ -311,6 +312,8 @@ module Capybara
                     return shift_distance
                   end
                 end
+              else
+                bounds_breached += 1
               end
               if (y + shift_distance) < new_img.height # bottom
                 ([0, x - shift_distance].max..[x + shift_distance, new_img.width - 1].min).each do |dx|
@@ -318,6 +321,8 @@ module Capybara
                     return shift_distance
                   end
                 end
+              else
+                bounds_breached += 1
               end
               if (x + shift_distance) < new_img.width # right
                 ([0, y - shift_distance + 1].max..[y + shift_distance, new_img.height - 2].min)
@@ -326,12 +331,15 @@ module Capybara
                     return shift_distance
                   end
                 end
+              else
+                bounds_breached += 1
               end
             end
+            break if bounds_breached == 4
             shift_distance += 1
             # puts "Bumped shift_distance to #{shift_distance}"
           end
-          shift_distance
+          nil
         end
 
         def color_matches(new_img, org_color, dx, dy, color_distance_limit)
