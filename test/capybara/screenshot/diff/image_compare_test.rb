@@ -61,7 +61,7 @@ module Capybara
         test 'quick_equal' do
           comp = make_comparison(:a, :b)
           assert !comp.quick_equal?
-          assert_equal 10, comp.max_color_distance.ceil
+          assert_equal 223, comp.max_color_distance.ceil
         end
 
         test 'quick_equal with color distance limit' do

@@ -40,7 +40,7 @@ module Capybara
           old_bytes, new_bytes = load_image_files(@old_file_name, @new_file_name)
           return true if old_bytes == new_bytes
           images = load_images(old_bytes, new_bytes)
-          old_bytes = new_bytes = nil
+          old_bytes = new_bytes = nil # rubocop: disable Lint/UselessAssignment
           crop_images(images, @dimensions) if @dimensions
 
           return false if sizes_changed?(*images)
@@ -91,7 +91,6 @@ module Capybara
           @left, @top, @right, @bottom = find_diff_rectangle(old_img, new_img)
 
           return not_different if @top.nil?
-
           return not_different if @area_size_limit && size <= @area_size_limit
 
           annotated_old_img, annotated_new_img = draw_rectangles(images, @bottom, @left, @right, @top)
@@ -255,18 +254,18 @@ module Capybara
         def same_color?(old_img, new_img, x, y)
           color_distance =
             color_distance_at(new_img, old_img, x, y, shift_distance_limit: @shift_distance_limit)
-          shift_distance =
-            shift_distance_at(new_img, old_img, x, y, color_distance_limit: @color_distance_limit)
           if !@max_color_distance || color_distance > @max_color_distance
             @max_color_distance = color_distance
           end
-          if shift_distance.to_i > @max_shift_distance.to_i
+          color_matches = color_distance == 0 || (@color_distance_limit && @color_distance_limit > 0 &&
+              color_distance <= @color_distance_limit)
+          return color_matches unless @shift_distance_limit
+          shift_distance =
+            shift_distance_at(new_img, old_img, x, y, color_distance_limit: @color_distance_limit)
+          if shift_distance && (@max_shift_distance.nil? || shift_distance > @max_shift_distance)
             @max_shift_distance = shift_distance
           end
-          (color_distance == 0 || (@color_distance_limit && @color_distance_limit > 0 &&
-              color_distance <= @color_distance_limit)) &&
-            (shift_distance == 0 || (@shift_distance_limit && @shift_distance_limit > 0 &&
-                shift_distance <= @shift_distance_limit))
+          color_matches
         end
 
         def color_distance_at(new_img, old_img, x, y, shift_distance_limit:)
@@ -285,8 +284,7 @@ module Capybara
             end
             distances.min
           else
-            new_color = new_img[x, y]
-            ChunkyPNG::Color.euclidean_distance_rgba(org_color, new_color)
+            ChunkyPNG::Color.euclidean_distance_rgba(org_color, new_img[x, y])
           end
         end
 
@@ -337,7 +335,6 @@ module Capybara
             end
             break if bounds_breached == 4
             shift_distance += 1
-            # puts "Bumped shift_distance to #{shift_distance}"
           end
           nil
         end
@@ -346,10 +343,6 @@ module Capybara
           new_color = new_img[dx, dy]
           return new_color == org_color unless color_distance_limit
           color_distance = ChunkyPNG::Color.euclidean_distance_rgba(org_color, new_color)
-          # if color_distance > 0
-          #   puts "color_distance: #{dx} #{dy} #{color_distance} #{color_distance_limit} " \
-          #       "#{color_distance <= color_distance_limit}"
-          # end
           color_distance <= color_distance_limit
         end
       end

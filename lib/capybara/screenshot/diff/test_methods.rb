@@ -108,9 +108,10 @@ module Capybara
                                end
           # ODOT
 
+          max_shift_distance = comparison.max_shift_distance
           "Screenshot does not match for '#{name}' (area: #{comparison.size}px #{comparison.dimensions}" \
             ", max_color_distance: #{max_color_distance}" \
-            ", max_shift_distance: #{comparison.max_shift_distance})\n" \
+            "#{", max_shift_distance: #{max_shift_distance}" if max_shift_distance})\n" \
             "#{comparison.new_file_name}\n#{comparison.annotated_old_file_name}\n" \
             "#{comparison.annotated_new_file_name}\n" \
             "at #{caller}"
