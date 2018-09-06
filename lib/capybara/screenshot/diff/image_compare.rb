@@ -162,7 +162,7 @@ module Capybara
 
         def clean_tmp_files
           FileUtils.cp @old_file_name, @new_file_name
-          File.delete(@old_file_name) if File.exist?(@annotated_old_file_name)
+          File.delete(@old_file_name) if File.exist?(@old_file_name)
           File.delete(@annotated_old_file_name) if File.exist?(@annotated_old_file_name)
           File.delete(@annotated_new_file_name) if File.exist?(@annotated_new_file_name)
         end
