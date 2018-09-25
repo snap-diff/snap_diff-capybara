@@ -93,6 +93,8 @@ doc
 
 To store the screen shot history, add the `doc/screenshots` directory to your
  version control system (git, svn, etc).
+ 
+    Screen shots are compared to the previously COMMITTED version of the same screen shot.
 
 ### Screenshot groups
 
