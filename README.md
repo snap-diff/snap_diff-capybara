@@ -16,6 +16,7 @@ Add this line to your application's Gemfile:
 
 ```ruby
 gem 'capybara-screenshot-diff'
+gem 'oily_png', platform :ruby
 ```
 
 And then execute:
