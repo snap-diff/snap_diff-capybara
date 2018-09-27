@@ -9,6 +9,7 @@ module Capybara
         return 'windows' if ON_WINDOWS
         return 'macos' if ON_MAC
         return 'linux' if ON_LINUX
+
         'unknown'
       end
     end

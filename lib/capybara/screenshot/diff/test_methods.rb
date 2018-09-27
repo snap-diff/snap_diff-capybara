@@ -49,6 +49,7 @@ module Capybara
 
         def poltergeist?
           return false unless defined?(Capybara::Poltergeist::Driver)
+
           current_capybara_driver_class <= Capybara::Poltergeist::Driver
         end
 
@@ -60,6 +61,7 @@ module Capybara
           @screenshot_group = name.to_s
           @screenshot_counter = 0
           return unless Screenshot.active? && name.present?
+
           FileUtils.rm_rf screenshot_dir
         end
 
@@ -67,6 +69,7 @@ module Capybara
             shift_distance_limit: Diff.shift_distance_limit, area_size_limit: Diff.area_size_limit)
           return unless Screenshot.active?
           return if window_size_is_wrong?
+
           if @screenshot_counter
             name = "#{format('%02i', @screenshot_counter)}_#{name}"
             @screenshot_counter += 1
@@ -83,6 +86,7 @@ module Capybara
                                              shift_distance_limit: shift_distance_limit,
                                              area_size_limit: area_size_limit)
           return unless comparison.old_file_exists?
+
           (@test_screenshots ||= []) << [caller(1..1).first, name, comparison]
         end
 

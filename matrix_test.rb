@@ -35,6 +35,7 @@ end
 
 travis['rvm'].each do |ruby|
   next if ruby =~ /head/ # ruby-install does not support HEAD installation
+
   puts '#' * 80
   puts "Testing #{ruby}"
   puts

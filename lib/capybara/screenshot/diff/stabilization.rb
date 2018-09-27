@@ -27,6 +27,7 @@ module Capybara
             take_right_size_screenshot(comparison)
 
             break unless Capybara::Screenshot.stability_time_limit
+
             if comparison.quick_equal?
               clean_stabilization_images(comparison.new_file_name)
               break
@@ -63,9 +64,11 @@ module Capybara
 
         def reduce_retina_image_size(file_name)
           return if !ON_MAC || !selenium? || !Capybara::Screenshot.window_size
+
           saved_image = ChunkyPNG::Image.from_file(file_name)
           width = Capybara::Screenshot.window_size[0]
           return if saved_image.width < width * 2
+
           unless @_csd_retina_warned
             warn 'Halving retina screenshot.  ' \
                 'You should add "force-device-scale-factor=1" to your Chrome chromeOptions args.'
@@ -116,10 +119,12 @@ module Capybara
 
         def assert_images_loaded(timeout: Capybara.default_max_wait_time)
           return unless respond_to? :evaluate_script
+
           start = Time.now
           loop do
             pending_image = evaluate_script IMAGE_WAIT_SCRIPT
             break unless pending_image
+
             assert (Time.now - start) < timeout,
                 "Images not loaded after #{timeout}s: #{pending_image.inspect}"
             sleep 0.1

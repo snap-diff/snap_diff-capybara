@@ -36,8 +36,10 @@ module Capybara
         def quick_equal?
           return nil unless old_file_exists?
           return true if new_file_size == old_file_size
+
           old_bytes, new_bytes = load_image_files(@old_file_name, @new_file_name)
           return true if old_bytes == new_bytes
+
           images = load_images(old_bytes, new_bytes)
           old_bytes = new_bytes = nil # rubocop: disable Lint/UselessAssignment
           crop_images(images, @dimensions) if @dimensions
@@ -194,6 +196,7 @@ module Capybara
 
         def sizes_changed?(org_image, new_image)
           return unless org_image.dimension != new_image.dimension
+
           change_msg = [org_image, new_image].map { |i| "#{i.width}x#{i.height}" }.join(' => ')
           puts "Image size has changed for #{@new_file_name}: #{change_msg}"
           true
@@ -239,6 +242,7 @@ module Capybara
           old_img.height.times do |y|
             (0...left).find do |x|
               next if same_color?(old_img, new_img, x, y)
+
               top ||= y
               bottom = y
               left = x
@@ -275,6 +279,7 @@ module Capybara
           color_matches = color_distance == 0 || (@color_distance_limit && @color_distance_limit > 0 &&
               color_distance <= @color_distance_limit)
           return color_matches if !@shift_distance_limit || @max_shift_distance == Float::INFINITY
+
           shift_distance =
             if color_matches
               0
@@ -354,6 +359,7 @@ module Capybara
               end
             end
             break if bounds_breached == 4
+
             shift_distance += 1
           end
           Float::INFINITY
@@ -362,6 +368,7 @@ module Capybara
         def color_matches(new_img, org_color, dx, dy, color_distance_limit)
           new_color = new_img[dx, dy]
           return new_color == org_color unless color_distance_limit
+
           color_distance = ChunkyPNG::Color.euclidean_distance_rgba(org_color, new_color)
           color_distance <= color_distance_limit
         end
