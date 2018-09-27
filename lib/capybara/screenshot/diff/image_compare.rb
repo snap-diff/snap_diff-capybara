@@ -8,8 +8,7 @@ module Capybara
       class ImageCompare
         include ChunkyPNG::Color
 
-        attr_reader :annotated_new_file_name, :annotated_old_file_name, :new_file_name,
-            :old_file_name
+        attr_reader :annotated_new_file_name, :annotated_old_file_name, :new_file_name, :old_file_name
 
         def initialize(new_file_name, old_file_name = nil, dimensions: nil, color_distance_limit: nil,
             area_size_limit: nil, shift_distance_limit: nil)
@@ -134,18 +133,34 @@ module Capybara
 
         def calculate_metrics
           old_file, new_file = load_image_files(@old_file_name, @new_file_name)
-          @max_color_distance = 0 if old_file == new_file
+          if old_file == new_file
+            @max_color_distance = 0
+            @max_shift_distance = 0
+            return
+          end
 
           old_image, new_image = load_images(old_file, new_file)
+          calculate_max_color_distance(new_image, old_image)
+          calculate_max_shift_limit(new_image, old_image)
+        end
 
+        def calculate_max_color_distance(new_image, old_image)
           pixel_pairs = old_image.pixels.zip(new_image.pixels)
           @max_color_distance = pixel_pairs.inject(0) do |max, (p1, p2)|
             d = ChunkyPNG::Color.euclidean_distance_rgba(p1, p2)
             [max, d].max
           end
+        end
 
-          (0...new_image.width).each do |_x|
-            (0...new_image.height).each do |y|
+        def calculate_max_shift_limit(new_img, old_img)
+          (0...new_img.width).each do |x|
+            (0...new_img.height).each do |y|
+              shift_distance =
+                shift_distance_at(new_img, old_img, x, y, color_distance_limit: @color_distance_limit)
+              if shift_distance && (@max_shift_distance.nil? || shift_distance > @max_shift_distance)
+                @max_shift_distance = shift_distance
+                return if @max_shift_distance == Float::INFINITY # rubocop: disable Lint/NonLocalExitFromIterator
+              end
             end
           end
         end
@@ -259,9 +274,13 @@ module Capybara
           end
           color_matches = color_distance == 0 || (@color_distance_limit && @color_distance_limit > 0 &&
               color_distance <= @color_distance_limit)
-          return color_matches unless @shift_distance_limit
+          return color_matches if !@shift_distance_limit || @max_shift_distance == Float::INFINITY
           shift_distance =
-            shift_distance_at(new_img, old_img, x, y, color_distance_limit: @color_distance_limit)
+            if color_matches
+              0
+            else
+              shift_distance_at(new_img, old_img, x, y, color_distance_limit: @color_distance_limit)
+            end
           if shift_distance && (@max_shift_distance.nil? || shift_distance > @max_shift_distance)
             @max_shift_distance = shift_distance
           end
@@ -293,9 +312,10 @@ module Capybara
           shift_distance = 0
           loop do
             bounds_breached = 0
-            if (y - shift_distance) >= 0 # top
+            top_row = y - shift_distance
+            if top_row >= 0 # top
               ([0, x - shift_distance].max..[x + shift_distance, new_img.width - 1].min).each do |dx|
-                if color_matches(new_img, org_color, dx, y - shift_distance, color_distance_limit)
+                if color_matches(new_img, org_color, dx, top_row, color_distance_limit)
                   return shift_distance
                 end
               end
@@ -304,7 +324,7 @@ module Capybara
             end
             if shift_distance > 0
               if (x - shift_distance) >= 0 # left
-                ([0, y - shift_distance + 1].max..[y + shift_distance, new_img.height - 2].min)
+                ([0, top_row + 1].max..[y + shift_distance, new_img.height - 2].min)
                   .each do |dy|
                   if color_matches(new_img, org_color, x - shift_distance, dy, color_distance_limit)
                     return shift_distance
@@ -323,7 +343,7 @@ module Capybara
                 bounds_breached += 1
               end
               if (x + shift_distance) < new_img.width # right
-                ([0, y - shift_distance + 1].max..[y + shift_distance, new_img.height - 2].min)
+                ([0, top_row + 1].max..[y + shift_distance, new_img.height - 2].min)
                   .each do |dy|
                   if color_matches(new_img, org_color, x + shift_distance, dy, color_distance_limit)
                     return shift_distance
@@ -336,7 +356,7 @@ module Capybara
             break if bounds_breached == 4
             shift_distance += 1
           end
-          nil
+          Float::INFINITY
         end
 
         def color_matches(new_img, org_color, dx, dy, color_distance_limit)

@@ -49,7 +49,7 @@ module Capybara
         test 'compare with shift_distance_limit above difference' do
           comp = make_comparison(:a, :b, shift_distance_limit: 11)
           assert !comp.different?
-          assert_equal 11, comp.max_shift_distance.ceil
+          assert_equal 0, comp.max_shift_distance.ceil
         end
 
         test 'compare with shift_distance_limit below difference' do
