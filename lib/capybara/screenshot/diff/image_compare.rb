@@ -149,6 +149,8 @@ module Capybara
         def calculate_max_color_distance(new_image, old_image)
           pixel_pairs = old_image.pixels.zip(new_image.pixels)
           @max_color_distance = pixel_pairs.inject(0) do |max, (p1, p2)|
+            next max unless p1 && p2
+
             d = ChunkyPNG::Color.euclidean_distance_rgba(p1, p2)
             [max, d].max
           end
