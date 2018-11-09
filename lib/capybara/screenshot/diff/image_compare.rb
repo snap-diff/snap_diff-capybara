@@ -127,7 +127,7 @@ module Capybara
         end
 
         def max_shift_distance
-          calculate_metrics unless @max_shift_distance
+          calculate_metrics unless @max_shift_distance || !@shift_distance_limit
           @max_shift_distance
         end
 
