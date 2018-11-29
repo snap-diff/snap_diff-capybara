@@ -20,7 +20,7 @@ module Capybara
 
         def take_stable_screenshot(comparison, color_distance_limit:, shift_distance_limit:,
             area_size_limit:)
-          input = prepare_page_for_screenshot
+          blurred_input = prepare_page_for_screenshot
           previous_file_name = comparison.old_file_name
           screenshot_started_at = last_image_change_at = Time.now
           loop.with_index do |_x, i|
@@ -57,7 +57,7 @@ module Capybara
             FileUtils.mv comparison.new_file_name, previous_file_name
           end
         ensure
-          input.click if input
+          blurred_input.click if blurred_input
         end
 
         private
@@ -98,9 +98,12 @@ module Capybara
               }
               return null;
             JS
-            input = page.driver.send :unwrap_script_result, active_element
+            blurred_input = page.driver.send :unwrap_script_result, active_element
           end
-          input
+          if Capybara::Screenshot.hide_caret
+            execute_script("$('*').css('caret-color','transparent !important')")
+          end
+          blurred_input
         end
 
         def take_right_size_screenshot(comparison)

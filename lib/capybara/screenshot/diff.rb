@@ -10,6 +10,7 @@ module Capybara
     mattr_accessor :add_os_path
     mattr_accessor :blur_active_element
     mattr_accessor :enabled
+    mattr_accessor :hide_caret
     mattr_accessor(:root) { (defined?(Rails.root) && Rails.root) || File.expand_path('.') }
     mattr_accessor :stability_time_limit
     mattr_accessor :window_size
