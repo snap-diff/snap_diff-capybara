@@ -303,7 +303,19 @@ Capybara::Screenshot.stability_time_limit = 0.5
 ### Removing focus from the active element
 
 In Chrome the screenshot includes the blinking input cursor.  This can make it impossible to get a
-stable screenshot.  To get around this you can set the `blur_active_element` option:
+stable screenshot.  To get around this you can set the `hide caret` option:
+
+```ruby
+Capybara::Screenshot.hide_caret = true
+```
+
+This will make the cursor (caret) transparent (invisible), so the blinking does not delay the screen shot.
+
+
+
+### Removing focus from the active element
+
+Another way to avoid the cursor blinking is to set the `blur_active_element` option:
 
 ```ruby
 Capybara::Screenshot.blur_active_element = true
