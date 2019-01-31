@@ -345,6 +345,30 @@ Capybara::Screenshot::Diff.color_distance_limit = 42
 ```
 
 
+### Allowed shift distance
+
+Sometimes you want to allow small movements in the images.  For example, jquer-tablesorter
+renders the same table slightly differently sometimes.  You can set set the shift distance
+threshold for the comparison using the `shift_distance_limit` option to the `screenshot`
+method:
+
+```ruby
+test 'color threshold' do
+  visit '/'
+  screenshot 'index', shift_distance_limit: 6
+end
+```
+
+The difference is calculated as maximum distance in either the X or the Y axis.
+You can also set this globally:
+
+```ruby
+Capybara::Screenshot::Diff.shift_distance_limit = 4
+```
+
+If `shift_distance_limit` is `nil` shift distance is not measured.  If `shift_distance_limit` is set,
+even to `0`, shift distabnce is measured and reported on image differences.
+
 ### Allowed difference size
 
 You can set set a threshold for the differing area size for the comparison

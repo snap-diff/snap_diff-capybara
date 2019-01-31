@@ -100,9 +100,7 @@ module Capybara
             JS
             blurred_input = page.driver.send :unwrap_script_result, active_element
           end
-          if Capybara::Screenshot.hide_caret
-            execute_script("$('*').css('caret-color','transparent')")
-          end
+          execute_script("$('*').css('caret-color','transparent')") if Capybara::Screenshot.hide_caret
           blurred_input
         end
 
