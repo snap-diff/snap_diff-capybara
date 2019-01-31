@@ -283,7 +283,7 @@ module Capybara
           return color_matches if !@shift_distance_limit || @max_shift_distance == Float::INFINITY
 
           shift_distance = (color_matches && 0) ||
-              shift_distance_at(new_img, old_img, x, y, color_distance_limit: @color_distance_limit)
+            shift_distance_at(new_img, old_img, x, y, color_distance_limit: @color_distance_limit)
           if shift_distance && (@max_shift_distance.nil? || shift_distance > @max_shift_distance)
             @max_shift_distance = shift_distance
           end
