@@ -355,7 +355,7 @@ method:
 ```ruby
 test 'color threshold' do
   visit '/'
-  screenshot 'index', shift_distance_limit: 6
+  screenshot 'index', shift_distance_limit: 2
 end
 ```
 
@@ -363,8 +363,11 @@ The difference is calculated as maximum distance in either the X or the Y axis.
 You can also set this globally:
 
 ```ruby
-Capybara::Screenshot::Diff.shift_distance_limit = 4
+Capybara::Screenshot::Diff.shift_distance_limit = 1
 ```
+
+**Note:** For each increase in `shift_distance_limit` more pixels are searched for a matching color value, and
+this will impact performance **severely** if a match cannot be found.
 
 If `shift_distance_limit` is `nil` shift distance is not measured.  If `shift_distance_limit` is set,
 even to `0`, shift distabnce is measured and reported on image differences.

@@ -49,7 +49,7 @@ module Capybara
                 last_image_change_at = Time.now
               end
 
-              check_max_wait_time(comparison, screenshot_started_at)
+              check_max_wait_time(comparison, screenshot_started_at, shift_distance_limit: shift_distance_limit)
             end
 
             previous_file_name = "#{comparison.new_file_name.chomp('.png')}_x#{format('%02i', i)}.png~"
@@ -112,9 +112,11 @@ module Capybara
           # ODOT
         end
 
-        def check_max_wait_time(comparison, screenshot_started_at)
-          assert (Time.now - screenshot_started_at) < Capybara.default_max_wait_time,
-              "Could not get stable screenshot within #{Capybara.default_max_wait_time}s\n" \
+        def check_max_wait_time(comparison, screenshot_started_at, shift_distance_limit:)
+          shift_factor = shift_distance_limit ? (shift_distance_limit * 2 + 1) ^ 2 : 1
+          max_wait_time = Capybara.default_max_wait_time * shift_factor
+          assert (Time.now - screenshot_started_at) < max_wait_time,
+              "Could not get stable screenshot within #{max_wait_time}s\n" \
                       "#{stabilization_images(comparison.new_file_name).join("\n")}"
         end
 
