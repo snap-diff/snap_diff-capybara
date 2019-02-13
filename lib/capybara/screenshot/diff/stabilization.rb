@@ -49,7 +49,8 @@ module Capybara
                 last_image_change_at = Time.now
               end
 
-              check_max_wait_time(comparison, screenshot_started_at, shift_distance_limit: shift_distance_limit)
+              check_max_wait_time(comparison, screenshot_started_at,
+                  shift_distance_limit: shift_distance_limit)
             end
 
             previous_file_name = "#{comparison.new_file_name.chomp('.png')}_x#{format('%02i', i)}.png~"
