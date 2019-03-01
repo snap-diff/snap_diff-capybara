@@ -65,6 +65,7 @@ module Capybara
           FileUtils.rm_rf screenshot_dir
         end
 
+        # @return [Boolean] wether a screenshot was taken
         def screenshot(name, color_distance_limit: Diff.color_distance_limit,
             shift_distance_limit: Diff.shift_distance_limit, area_size_limit: Diff.area_size_limit)
           return unless Screenshot.active?
@@ -88,6 +89,7 @@ module Capybara
           return unless comparison.old_file_exists?
 
           (@test_screenshots ||= []) << [caller(1..1).first, name, comparison]
+          true
         end
 
         def window_size_is_wrong?

@@ -234,6 +234,7 @@ module Capybara
               return [x, y, x, y] unless same_color?(old_img, new_img, x, y)
             end
           end
+          nil
         end
 
         def find_left_right_and_top(old_img, new_img)
