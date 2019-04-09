@@ -391,6 +391,25 @@ Capybara::Screenshot::Diff.area_size_limit = 42
 ```
 
 
+### Skipping an area
+
+Sometimes you have expected change that you want to ignore.
+You can use the `skip_area` option to the `screenshot` method to ignore an area:
+
+```ruby
+test 'unstable area' do
+  visit '/'
+  screenshot 'index', skip_area: [17, 6, 27, 16]
+end
+```
+
+The arguments are [x1, y1, x2, y2] for the area you want to ignore.  You can also set this globally:
+
+```ruby
+Capybara::Screenshot::Diff.skip_area = [0, 0, 64, 48]
+```
+
+
 ## Development
 
 After checking out the repo, run `bin/setup` to install dependencies. Then, run `rake test` to run the tests. You can also run `bin/console` for an interactive prompt that will allow you to experiment.

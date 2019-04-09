@@ -17,6 +17,7 @@ module Capybara
           @area_size_limit = area_size_limit
           @shift_distance_limit = shift_distance_limit
           @dimensions = dimensions
+          @skip_area = skip_area
           @old_file_name = old_file_name || "#{new_file_name}~"
           @annotated_old_file_name = "#{new_file_name.chomp('.png')}_0.png~"
           @annotated_new_file_name = "#{new_file_name.chomp('.png')}_1.png~"
@@ -274,6 +275,7 @@ module Capybara
         end
 
         def same_color?(old_img, new_img, x, y)
+          return true if @skip_area && @skip_area[0] <= x && x <= @skip_area[2] && @skip_area[1] <= y && y <= @skip_area[3]
           color_distance =
             color_distance_at(new_img, old_img, x, y, shift_distance_limit: @shift_distance_limit)
           if !@max_color_distance || color_distance > @max_color_distance
