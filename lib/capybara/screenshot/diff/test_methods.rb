@@ -67,7 +67,8 @@ module Capybara
 
         # @return [Boolean] wether a screenshot was taken
         def screenshot(name, color_distance_limit: Diff.color_distance_limit,
-            shift_distance_limit: Diff.shift_distance_limit, area_size_limit: Diff.area_size_limit)
+            shift_distance_limit: Diff.shift_distance_limit, area_size_limit: Diff.area_size_limit,
+            skip_area: nil)
           return unless Screenshot.active?
           return if window_size_is_wrong?
 
@@ -81,11 +82,13 @@ module Capybara
           FileUtils.mkdir_p File.dirname(file_name)
           comparison = ImageCompare.new(file_name,
               dimensions: Screenshot.window_size, color_distance_limit: color_distance_limit,
-              area_size_limit: area_size_limit, shift_distance_limit: shift_distance_limit)
+              area_size_limit: area_size_limit, shift_distance_limit: shift_distance_limit,
+              skip_area: skip_area)
           checkout_vcs(name, comparison)
           take_stable_screenshot(comparison, color_distance_limit: color_distance_limit,
                                              shift_distance_limit: shift_distance_limit,
-                                             area_size_limit: area_size_limit)
+                                             area_size_limit: area_size_limit,
+                                             skip_area: skip_area)
           return unless comparison.old_file_exists?
 
           (@test_screenshots ||= []) << [caller(1..1).first, name, comparison]

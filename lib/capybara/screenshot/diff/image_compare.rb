@@ -11,7 +11,7 @@ module Capybara
         attr_reader :annotated_new_file_name, :annotated_old_file_name, :new_file_name, :old_file_name
 
         def initialize(new_file_name, old_file_name = nil, dimensions: nil, color_distance_limit: nil,
-            area_size_limit: nil, shift_distance_limit: nil)
+            area_size_limit: nil, shift_distance_limit: nil, skip_area: nil)
           @new_file_name = new_file_name
           @color_distance_limit = color_distance_limit
           @area_size_limit = area_size_limit
