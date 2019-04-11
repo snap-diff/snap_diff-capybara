@@ -275,7 +275,11 @@ module Capybara
         end
 
         def same_color?(old_img, new_img, x, y)
-          return true if @skip_area && @skip_area[0] <= x && x <= @skip_area[2] && @skip_area[1] <= y && y <= @skip_area[3]
+          if @skip_area && @skip_area[0] <= x && x <= @skip_area[2] &&
+              @skip_area[1] <= y && y <= @skip_area[3]
+            return true
+          end
+
           color_distance =
             color_distance_at(new_img, old_img, x, y, shift_distance_limit: @shift_distance_limit)
           if !@max_color_distance || color_distance > @max_color_distance

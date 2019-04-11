@@ -81,7 +81,7 @@ module Capybara
         end
 
         def stabilization_images(base_file)
-          Dir["#{base_file.chomp('.png')}_x*.png~"]
+          Dir["#{base_file.chomp('.png')}_x*.png~"].sort
         end
 
         def clean_stabilization_images(base_file)
