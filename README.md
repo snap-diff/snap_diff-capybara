@@ -16,7 +16,7 @@ Add this line to your application's Gemfile:
 
 ```ruby
 gem 'capybara-screenshot-diff'
-gem 'oily_png', platform :ruby
+gem 'oily_png', platform: :ruby
 ```
 
 And then execute:
@@ -145,7 +145,7 @@ end
 test 'my subfeature' do
   screenshot_group 'subfeature'
   visit '/feature'
-  click_button 'Interresting button'
+  click_button 'Interesting button'
   screenshot 'subfeature_index'
   click_button 'Perform action'
   screenshot 'action_performed'
