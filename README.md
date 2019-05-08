@@ -12,7 +12,7 @@ taking screen shots and comparing them to the previous revision.
 
 ## Installation
 
-Add this line to your application's Gemfile:
+Add these lines to your application's Gemfile:
 
 ```ruby
 gem 'capybara-screenshot-diff'
