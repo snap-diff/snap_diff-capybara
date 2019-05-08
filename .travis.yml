@@ -2,10 +2,12 @@ language: ruby
 sudo: false
 cache: bundler
 rvm:
-  - jruby-9.2.0.0
-  - ruby-2.5.1
-  - ruby-2.4.4
-  - ruby-2.3.7
+  - jruby-9.2.7.0
+  - ruby-2.6.3
+  - ruby-2.5.5
+  - ruby-2.4.6
+  - ruby-2.3.8
+  - truffleruby-1.0.0-rc16
 
 gemfile:
   - gemfiles/rails52.gemfile
@@ -18,8 +20,3 @@ env:
 
 jdk:
   - oraclejdk8
-
-# FIXME(uwe): Remove when fixed: https://github.com/travis-ci/travis-ci/issues/9383
-before_install:
-  - gem install bundler
-# EMXIF
