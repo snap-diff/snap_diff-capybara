@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 eval File.read("#{__dir__}/common.gemfile")
 
 gem 'actionpack', '~>5.0.1'

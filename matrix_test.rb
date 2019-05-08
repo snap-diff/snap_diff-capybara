@@ -1,4 +1,5 @@
 #!/usr/bin/env ruby -w
+# frozen_string_literal: true
 
 system('rubocop --auto-correct') || exit(1)
 

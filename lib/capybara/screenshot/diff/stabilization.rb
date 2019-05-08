@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require_relative 'os'
 
 module Capybara
@@ -58,7 +60,7 @@ module Capybara
             FileUtils.mv comparison.new_file_name, previous_file_name
           end
         ensure
-          blurred_input.click if blurred_input
+          blurred_input&.click
         end
 
         private

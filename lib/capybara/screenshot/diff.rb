@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'capybara/dsl'
 require 'capybara/screenshot/diff/version'
 require 'capybara/screenshot/diff/image_compare'
@@ -29,7 +31,7 @@ module Capybara
       end
 
       def screenshot_area_abs
-        "#{root}/#{screenshot_area}".freeze
+        "#{root}/#{screenshot_area}"
       end
     end
 

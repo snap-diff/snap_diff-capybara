@@ -2,4 +2,4 @@
 
 eval File.read("#{__dir__}/common.gemfile")
 
-gem 'actionpack', '~>5.1.2'
+gem 'actionpack', '~>6.0.0'
