@@ -2,7 +2,7 @@ language: ruby
 sudo: false
 cache: bundler
 rvm:
-  - jruby-9.2.7.0
+#  - jruby-9.2.7.0
   - ruby-2.6.3
   - ruby-2.5.5
   - ruby-2.4.6
@@ -10,7 +10,7 @@ rvm:
   - truffleruby-1.0.0-rc16
 
 gemfile:
-#  - gemfiles/rails60.gemfile
+  - gemfiles/rails60.gemfile
   - gemfiles/rails52.gemfile
   - gemfiles/rails51.gemfile
   - gemfiles/rails50.gemfile
@@ -21,3 +21,8 @@ env:
 
 jdk:
   - oraclejdk8
+
+matrix:
+  fast_finish: true
+  allow_failures:
+    - rvm: truffleruby-1.0.0-rc16
