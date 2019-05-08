@@ -2,7 +2,7 @@ language: ruby
 sudo: false
 cache: bundler
 rvm:
-#  - jruby-9.2.7.0
+  - jruby-9.2.7.0
   - ruby-2.6.3
   - ruby-2.5.5
   - ruby-2.4.6
@@ -24,5 +24,10 @@ jdk:
 
 matrix:
   fast_finish: true
+  exclude:
+    - rvm: ruby-2.4.6
+      gemfile: gemfiles/rails60.gemfile
+    - rvm: ruby-2.3.8
+      gemfile: gemfiles/rails60.gemfile
   allow_failures:
     - rvm: truffleruby-1.0.0-rc16

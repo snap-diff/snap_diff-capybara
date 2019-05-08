@@ -49,8 +49,8 @@ travis['rvm'].each do |ruby|
   system "ruby-install --no-reinstall #{ruby}" || exit(1)
   travis['gemfile'].each do |gemfile|
     if travis['matrix'] &&
-        (travis['matrix']['exclude'].to_a + travis['matrix']['allowed_failures'].to_a)
-            .any? { |f| f['rvm'] == ruby && f['gemfile'] == gemfile }
+        (travis['matrix']['exclude'].to_a + travis['matrix']['allow_failures'].to_a)
+            .any? { |f| f['rvm'] == ruby && (f['gemfile'].nil? || f['gemfile'] == gemfile) }
       puts 'Skipping known failure.'
       next
     end
