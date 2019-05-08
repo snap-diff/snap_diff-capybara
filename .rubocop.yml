@@ -7,6 +7,10 @@ AllCops:
   Exclude:
     - gemfiles/vendor/**/*
 
+Layout/AlignArguments:
+  EnforcedStyle: with_fixed_indentation
+  IndentationWidth: 4
+
 Layout/AlignParameters:
   EnforcedStyle: with_fixed_indentation
   IndentationWidth: 4
