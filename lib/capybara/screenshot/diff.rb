@@ -59,8 +59,8 @@ module Capybara
 
         clas.teardown do
           if Capybara::Screenshot::Diff.enabled && @test_screenshots
-            test_screenshot_errors = @test_screenshots
-              .map { |caller, name, compare| assert_image_not_changed(caller, name, compare) }.compact!
+            test_screenshot_errors = @test_screenshots.map(&method(:assert_image_not_changed))
+            test_screenshot_errors.compact!
             fail(test_screenshot_errors.join("\n\n")) if test_screenshot_errors.any?
           end
         end
