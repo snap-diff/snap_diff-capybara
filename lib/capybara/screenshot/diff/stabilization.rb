@@ -25,7 +25,7 @@ module Capybara
           blurred_input = prepare_page_for_screenshot
           previous_file_name = comparison.old_file_name
           screenshot_started_at = last_image_change_at = Time.now
-          loop.with_index do |_x, i|
+          0.step do |i|
             take_right_size_screenshot(comparison)
 
             break unless Capybara::Screenshot.stability_time_limit
