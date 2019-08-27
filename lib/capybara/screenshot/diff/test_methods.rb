@@ -70,9 +70,11 @@ module Capybara
         # @return [Boolean] wether a screenshot was taken
         def screenshot(name, color_distance_limit: Diff.color_distance_limit,
             shift_distance_limit: Diff.shift_distance_limit, area_size_limit: Diff.area_size_limit,
-            skip_area: nil)
+            skip_area: Diff.skip_area)
           return unless Screenshot.active?
           return if window_size_is_wrong?
+
+          skip_area = skip_area&.flatten&.each_cons(4)&.to_a # Allow nil or single or multiple areas
 
           if @screenshot_counter
             name = "#{format('%02i', @screenshot_counter)}_#{name}"

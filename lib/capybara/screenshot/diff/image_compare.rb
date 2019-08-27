@@ -277,9 +277,8 @@ module Capybara
         end
 
         def same_color?(old_img, new_img, x, y)
-          if @skip_area && @skip_area[0] <= x && x <= @skip_area[2] &&
-              @skip_area[1] <= y && y <= @skip_area[3]
-            return true
+          @skip_area&.each do |skip_start_x, skip_start_y, skip_end_x, skip_end_y|
+            return true if skip_start_x <= x && x <= skip_end_x && skip_start_y <= y && y <= skip_end_y
           end
 
           color_distance =

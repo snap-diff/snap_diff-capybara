@@ -25,7 +25,7 @@ module Capybara
           blurred_input = prepare_page_for_screenshot
           previous_file_name = comparison.old_file_name
           screenshot_started_at = last_image_change_at = Time.now
-          0.step do |i|
+          1.step do |i|
             take_right_size_screenshot(comparison)
 
             break unless Capybara::Screenshot.stability_time_limit
@@ -118,9 +118,9 @@ module Capybara
         def check_max_wait_time(comparison, screenshot_started_at, shift_distance_limit:)
           shift_factor = shift_distance_limit ? (shift_distance_limit * 2 + 1) ^ 2 : 1
           max_wait_time = Capybara.default_max_wait_time * shift_factor
-          assert (Time.now - screenshot_started_at) < max_wait_time,
+          assert((Time.now - screenshot_started_at) < max_wait_time,
               "Could not get stable screenshot within #{max_wait_time}s\n" \
-                      "#{stabilization_images(comparison.new_file_name).join("\n")}"
+                      "#{stabilization_images(comparison.new_file_name).join("\n")}")
         end
 
         def assert_images_loaded(timeout: Capybara.default_max_wait_time)
@@ -131,8 +131,8 @@ module Capybara
             pending_image = evaluate_script IMAGE_WAIT_SCRIPT
             break unless pending_image
 
-            assert (Time.now - start) < timeout,
-                "Images not loaded after #{timeout}s: #{pending_image.inspect}"
+            assert((Time.now - start) < timeout,
+                "Images not loaded after #{timeout}s: #{pending_image.inspect}")
             sleep 0.1
           end
         end

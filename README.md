@@ -409,6 +409,12 @@ The arguments are [x1, y1, x2, y2] for the area you want to ignore.  You can als
 Capybara::Screenshot::Diff.skip_area = [0, 0, 64, 48]
 ```
 
+If you need to ignore multiple areas, you can supply an array of arrays:
+
+```ruby
+screenshot 'index', skip_area: [[0, 0, 64, 48], [17, 6, 27, 16]]
+```
+
 
 ## Development
 
