@@ -24,7 +24,7 @@ jdk:
 matrix:
   fast_finish: true
   exclude:
-    - rvm: ruby-2.4.7
+    - rvm: ruby-2.4.6
       gemfile: gemfiles/rails60.gemfile
   allow_failures:
     - rvm: truffleruby-19.2.0
