@@ -5,7 +5,7 @@ rvm:
   - jruby-9.2.8.0
   - ruby-2.6.3
   - ruby-2.5.5
-  - ruby-2.4.7
+  - ruby-2.4.6
   - truffleruby-19.2.0
 
 gemfile:
