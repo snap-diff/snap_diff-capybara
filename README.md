@@ -295,9 +295,17 @@ shot will be taken and compared to the first.  This is repeated until two
 subsequent screen shots are identical.
 
 ```ruby
-Capybara::Screenshot.stability_time_limit = 0.5
+Capybara::Screenshot.stability_time_limit = 0.1
 ```
 
+This can be overridden on a single screenshot:
+
+```ruby
+test 'stability_time_limit' do
+  visit '/'
+  screenshot 'index', stability_time_limit: 0.5
+end
+```
 
 
 ### Removing focus from the active element

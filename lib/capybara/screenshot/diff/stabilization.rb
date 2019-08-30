@@ -21,14 +21,14 @@ module Capybara
         JS
 
         def take_stable_screenshot(comparison, color_distance_limit:, shift_distance_limit:,
-            area_size_limit:, skip_area:)
+            area_size_limit:, skip_area:, stability_time_limit:)
           blurred_input = prepare_page_for_screenshot
           previous_file_name = comparison.old_file_name
           screenshot_started_at = last_image_change_at = Time.now
           1.step do |i|
             take_right_size_screenshot(comparison)
 
-            break unless Capybara::Screenshot.stability_time_limit
+            break unless stability_time_limit
 
             if comparison.quick_equal?
               clean_stabilization_images(comparison.new_file_name)
@@ -42,7 +42,7 @@ module Capybara
                     color_distance_limit: color_distance_limit, shift_distance_limit: shift_distance_limit,
                     area_size_limit: area_size_limit, skip_area: skip_area)
               if stabilization_comparison.quick_equal?
-                if (Time.now - last_image_change_at) > Capybara::Screenshot.stability_time_limit
+                if (Time.now - last_image_change_at) > stability_time_limit
                   clean_stabilization_images(comparison.new_file_name)
                   break
                 end
