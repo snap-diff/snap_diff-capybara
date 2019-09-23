@@ -50,14 +50,13 @@ module Capybara
               else
                 last_image_change_at = Time.now
               end
-
-              check_max_wait_time(comparison, screenshot_started_at,
-                  shift_distance_limit: shift_distance_limit)
             end
 
             previous_file_name = "#{comparison.new_file_name.chomp('.png')}_x#{format('%02i', i)}.png~"
-
             FileUtils.mv comparison.new_file_name, previous_file_name
+
+            check_max_wait_time(comparison, screenshot_started_at,
+                shift_distance_limit: shift_distance_limit)
           end
         ensure
           blurred_input&.click
