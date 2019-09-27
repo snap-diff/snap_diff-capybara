@@ -71,7 +71,8 @@ module Capybara
         def screenshot(name, area_size_limit: Diff.area_size_limit,
             color_distance_limit: Diff.color_distance_limit,
             shift_distance_limit: Diff.shift_distance_limit, skip_area: Diff.skip_area,
-            stability_time_limit: Screenshot.stability_time_limit)
+            stability_time_limit: Screenshot.stability_time_limit,
+            wait: Capybara.default_max_wait_time)
           return unless Screenshot.active?
           return if window_size_is_wrong?
 
@@ -94,7 +95,8 @@ module Capybara
                                              shift_distance_limit: shift_distance_limit,
                                              area_size_limit: area_size_limit,
                                              skip_area: skip_area,
-                                             stability_time_limit: stability_time_limit)
+                                             stability_time_limit: stability_time_limit,
+                                             wait: wait)
           return unless comparison.old_file_exists?
 
           (@test_screenshots ||= []) << [caller(1..1).first, name, comparison]

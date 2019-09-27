@@ -307,6 +307,17 @@ test 'stability_time_limit' do
 end
 ```
 
+### Maximum wait limit
+
+When the `stability_time_limit` is set, but no stable screenshot can be taken, a timeout occurs.
+The timeout occurs after `Capybara.default_max_wait_time`, but can be overridden by an option.
+
+```ruby
+test 'max wait time' do
+  visit '/'
+  screenshot 'index', wait: 20.seconds
+end
+```
 
 ### Removing focus from the active element
 

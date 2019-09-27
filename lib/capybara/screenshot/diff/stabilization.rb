@@ -21,8 +21,8 @@ module Capybara
         JS
 
         def take_stable_screenshot(comparison, color_distance_limit:, shift_distance_limit:,
-            area_size_limit:, skip_area:, stability_time_limit:)
-          blurred_input = prepare_page_for_screenshot
+            area_size_limit:, skip_area:, stability_time_limit:, wait:)
+          blurred_input = prepare_page_for_screenshot(timeout: wait)
           previous_file_name = comparison.old_file_name
           screenshot_started_at = last_image_change_at = Time.now
           1.step do |i|
@@ -56,7 +56,7 @@ module Capybara
             FileUtils.mv comparison.new_file_name, previous_file_name
 
             check_max_wait_time(comparison, screenshot_started_at,
-                shift_distance_limit: shift_distance_limit)
+                wait: wait, shift_distance_limit: shift_distance_limit)
           end
         ensure
           blurred_input&.click
@@ -89,8 +89,8 @@ module Capybara
           FileUtils.rm stabilization_images(base_file)
         end
 
-        def prepare_page_for_screenshot
-          assert_images_loaded
+        def prepare_page_for_screenshot(timeout:)
+          assert_images_loaded(timeout: timeout)
           if Capybara::Screenshot.blur_active_element
             active_element = execute_script(<<-JS)
               ae = document.activeElement;
@@ -114,15 +114,15 @@ module Capybara
           # ODOT
         end
 
-        def check_max_wait_time(comparison, screenshot_started_at, shift_distance_limit:)
+        def check_max_wait_time(comparison, screenshot_started_at, wait:, shift_distance_limit:)
           shift_factor = shift_distance_limit ? (shift_distance_limit * 2 + 1) ^ 2 : 1
-          max_wait_time = Capybara.default_max_wait_time * shift_factor
+          max_wait_time = wait * shift_factor
           assert((Time.now - screenshot_started_at) < max_wait_time,
               "Could not get stable screenshot within #{max_wait_time}s\n" \
                       "#{stabilization_images(comparison.new_file_name).join("\n")}")
         end
 
-        def assert_images_loaded(timeout: Capybara.default_max_wait_time)
+        def assert_images_loaded(timeout:)
           return unless respond_to? :evaluate_script
 
           start = Time.now
