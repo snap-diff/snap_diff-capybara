@@ -52,7 +52,9 @@ module Capybara
               end
             end
 
-            previous_file_name = "#{comparison.new_file_name.chomp('.png')}_x#{format('%02i', i)}.png~"
+            previous_file_name = "#{comparison.new_file_name.chomp('.png')}" \
+                "_x#{format('%02i', i)}_#{(Time.now - screenshot_started_at).round(1)}s" \
+                "_#{stabilization_comparison.dimensions&.to_s&.gsub(', ', '_') || :initial}.png~"
             FileUtils.mv comparison.new_file_name, previous_file_name
 
             check_max_wait_time(comparison, screenshot_started_at,
@@ -117,9 +119,25 @@ module Capybara
         def check_max_wait_time(comparison, screenshot_started_at, wait:, shift_distance_limit:)
           shift_factor = shift_distance_limit ? (shift_distance_limit * 2 + 1) ^ 2 : 1
           max_wait_time = wait * shift_factor
-          assert((Time.now - screenshot_started_at) < max_wait_time,
-              "Could not get stable screenshot within #{max_wait_time}s\n" \
-                      "#{stabilization_images(comparison.new_file_name).join("\n")}")
+          return if (Time.now - screenshot_started_at) < max_wait_time
+
+          # FIXME(uwe): Change to store the failure and only report if the test succeeds functionally.
+          previous_file = comparison.old_file_name
+          stabilization_images(comparison.new_file_name).each do |file_name|
+            if File.exist? previous_file
+              stabilization_comparison =
+                ImageCompare.new(file_name, previous_file,
+                    color_distance_limit: comparison.color_distance_limit,
+                    shift_distance_limit: comparison.shift_distance_limit,
+                    area_size_limit: comparison.area_size_limit, skip_area: comparison.skip_area)
+              assert stabilization_comparison.different?
+              FileUtils.mv stabilization_comparison.annotated_new_file_name, file_name
+              FileUtils.rm stabilization_comparison.annotated_old_file_name
+            end
+            previous_file = file_name
+          end
+          fail("Could not get stable screenshot within #{max_wait_time}s\n" \
+                    "#{stabilization_images(comparison.new_file_name).join("\n")}")
         end
 
         def assert_images_loaded(timeout:)

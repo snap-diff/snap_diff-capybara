@@ -5,12 +5,13 @@ require 'chunky_png'
 module Capybara
   module Screenshot
     module Diff
-      # Compare two images and determine if they are equal, different, or within som comparison
+      # Compare two images and determine if they are equal, different, or within some comparison
       # range considering color values and difference area size.
       class ImageCompare
         include ChunkyPNG::Color
 
-        attr_reader :annotated_new_file_name, :annotated_old_file_name, :new_file_name, :old_file_name
+        attr_reader :annotated_new_file_name, :annotated_old_file_name, :area_size_limit,
+            :color_distance_limit, :new_file_name, :old_file_name, :shift_distance_limit, :skip_area
 
         def initialize(new_file_name, old_file_name = nil, dimensions: nil, color_distance_limit: nil,
             area_size_limit: nil, shift_distance_limit: nil, skip_area: nil)
@@ -97,10 +98,7 @@ module Capybara
           return not_different if @top.nil?
           return not_different if @area_size_limit && size <= @area_size_limit
 
-          annotated_old_img, annotated_new_img = draw_rectangles(images, @bottom, @left, @right, @top)
-
-          save_images(@annotated_new_file_name, annotated_new_img,
-              @annotated_old_file_name, annotated_old_img)
+          save_annotated_images(images)
           true
         end
 
@@ -117,6 +115,8 @@ module Capybara
         end
 
         def dimensions
+          return unless @left || @top || @right || @bottom
+
           [@left, @top, @right, @bottom]
         end
 
@@ -135,6 +135,13 @@ module Capybara
         end
 
         private
+
+        def save_annotated_images(images)
+          annotated_old_img, annotated_new_img = draw_rectangles(images, @bottom, @left, @right, @top)
+
+          save_images(@annotated_new_file_name, annotated_new_img,
+              @annotated_old_file_name, annotated_old_img)
+        end
 
         def calculate_metrics
           old_file, new_file = load_image_files(@old_file_name, @new_file_name)
