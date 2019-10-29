@@ -15,8 +15,8 @@ module Capybara
           assert_equal <<-MSG.strip_heredoc.chomp, message
             Screenshot does not match for 'name' (area: 684px [11, 3, 48, 20], max_color_distance: #{value})
             #{Rails.root}/screenshot.png
-            #{Rails.root}/screenshot_0.png~
-            #{Rails.root}/screenshot_1.png~
+            #{Rails.root}/screenshot.committed.png
+            #{Rails.root}/screenshot.latest.png
             at caller
           MSG
         end
@@ -28,8 +28,8 @@ module Capybara
           assert_equal <<-MSG.strip_heredoc.chomp, message
             Screenshot does not match for 'name' (area: 684px [11, 3, 48, 20], max_color_distance: #{value}, max_shift_distance: 15)
             #{Rails.root}/screenshot.png
-            #{Rails.root}/screenshot_0.png~
-            #{Rails.root}/screenshot_1.png~
+            #{Rails.root}/screenshot.committed.png
+            #{Rails.root}/screenshot.latest.png
             at caller
           MSG
         end
