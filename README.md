@@ -274,7 +274,7 @@ configuration options that that are relevant.
 The most likely one you'll want to modify is ...
 
 ```ruby
-Capybara::Screenshot::Diff.save_path = "other/path"
+Capybara::Screenshot.save_path = "other/path"
 ```
 
 The `save_path` option is relative to `Capybara::Screenshot.root`.

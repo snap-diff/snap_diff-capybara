@@ -21,8 +21,8 @@ module Capybara
           @dimensions = dimensions
           @skip_area = skip_area
           @old_file_name = old_file_name || "#{new_file_name}~"
-          @annotated_old_file_name = "#{new_file_name.chomp('.png')}_0.png~"
-          @annotated_new_file_name = "#{new_file_name.chomp('.png')}_1.png~"
+          @annotated_old_file_name = "#{new_file_name.chomp('.png')}.reference.png"
+          @annotated_new_file_name = "#{new_file_name.chomp('.png')}.current.png"
           reset
         end
 
