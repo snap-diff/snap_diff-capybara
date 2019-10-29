@@ -55,6 +55,9 @@ Style/Documentation:
 Style/DoubleNegation:
   Enabled: false
 
+Style/FormatStringToken:
+  EnforcedStyle: unannotated
+
 Style/NumericPredicate:
   Enabled: false
 
