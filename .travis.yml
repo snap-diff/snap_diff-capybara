@@ -6,7 +6,7 @@ rvm:
   - ruby-2.6.3
   - ruby-2.5.5
   - ruby-2.4.6
-  - truffleruby-19.2.0
+  - truffleruby
 
 gemfile:
   - gemfiles/rails60.gemfile
