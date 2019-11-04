@@ -105,11 +105,6 @@ module Capybara
 
         def window_size_is_wrong?
           selenium? && Screenshot.window_size &&
-
-            # FIXME(uwe): This happens with headless chrome.  Why?!
-            page.driver.browser.manage.window.size.width &&
-            # EMXIF
-
             page.driver.browser.manage.window.size !=
               ::Selenium::WebDriver::Dimension.new(*Screenshot.window_size)
         end
@@ -117,14 +112,7 @@ module Capybara
         def assert_image_not_changed(caller, name, comparison)
           return unless comparison.different?
 
-          # TODO(uwe): Remove check when we stop supporting Ruby 2.3 and older
-          max_color_distance = if RUBY_VERSION >= '2.4'
-                                 comparison.max_color_distance.ceil(1)
-                               else
-                                 comparison.max_color_distance.ceil
-                               end
-          # ODOT
-
+          max_color_distance = comparison.max_color_distance.ceil(1)
           max_shift_distance = comparison.max_shift_distance
           "Screenshot does not match for '#{name}' (area: #{comparison.size}px #{comparison.dimensions}" \
             ", max_color_distance: #{max_color_distance}" \
