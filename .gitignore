@@ -2,11 +2,11 @@
 /.bundle/
 /.idea
 /.yardoc
-/Gemfile.lock
 /_yardoc/
 /coverage/
 /doc/
 /gemfiles/*.lock
+/gems.locked
 /pkg/
 /spec/reports/
 /tmp/

@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
-eval File.read("#{__dir__}/common.gemfile")
+gems = "#{File.dirname __dir__}/gems.rb"
+eval File.read(gems), binding, gems
 
 gem 'actionpack', '~>4.2.7'
+gem 'bigdecimal', '<2'
