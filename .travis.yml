@@ -17,8 +17,7 @@ gemfile:
 env:
   - JRUBY_OPTS="--dev --debug"
 
-jdk:
-  - oraclejdk14
+jdk: openjdk14
 
 jobs:
   fast_finish: true
