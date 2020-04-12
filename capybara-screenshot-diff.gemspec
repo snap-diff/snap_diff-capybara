@@ -23,11 +23,4 @@ Gem::Specification.new do |spec|
   spec.add_runtime_dependency 'actionpack', '>= 4.2', '< 7'
   spec.add_runtime_dependency 'capybara', '>= 2', '< 4'
   spec.add_runtime_dependency 'chunky_png', '~> 1.3'
-
-  spec.add_development_dependency 'minitest', '~> 5.0'
-  spec.add_development_dependency 'minitest-reporters'
-  spec.add_development_dependency 'rake'
-  spec.add_development_dependency 'rubocop', '~> 0.81'
-  spec.add_development_dependency 'rubocop-performance', '~> 1.5'
-  spec.add_development_dependency 'simplecov', '~> 0.11'
 end
