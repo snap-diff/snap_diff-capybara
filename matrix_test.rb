@@ -40,7 +40,7 @@ def use_gemfile(ruby, gemfile, update_gemfiles)
   puts '$' * 80
 end
 
-travis['ruby'].each do |ruby|
+travis['rvm'].each do |ruby|
   next if /head/.match?(ruby) # ruby-install does not support HEAD installation
 
   puts '#' * 80
