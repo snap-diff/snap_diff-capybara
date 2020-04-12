@@ -164,6 +164,21 @@ doc
 ```
 
 
+#### Setting `screenshot_section` and/or `screenshot_group` for all tests
+
+Setting the `screenshot_section` and/or `screenshot_group` for all tests can be
+done in the super class setup:
+
+```ruby
+class ApplicationSystemTestCase < ActionDispatch::SystemTestCase
+  setup do
+    screenshot_section class_name.underscore.sub(/(_feature|_system)?_test$/, '')
+    screenshot_group name[5..-1]
+  end
+end
+```
+
+
 
 ### Multiple Capybara drivers
 
