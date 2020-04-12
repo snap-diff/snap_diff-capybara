@@ -178,6 +178,9 @@ class ApplicationSystemTestCase < ActionDispatch::SystemTestCase
 end
 ```
 
+`screenshot_section` and/or `screenshot_group` can still be overridden in each
+test.
+
 
 
 ### Multiple Capybara drivers
