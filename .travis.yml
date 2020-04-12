@@ -20,7 +20,7 @@ env:
 jdk:
   - oraclejdk14
 
-matrix:
+jobs:
   fast_finish: true
   allow_failures:
     - rvm: truffleruby
