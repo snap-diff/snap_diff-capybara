@@ -378,8 +378,8 @@ module Capybara
           Float::INFINITY
         end
 
-        def color_matches(new_img, org_color, dx, dy, color_distance_limit)
-          new_color = new_img[dx, dy]
+        def color_matches(new_img, org_color, x, y, color_distance_limit)
+          new_color = new_img[x, y]
           return new_color == org_color unless color_distance_limit
 
           color_distance = ChunkyPNG::Color.euclidean_distance_rgba(org_color, new_color)

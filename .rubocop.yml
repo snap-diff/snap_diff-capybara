@@ -2,22 +2,35 @@ inherit_from: .rubocop_todo.yml
 require: rubocop-performance
 
 AllCops:
-  TargetRubyVersion: 2.4
+  TargetRubyVersion: 2.5
   DisplayCopNames: true
   DisplayStyleGuide: true
   Exclude:
     - gemfiles/vendor/**/*
 
-Layout/AlignArguments:
+# TODO(uwe): Remove after updating to rubocop 1.0
+Lint/RaiseException:
+  Enabled: true
+Lint/StructNewOverride:
+  Enabled: true
+Style/HashEachMethods:
+  Enabled: true
+Style/HashTransformKeys:
+  Enabled: true
+Style/HashTransformValues:
+  Enabled: true
+# ODOT
+
+Layout/ArgumentAlignment:
   EnforcedStyle: with_fixed_indentation
   IndentationWidth: 4
 
-Layout/AlignParameters:
-  EnforcedStyle: with_fixed_indentation
-  IndentationWidth: 4
-
-Layout/IndentHeredoc:
+Layout/HeredocIndentation:
   EnforcedStyle: active_support
+
+Layout/LineLength:
+  Max: 107
+  IgnoreCopDirectives: true
 
 Layout/MultilineMethodCallIndentation:
   EnforcedStyle: indented
@@ -25,19 +38,17 @@ Layout/MultilineMethodCallIndentation:
 Layout/MultilineOperationIndentation:
   EnforcedStyle: indented
 
+Layout/ParameterAlignment:
+  EnforcedStyle: with_fixed_indentation
+  IndentationWidth: 4
+
 Lint/Debugger:
   Enabled: false
-
-# Configuration parameters: AllowHeredoc, AllowURI, URISchemes, IgnoreCopDirectives, IgnoredPatterns.
-# URISchemes: http, https
-Metrics/LineLength:
-  Max: 107
-  IgnoreCopDirectives: true
 
 # Offense count: 2
 # Configuration parameters: MinNameLength, AllowNamesEndingInNumbers, AllowedNames, ForbiddenNames.
 # AllowedNames: io, id, to
-Naming/UncommunicativeMethodParamName:
+Naming/MethodParameterName:
   AllowedNames:
     - x
     - y
@@ -45,9 +56,6 @@ Naming/UncommunicativeMethodParamName:
 Security/Eval:
   Exclude:
     - gemfiles/*.gemfile
-
-#Style/AccessModifierDeclarations:
-#  Enabled: false
 
 Style/Documentation:
   Enabled: false

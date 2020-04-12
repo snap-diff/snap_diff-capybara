@@ -88,16 +88,14 @@ module Capybara
         end
 
         test 'max_color_distance 1.0' do
-          begin
-            a_img = ChunkyPNG::Image.from_blob(File.binread("#{TEST_IMAGES_DIR}/a.png"))
-            a_img[9, 6] += 0x010000
+          a_img = ChunkyPNG::Image.from_blob(File.binread("#{TEST_IMAGES_DIR}/a.png"))
+          a_img[9, 6] += 0x010000
 
-            comp = make_comparison(:a, :b)
-            other_img_filename = comp.new_file_name
-            a_img.save(other_img_filename)
+          comp = make_comparison(:a, :b)
+          other_img_filename = comp.new_file_name
+          a_img.save(other_img_filename)
 
-            assert_equal 1, comp.max_color_distance
-          end
+          assert_equal 1, comp.max_color_distance
         end
 
         test 'size a vs a_cropped' do
