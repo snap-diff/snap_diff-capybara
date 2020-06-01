@@ -1,5 +1,7 @@
 language: ruby
 cache: bundler
+addons:
+  chrome: stable
 rvm:
   - ruby-2.7
   - ruby-2.6
@@ -15,7 +17,9 @@ gemfile:
   - gemfiles/rails42.gemfile
 
 env:
-  - JRUBY_OPTS="--dev --debug"
+  global:
+    - JRUBY_OPTS="--dev --debug"
+    - COVERAGE="enabled"
 
 jdk: openjdk14
 

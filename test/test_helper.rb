@@ -1,6 +1,10 @@
 # frozen_string_literal: true
 
-if defined?(Rake) && (RUBY_ENGINE != 'jruby' || org.jruby.RubyInstanceConfig.FULL_TRACE_ENABLED)
+coverage_enabled = ENV['COVERAGE'] &&
+  defined?(Rake) &&
+  (RUBY_ENGINE != 'jruby' || org.jruby.RubyInstanceConfig.FULL_TRACE_ENABLED)
+
+if coverage_enabled
   require 'simplecov'
   SimpleCov.start
   SimpleCov.minimum_coverage RUBY_ENGINE == 'jruby' ? 82.5 : 83.5
@@ -20,6 +24,11 @@ require 'capybara/screenshot/diff'
 require 'minitest/autorun'
 require 'minitest/reporters'
 Minitest::Reporters.use!
+
+require 'capybara/minitest'
+
+Capybara.threadsafe = true
+Capybara.app = Rack::Builder.new { map('/') { run Rails.application } }
 
 # TODO(uwe): Remove when we stop support for Rails 4.2
 ActiveSupport.test_order = :random
