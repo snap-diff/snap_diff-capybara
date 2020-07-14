@@ -9,7 +9,7 @@
 # Offense count: 12
 # Configuration parameters: IgnoredMethods.
 Metrics/AbcSize:
-  Max: 50
+  Max: 60
 
 # Offense count: 2
 # Configuration parameters: CountComments, ExcludedMethods.
@@ -20,12 +20,12 @@ Metrics/BlockLength:
 # Offense count: 1
 # Configuration parameters: CountComments.
 Metrics/ClassLength:
-  Max: 309
+  Max: 400
 
 # Offense count: 6
 # Configuration parameters: IgnoredMethods.
 Metrics/CyclomaticComplexity:
-  Max: 17
+  Max: 20
 
 # Offense count: 15
 # Configuration parameters: CountComments, ExcludedMethods.
@@ -35,7 +35,7 @@ Metrics/MethodLength:
 # Offense count: 1
 # Configuration parameters: CountComments.
 Metrics/ModuleLength:
-  Max: 123
+  Max: 150
 
 # Offense count: 3
 # Configuration parameters: CountKeywordArgs.
@@ -45,4 +45,4 @@ Metrics/ParameterLists:
 # Offense count: 6
 # Configuration parameters: IgnoredMethods.
 Metrics/PerceivedComplexity:
-  Max: 17
+  Max: 20

@@ -45,6 +45,8 @@ module Capybara
       mattr_accessor(:enabled) { true }
       mattr_accessor :shift_distance_limit
       mattr_accessor :skip_area
+      mattr_accessor(:driver) { :chunky_png }
+      mattr_accessor(:tolerance) { 0.001 }
 
       def self.included(clas)
         clas.include TestMethods

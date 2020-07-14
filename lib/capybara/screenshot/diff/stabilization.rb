@@ -20,8 +20,7 @@ module Capybara
           }()
         JS
 
-        def take_stable_screenshot(comparison, color_distance_limit:, shift_distance_limit:,
-            area_size_limit:, skip_area:, stability_time_limit:, wait:)
+        def take_stable_screenshot(comparison, stability_time_limit:, wait:)
           blurred_input = prepare_page_for_screenshot(timeout: wait)
           previous_file_name = comparison.old_file_name
           screenshot_started_at = last_image_change_at = Time.now
@@ -37,10 +36,11 @@ module Capybara
             comparison.reset
 
             if previous_file_name
-              stabilization_comparison =
-                ImageCompare.new(comparison.new_file_name, previous_file_name,
-                    color_distance_limit: color_distance_limit, shift_distance_limit: shift_distance_limit,
-                    area_size_limit: area_size_limit, skip_area: skip_area)
+              stabilization_comparison = make_stabilization_comparison_from(
+                comparison,
+                comparison.new_file_name,
+                previous_file_name
+              )
               if stabilization_comparison.quick_equal?
                 if (Time.now - last_image_change_at) > stability_time_limit
                   clean_stabilization_images(comparison.new_file_name)
@@ -57,14 +57,21 @@ module Capybara
                 "_#{stabilization_comparison.dimensions&.to_s&.gsub(', ', '_') || :initial}.png~"
             FileUtils.mv comparison.new_file_name, previous_file_name
 
-            check_max_wait_time(comparison, screenshot_started_at,
-                wait: wait, shift_distance_limit: shift_distance_limit)
+            check_max_wait_time(
+              comparison,
+              screenshot_started_at,
+              max_wait_time: max_wait_time(comparison.shift_distance_limit, wait)
+            )
           end
         ensure
           blurred_input&.click
         end
 
         private
+
+        def make_stabilization_comparison_from(comparison, new_file_name, previous_file_name)
+          ImageCompare.new(new_file_name, previous_file_name, **comparison.driver_options)
+        end
 
         def reduce_retina_image_size(file_name)
           return if !ON_MAC || !selenium? || !Capybara::Screenshot.window_size
@@ -116,28 +123,32 @@ module Capybara
           # ODOT
         end
 
-        def check_max_wait_time(comparison, screenshot_started_at, wait:, shift_distance_limit:)
-          shift_factor = shift_distance_limit ? (shift_distance_limit * 2 + 1) ^ 2 : 1
-          max_wait_time = wait * shift_factor
+        def check_max_wait_time(comparison, screenshot_started_at, max_wait_time:)
           return if (Time.now - screenshot_started_at) < max_wait_time
 
           # FIXME(uwe): Change to store the failure and only report if the test succeeds functionally.
           previous_file = comparison.old_file_name
           stabilization_images(comparison.new_file_name).each do |file_name|
             if File.exist? previous_file
-              stabilization_comparison =
-                ImageCompare.new(file_name, previous_file,
-                    color_distance_limit: comparison.color_distance_limit,
-                    shift_distance_limit: comparison.shift_distance_limit,
-                    area_size_limit: comparison.area_size_limit, skip_area: comparison.skip_area)
+              stabilization_comparison = make_stabilization_comparison_from(
+                comparison,
+                file_name,
+                previous_file
+              )
               assert stabilization_comparison.different?
               FileUtils.mv stabilization_comparison.annotated_new_file_name, file_name
               FileUtils.rm stabilization_comparison.annotated_old_file_name
             end
             previous_file = file_name
           end
+
           fail("Could not get stable screenshot within #{max_wait_time}s\n" \
                     "#{stabilization_images(comparison.new_file_name).join("\n")}")
+        end
+
+        def max_wait_time(shift_distance_limit, wait)
+          shift_factor = shift_distance_limit ? (shift_distance_limit * 2 + 1) ^ 2 : 1
+          wait * shift_factor
         end
 
         def assert_images_loaded(timeout:)
@@ -148,8 +159,11 @@ module Capybara
             pending_image = evaluate_script IMAGE_WAIT_SCRIPT
             break unless pending_image
 
-            assert((Time.now - start) < timeout,
-                "Images not loaded after #{timeout}s: #{pending_image.inspect}")
+            assert(
+              (Time.now - start) < timeout,
+              "Images not loaded after #{timeout}s: #{pending_image.inspect}"
+            )
+
             sleep 0.1
           end
         end

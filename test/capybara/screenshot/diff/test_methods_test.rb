@@ -33,6 +33,10 @@ module Capybara
             at caller
           MSG
         end
+
+        def test_screenshot_support_drivers_options
+          screenshot('a', driver: :vips)
+        end
       end
     end
   end
