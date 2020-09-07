@@ -42,7 +42,7 @@ module Capybara
         end
 
         def current_capybara_driver_class
-          Capybara.drivers[Capybara.current_driver].call({}).class
+          Capybara.current_session.driver.class
         end
 
         def selenium?
