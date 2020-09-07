@@ -27,6 +27,10 @@ Or install it yourself as:
 
     $ gem install capybara-screenshot-diff
 
+### Requirements
+
+* [for :vips driver] libvips 8.9 or later, see the [libvips install instructions](https://libvips.github.io/libvips/install.html)
+
 ## Usage
 
 ### Minitest
@@ -452,10 +456,60 @@ If you need to ignore multiple areas, you can supply an array of arrays:
 screenshot 'index', skip_area: [[0, 0, 64, 48], [17, 6, 27, 16]]
 ```
 
+### Enable VIPS image processing
+
+By default for image processing is using ChunkyPNG, but there is option to switch to [Vips](https://www.rubydoc.info/gems/ruby-vips/Vips/Image)
+To switch to the Vips processor, you have 2 options:
+
+  * Globally: `Capybara::Screenshot::Diff.driver = :vips`  
+  * Per screenshot option: `screenshot 'index', driver: :vips`  
+
+With enabled VIPS there are new alternatives to process differences, which easier to find and support.
+For example, `shift_distance_limit` is very heavy operation, and instead better to use `median_filter_window_size`. 
+
+#### Tolerance level (vips only)
+
+You can set a “tolerance” anywhere from 0% to 100%. This is the amount of change that's allowable.
+If the screenshot has changed by more than that amount, it'll flag it as a failure.
+
+This is alternative to "Allowed difference size", only the difference that area calculates including valid pixels.
+But "tolerance" compares only different pixels.
+
+You can use the `tolerance` option to the `screenshot` method to set level:
+
+```ruby
+test 'unstable area' do
+  visit '/'
+  screenshot 'index', tolerance: 0.3
+end
+```
+
+You can also set this globally:
+
+```ruby
+Capybara::Screenshot::Diff.tolerance = 0.3
+```
+
+#### Median filter size (vips only)
+
+This is an alternative to "Allowed shift distance", but much faster.
+You can find more about this strategy on [Median Filter](https://en.wikipedia.org/wiki/Median_filter).
+Think about this like smoothing of the image, before comparison.
+
+You can use the `median_filter_window_size` option to the `screenshot` method to set level:
+
+```ruby
+test 'unstable area' do
+  visit '/'
+  screenshot 'index', median_filter_window_size: 2
+end
+```
 
 ## Development
 
-After checking out the repo, run `bin/setup` to install dependencies. Then, run `rake test` to run the tests. You can also run `bin/console` for an interactive prompt that will allow you to experiment.
+After checking out the repo, run `bin/setup` to install dependencies.
+Then, run `rake test` to run the tests.
+You can also run `bin/console` for an interactive prompt that will allow you to experiment.
 
 To install this gem onto your local machine, run `bundle exec rake install`.
 
@@ -463,7 +517,9 @@ To release a new version, update the version number in `lib/capybara/screenshot/
 
 ## Contributing
 
-Bug reports and pull requests are welcome on GitHub at https://github.com/donv/capybara-screenshot-diff. This project is intended to be a safe, welcoming space for collaboration, and contributors are expected to adhere to the [Contributor Covenant](http://contributor-covenant.org) code of conduct.
+Bug reports and pull requests are welcome on GitHub at https://github.com/donv/capybara-screenshot-diff.
+This project is intended to be a safe, welcoming space for collaboration,
+and contributors are expected to adhere to the [Contributor Covenant](http://contributor-covenant.org) code of conduct.
 
 
 ## License

@@ -1,10 +1,6 @@
 # frozen_string_literal: true
 
-coverage_enabled = ENV['COVERAGE'] &&
-  defined?(Rake) &&
-  (RUBY_ENGINE != 'jruby' || org.jruby.RubyInstanceConfig.FULL_TRACE_ENABLED)
-
-if coverage_enabled
+if ENV['COVERAGE'] && (RUBY_ENGINE != 'jruby' || org.jruby.RubyInstanceConfig.FULL_TRACE_ENABLED)
   require 'simplecov'
   SimpleCov.start
   SimpleCov.minimum_coverage RUBY_ENGINE == 'jruby' ? 82.5 : 83.5
@@ -46,10 +42,8 @@ module Capybara
           FileUtils.cp File.expand_path("images/#{source_image}", __dir__), file_name
         end
 
-        def make_comparison(old_img, new_img, color_distance_limit: nil, shift_distance_limit: nil)
-          comp = ImageCompare
-            .new("#{Rails.root}/screenshot.png", color_distance_limit: color_distance_limit,
-                                                 shift_distance_limit: shift_distance_limit)
+        def make_comparison(old_img, new_img, **options)
+          comp = ImageCompare.new("#{Rails.root}/screenshot.png", **options)
           set_test_images(comp, old_img, new_img)
           comp
         end

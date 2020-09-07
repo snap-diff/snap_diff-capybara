@@ -1,7 +1,17 @@
+dist: focal
 language: ruby
 cache: bundler
 addons:
-  chrome: stable
+  apt:
+    update: true
+    packages:
+      - libvips
+      - libvips-dev
+      - libvips-tools
+
+before_install:
+  - vips --version
+
 rvm:
   - ruby-2.7
   - ruby-2.6
