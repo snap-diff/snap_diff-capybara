@@ -88,7 +88,7 @@ module Capybara
 
           # Allow nil or single or multiple areas
           if driver_options[:skip_area]
-            driver_options[:skip_area] = driver_options[:skip_area].flatten&.each_cons(4)&.to_a
+            driver_options[:skip_area] = driver_options[:skip_area].compact.flatten&.each_cons(4)&.to_a
           end
 
           if @screenshot_counter
