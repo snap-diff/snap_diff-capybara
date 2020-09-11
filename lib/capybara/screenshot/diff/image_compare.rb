@@ -3,7 +3,7 @@
 module Capybara
   module Screenshot
     module Diff
-      LOADED_DRIVERS = {}
+      LOADED_DRIVERS = {} # rubocop: disable Style/MutableConstant
 
       # Compare two images and determine if they are equal, different, or within some comparison
       # range considering color values and difference area size.
@@ -23,16 +23,16 @@ module Capybara
 
         def find_driver_class_for(driver)
           LOADED_DRIVERS[driver] ||=
-              case driver
-              when :chunky_png
-                require_relative './drivers/chunky_png_driver'
-                Drivers::ChunkyPNGDriver
-              when :vips
-                require_relative './drivers/vips_driver'
-                Drivers::VipsDriver
-              else
-                fail "Wrong adapter #{driver.inspect}. Available adapters: :vips or :chunky_png"
-              end
+            case driver
+            when :chunky_png
+              require 'capybara/screenshot/diff/drivers/chunky_png_driver'
+              Drivers::ChunkyPNGDriver
+            when :vips
+              require 'capybara/screenshot/diff/drivers/vips_driver'
+              Drivers::VipsDriver
+            else
+              fail "Wrong adapter #{driver.inspect}. Available adapters: :vips or :chunky_png"
+            end
         end
       end
     end

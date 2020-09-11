@@ -119,8 +119,7 @@ module Capybara
         def assert_image_not_changed(caller, name, comparison)
           return unless comparison.different?
 
-          backtrace = defined?(Rails) ? Rails.backtrace_cleaner.clean(caller) : caller
-          "Screenshot does not match for '#{name}' #{comparison.error_message}\nat #{backtrace}"
+          "Screenshot does not match for '#{name}' #{comparison.error_message}\nat #{caller}"
         end
       end
     end
