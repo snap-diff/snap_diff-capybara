@@ -25,10 +25,10 @@ module Capybara
           LOADED_DRIVERS[driver] ||=
               case driver
               when :chunky_png
-                require_relative 'drivers/chunky_png_driver'
+                require_relative './drivers/chunky_png_driver'
                 Drivers::ChunkyPNGDriver
               when :vips
-                require_relative 'drivers/vips_driver'
+                require_relative './drivers/vips_driver'
                 Drivers::VipsDriver
               else
                 fail "Wrong adapter #{driver.inspect}. Available adapters: :vips or :chunky_png"
