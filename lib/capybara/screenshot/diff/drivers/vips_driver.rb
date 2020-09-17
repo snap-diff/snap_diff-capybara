@@ -231,7 +231,7 @@ module Capybara
           end
 
           def from_file(old_file_name)
-            result = Vips::Image.new_from_file(old_file_name)
+            result = ::Vips::Image.new_from_file(old_file_name)
 
             result = result.colourspace('srgb') if result.bands < 3
             result = result.bandjoin(255) if result.bands == 3

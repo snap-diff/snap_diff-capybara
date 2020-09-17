@@ -2,6 +2,7 @@
 
 require 'capybara/dsl'
 require 'capybara/screenshot/diff/version'
+require 'capybara/screenshot/diff/drivers/utils'
 require 'capybara/screenshot/diff/image_compare'
 require 'capybara/screenshot/diff/test_methods'
 
@@ -45,8 +46,10 @@ module Capybara
       mattr_accessor(:enabled) { true }
       mattr_accessor :shift_distance_limit
       mattr_accessor :skip_area
-      mattr_accessor(:driver) { :chunky_png }
+      mattr_accessor(:driver) { :auto }
       mattr_accessor(:tolerance) { 0.001 }
+
+      AVAILABLE_DRIVERS = Utils.detect_available_drivers.freeze
 
       def self.included(clas)
         clas.include TestMethods

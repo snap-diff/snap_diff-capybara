@@ -22,6 +22,8 @@ module Capybara
         private
 
         def find_driver_class_for(driver)
+          driver = AVAILABLE_DRIVERS.first if driver == :auto
+
           LOADED_DRIVERS[driver] ||=
             case driver
             when :chunky_png
@@ -31,7 +33,7 @@ module Capybara
               require 'capybara/screenshot/diff/drivers/vips_driver'
               Drivers::VipsDriver
             else
-              fail "Wrong adapter #{driver.inspect}. Available adapters: :vips or :chunky_png"
+              fail "Wrong adapter #{driver.inspect}. Available adapters: #{AVAILABLE_DRIVERS.inspect}"
             end
         end
       end
