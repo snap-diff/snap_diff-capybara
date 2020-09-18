@@ -14,10 +14,10 @@ stages:
   - test
 
 rvm:
-  - ruby-2.7
-  - ruby-2.6
-  - ruby-2.5
-  - jruby
+#  - ruby-2.7
+#  - ruby-2.6
+#  - ruby-2.5
+#  - jruby
   - truffleruby
 
 gemfile:
@@ -36,8 +36,8 @@ jdk: openjdk14
 
 jobs:
   fast_finish: true
-  allow_failures:
-    - rvm: truffleruby
+#  allow_failures:
+#    - rvm: truffleruby
 
   include:
     - stage: linter
