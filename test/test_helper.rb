@@ -18,9 +18,6 @@ end
 
 require 'capybara/screenshot/diff'
 require 'minitest/autorun'
-require 'minitest/reporters'
-Minitest::Reporters.use!
-
 require 'capybara/minitest'
 
 Capybara.threadsafe = true
