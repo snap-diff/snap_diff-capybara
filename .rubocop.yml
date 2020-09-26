@@ -7,19 +7,7 @@ AllCops:
   DisplayStyleGuide: true
   Exclude:
     - gemfiles/vendor/**/*
-
-# TODO(uwe): Remove after updating to rubocop 1.0
-Lint/RaiseException:
-  Enabled: true
-Lint/StructNewOverride:
-  Enabled: true
-Style/HashEachMethods:
-  Enabled: true
-Style/HashTransformKeys:
-  Enabled: true
-Style/HashTransformValues:
-  Enabled: true
-# ODOT
+  NewCops: enable
 
 #Layout/ArgumentAlignment:
 #  EnforcedStyle: with_fixed_indentation
@@ -72,85 +60,3 @@ Style/NumericPredicate:
 
 Style/SignalException:
   EnforcedStyle: semantic
-
-# TODO: Review and enable
-Layout/EmptyLinesAroundAttributeAccessor:
-  Enabled: false
-Layout/SpaceAroundMethodCallOperator:
-  Enabled: false
-Lint/BinaryOperatorWithIdenticalOperands:
-  Enabled: false
-Lint/DeprecatedOpenSSLConstant:
-  Enabled: false
-Lint/DuplicateElsifCondition:
-  Enabled: false
-Lint/DuplicateRescueException:
-  Enabled: false
-Lint/EmptyConditionalBody:
-  Enabled: false
-Lint/FloatComparison:
-  Enabled: false
-Lint/MissingSuper:
-  Enabled: false
-Lint/MixedRegexpCaptureTypes:
-  Enabled: false
-Lint/SelfAssignment:
-  Enabled: false
-Lint/TopLevelReturnWithArgument:
-  Enabled: false
-Lint/OutOfRangeRegexpRef:
-  Enabled: false
-Lint/UnreachableLoop:
-  Enabled: false
-Style/AccessorGrouping:
-  Enabled: false
-Style/ArrayCoercion:
-  Enabled: false
-Style/BisectedAttrAccessor:
-  Enabled: false
-Style/CaseLikeIf:
-  Enabled: false
-Style/ExplicitBlockArgument:
-  Enabled: false
-Style/ExponentialNotation:
-  Enabled: false
-Style/GlobalStdStream:
-  Enabled: false
-Style/HashAsLastArrayItem:
-  Enabled: false
-Style/HashLikeCase:
-  Enabled: false
-Style/OptionalBooleanParameter:
-  Enabled: false
-Style/RedundantAssignment:
-  Enabled: false
-Style/RedundantFetchBlock:
-  Enabled: false
-Style/RedundantFileExtensionInRequire:
-  Enabled: false
-Style/RedundantRegexpCharacterClass:
-  Enabled: false
-Style/RedundantRegexpEscape:
-  Enabled: false
-Style/SingleArgumentDig:
-  Enabled: false
-Style/SlicingWithRange:
-  Enabled: false
-Style/StringConcatenation:
-  Enabled: false
-Performance/AncestorsInclude:
-  Enabled: false
-Performance/BigDecimalWithNumericArgument:
-  Enabled: false
-Performance/RedundantSortBlock:
-  Enabled: false
-Performance/RedundantStringChars:
-  Enabled: false
-Performance/ReverseFirst:
-  Enabled: false
-Performance/SortReverse:
-  Enabled: false
-Performance/Squeeze:
-  Enabled: false
-Performance/StringInclude:
-  Enabled: false
