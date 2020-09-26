@@ -456,16 +456,26 @@ If you need to ignore multiple areas, you can supply an array of arrays:
 screenshot 'index', skip_area: [[0, 0, 64, 48], [17, 6, 27, 16]]
 ```
 
+### Available Image Processing Drivers
+
+There are several image processing supported by this gem.
+There are several options to setup active driver: `:auto`, `:chunky_png` and `:vips`.
+
+* `:auto` - will try to load `:vips` if there is gem `ruby-vips`, in other cases will load `:chunky_png`
+* `:chunky_png` and `:vips` will load correspondent driver  
+
 ### Enable VIPS image processing
 
-By default for image processing is using ChunkyPNG, but there is option to switch to [Vips](https://www.rubydoc.info/gems/ruby-vips/Vips/Image)
-To switch to the Vips processor, you have 2 options:
+[Vips](https://www.rubydoc.info/gems/ruby-vips/Vips/Image) driver provides a faster comparison,
+and could be enabled by adding `ruby-vips` to `Gemfile`.
+
+If need to setup explicitly Vips driver, there are several ways to do this:
 
   * Globally: `Capybara::Screenshot::Diff.driver = :vips`  
   * Per screenshot option: `screenshot 'index', driver: :vips`  
 
 With enabled VIPS there are new alternatives to process differences, which easier to find and support.
-For example, `shift_distance_limit` is very heavy operation, and instead better to use `median_filter_window_size`. 
+For example, `shift_distance_limit` is very heavy operation. Instead better to use `median_filter_window_size`. 
 
 #### Tolerance level (vips only)
 

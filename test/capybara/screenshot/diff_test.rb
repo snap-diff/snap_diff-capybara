@@ -90,6 +90,11 @@ module Capybara
         screenshot_group :b
         assert_equal 'b/a', full_name(:a)
       end
+
+      test 'detect available diff drivers on the loading' do
+        # NOTE for tests we are loading both drivers, so we expect that all of them are available
+        assert_equal %i[vips chunky_png], Capybara::Screenshot::Diff::AVAILABLE_DRIVERS
+      end
     end
   end
 end

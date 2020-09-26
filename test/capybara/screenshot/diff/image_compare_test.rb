@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'test_helper'
+require 'minitest/stub_const'
 
 module Capybara
   module Screenshot
@@ -35,6 +36,19 @@ module Capybara
 
         test 'it can be instantiated with dimensions' do
           assert ImageCompare.new('images/b.png', dimensions: [80, 80])
+        end
+
+        test 'for driver: :auto returns first from available drivers' do
+          comparison = ImageCompare.new('images/b.png', driver: :auto)
+          assert_kind_of Drivers::VipsDriver, comparison.driver
+        end
+
+        test 'for driver: :auto raise error if no drivers are available' do
+          Capybara::Screenshot::Diff.stub_const(:AVAILABLE_DRIVERS, []) do
+            assert_raise(RuntimeError) do
+              ImageCompare.new('images/b.png', driver: :auto)
+            end
+          end
         end
       end
     end
