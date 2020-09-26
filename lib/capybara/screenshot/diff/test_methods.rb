@@ -101,7 +101,16 @@ module Capybara
           FileUtils.mkdir_p File.dirname(file_name)
           comparison = ImageCompare.new(file_name, **driver_options)
           checkout_vcs(name, comparison)
-          take_stable_screenshot(comparison, stability_time_limit: stability_time_limit, wait: wait)
+          begin
+            blurred_input = prepare_page_for_screenshot(timeout: wait)
+            if stability_time_limit
+              take_stable_screenshot(comparison, stability_time_limit: stability_time_limit, wait: wait)
+            else
+              take_right_size_screenshot(comparison)
+            end
+          ensure
+            blurred_input&.click
+          end
 
           return false unless comparison.old_file_exists?
 

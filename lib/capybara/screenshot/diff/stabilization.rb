@@ -21,14 +21,12 @@ module Capybara
         JS
 
         def take_stable_screenshot(comparison, stability_time_limit:, wait:)
-          blurred_input = prepare_page_for_screenshot(timeout: wait)
           previous_file_name = comparison.old_file_name
           screenshot_started_at = last_image_change_at = Time.now
+          clean_stabilization_images(comparison.new_file_name)
+
           1.step do |i|
             take_right_size_screenshot(comparison)
-
-            break unless stability_time_limit
-
             if comparison.quick_equal?
               clean_stabilization_images(comparison.new_file_name)
               break
@@ -63,8 +61,6 @@ module Capybara
               max_wait_time: max_wait_time(comparison.shift_distance_limit, wait)
             )
           end
-        ensure
-          blurred_input&.click
         end
 
         private
@@ -126,7 +122,13 @@ module Capybara
         def check_max_wait_time(comparison, screenshot_started_at, max_wait_time:)
           return if (Time.now - screenshot_started_at) < max_wait_time
 
+          annotate_stabilization_images(comparison)
           # FIXME(uwe): Change to store the failure and only report if the test succeeds functionally.
+          fail("Could not get stable screenshot within #{max_wait_time}s\n" \
+                    "#{stabilization_images(comparison.new_file_name).join("\n")}")
+        end
+
+        def annotate_stabilization_images(comparison)
           previous_file = comparison.old_file_name
           stabilization_images(comparison.new_file_name).each do |file_name|
             if File.exist? previous_file
@@ -135,8 +137,9 @@ module Capybara
                 file_name,
                 previous_file
               )
-              assert stabilization_comparison.different?
-              FileUtils.mv stabilization_comparison.annotated_new_file_name, file_name
+              if stabilization_comparison.different?
+                FileUtils.mv stabilization_comparison.annotated_new_file_name, file_name
+              end
               FileUtils.rm stabilization_comparison.annotated_old_file_name
             end
             previous_file = file_name
