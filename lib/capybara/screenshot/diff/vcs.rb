@@ -9,7 +9,12 @@ module Capybara
 
         def restore_git_revision(name, target_file_name)
           redirect_target = "#{target_file_name} #{SILENCE_ERRORS}"
-          `git show HEAD~0:./#{Capybara::Screenshot.screenshot_area}/#{name}.png > #{redirect_target}`
+          show_command = "git show HEAD~0:./#{Capybara::Screenshot.screenshot_area}/#{name}.png"
+          if Capybara::Screenshot.use_lfs
+            `#{show_command} | git lfs smudge > #{redirect_target}`
+          else
+            `#{show_command} > #{redirect_target}`
+          end
           FileUtils.rm_f(target_file_name) unless $CHILD_STATUS == 0
         end
 
