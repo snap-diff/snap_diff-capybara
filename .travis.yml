@@ -9,8 +9,9 @@ addons:
       - libvips-dev
       - libvips-tools
 
-before_install:
-  - vips --version
+stages:
+  - linter
+  - test
 
 rvm:
   - ruby-2.7
@@ -37,3 +38,10 @@ jobs:
   fast_finish: true
   allow_failures:
     - rvm: truffleruby
+
+  include:
+    - stage: linter
+      name: Analyze Code by Linters
+      language: ruby
+      ruby: 2.7
+      script: bin/standardrb
