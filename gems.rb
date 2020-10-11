@@ -8,4 +8,4 @@ gemspec path: __dir__
 gem "oily_png", platform: :ruby
 
 gem "image_processing", require: false
-gem "ruby-vips", require: false
+gem "ruby-vips", require: false, github: "libvips/ruby-vips"
