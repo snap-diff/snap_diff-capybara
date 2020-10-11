@@ -1,10 +1,10 @@
 # frozen_string_literal: true
 
-require 'capybara/dsl'
-require 'capybara/screenshot/diff/version'
-require 'capybara/screenshot/diff/drivers/utils'
-require 'capybara/screenshot/diff/image_compare'
-require 'capybara/screenshot/diff/test_methods'
+require "capybara/dsl"
+require "capybara/screenshot/diff/version"
+require "capybara/screenshot/diff/drivers/utils"
+require "capybara/screenshot/diff/image_compare"
+require "capybara/screenshot/diff/test_methods"
 
 module Capybara
   module Screenshot
@@ -14,10 +14,10 @@ module Capybara
     mattr_accessor :blur_active_element
     mattr_accessor :enabled
     mattr_accessor :hide_caret
-    mattr_accessor(:root) { (defined?(Rails.root) && Rails.root) || File.expand_path('.') }
+    mattr_accessor(:root) { (defined?(Rails.root) && Rails.root) || File.expand_path(".") }
     mattr_accessor :stability_time_limit
     mattr_accessor :window_size
-    mattr_accessor(:save_path) { 'doc/screenshots' }
+    mattr_accessor(:save_path) { "doc/screenshots" }
     mattr_accessor(:use_lfs)
 
     class << self

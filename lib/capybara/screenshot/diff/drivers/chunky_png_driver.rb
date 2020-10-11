@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require 'chunky_png'
+require "chunky_png"
 
 module Capybara
   module Screenshot
@@ -12,14 +12,14 @@ module Capybara
           include ChunkyPNG::Color
 
           attr_reader :annotated_new_file_name, :annotated_old_file_name, :area_size_limit,
-                      :color_distance_limit, :new_file_name, :old_file_name, :shift_distance_limit,
-                      :skip_area
+            :color_distance_limit, :new_file_name, :old_file_name, :shift_distance_limit,
+            :skip_area
 
           def initialize(new_file_name, old_file_name = nil, **options)
             @new_file_name = new_file_name
             @old_file_name = old_file_name || "#{new_file_name}~"
-            @annotated_old_file_name = "#{new_file_name.chomp('.png')}.committed.png"
-            @annotated_new_file_name = "#{new_file_name.chomp('.png')}.latest.png"
+            @annotated_old_file_name = "#{new_file_name.chomp(".png")}.committed.png"
+            @annotated_new_file_name = "#{new_file_name.chomp(".png")}.latest.png"
 
             @color_distance_limit = options[:color_distance_limit]
             @area_size_limit = options[:area_size_limit]
@@ -175,12 +175,12 @@ module Capybara
 
           def calculate_max_color_distance(new_image, old_image)
             pixel_pairs = old_image.pixels.zip(new_image.pixels)
-            @max_color_distance = pixel_pairs.inject(0) do |max, (p1, p2)|
+            @max_color_distance = pixel_pairs.inject(0) { |max, (p1, p2)|
               next max unless p1 && p2
 
               d = ChunkyPNG::Color.euclidean_distance_rgba(p1, p2)
               [max, d].max
-            end
+            }
           end
 
           def calculate_max_shift_limit(new_img, old_img)
@@ -226,7 +226,7 @@ module Capybara
           def sizes_changed?(org_image, new_image)
             return unless org_image.dimension != new_image.dimension
 
-            change_msg = [org_image, new_image].map { |i| "#{i.width}x#{i.height}" }.join(' => ')
+            change_msg = [org_image, new_image].map { |i| "#{i.width}x#{i.height}" }.join(" => ")
             warn "Image size has changed for #{@new_file_name}: #{change_msg}"
             true
           end
@@ -332,10 +332,10 @@ module Capybara
               end_y = [y + shift_distance_limit, new_img.height - 1].min
               ys = (start_y..end_y).to_a
               new_pixels = xs.product(ys)
-              distances = new_pixels.map do |dx, dy|
+              distances = new_pixels.map { |dx, dy|
                 new_color = new_img[dx, dy]
                 ChunkyPNG::Color.euclidean_distance_rgba(org_color, new_color)
-              end
+              }
               distances.min
             else
               ChunkyPNG::Color.euclidean_distance_rgba(org_color, new_img[x, y])

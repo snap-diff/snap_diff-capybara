@@ -3,4 +3,4 @@
 gems = "#{File.dirname __dir__}/gems.rb"
 eval File.read(gems), binding, gems
 
-gem 'actionpack', '~>5.2.1'
+gem "actionpack", "~>5.2.1"

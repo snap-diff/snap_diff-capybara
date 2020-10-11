@@ -1,11 +1,11 @@
 # frozen_string_literal: true
 
-require_relative 'os'
+require_relative "os"
 module Capybara
   module Screenshot
     module Diff
       module Vcs
-        SILENCE_ERRORS = Os::ON_WINDOWS ? '2>nul' : '2>/dev/null'
+        SILENCE_ERRORS = Os::ON_WINDOWS ? "2>nul" : "2>/dev/null"
 
         def restore_git_revision(name, target_file_name)
           redirect_target = "#{target_file_name} #{SILENCE_ERRORS}"
