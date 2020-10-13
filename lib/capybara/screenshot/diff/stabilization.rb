@@ -144,9 +144,6 @@ module Capybara
             end
             previous_file = file_name
           end
-
-          fail("Could not get stable screenshot within #{max_wait_time}s\n" \
-                    "#{stabilization_images(comparison.new_file_name).join("\n")}")
         end
 
         def max_wait_time(shift_distance_limit, wait)
