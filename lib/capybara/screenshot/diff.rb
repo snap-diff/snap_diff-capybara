@@ -18,6 +18,7 @@ module Capybara
     mattr_accessor :stability_time_limit
     mattr_accessor :window_size
     mattr_accessor(:save_path) { 'doc/screenshots' }
+    mattr_accessor(:use_lfs)
 
     class << self
       def active?
