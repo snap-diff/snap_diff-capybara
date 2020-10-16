@@ -107,13 +107,15 @@ module Capybara
             JS
             blurred_input = page.driver.send :unwrap_script_result, active_element
           end
-          hide_caret = <<~SCRIPT
-            var style = document.createElement('style');
-            document.head.appendChild(style);
-            var styleSheet = style.sheet;
-            styleSheet.insertRule("* { caret-color: transparent !important; }", 0);
-          SCRIPT
-          execute_script(hide_caret) if Capybara::Screenshot.hide_caret
+          if Capybara::Screenshot.hide_caret && !@hid_caret
+            execute_script(<<~JS)
+              var style = document.createElement('style');
+              document.head.appendChild(style);
+              var styleSheet = style.sheet;
+              styleSheet.insertRule("* { caret-color: transparent !important; }", 0);
+            JS
+            @hid_caret = true
+          end
           blurred_input
         end
 
