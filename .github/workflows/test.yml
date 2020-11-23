@@ -17,7 +17,7 @@ jobs:
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
         with:
-          ruby-version: '2.7.2'
+          ruby-version: '2.7'
           bundler-cache: true
 
       - name: Install dependencies
@@ -27,8 +27,45 @@ jobs:
         run: bin/standardrb
 
   test:
-    name: Tests
-    needs: lint
+    name: Functional Testing
+    runs-on: ubuntu-20.04
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '2.7'
+          bundler-cache: true
+
+      - name: Install dependencies
+        run: bundle install
+
+      - name: Install libvips
+        run: sudo apt install libvips libvips-dev libvips-tools
+
+      - name: Run Tests with coverage
+        run: bundle exec rake test
+        env:
+          COVERAGE: enabled
+
+      - name: Upload Screenshots
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v2
+        with:
+          path: test/fixtures/app/doc/screenshots/
+
+      - name: Upload Coverage
+        uses: actions/upload-artifact@v2
+        with:
+          name: coverage
+          path: coverage
+
+  matrix:
+    name: Test Integration
+    needs: [ 'test', 'lint' ]
     runs-on: ubuntu-20.04
 
     strategy:
@@ -55,4 +92,4 @@ jobs:
         run: sudo apt install libvips libvips-dev libvips-tools
 
       - name: Run tests
-        run: bundle exec rake
+        run: bundle exec rake test

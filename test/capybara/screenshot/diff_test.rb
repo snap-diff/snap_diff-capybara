@@ -5,13 +5,24 @@ require "test_helper"
 module Capybara
   module Screenshot
     class DiffTest < ActionDispatch::IntegrationTest
+      setup do
+        @orig_add_os_path = Capybara::Screenshot.add_os_path
+        Capybara::Screenshot.add_os_path = true
+
+        @orig_add_driver_path = Capybara::Screenshot.add_driver_path
+        Capybara::Screenshot.add_driver_path = true
+
+        @orig_window_size = Capybara::Screenshot.window_size
+        Capybara::Screenshot.window_size = [80, 80]
+      end
+
       include Capybara::Screenshot::Diff
       include Diff::TestHelper
 
-      setup do
-        Capybara::Screenshot.add_os_path = true
-        Capybara::Screenshot.add_driver_path = true
-        Capybara::Screenshot.window_size = [80, 80]
+      teardown do
+        Capybara::Screenshot.add_os_path = @orig_add_os_path
+        Capybara::Screenshot.add_driver_path = @orig_add_driver_path
+        Capybara::Screenshot.window_size = @orig_window_size
       end
 
       def test_that_it_has_a_version_number

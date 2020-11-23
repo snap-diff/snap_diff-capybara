@@ -1,9 +1,13 @@
-ARG RUBY_VERSION=2.7
+# Usage:
+#
+#   $ docker build . -t csd
+#   $ docker run -v $(pwd):/app -ti csd rake test
 
-FROM cimg/ruby:${RUBY_VERSION}
+ARG RUBY_VERSION=2.7.2
+
+FROM circleci/ruby:2.7.2-node-browsers
 
 RUN \
-
   # Install dependencies
   sudo apt-get update && \
   DEBIAN_FRONTEND=noninteractive sudo apt-get install -y \
@@ -35,11 +39,16 @@ RUN \
 
 
 WORKDIR /app
-ADD . /app/
+RUN sudo chmod a+w -R /app
 
-RUN \
-  bundle install && \
-  sudo /app/bin/install-vips
+ADD ./bin/install-vips /app/bin/
+RUN sudo /app/bin/install-vips
+
+ADD ./lib/capybara/screenshot/diff/version.rb /app/lib/capybara/screenshot/diff/
+ADD ./capybara-screenshot-diff.gemspec /app/
+ADD ./gems.rb /app/
+
+RUN bundle install
 
 RUN \
   # Clean up
