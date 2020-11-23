@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require 'test_helper'
+require "test_helper"
 
 module Capybara
   module Screenshot
@@ -9,25 +9,25 @@ module Capybara
         class ChunkyPNGDriverTest < ActionDispatch::IntegrationTest
           include TestHelper
 
-          test 'it can be instantiated' do
-            assert ChunkyPNGDriver.new('images/b.png')
+          test "it can be instantiated" do
+            assert ChunkyPNGDriver.new("images/b.png")
           end
 
-          test 'it can be instantiated with dimensions' do
-            assert ChunkyPNGDriver.new('images/b.png', dimensions: [80, 80])
+          test "it can be instantiated with dimensions" do
+            assert ChunkyPNGDriver.new("images/b.png", dimensions: [80, 80])
           end
 
-          test '#different? for equal is negative' do
+          test "#different? for equal is negative" do
             comp = make_comparison(:a, :a)
             assert_not comp.different?
           end
 
-          test '#quick_equal? for equal is positive' do
+          test "#quick_equal? for equal is positive" do
             comp = make_comparison(:a, :a)
             assert comp.quick_equal?
           end
 
-          test 'compare then dimensions and cleanup' do
+          test "compare then dimensions and cleanup" do
             comp = make_comparison(:a, :c)
             assert comp.different?
             assert_equal [11, 3, 48, 20], comp.dimensions
@@ -41,64 +41,64 @@ module Capybara
             assert !File.exist?(comp.annotated_new_file_name)
           end
 
-          test 'compare of 1 pixel wide diff' do
+          test "compare of 1 pixel wide diff" do
             comp = make_comparison(:a, :d)
             assert comp.different?
             assert_equal [9, 6, 9, 13], comp.dimensions
           end
 
-          test 'compare with color_distance_limit above difference' do
+          test "compare with color_distance_limit above difference" do
             comp = make_comparison(:a, :b, color_distance_limit: 223)
             assert_not comp.different?
             assert_equal 223, comp.max_color_distance.ceil
           end
 
-          test 'compare with color_distance_limit below difference' do
+          test "compare with color_distance_limit below difference" do
             comp = make_comparison(:a, :b, color_distance_limit: 222)
             assert comp.different?
             assert_equal 223, comp.max_color_distance.ceil
           end
 
-          test 'compare with shift_distance_limit above difference' do
+          test "compare with shift_distance_limit above difference" do
             comp = make_comparison(:a, :b, shift_distance_limit: 11)
             assert_not comp.different?
             assert_equal 0, comp.max_shift_distance.ceil
           end
 
-          test 'compare with shift_distance_limit below difference' do
+          test "compare with shift_distance_limit below difference" do
             comp = make_comparison(:a, :b, shift_distance_limit: 9)
             assert comp.different?
             assert_equal 11, comp.max_shift_distance.ceil
           end
 
-          test 'quick_equal' do
+          test "quick_equal" do
             comp = make_comparison(:a, :b)
             assert !comp.quick_equal?
             assert_equal 223, comp.max_color_distance.ceil
           end
 
-          test 'quick_equal with color distance limit' do
+          test "quick_equal with color distance limit" do
             comp = make_comparison(:a, :b, color_distance_limit: 222)
             assert !comp.quick_equal?
             assert_equal 223, comp.max_color_distance.ceil
           end
 
-          test 'max_color_distance a vs b' do
+          test "max_color_distance a vs b" do
             comp = make_comparison(:a, :b)
             assert_equal 223, comp.max_color_distance.ceil
           end
 
-          test 'max_color_distance a vs c' do
+          test "max_color_distance a vs c" do
             comp = make_comparison(:a, :c)
             assert_equal 318, comp.max_color_distance.ceil
           end
 
-          test 'max_color_distance a vs d' do
+          test "max_color_distance a vs d" do
             comp = make_comparison(:a, :d)
             assert_equal 271, comp.max_color_distance.ceil
           end
 
-          test 'max_color_distance 1.0' do
+          test "max_color_distance 1.0" do
             a_img = ChunkyPNG::Image.from_blob(File.binread("#{TEST_IMAGES_DIR}/a.png"))
             a_img[9, 6] += 0x010000
 
@@ -109,7 +109,7 @@ module Capybara
             assert_equal 1, comp.max_color_distance
           end
 
-          test 'size a vs a_cropped' do
+          test "size a vs a_cropped" do
             comp = make_comparison(:a, :a_cropped)
             comp.different?
             assert_equal 6400, comp.size

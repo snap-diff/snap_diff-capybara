@@ -1,13 +1,13 @@
 # frozen_string_literal: true
 
-require 'English'
-require 'capybara'
-require 'action_controller'
-require 'action_dispatch'
-require 'active_support/core_ext/string/strip'
-require_relative 'image_compare'
-require_relative 'stabilization'
-require_relative 'vcs'
+require "English"
+require "capybara"
+require "action_controller"
+require "action_dispatch"
+require "active_support/core_ext/string/strip"
+require_relative "image_compare"
+require_relative "stabilization"
+require_relative "vcs"
 
 # Add the `screenshot` method to ActionDispatch::IntegrationTest
 module Capybara
@@ -92,7 +92,7 @@ module Capybara
           end
 
           if @screenshot_counter
-            name = "#{format('%02i', @screenshot_counter)}_#{name}"
+            name = "#{format("%02i", @screenshot_counter)}_#{name}"
             @screenshot_counter += 1
           end
           name = full_name(name)

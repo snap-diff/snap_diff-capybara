@@ -1,27 +1,27 @@
 # frozen_string_literal: true
 
-if ENV['COVERAGE'] && (RUBY_ENGINE != 'jruby' || org.jruby.RubyInstanceConfig.FULL_TRACE_ENABLED)
-  require 'simplecov'
+if ENV["COVERAGE"] && (RUBY_ENGINE != "jruby" || org.jruby.RubyInstanceConfig.FULL_TRACE_ENABLED)
+  require "simplecov"
   SimpleCov.start
-  SimpleCov.minimum_coverage RUBY_ENGINE == 'jruby' ? 82.5 : 83.5
+  SimpleCov.minimum_coverage RUBY_ENGINE == "jruby" ? 82.5 : 83.5
 end
 
-$LOAD_PATH.unshift File.expand_path('../lib', __dir__)
+$LOAD_PATH.unshift File.expand_path("../lib", __dir__)
 
-TEST_IMAGES_DIR = File.expand_path('images', __dir__)
+TEST_IMAGES_DIR = File.expand_path("images", __dir__)
 
 module Rails
   def self.root
-    File.expand_path '../tmp', __dir__
+    File.expand_path "../tmp", __dir__
   end
 end
 
-require 'capybara/screenshot/diff'
-require 'minitest/autorun'
-require 'capybara/minitest'
+require "capybara/screenshot/diff"
+require "minitest/autorun"
+require "capybara/minitest"
 
 Capybara.threadsafe = true
-Capybara.app = Rack::Builder.new { map('/') { run Rails.application } }
+Capybara.app = Rack::Builder.new { map("/") { run Rails.application } }
 
 # TODO(uwe): Remove when we stop support for Rails 4.2
 ActiveSupport.test_order = :random

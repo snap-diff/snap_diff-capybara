@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require 'test_helper'
+require "test_helper"
 
 module Capybara
   module Screenshot
@@ -20,37 +20,37 @@ module Capybara
 
       def test_screenshot_groups_are_replaced
         assert_nil @screenshot_group
-        screenshot_group 'a'
-        assert_equal 'a', @screenshot_group
-        screenshot_group 'b'
-        assert_equal 'b', @screenshot_group
+        screenshot_group "a"
+        assert_equal "a", @screenshot_group
+        screenshot_group "b"
+        assert_equal "b", @screenshot_group
       end
 
       def test_screenshot_section_is_prepended
         assert_nil @screenshot_section
         assert_nil @screenshot_group
-        screenshot_section 'a'
-        assert_equal 'a', @screenshot_section
+        screenshot_section "a"
+        assert_equal "a", @screenshot_section
         assert_match %r{doc/screenshots/rack_test/(macos|linux)/a}, screenshot_dir
-        screenshot_group 'b'
-        assert_equal 'b', @screenshot_group
+        screenshot_group "b"
+        assert_equal "b", @screenshot_group
         assert_match %r{doc/screenshots/rack_test/(macos|linux)/a/b}, screenshot_dir
-        screenshot_group 'c'
-        assert_equal 'c', @screenshot_group
+        screenshot_group "c"
+        assert_equal "c", @screenshot_group
         assert_match %r{doc/screenshots/rack_test/(macos|linux)/a/c}, screenshot_dir
       end
 
-      test 'screenshot' do
-        screenshot_group 'screenshot'
-        screenshot 'a'
+      test "screenshot" do
+        screenshot_group "screenshot"
+        screenshot "a"
       end
 
       def test_screenshot_with_alternate_save_path
         default_path = Capybara::Screenshot.save_path
-        Capybara::Screenshot.save_path = 'foo/bar'
-        screenshot_section 'a'
-        screenshot_group 'b'
-        screenshot 'a'
+        Capybara::Screenshot.save_path = "foo/bar"
+        screenshot_section "a"
+        screenshot_group "b"
+        screenshot "a"
         assert_match %r{foo/bar/rack_test/(macos|linux)/a/b}, screenshot_dir
       ensure
         Capybara::Screenshot.save_path = default_path
@@ -58,7 +58,7 @@ module Capybara
 
       def test_screenshot_with_stability_time_limit
         Capybara::Screenshot.stability_time_limit = 0.001
-        screenshot 'a'
+        screenshot "a"
       ensure
         Capybara::Screenshot.stability_time_limit = nil
       end
@@ -71,27 +71,27 @@ module Capybara
         FileUtils.mkdir_p(File.dirname(rev_filename))
         a_img.save(rev_filename)
 
-        screenshot 'a', color_distance_limit: 3
+        screenshot "a", color_distance_limit: 3
       ensure
         File.delete(rev_filename) if File.exist?(rev_filename)
       end
 
-      test 'full_name' do
-        assert_equal 'a', full_name('a')
-        screenshot_group 'b'
-        assert_equal 'b/a', full_name('a')
-        screenshot_section 'c'
-        assert_equal 'c/b/a', full_name('a')
+      test "full_name" do
+        assert_equal "a", full_name("a")
+        screenshot_group "b"
+        assert_equal "b/a", full_name("a")
+        screenshot_section "c"
+        assert_equal "c/b/a", full_name("a")
         screenshot_group nil
-        assert_equal 'c/a', full_name('a')
+        assert_equal "c/a", full_name("a")
       end
 
-      test 'full_name allows symbol' do
+      test "full_name allows symbol" do
         screenshot_group :b
-        assert_equal 'b/a', full_name(:a)
+        assert_equal "b/a", full_name(:a)
       end
 
-      test 'detect available diff drivers on the loading' do
+      test "detect available diff drivers on the loading" do
         # NOTE for tests we are loading both drivers, so we expect that all of them are available
         assert_equal %i[vips chunky_png], Capybara::Screenshot::Diff::AVAILABLE_DRIVERS
       end

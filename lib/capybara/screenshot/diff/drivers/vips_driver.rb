@@ -1,13 +1,13 @@
 # frozen_string_literal: true
 
 begin
-  require 'vips'
+  require "vips"
 rescue LoadError => e
-  warn 'Required ruby-vips gem is missing. Add `gem "ruby-vips"` to Gemfile' if e.message.include?('vips')
+  warn 'Required ruby-vips gem is missing. Add `gem "ruby-vips"` to Gemfile' if e.message.include?("vips")
   raise
 end
 
-require_relative './chunky_png_driver'
+require_relative "./chunky_png_driver"
 
 module Capybara
   module Screenshot
@@ -17,14 +17,14 @@ module Capybara
       module Drivers
         class VipsDriver
           attr_reader :annotated_new_file_name, :annotated_old_file_name, :area_size_limit,
-                      :color_distance_limit, :new_file_name, :old_file_name, :shift_distance_limit,
-                      :skip_area, :tolerance
+            :color_distance_limit, :new_file_name, :old_file_name, :shift_distance_limit,
+            :skip_area, :tolerance
 
           def initialize(new_file_name, old_file_name = nil, **options)
             @new_file_name = new_file_name
             @old_file_name = old_file_name || "#{new_file_name}~"
-            @annotated_old_file_name = "#{new_file_name.chomp('.png')}.committed.png"
-            @annotated_new_file_name = "#{new_file_name.chomp('.png')}.latest.png"
+            @annotated_old_file_name = "#{new_file_name.chomp(".png")}.committed.png"
+            @annotated_new_file_name = "#{new_file_name.chomp(".png")}.latest.png"
 
             @color_distance_limit = options[:color_distance_limit] || 0
             @area_size_limit = options[:area_size_limit]
@@ -63,8 +63,8 @@ module Capybara
 
             # TODO: Remove this or find similar solution for vips
             if @shift_distance_limit
-              warn '[capybara-screenshot-diff] Instead of shift_distance_limit ' \
-                   'please use median_filter_window_size and color_distance_limit options'
+              warn "[capybara-screenshot-diff] Instead of shift_distance_limit " \
+                   "please use median_filter_window_size and color_distance_limit options"
               return true if chunky_png_driver.quick_equal?
             end
 
@@ -98,8 +98,8 @@ module Capybara
 
             # TODO: Remove this or find similar solution for vips
             if @shift_distance_limit
-              warn '[capybara-screenshot-diff] Instead of shift_distance_limit ' \
-                   'please use median_filter_window_size and color_distance_limit options'
+              warn "[capybara-screenshot-diff] Instead of shift_distance_limit " \
+                   "please use median_filter_window_size and color_distance_limit options"
               return not_different unless chunky_png_driver.different?
             end
 
@@ -171,9 +171,9 @@ module Capybara
             result = @median_filter_window_size ? image.median(@median_filter_window_size) : image
 
             if @skip_area
-              result = @skip_area.reduce(result) do |memo, region|
+              result = @skip_area.reduce(result) { |memo, region|
                 memo.draw_rect([0, 0, 0, 0], *region, fill: true)
-              end
+              }
             end
 
             result
@@ -233,7 +233,7 @@ module Capybara
           def from_file(old_file_name)
             result = ::Vips::Image.new_from_file(old_file_name)
 
-            result = result.colourspace('srgb') if result.bands < 3
+            result = result.colourspace("srgb") if result.bands < 3
             result = result.bandjoin(255) if result.bands == 3
 
             result
@@ -242,7 +242,7 @@ module Capybara
           def dimension_changed?(org_image, new_image)
             return unless dimension(org_image) != dimension(new_image)
 
-            change_msg = [org_image, new_image].map { |i| "#{i.width}x#{i.height}" }.join(' => ')
+            change_msg = [org_image, new_image].map { |i| "#{i.width}x#{i.height}" }.join(" => ")
             warn "Image size has changed for #{@new_file_name}: #{change_msg}"
 
             true
@@ -294,9 +294,9 @@ module Capybara
               columns, rows = diff_mask.project
 
               left = columns.profile[1].min
-              right = columns.width - columns.flip('horizontal').profile[1].min
+              right = columns.width - columns.flip("horizontal").profile[1].min
               top = rows.profile[0].min
-              bottom = rows.height - rows.flip('vertical').profile[0].min
+              bottom = rows.height - rows.flip("vertical").profile[0].min
 
               [left, top, right, bottom]
             end

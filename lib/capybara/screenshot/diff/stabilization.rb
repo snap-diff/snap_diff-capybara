@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative 'os'
+require_relative "os"
 
 module Capybara
   module Screenshot
@@ -50,9 +50,9 @@ module Capybara
               end
             end
 
-            previous_file_name = "#{comparison.new_file_name.chomp('.png')}" \
-                "_x#{format('%02i', i)}_#{(Time.now - screenshot_started_at).round(1)}s" \
-                "_#{stabilization_comparison.dimensions&.to_s&.gsub(', ', '_') || :initial}.png~"
+            previous_file_name = "#{comparison.new_file_name.chomp(".png")}" \
+                "_x#{format("%02i", i)}_#{(Time.now - screenshot_started_at).round(1)}s" \
+                "_#{stabilization_comparison.dimensions&.to_s&.gsub(", ", "_") || :initial}.png~"
             FileUtils.mv comparison.new_file_name, previous_file_name
 
             check_max_wait_time(
@@ -77,7 +77,7 @@ module Capybara
           return if saved_image.width < width * 2
 
           unless @_csd_retina_warned
-            warn 'Halving retina screenshot.  ' \
+            warn "Halving retina screenshot.  " \
                 'You should add "force-device-scale-factor=1" to your Chrome chromeOptions args.'
             @_csd_retina_warned = true
           end
@@ -87,7 +87,7 @@ module Capybara
         end
 
         def stabilization_images(base_file)
-          Dir["#{base_file.chomp('.png')}_x*.png~"].sort
+          Dir["#{base_file.chomp(".png")}_x*.png~"].sort
         end
 
         def clean_stabilization_images(base_file)
