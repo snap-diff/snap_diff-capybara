@@ -1,0 +1,58 @@
+name: Test
+
+on:
+  push:
+    branches: [ $default-branch ]
+  pull_request:
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '2.7.2'
+          bundler-cache: true
+
+      - name: Install dependencies
+        run: bundle install
+
+      - name: Run Standard Ruby linter
+        run: bin/standardrb
+
+  test:
+    name: Tests
+    needs: lint
+    runs-on: ubuntu-20.04
+
+    strategy:
+      matrix:
+        ruby-version: [ '2.7', '2.6', '2.5', 'jruby' ]
+        gemfile: [ 'rails60_gems.rb', 'rails52.gemfile', 'rails51.gemfile', 'rails50.gemfile', 'rails42.gemfile' ]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        env:
+          BUNDLE_GEMFILE: gemfiles/${{ matrix.gemfile }}
+        with:
+          ruby-version: ${{ matrix.ruby-version }}
+          bundler-cache: true
+
+      - name: Install dependencies
+        run: bundle install
+
+      - name: Install libvips
+        run: sudo apt install libvips libvips-dev libvips-tools
+
+      - name: Run tests
+        run: bundle exec rake
