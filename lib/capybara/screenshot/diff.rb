@@ -14,13 +14,17 @@ module Capybara
     mattr_accessor :blur_active_element
     mattr_accessor :enabled
     mattr_accessor :hide_caret
-    mattr_accessor(:root) { (defined?(Rails.root) && Rails.root) || File.expand_path(".") }
+    mattr_reader(:root) { (defined?(Rails.root) && Rails.root) || "." }
     mattr_accessor :stability_time_limit
     mattr_accessor :window_size
     mattr_accessor(:save_path) { "doc/screenshots" }
     mattr_accessor(:use_lfs)
 
     class << self
+      def root=(path)
+        @@root = Pathname(path).expand_path
+      end
+
       def active?
         enabled || (enabled.nil? && Diff.enabled)
       end
@@ -33,7 +37,7 @@ module Capybara
       end
 
       def screenshot_area_abs
-        "#{root}/#{screenshot_area}"
+        root / screenshot_area
       end
     end
 

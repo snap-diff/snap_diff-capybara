@@ -6,22 +6,27 @@ if ENV["COVERAGE"] && (RUBY_ENGINE != "jruby" || org.jruby.RubyInstanceConfig.FU
   SimpleCov.minimum_coverage RUBY_ENGINE == "jruby" ? 82.5 : 83.5
 end
 
+# NOTE: Simulate Rails Environment
+module Rails
+  def self.root
+    Pathname("../tmp").expand_path(__dir__)
+  end
+end
+
 $LOAD_PATH.unshift File.expand_path("../lib", __dir__)
 
 TEST_IMAGES_DIR = File.expand_path("images", __dir__)
-
-module Rails
-  def self.root
-    File.expand_path "../tmp", __dir__
-  end
-end
 
 require "capybara/screenshot/diff"
 require "minitest/autorun"
 require "capybara/minitest"
 
+require 'capybara/dsl'
 Capybara.threadsafe = true
-Capybara.app = Rack::Builder.new { map("/") { run Rails.application } }
+Capybara.app = Rack::Builder.new do
+  use(Rack::Static, urls: [""], root: "test/fixtures/app", index: "index.html")
+  run ->(_env) { [200, {}, []] }
+end.to_app
 
 # TODO(uwe): Remove when we stop support for Rails 4.2
 ActiveSupport.test_order = :random
