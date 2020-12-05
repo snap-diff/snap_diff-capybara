@@ -93,3 +93,38 @@ jobs:
 
       - name: Run tests
         run: bundle exec rake test
+
+  matrix_screenshot_driver:
+    name: Test Integration
+    needs: [ 'test', 'lint' ]
+    runs-on: ubuntu-20.04
+
+    strategy:
+      matrix:
+        screenshot-driver: [ 'vips', 'chunky_png' ]
+        capybara-driver: [ 'selenium_headless', 'selenium_chrome_headless' ]
+        include:
+          - screenshot-driver: 'chunky_png'
+            capybara-driver: 'cuprite'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '2.7'
+          bundler-cache: true
+
+      - name: Install dependencies
+        run: bundle install
+
+      - name: Install libvips
+        run: sudo apt install libvips libvips-dev libvips-tools
+
+      - name: Run tests
+        run: bundle exec rake test:integration
+        env:
+          SCREENSHOT_DRIVER: ${{ matrix.screenshot-driver }}
+          CAPYBARA_DRIVER: ${{ matrix.capybara-driver }}
