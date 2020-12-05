@@ -1,9 +1,9 @@
 # frozen_string_literal: true
 
-if ENV["COVERAGE"] && (RUBY_ENGINE != "jruby" || org.jruby.RubyInstanceConfig.FULL_TRACE_ENABLED)
+if ENV["COVERAGE"]
   require "simplecov"
   SimpleCov.start
-  SimpleCov.minimum_coverage RUBY_ENGINE == "jruby" ? 82.5 : 83.5
+  SimpleCov.minimum_coverage 92
 end
 
 # NOTE: Simulate Rails Environment
