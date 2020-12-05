@@ -21,7 +21,7 @@ require "capybara/screenshot/diff"
 require "minitest/autorun"
 require "capybara/minitest"
 
-require 'capybara/dsl'
+require "capybara/dsl"
 Capybara.threadsafe = true
 Capybara.app = Rack::Builder.new do
   use(Rack::Static, urls: [""], root: "test/fixtures/app", index: "index.html")
@@ -38,6 +38,7 @@ module Capybara
       module TestHelper
         private
 
+        # Stub of the Capybara's save_screenshot
         def save_screenshot(file_name)
           source_image = File.basename(file_name)
           source_image.slice!(/^\d\d_/)

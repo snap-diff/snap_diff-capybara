@@ -52,7 +52,7 @@ module Capybara
 
             previous_file_name = "#{comparison.new_file_name.chomp(".png")}" \
                 "_x#{format("%02i", i)}_#{(Time.now - screenshot_started_at).round(1)}s" \
-                "_#{stabilization_comparison.dimensions&.to_s&.gsub(", ", "_") || :initial}.png~"
+                "_#{stabilization_comparison.difference_region&.to_s&.gsub(", ", "_") || :initial}.png~"
             FileUtils.mv comparison.new_file_name, previous_file_name
 
             check_max_wait_time(
@@ -60,6 +60,14 @@ module Capybara
               screenshot_started_at,
               max_wait_time: max_wait_time(comparison.shift_distance_limit, wait)
             )
+          end
+        end
+
+        def notice_how_to_avoid_this
+          unless @_csd_retina_warned
+            warn "Halving retina screenshot.  " \
+                'You should add "force-device-scale-factor=1" to your Chrome chromeOptions args.'
+            @_csd_retina_warned = true
           end
         end
 
@@ -76,11 +84,8 @@ module Capybara
           width = Capybara::Screenshot.window_size[0]
           return if saved_image.width < width * 2
 
-          unless @_csd_retina_warned
-            warn "Halving retina screenshot.  " \
-                'You should add "force-device-scale-factor=1" to your Chrome chromeOptions args.'
-            @_csd_retina_warned = true
-          end
+          notice_how_to_avoid_this
+
           height = (width * saved_image.height) / saved_image.width
           resized_image = saved_image.resample_bilinear(width, height)
           resized_image.save(file_name)

@@ -1,6 +1,6 @@
-require 'test_helper'
+require "test_helper"
 
-require 'webdrivers/chromedriver'
+require "webdrivers/chromedriver"
 Webdrivers::Chromedriver.update
 
 class SystemTestCase < ActionDispatch::IntegrationTest
@@ -12,9 +12,9 @@ class SystemTestCase < ActionDispatch::IntegrationTest
 
     # TODO: Reset original settings to previous values
     @orig_root = Capybara::Screenshot.root
-    Capybara::Screenshot.root = '.'
+    Capybara::Screenshot.root = "."
     @orig_save_path = Capybara::Screenshot.save_path
-    Capybara::Screenshot.save_path = 'test/fixtures/app/doc/screenshots'
+    Capybara::Screenshot.save_path = "test/fixtures/app/doc/screenshots"
     Capybara::Screenshot.enabled = true
     Capybara::Screenshot::Diff.enabled = true
 
@@ -57,6 +57,6 @@ class SystemTestCase < ActionDispatch::IntegrationTest
   def rollback_comparison_runtime_files(screenshot_error)
     screenshot_name, comparison = screenshot_error[1], screenshot_error[2]
     restore_git_revision(screenshot_name, comparison.new_file_name)
-    comparison.driver.send(:clean_tmp_files)
+    comparison.clean_tmp_files
   end
 end

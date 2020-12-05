@@ -43,7 +43,7 @@ module Capybara
           test "when different does not clean runtime files" do
             comp = make_comparison(:a, :c)
             assert comp.different?
-            assert_equal [11.0, 3.0, 49.0, 21.0], comp.dimensions
+            assert_equal [11.0, 3.0, 49.0, 21.0], comp.difference_region
             assert File.exist?(comp.old_file_name)
             assert File.exist?(comp.annotated_old_file_name)
             assert File.exist?(comp.annotated_new_file_name)
@@ -60,7 +60,7 @@ module Capybara
           test "compare of 1 pixel wide diff" do
             comp = make_comparison(:a, :d)
             assert comp.different?
-            assert_equal [9.0, 6.0, 10.0, 14.0], comp.dimensions
+            assert_equal [9.0, 6.0, 10.0, 14.0], comp.difference_region
           end
 
           test "compare with color_distance_limit above difference" do
@@ -97,7 +97,7 @@ module Capybara
           end
 
           test "different with shift_distance_limit above difference" do
-            comp = make_comparison(:a, :d, shift_distance_limit: 11)
+            comp = make_comparison(:a, :d, shift_distance_limit: 20)
             assert_not comp.different?
           end
 
@@ -129,7 +129,7 @@ module Capybara
           test "size a vs a_cropped" do
             comp = make_comparison(:a, :a_cropped)
             comp.different?
-            assert_equal 6400, comp.size
+            assert_equal 6400, comp.size(comp.difference_region)
           end
 
           test "quick_equal compare skips difference if skip_area covers it" do
@@ -144,12 +144,23 @@ module Capybara
             assert comp.different?
           end
 
+          # Test Interface Contracts
+
+          test "size requires region" do
+            driver = VipsDriver.new("#{Rails.root}/screenshot.png")
+            assert driver.size(sample_region)
+          end
+
           private
 
           def make_comparison(old_img, new_img, **driver_args)
-            result = VipsDriver.new(@new_screenshot_result.path, **driver_args)
+            result = ImageCompare.new(@new_screenshot_result.path, **driver_args.merge(driver: :vips))
             set_test_images(result, old_img, new_img)
             result
+          end
+
+          def sample_region
+            [0, 0, 0, 0]
           end
         end
 
