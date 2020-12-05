@@ -20,6 +20,7 @@ gem "simplecov", require: false
 gem "puma", require: false
 
 # Capybara Drivers
+gem "cuprite", require: false
 gem "selenium-webdriver", require: false
 gem "webdrivers", require: false
 

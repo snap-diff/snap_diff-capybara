@@ -56,19 +56,19 @@ module Capybara
 
       AVAILABLE_DRIVERS = Utils.detect_available_drivers.freeze
 
-      def self.included(clas)
-        clas.include TestMethods
-        clas.setup do
+      def self.included(klass)
+        klass.include TestMethods
+        klass.setup do
           if Capybara::Screenshot.window_size
-            if selenium?
-              page.driver.browser.manage.window.resize_to(*Capybara::Screenshot.window_size)
-            elsif poltergeist?
+            if page.driver.respond_to?(:resize)
               page.driver.resize(*Capybara::Screenshot.window_size)
+            elsif selenium?
+              page.driver.browser.manage.window.resize_to(*Capybara::Screenshot.window_size)
             end
           end
         end
 
-        clas.teardown do
+        klass.teardown do
           if Capybara::Screenshot::Diff.enabled && @test_screenshots
             test_screenshot_errors = @test_screenshots
               .map { |caller, name, compare| assert_image_not_changed(caller, name, compare) }

@@ -6,27 +6,33 @@ if ENV["COVERAGE"]
   SimpleCov.minimum_coverage 92
 end
 
+$LOAD_PATH.unshift File.expand_path("../lib", __dir__)
+
+TEST_IMAGES_DIR = File.expand_path("images", __dir__)
+
 # NOTE: Simulate Rails Environment
 module Rails
   def self.root
     Pathname("../tmp").expand_path(__dir__)
   end
+
+  def self.application
+    Rack::Builder.new {
+      use(Rack::Static, urls: [""], root: "test/fixtures/app", index: "index.html")
+      run ->(_env) { [200, {}, []] }
+    }.to_app
+  end
 end
-
-$LOAD_PATH.unshift File.expand_path("../lib", __dir__)
-
-TEST_IMAGES_DIR = File.expand_path("images", __dir__)
 
 require "capybara/screenshot/diff"
 require "minitest/autorun"
 require "capybara/minitest"
 
 require "capybara/dsl"
+Capybara.disable_animation = true
+Capybara.server = :puma, {Silent: true}
 Capybara.threadsafe = true
-Capybara.app = Rack::Builder.new do
-  use(Rack::Static, urls: [""], root: "test/fixtures/app", index: "index.html")
-  run ->(_env) { [200, {}, []] }
-end.to_app
+Capybara.app = Rails.application
 
 # TODO(uwe): Remove when we stop support for Rails 4.2
 ActiveSupport.test_order = :random

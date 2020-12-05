@@ -1,14 +1,10 @@
 require "test_helper"
 
-require "webdrivers/chromedriver"
-Webdrivers::Chromedriver.update
+require "support/setup_capybara_drivers"
 
 class SystemTestCase < ActionDispatch::IntegrationTest
   setup do
-    Capybara.current_driver = :selenium_chrome_headless
-    # TODO: Allow to test with different drivers by ENV
-    # Capybara.current_driver = :selenium_chrome
-    # Capybara.current_driver = :selenium
+    Capybara.current_driver = Capybara.javascript_driver
 
     # TODO: Reset original settings to previous values
     @orig_root = Capybara::Screenshot.root
@@ -22,9 +18,9 @@ class SystemTestCase < ActionDispatch::IntegrationTest
     # TODO: Makes configurations copying and restoring much easier
 
     @orig_add_os_path = Capybara::Screenshot.add_os_path
-    Capybara::Screenshot.add_os_path = true
+    Capybara::Screenshot.add_os_path = false
     @orig_add_driver_path = Capybara::Screenshot.add_driver_path
-    Capybara::Screenshot.add_driver_path = true
+    Capybara::Screenshot.add_driver_path = false
     # NOTE: Only works before `include Capybara::Screenshot::Diff` line
     @orig_window_size = Capybara::Screenshot.window_size
     Capybara::Screenshot.window_size = [800, 600]

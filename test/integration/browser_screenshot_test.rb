@@ -13,7 +13,15 @@ class BrowserScreenshotTest < SystemTestCase
   end
 
   def test_window_size_should_resize_browser_window_in_setup
-    assert_equal [800, 600], page.driver.browser.manage.window.size.to_a
+    assert_equal [800, 600], window_size
+  end
+
+  def window_size
+    if page.driver.respond_to?(:window_size)
+      return page.driver.window_size(page.driver.current_window_handle)
+    end
+
+    page.driver.browser.manage.window.size.to_a
   end
 
   def test_screenshot_with_hide_caret_enabled

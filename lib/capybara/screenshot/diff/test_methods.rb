@@ -49,12 +49,6 @@ module Capybara
           current_capybara_driver_class <= Capybara::Selenium::Driver
         end
 
-        def poltergeist?
-          return false unless defined?(Capybara::Poltergeist::Driver)
-
-          current_capybara_driver_class <= Capybara::Poltergeist::Driver
-        end
-
         def screenshot_section(name)
           @screenshot_section = name.to_s
         end
