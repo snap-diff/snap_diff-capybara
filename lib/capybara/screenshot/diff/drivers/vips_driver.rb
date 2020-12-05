@@ -106,6 +106,10 @@ module Capybara
             image.write_to_file(filename)
           end
 
+          def resize_image_to(image, new_width, new_height)
+            image.resize(1.* new_width / new_height)
+          end
+
           def load_images(old_file_name, new_file_name, driver = self)
             [driver.from_file(old_file_name), driver.from_file(new_file_name)]
           end

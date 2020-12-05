@@ -116,6 +116,10 @@ module Capybara
             i.crop(0, 0, *dimensions)
           end
 
+          def from_file(filename)
+            ChunkyPNG::Image.from_file(filename)
+          end
+
           # private
 
           def calculate_metrics
@@ -157,6 +161,10 @@ module Capybara
 
           def save_image_to(image, filename)
             image.save(filename)
+          end
+
+          def resize_image_to(image, new_width, new_height)
+            image.resample_bilinear(new_width, new_height)
           end
 
           def load_image_files(old_file_name, file_name)

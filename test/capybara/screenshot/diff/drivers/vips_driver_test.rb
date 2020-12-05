@@ -146,6 +146,11 @@ module Capybara
 
           # Test Interface Contracts
 
+          test "from_file loads image from path" do
+            driver = VipsDriver.new("#{Rails.root}/screenshot.png")
+            assert driver.from_file("#{TEST_IMAGES_DIR}/a.png")
+          end
+
           test "size requires region" do
             driver = VipsDriver.new("#{Rails.root}/screenshot.png")
             assert driver.size(sample_region)
