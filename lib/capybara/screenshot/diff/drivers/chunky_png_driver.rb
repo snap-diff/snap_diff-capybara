@@ -11,20 +11,14 @@ module Capybara
         class ChunkyPNGDriver
           include ChunkyPNG::Color
 
-          attr_reader :annotated_new_file_name, :annotated_old_file_name, :area_size_limit,
-            :color_distance_limit, :new_file_name, :old_file_name, :shift_distance_limit,
-            :skip_area
+          attr_reader :new_file_name, :old_file_name
 
           def initialize(new_file_name, old_file_name = nil, **options)
             @new_file_name = new_file_name
             @old_file_name = old_file_name || "#{new_file_name}~"
-            @annotated_old_file_name = "#{new_file_name.chomp(".png")}.committed.png"
-            @annotated_new_file_name = "#{new_file_name.chomp(".png")}.latest.png"
 
             @color_distance_limit = options[:color_distance_limit]
-            @area_size_limit = options[:area_size_limit]
             @shift_distance_limit = options[:shift_distance_limit]
-            @dimensions = options[:dimensions]
             @skip_area = options[:skip_area]
 
             reset
@@ -35,87 +29,69 @@ module Capybara
           def reset
             @max_color_distance = @color_distance_limit ? 0 : nil
             @max_shift_distance = @shift_distance_limit ? 0 : nil
-            @left = @top = @right = @bottom = nil
           end
 
-          # Compare the two image files and return `true` or `false` as quickly as possible.
-          # Return falsish if the old file does not exist or the image dimensions do not match.
-          def quick_equal?
-            return nil unless old_file_exists?
-            return true if new_file_size == old_file_size
+          def load_images(old_file_name, new_file_name)
+            old_bytes, new_bytes = load_image_files(old_file_name, new_file_name)
 
-            old_bytes, new_bytes = load_image_files(@old_file_name, @new_file_name)
-            return true if old_bytes == new_bytes
+            _load_images(old_bytes, new_bytes)
+          end
 
-            images = load_images(old_bytes, new_bytes)
-            crop_images(images, @dimensions) if @dimensions
+          def filter_image_with_median(_image)
+            raise NotImplementedError
+          end
 
-            return false if sizes_changed?(*images)
-            return true if images.first.pixels == images.last.pixels
+          def add_black_box(_image, _region)
+            # noop
+          end
 
-            return false unless @color_distance_limit || @shift_distance_limit
+          def difference_level(_diff_mask, old_img, region)
+            size(region) / image_area_size(old_img)
+          end
 
-            @left, @top, @right, @bottom = find_top(*images)
+          def image_area_size(old_img)
+            width_for(old_img) * height_for(old_img)
+          end
 
-            return true if @top.nil?
-
-            if @area_size_limit
-              @left, @top, @right, @bottom = find_diff_rectangle(*images)
-              return true if size <= @area_size_limit
-            end
-
+          def shift_distance_equal?
+            # Stub
             false
           end
 
-          # Compare the two images referenced by this object, and return `true` if they are different,
-          # and `false` if they are the same.
-          # Return `nil` if the old file does not exist or if the image dimensions do not match.
-          def different?
-            return nil unless old_file_exists?
-
-            old_file, new_file = load_image_files(@old_file_name, @new_file_name)
-
-            return not_different if old_file == new_file
-
-            images = load_images(old_file, new_file)
-
-            crop_images(images, @dimensions) if @dimensions
-
-            old_img = images.first
-            new_img = images.last
-
-            if sizes_changed?(old_img, new_img)
-              save_images(@annotated_new_file_name, new_img, @annotated_old_file_name, old_img)
-              @left = 0
-              @top = 0
-              @right = old_img.dimension.width - 1
-              @bottom = old_img.dimension.height - 1
-              return true
-            end
-
-            return not_different if old_img.pixels == new_img.pixels
-
-            @left, @top, @right, @bottom = find_diff_rectangle(old_img, new_img)
-
-            return not_different if @top.nil?
-            return not_different if @area_size_limit && size <= @area_size_limit
-
-            save_annotated_images(images)
+          def shift_distance_different?
+            # Stub
             true
           end
 
-          def old_file_exists?
-            @old_file_name && File.exist?(@old_file_name)
+          def find_difference_region(new_image, old_image, color_distance_limit, shift_distance_limit, area_size_limit, fast_fail: false)
+            return nil, nil if new_image.pixels == old_image.pixels
+
+            if fast_fail && !(color_distance_limit || shift_distance_limit || area_size_limit)
+              return [0, 0, width_for(new_image), height_for(new_image)], nil
+            end
+
+            region = find_top(old_image, new_image)
+            region = if region.nil? || region[1].nil?
+              nil
+            else
+              find_diff_rectangle(old_image, new_image, region)
+            end
+
+            [region, nil]
           end
 
-          def dimensions
-            return unless @left || @top || @right || @bottom
-
-            [@left, @top, @right, @bottom]
+          def height_for(image)
+            image.height
           end
 
-          def size
-            (@right - @left + 1) * (@bottom - @top + 1)
+          def width_for(image)
+            image.width
+          end
+
+          def size(region)
+            return 0 unless region
+
+            (region[2] - region[0] + 1) * (region[3] - region[1] + 1)
           end
 
           def max_color_distance
@@ -128,47 +104,34 @@ module Capybara
             @max_shift_distance
           end
 
-          def error_message
+          def adds_error_details_to(log)
             max_color_distance = self.max_color_distance.ceil(1)
             max_shift_distance = self.max_shift_distance
 
-            "(area: #{size}px #{dimensions}" \
-            ", max_color_distance: #{max_color_distance}" \
-            "#{", max_shift_distance: #{max_shift_distance}" if max_shift_distance})\n" \
-            "#{new_file_name}\n#{annotated_old_file_name}\n" \
-            "#{annotated_new_file_name}"
+            log[:max_color_distance] = max_color_distance
+            log.merge!(max_shift_distance: max_shift_distance) if max_shift_distance
           end
 
-          private
-
-          def old_file_size
-            @old_file_size ||= old_file_exists? && File.size(@old_file_name)
+          def crop(dimensions, i)
+            i.crop(0, 0, *dimensions)
           end
 
-          def new_file_size
-            File.size(@new_file_name)
+          def from_file(filename)
+            ChunkyPNG::Image.from_file(filename)
           end
 
-          def save_annotated_images(images)
-            annotated_old_img, annotated_new_img = draw_rectangles(images, @bottom, @left, @right, @top)
-
-            save_images(
-              @annotated_new_file_name,
-              annotated_new_img,
-              @annotated_old_file_name,
-              annotated_old_img
-            )
-          end
+          # private
 
           def calculate_metrics
             old_file, new_file = load_image_files(@old_file_name, @new_file_name)
+
             if old_file == new_file
               @max_color_distance = 0
               @max_shift_distance = 0
               return
             end
 
-            old_image, new_image = load_images(old_file, new_file)
+            old_image, new_image = _load_images(old_file, new_file)
             calculate_max_color_distance(new_image, old_image)
             calculate_max_shift_limit(new_image, old_image)
           end
@@ -196,25 +159,12 @@ module Capybara
             end
           end
 
-          def not_different
-            clean_tmp_files
-            false
+          def save_image_to(image, filename)
+            image.save(filename)
           end
 
-          def save_images(new_file_name, new_img, org_file_name, org_img)
-            org_img.save(org_file_name)
-            new_img.save(new_file_name)
-          end
-
-          def clean_tmp_files
-            FileUtils.cp @old_file_name, @new_file_name
-            File.delete(@old_file_name) if File.exist?(@old_file_name)
-            File.delete(@annotated_old_file_name) if File.exist?(@annotated_old_file_name)
-            File.delete(@annotated_new_file_name) if File.exist?(@annotated_new_file_name)
-          end
-
-          def load_images(old_file, new_file)
-            [ChunkyPNG::Image.from_blob(old_file), ChunkyPNG::Image.from_blob(new_file)]
+          def resize_image_to(image, new_width, new_height)
+            image.resample_bilinear(new_width, new_height)
           end
 
           def load_image_files(old_file_name, file_name)
@@ -223,25 +173,15 @@ module Capybara
             [old_file, new_file]
           end
 
-          def sizes_changed?(org_image, new_image)
-            return unless org_image.dimension != new_image.dimension
+          def dimension_changed?(old_image, new_image)
+            return unless old_image.dimension != new_image.dimension
 
-            change_msg = [org_image, new_image].map { |i| "#{i.width}x#{i.height}" }.join(" => ")
+            change_msg = [old_image, new_image].map { |i| "#{i.width}x#{i.height}" }.join(" => ")
             warn "Image size has changed for #{@new_file_name}: #{change_msg}"
             true
           end
 
-          def crop_images(images, dimensions)
-            images.map! do |i|
-              if i.dimension.to_a == dimensions || i.width < dimensions[0] || i.height < dimensions[1]
-                i
-              else
-                i.crop(0, 0, *dimensions)
-              end
-            end
-          end
-
-          def draw_rectangles(images, bottom, left, right, top)
+          def draw_rectangles(images, left, top, right, bottom)
             images.map do |image|
               new_img = image.dup
               new_img.rect(left - 1, top - 1, right + 1, bottom + 1, ChunkyPNG::Color.rgb(255, 0, 0))
@@ -249,8 +189,10 @@ module Capybara
             end
           end
 
-          def find_diff_rectangle(org_img, new_img)
-            left, top, right, bottom = find_left_right_and_top(org_img, new_img)
+          private
+
+          def find_diff_rectangle(org_img, new_img, region)
+            left, top, right, bottom = find_left_right_and_top(org_img, new_img, region)
             bottom = find_bottom(org_img, new_img, left, right, bottom)
             [left, top, right, bottom]
           end
@@ -264,11 +206,11 @@ module Capybara
             nil
           end
 
-          def find_left_right_and_top(old_img, new_img)
-            top = @top
-            bottom = @bottom
-            left = @left || old_img.width - 1
-            right = @right || 0
+          def find_left_right_and_top(old_img, new_img, region)
+            left = region[0] || old_img.width - 1
+            top = region[1]
+            bottom = region[2]
+            right = region[3] || 0
             old_img.height.times do |y|
               (0...left).find do |x|
                 next if same_color?(old_img, new_img, x, y)
@@ -401,6 +343,10 @@ module Capybara
 
             color_distance = ChunkyPNG::Color.euclidean_distance_rgba(org_color, new_color)
             color_distance <= color_distance_limit
+          end
+
+          def _load_images(old_file, new_file)
+            [ChunkyPNG::Image.from_blob(old_file), ChunkyPNG::Image.from_blob(new_file)]
           end
         end
       end

@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 require "test_helper"
+require "capybara/screenshot/diff/image_compare"
+require "capybara/screenshot/diff/drivers/chunky_png_driver"
 
 module Capybara
   module Screenshot
@@ -30,7 +32,7 @@ module Capybara
           test "compare then dimensions and cleanup" do
             comp = make_comparison(:a, :c)
             assert comp.different?
-            assert_equal [11, 3, 48, 20], comp.dimensions
+            assert_equal [11, 3, 48, 20], comp.difference_region
             assert File.exist?(comp.old_file_name)
             assert File.exist?(comp.annotated_old_file_name)
             assert File.exist?(comp.annotated_new_file_name)
@@ -44,7 +46,7 @@ module Capybara
           test "compare of 1 pixel wide diff" do
             comp = make_comparison(:a, :d)
             assert comp.different?
-            assert_equal [9, 6, 9, 13], comp.dimensions
+            assert_equal [9, 6, 9, 13], comp.difference_region
           end
 
           test "compare with color_distance_limit above difference" do
@@ -71,9 +73,9 @@ module Capybara
             assert_equal 11, comp.max_shift_distance.ceil
           end
 
-          test "quick_equal" do
-            comp = make_comparison(:a, :b)
-            assert !comp.quick_equal?
+          test "quick_equal with color distance limit above max color distance" do
+            comp = make_comparison(:a, :b, color_distance_limit: 224)
+            assert comp.quick_equal?
             assert_equal 223, comp.max_color_distance.ceil
           end
 
@@ -112,15 +114,31 @@ module Capybara
           test "size a vs a_cropped" do
             comp = make_comparison(:a, :a_cropped)
             comp.different?
-            assert_equal 6400, comp.size
+            assert_equal 6561, comp.size(comp.difference_region)
+          end
+
+          # Test Interface Contracts
+
+          test "from_file loads image from path" do
+            driver = ChunkyPNGDriver.new("#{Rails.root}/screenshot.png")
+            assert driver.from_file("#{TEST_IMAGES_DIR}/a.png")
+          end
+
+          test "size requires region" do
+            driver = ChunkyPNGDriver.new("#{Rails.root}/screenshot.png")
+            assert driver.size(sample_region)
           end
 
           private
 
           def make_comparison(old_img, new_img, **options)
-            comp = ChunkyPNGDriver.new("#{Rails.root}/screenshot.png", **options)
+            comp = ImageCompare.new("#{Rails.root}/screenshot.png", **options.merge(driver: :chunky_png))
             set_test_images(comp, old_img, new_img)
             comp
+          end
+
+          def sample_region
+            [0, 0, 0, 0]
           end
         end
       end

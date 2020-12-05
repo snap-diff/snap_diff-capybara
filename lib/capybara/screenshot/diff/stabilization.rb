@@ -52,7 +52,7 @@ module Capybara
 
             previous_file_name = "#{comparison.new_file_name.chomp(".png")}" \
                 "_x#{format("%02i", i)}_#{(Time.now - screenshot_started_at).round(1)}s" \
-                "_#{stabilization_comparison.dimensions&.to_s&.gsub(", ", "_") || :initial}.png~"
+                "_#{stabilization_comparison.difference_region&.to_s&.gsub(", ", "_") || :initial}.png~"
             FileUtils.mv comparison.new_file_name, previous_file_name
 
             check_max_wait_time(
@@ -63,27 +63,37 @@ module Capybara
           end
         end
 
+        def notice_how_to_avoid_this
+          unless @_csd_retina_warned
+            warn "Halving retina screenshot.  " \
+                'You should add "force-device-scale-factor=1" to your Chrome chromeOptions args.'
+            @_csd_retina_warned = true
+          end
+        end
+
         private
 
         def make_stabilization_comparison_from(comparison, new_file_name, previous_file_name)
           ImageCompare.new(new_file_name, previous_file_name, **comparison.driver_options)
         end
 
-        def reduce_retina_image_size(file_name)
+        def reduce_retina_image_size(file_name, driver)
           return if !ON_MAC || !selenium? || !Capybara::Screenshot.window_size
 
-          saved_image = ChunkyPNG::Image.from_file(file_name)
-          width = Capybara::Screenshot.window_size[0]
-          return if saved_image.width < width * 2
+          expected_image_width = Capybara::Screenshot.window_size[0]
+          saved_image = driver.from_file(file_name)
+          return if driver.width_for(saved_image) < expected_image_width * 2
 
-          unless @_csd_retina_warned
-            warn "Halving retina screenshot.  " \
-                'You should add "force-device-scale-factor=1" to your Chrome chromeOptions args.'
-            @_csd_retina_warned = true
+          notice_how_to_avoid_this
+
+          new_height = expected_image_width * driver.height_for(saved_image) / driver.width_for(saved_image)
+          resized_image = driver.resize_image_to(saved_image, expected_image_width, new_height)
+
+          Dir.mktmpdir do |dir|
+            resized_image_file = "#{dir}/resized.png"
+            driver.save_image_to(resized_image, resized_image_file)
+            FileUtils.mv(resized_image_file, file_name)
           end
-          height = (width * saved_image.height) / saved_image.width
-          resized_image = saved_image.resample_bilinear(width, height)
-          resized_image.save(file_name)
         end
 
         def stabilization_images(base_file)
@@ -123,7 +133,7 @@ module Capybara
           save_screenshot(comparison.new_file_name)
 
           # TODO(uwe): Remove when chromedriver takes right size screenshots
-          reduce_retina_image_size(comparison.new_file_name)
+          reduce_retina_image_size(comparison.new_file_name, comparison.driver)
           # ODOT
         end
 

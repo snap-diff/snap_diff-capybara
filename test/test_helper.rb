@@ -1,9 +1,9 @@
 # frozen_string_literal: true
 
-if ENV["COVERAGE"] && (RUBY_ENGINE != "jruby" || org.jruby.RubyInstanceConfig.FULL_TRACE_ENABLED)
+if ENV["COVERAGE"]
   require "simplecov"
   SimpleCov.start
-  SimpleCov.minimum_coverage RUBY_ENGINE == "jruby" ? 82.5 : 83.5
+  SimpleCov.minimum_coverage 92
 end
 
 # NOTE: Simulate Rails Environment
@@ -21,7 +21,7 @@ require "capybara/screenshot/diff"
 require "minitest/autorun"
 require "capybara/minitest"
 
-require 'capybara/dsl'
+require "capybara/dsl"
 Capybara.threadsafe = true
 Capybara.app = Rack::Builder.new do
   use(Rack::Static, urls: [""], root: "test/fixtures/app", index: "index.html")
@@ -38,6 +38,7 @@ module Capybara
       module TestHelper
         private
 
+        # Stub of the Capybara's save_screenshot
         def save_screenshot(file_name)
           source_image = File.basename(file_name)
           source_image.slice!(/^\d\d_/)
