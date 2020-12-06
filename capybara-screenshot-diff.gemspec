@@ -23,13 +23,4 @@ Gem::Specification.new do |spec|
   spec.add_runtime_dependency "actionpack", ">= 4.2", "< 7"
   spec.add_runtime_dependency "capybara", ">= 2", "< 4"
   spec.add_runtime_dependency "chunky_png", "~> 1.3"
-
-  spec.add_development_dependency "minitest", "~> 5.0"
-  spec.add_development_dependency "minitest-stub-const"
-  spec.add_development_dependency "puma"
-  spec.add_development_dependency "rake"
-  spec.add_development_dependency "standard"
-  spec.add_development_dependency "selenium-webdriver"
-  spec.add_development_dependency "simplecov", "~> 0.11"
-  spec.add_development_dependency "webdrivers"
 end
