@@ -136,11 +136,9 @@ module Capybara
             [image.width, image.height]
           end
 
-          RED_INK = [255, 0, 0, 255].freeze
-
-          def draw_rectangles(images, left, top, right, bottom)
+          def draw_rectangles(images, (left, top, right, bottom), rgba)
             images.map do |image|
-              image.draw_rect(RED_INK, left - 1, top - 1, right - left + 2, bottom - top + 2)
+              image.draw_rect(rgba, left - 1, top - 1, right - left + 2, bottom - top + 2)
             end
           end
 

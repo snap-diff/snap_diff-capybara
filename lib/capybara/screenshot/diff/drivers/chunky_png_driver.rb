@@ -42,11 +42,11 @@ module Capybara
           end
 
           def add_black_box(_image, _region)
-            # noop
+            _image
           end
 
           def difference_level(_diff_mask, old_img, region)
-            size(region) / image_area_size(old_img)
+            size(region).to_f / image_area_size(old_img)
           end
 
           def image_area_size(old_img)
@@ -181,10 +181,10 @@ module Capybara
             true
           end
 
-          def draw_rectangles(images, left, top, right, bottom)
+          def draw_rectangles(images, (left, top, right, bottom), (r, g, b))
             images.map do |image|
               new_img = image.dup
-              new_img.rect(left - 1, top - 1, right + 1, bottom + 1, ChunkyPNG::Color.rgb(255, 0, 0))
+              new_img.rect(left - 1, top - 1, right + 1, bottom + 1, ChunkyPNG::Color.rgb(r, g, b))
               new_img
             end
           end
