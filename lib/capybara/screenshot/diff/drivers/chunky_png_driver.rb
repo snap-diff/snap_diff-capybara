@@ -41,8 +41,8 @@ module Capybara
             raise NotImplementedError
           end
 
-          def add_black_box(_image, _region)
-            _image
+          def add_black_box(image, _region)
+            image
           end
 
           def difference_level(_diff_mask, old_img, region)
