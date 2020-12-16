@@ -5,6 +5,11 @@ on:
     branches: [ $default-branch ]
   pull_request:
 
+env:
+  BUNDLE_GEMFILE: 'gemfiles/rails61_gems.rb'
+  FERRUM_PROCESS_TIMEOUT: '15'
+  WD_CACHE_TIME: '864000' # 10 days
+
 jobs:
   lint:
     name: Lint
@@ -20,15 +25,12 @@ jobs:
           ruby-version: '2.7'
           bundler-cache: true
 
-      - name: Install dependencies
-        run: bundle install
-
       - name: Run Standard Ruby linter
-        run: bin/standardrb
+        run: bin/standardrb --no-fix --fail-fast
 
   test:
     name: Functional Testing
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-20.04 # In order to install libvips 8.9+ version
 
     steps:
       - name: Checkout code
@@ -39,9 +41,6 @@ jobs:
         with:
           ruby-version: '2.7'
           bundler-cache: true
-
-      - name: Install dependencies
-        run: bundle install
 
       - name: Install libvips
         run: sudo apt install libvips libvips-dev libvips-tools
@@ -71,7 +70,15 @@ jobs:
     strategy:
       matrix:
         ruby-version: [ '2.7', '2.6', '2.5', 'jruby' ]
-        gemfile: [ 'rails61_gems.rb', 'rails60_gems.rb', 'rails52.gemfile', 'rails51.gemfile', 'rails50.gemfile', 'rails42.gemfile' ]
+        gemfile:
+          - 'rails61_gems.rb'
+          - 'rails60_gems.rb'
+          - 'rails52.gemfile'
+          - 'rails51.gemfile'
+          - 'rails50.gemfile'
+          - 'rails42.gemfile'
+    env:
+      BUNDLE_GEMFILE: gemfiles/${{ matrix.gemfile }}
 
     steps:
       - name: Checkout code
@@ -79,14 +86,9 @@ jobs:
 
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
-        env:
-          BUNDLE_GEMFILE: gemfiles/${{ matrix.gemfile }}
         with:
           ruby-version: ${{ matrix.ruby-version }}
           bundler-cache: true
-
-      - name: Install dependencies
-        run: bundle install
 
       - name: Install libvips
         run: sudo apt install libvips libvips-dev libvips-tools
@@ -116,9 +118,6 @@ jobs:
         with:
           ruby-version: '2.7'
           bundler-cache: true
-
-      - name: Install dependencies
-        run: bundle install
 
       - name: Install libvips
         run: sudo apt install libvips libvips-dev libvips-tools
