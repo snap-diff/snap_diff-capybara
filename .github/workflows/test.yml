@@ -71,7 +71,7 @@ jobs:
     strategy:
       matrix:
         ruby-version: [ '2.7', '2.6', '2.5', 'jruby' ]
-        gemfile: [ 'rails60_gems.rb', 'rails52.gemfile', 'rails51.gemfile', 'rails50.gemfile', 'rails42.gemfile' ]
+        gemfile: [ 'rails61_gems.rb', 'rails60_gems.rb', 'rails52.gemfile', 'rails51.gemfile', 'rails50.gemfile', 'rails42.gemfile' ]
 
     steps:
       - name: Checkout code
