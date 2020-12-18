@@ -8,6 +8,4 @@ ignore:                 # default: []
   - 'gemfiles/**/*':
     - Security/Eval
   - 'gemfiles/vendor/**/*'
-  - 'lib/**/*':
-      - Lint/Debugger
   - 'vendor/**/*'

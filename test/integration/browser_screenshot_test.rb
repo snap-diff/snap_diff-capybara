@@ -39,7 +39,9 @@ class BrowserScreenshotTest < SystemTestCase
 
     visit "/"
     fill_in "First Field:", with: "Test Input Without Hide Caret"
-    screenshot "index-hide_caret-disabled"
+
+    # Hide caret is flaky issue, let's give more tries to take stable screenshot
+    screenshot "index-hide_caret-disabled", wait: Capybara.default_max_wait_time * 5
   ensure
     Capybara::Screenshot.hide_caret = nil
   end

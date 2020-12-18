@@ -24,7 +24,7 @@ if ENV["CAPYBARA_DRIVER"] == "cuprite"
     "disable-domain-reliability" => nil,
     "disable-extensions" => nil,
     "disable-features" => "TranslateUI,BlinkGenPropertyTrees",
-    'disable-gpu' => nil,
+    "disable-gpu" => nil,
     "disable-hang-monitor" => nil,
     "disable-infobars" => nil,
     "disable-ipc-flooding-protection" => nil,
@@ -62,6 +62,7 @@ if ENV["CAPYBARA_DRIVER"] == "cuprite"
       js_errors: true,
       process_timeout: 10,
       screen_size: [800, 600],
+      timeout: ENV["CI"] ? 40 : 10,
       window_size: [800, 600]
     )
   end
