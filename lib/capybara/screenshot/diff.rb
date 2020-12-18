@@ -14,7 +14,7 @@ module Capybara
     mattr_accessor :blur_active_element
     mattr_accessor :enabled
     mattr_accessor :hide_caret
-    mattr_reader(:root) { (defined?(Rails.root) && Rails.root) || Pathname(".") }
+    mattr_reader(:root) { (defined?(Rails.root) && Rails.root) || Pathname(".").expand_path }
     mattr_accessor :stability_time_limit
     mattr_accessor :window_size
     mattr_accessor(:save_path) { "doc/screenshots" }
