@@ -119,9 +119,15 @@ module Capybara
           File.delete(@annotated_new_file_name) if File.exist?(@annotated_new_file_name)
         end
 
+        DIFF_COLOR = [255, 0, 0, 255].freeze
+        SKIP_COLOR = [255, 192, 0, 255].freeze
+
         def annotate_and_save(images, region = difference_region)
-          annotated_old_img, annotated_new_img = driver.draw_rectangles(images, *region)
-          save(annotated_new_img, annotated_old_img, @annotated_new_file_name, @annotated_old_file_name)
+          annotated_images = driver.draw_rectangles(images, region, DIFF_COLOR)
+          @skip_area.to_a.flatten.each_slice(4) do |region|
+            annotated_images = driver.draw_rectangles(annotated_images, region, SKIP_COLOR)
+          end
+          save(*annotated_images, @annotated_new_file_name, @annotated_old_file_name)
         end
 
         def save(new_img, old_img, annotated_new_file_name, annotated_old_file_name)
