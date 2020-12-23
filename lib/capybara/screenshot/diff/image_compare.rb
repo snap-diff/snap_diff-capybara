@@ -127,10 +127,10 @@ module Capybara
           @skip_area.to_a.flatten.each_slice(4) do |region|
             annotated_images = driver.draw_rectangles(annotated_images, region, SKIP_COLOR)
           end
-          save(*annotated_images, @annotated_new_file_name, @annotated_old_file_name)
+          save(*annotated_images, @annotated_old_file_name, @annotated_new_file_name)
         end
 
-        def save(new_img, old_img, annotated_new_file_name, annotated_old_file_name)
+        def save(old_img, new_img, annotated_old_file_name, annotated_new_file_name)
           driver.save_image_to(old_img, annotated_old_file_name)
           driver.save_image_to(new_img, annotated_new_file_name)
         end
