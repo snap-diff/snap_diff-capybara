@@ -4,6 +4,7 @@ on:
   push:
     branches: [ $default-branch ]
   pull_request:
+    branches: [ $default-branch ]
 
 env:
   BUNDLE_GEMFILE: 'gemfiles/rails61_gems.rb'
