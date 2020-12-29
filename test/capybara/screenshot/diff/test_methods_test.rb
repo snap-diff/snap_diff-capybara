@@ -35,6 +35,7 @@ module Capybara
         end
 
         def test_screenshot_support_drivers_options
+          skip unless defined?(Capybara::Screenshot::Diff::Drivers::VipsDriverTest)
           screenshot("a", driver: :vips)
         end
       end

@@ -13,7 +13,7 @@ class SystemTestCase < ActionDispatch::IntegrationTest
     Capybara::Screenshot.save_path = "test/fixtures/app/doc/screenshots"
     Capybara::Screenshot.enabled = true
     Capybara::Screenshot::Diff.enabled = true
-    Capybara::Screenshot::Diff.driver = ENV.fetch("SCREENSHOT_DRIVER", "vips").to_sym
+    Capybara::Screenshot::Diff.driver = ENV.fetch("SCREENSHOT_DRIVER", "chunky_png").to_sym
 
     # TODO: Makes configurations copying and restoring much easier
 

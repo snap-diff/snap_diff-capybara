@@ -20,6 +20,16 @@ module Capybara
           }()
         JS
 
+        HIDE_CARET_SCRIPT = <<~JS
+              if (!document.getElementById('csdHideCaretStyle')) {
+                let style = document.createElement('style');
+                style.setAttribute('id', 'csdHideCaretStyle');
+                document.head.appendChild(style);
+                let styleSheet = style.sheet;
+                styleSheet.insertRule("* { caret-color: transparent !important; }", 0);
+              }
+        JS
+
         def take_stable_screenshot(comparison, stability_time_limit:, wait:)
           previous_file_name = comparison.old_file_name
           screenshot_started_at = last_image_change_at = Time.now
@@ -117,15 +127,7 @@ module Capybara
             JS
             blurred_input = page.driver.send :unwrap_script_result, active_element
           end
-          if Capybara::Screenshot.hide_caret && !@hid_caret
-            execute_script(<<~JS)
-              var style = document.createElement('style');
-              document.head.appendChild(style);
-              var styleSheet = style.sheet;
-              styleSheet.insertRule("* { caret-color: transparent !important; }", 0);
-            JS
-            @hid_caret = true
-          end
+          execute_script(HIDE_CARET_SCRIPT) if Capybara::Screenshot.hide_caret
           blurred_input
         end
 

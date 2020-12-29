@@ -104,7 +104,12 @@ module Capybara
 
       test "detect available diff drivers on the loading" do
         # NOTE for tests we are loading both drivers, so we expect that all of them are available
-        assert_equal %i[vips chunky_png], Capybara::Screenshot::Diff::AVAILABLE_DRIVERS
+        expected_drivers = if defined?(Capybara::Screenshot::Diff::Drivers::VipsDriverTest)
+                             %i[vips chunky_png]
+                           else
+                             %i[chunky_png]
+                           end
+        assert_equal expected_drivers, Capybara::Screenshot::Diff::AVAILABLE_DRIVERS
       end
     end
   end

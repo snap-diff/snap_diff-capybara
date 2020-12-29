@@ -20,11 +20,13 @@ module Capybara
         end
 
         test "it can be instantiated with vips adapter" do
+          skip unless defined?(Capybara::Screenshot::Diff::Drivers::VipsDriverTest)
           comparison = ImageCompare.new("images/b.png", driver: :vips)
           assert_kind_of Drivers::VipsDriver, comparison.driver
         end
 
         test "it can be instantiated with vips adapter and tolerance option" do
+          skip unless defined?(Capybara::Screenshot::Diff::Drivers::VipsDriverTest)
           comp = make_comparison(:a, :b, driver: :vips, tolerance: 0.02)
           assert comp.quick_equal?
           assert_not comp.different?
@@ -39,6 +41,7 @@ module Capybara
         end
 
         test "for driver: :auto returns first from available drivers" do
+          skip unless defined?(Capybara::Screenshot::Diff::Drivers::VipsDriverTest)
           comparison = ImageCompare.new("images/b.png", driver: :auto)
           assert_kind_of Drivers::VipsDriver, comparison.driver
         end
