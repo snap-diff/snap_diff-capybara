@@ -78,6 +78,13 @@ jobs:
           - 'rails51.gemfile'
           - 'rails50.gemfile'
           - 'rails42.gemfile'
+        include:
+          - ruby-version: '3.0'
+            gemfile: 'rails61_gems.rb'
+          - ruby-version: '3.0'
+            gemfile: 'rails60_gems.rb'
+
+
     env:
       BUNDLE_GEMFILE: gemfiles/${{ matrix.gemfile }}
 
