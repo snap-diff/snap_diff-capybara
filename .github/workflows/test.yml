@@ -3,8 +3,9 @@ name: Test
 on:
   push:
     branches: [ $default-branch ]
-  pull_request:
+  pull_request_target:
     branches: [ $default-branch ]
+  pull_request:
 
 env:
   BUNDLE_GEMFILE: 'gemfiles/rails61_gems.rb'
