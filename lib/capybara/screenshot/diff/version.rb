@@ -3,7 +3,7 @@
 module Capybara
   module Screenshot
     module Diff
-      VERSION = "1.4.2"
+      VERSION = "1.5.0"
     end
   end
 end
