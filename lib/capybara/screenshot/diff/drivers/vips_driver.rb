@@ -82,7 +82,7 @@ module Capybara
             @chunky_png_comparator ||= ImageCompare.new(
               @new_file_name,
               @old_file_name,
-              @options.merge(driver: :chunky_png, tolerance: nil, median_filter_window_size: nil)
+              **@options.merge(driver: :chunky_png, tolerance: nil, median_filter_window_size: nil)
             )
           end
 

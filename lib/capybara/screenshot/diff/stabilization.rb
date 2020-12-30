@@ -21,13 +21,13 @@ module Capybara
         JS
 
         HIDE_CARET_SCRIPT = <<~JS
-              if (!document.getElementById('csdHideCaretStyle')) {
-                let style = document.createElement('style');
-                style.setAttribute('id', 'csdHideCaretStyle');
-                document.head.appendChild(style);
-                let styleSheet = style.sheet;
-                styleSheet.insertRule("* { caret-color: transparent !important; }", 0);
-              }
+          if (!document.getElementById('csdHideCaretStyle')) {
+            let style = document.createElement('style');
+            style.setAttribute('id', 'csdHideCaretStyle');
+            document.head.appendChild(style);
+            let styleSheet = style.sheet;
+            styleSheet.insertRule("* { caret-color: transparent !important; }", 0);
+          }
         JS
 
         def take_stable_screenshot(comparison, stability_time_limit:, wait:)
