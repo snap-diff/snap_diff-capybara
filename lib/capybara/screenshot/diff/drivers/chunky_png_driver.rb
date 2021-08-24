@@ -209,8 +209,8 @@ module Capybara
           def find_left_right_and_top(old_img, new_img, region)
             left = region[0] || old_img.width - 1
             top = region[1]
-            bottom = region[2]
-            right = region[3] || 0
+            right = region[2] || 0
+            bottom = region[3]
             old_img.height.times do |y|
               (0...left).find do |x|
                 next if same_color?(old_img, new_img, x, y)
