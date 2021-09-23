@@ -67,6 +67,15 @@ describe 'Permissions admin', :type => :feature, :js => true do
 
 end
 ```
+But it's better to include it within your *_helper.rb file so that it can used anywhere in your feature specs.
+```ruby
+# spec/feature_helper.rb
+require 'capybara/screenshot/diff'
+
+RSpec.configure do |config|
+    config.include Capybara::Screenshot::Diff::TestMethods
+end
+```
 
 ### Taking screenshots
 
