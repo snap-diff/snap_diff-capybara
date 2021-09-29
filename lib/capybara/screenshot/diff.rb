@@ -55,6 +55,12 @@ module Capybara
       mattr_accessor(:tolerance) { 0.001 }
 
       AVAILABLE_DRIVERS = Utils.detect_available_drivers.freeze
+      begin
+        require 'minitest'
+        ASSERTION = Minitest::Assertion
+      rescue
+        ASSERTION = RuntimeError
+      end
 
       def self.included(klass)
         klass.include TestMethods
@@ -73,7 +79,7 @@ module Capybara
             test_screenshot_errors = @test_screenshots
               .map { |caller, name, compare| assert_image_not_changed(caller, name, compare) }
             test_screenshot_errors.compact!
-            fail(test_screenshot_errors.join("\n\n")) if test_screenshot_errors.any?
+            raise ASSERTION, test_screenshot_errors.join("\n\n") if test_screenshot_errors.any?
           end
         end
       end
