@@ -56,7 +56,7 @@ module Capybara
 
       AVAILABLE_DRIVERS = Utils.detect_available_drivers.freeze
       begin
-        require 'minitest'
+        require "minitest"
         ASSERTION = Minitest::Assertion
       rescue
         ASSERTION = RuntimeError

@@ -10,7 +10,7 @@ module Capybara
     module Diff
       class ImageCompareTest < ActionDispatch::IntegrationTest
         include TestHelper
-        IMAGES = Dir[File.expand_path("../../../images/*.png", __dir__)].map { |f| File.basename(f).chomp('.png') }
+        IMAGES = Dir[File.expand_path("../../../images/*.png", __dir__)].map { |f| File.basename(f).chomp(".png") }
 
         { default: Drivers::ChunkyPNGDriver, chunky_png: Drivers::ChunkyPNGDriver,
             # vips: Drivers::VipsDriver, auto: Drivers::VipsDriver
