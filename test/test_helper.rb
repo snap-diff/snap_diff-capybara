@@ -3,7 +3,7 @@
 if ENV["COVERAGE"]
   require "simplecov"
   SimpleCov.start
-  SimpleCov.minimum_coverage 92
+  SimpleCov.minimum_coverage 91
 end
 
 $LOAD_PATH.unshift File.expand_path("../lib", __dir__)
