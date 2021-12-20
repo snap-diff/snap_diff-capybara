@@ -71,7 +71,7 @@ jobs:
 
     strategy:
       matrix:
-        ruby-version: [ '2.7', '2.6', 'jruby' ]
+        ruby-version: [ '3.0', '2.7', '2.6', 'jruby' ]
         gemfile:
           - 'rails61_gems.rb'
           - 'rails60_gems.rb'
@@ -79,8 +79,6 @@ jobs:
         include:
           - ruby-version: 2.7
             gemfile: rails70_gems.rb
-          - ruby-version: 3.0
-            gemfile: rails61_gems.rb
     # NOTE: We are testing rails 7 + ruby 3 in the `test` job
     #     - ruby-version: 3.0
     #       gemfile: rails70_gems.rb
