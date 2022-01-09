@@ -20,7 +20,7 @@ Gem::Specification.new do |spec|
   spec.executables = spec.files.grep(%r{^exe/}) { |f| File.basename(f) }
   spec.require_paths = ["lib"]
 
-  spec.add_runtime_dependency "actionpack", ">= 4.2", "< 7"
+  spec.add_runtime_dependency "actionpack", ">= 4.2", "< 8"
   spec.add_runtime_dependency "capybara", ">= 2", "< 4"
   spec.add_runtime_dependency "chunky_png", "~> 1.3"
 end
