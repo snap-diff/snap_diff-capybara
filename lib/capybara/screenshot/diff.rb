@@ -80,7 +80,11 @@ module Capybara
               .map { |caller, name, compare| assert_image_not_changed(caller, name, compare) }
             @test_screenshots = nil # release the comparison objects from memory
             test_screenshot_errors.compact!
-            raise ASSERTION, test_screenshot_errors.join("\n\n") if test_screenshot_errors.any?
+            if test_screenshot_errors.any?
+              e = ASSERTION.new(test_screenshot_errors.join("\n\n"))
+              e.set_backtrace(caller)
+              failures << e
+            end
           end
         end
       end
