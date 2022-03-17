@@ -65,7 +65,7 @@ module Capybara
       def self.included(klass)
         klass.include TestMethods
         klass.setup do
-          if Capybara::Screenshot.window_size
+          if Capybara::Screenshot.active? || Capybara::Screenshot.window_size
             if page.driver.respond_to?(:resize)
               page.driver.resize(*Capybara::Screenshot.window_size)
             elsif selenium?
@@ -75,7 +75,7 @@ module Capybara
         end
 
         klass.teardown do
-          if Capybara::Screenshot::Diff.enabled && @test_screenshots
+          if Capybara::Screenshot.active? && @test_screenshots
             test_screenshot_errors = @test_screenshots
               .map { |caller, name, compare| assert_image_not_changed(caller, name, compare) }
             @test_screenshots = nil # release the comparison objects from memory
