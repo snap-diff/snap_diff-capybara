@@ -3,9 +3,11 @@ name: Test
 on:
   push:
     branches: [ master ]
-  pull_request_target:
-    branches: [ master ]
   pull_request:
+    paths:
+      - '*.rb'
+      - '*.gemfile'
+      - '!bin/**'
 
 env:
   BUNDLE_GEMFILE: 'gemfiles/rails70_gems.rb'
@@ -13,23 +15,6 @@ env:
   WD_CACHE_TIME: '864000' # 10 days
 
 jobs:
-  lint:
-    name: Lint
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
-
-      - name: Set up Ruby
-        uses: ruby/setup-ruby@v1
-        with:
-          ruby-version: '3.0'
-          bundler-cache: true
-
-      - name: Run Standard Ruby linter
-        run: bin/standardrb --no-fix --fail-fast
-
   test:
     name: Functional Testing
     runs-on: ubuntu-20.04 # In order to install libvips 8.9+ version
@@ -65,8 +50,8 @@ jobs:
           path: coverage
 
   matrix:
-    name: Test Integration
-    needs: [ 'test', 'lint' ]
+    name: Test Integration Rails & Ruby
+    needs: [ 'test' ]
     runs-on: ubuntu-20.04
 
     strategy:
@@ -79,9 +64,10 @@ jobs:
         include:
           - ruby-version: 2.7
             gemfile: rails70_gems.rb
-    # NOTE: We are testing rails 7 + ruby 3 in the `test` job
-    #     - ruby-version: 3.0
-    #       gemfile: rails70_gems.rb
+          - ruby-version: 3.0
+            gemfile: rails70_gems.rb
+          - ruby-version: 3.1
+            gemfile: rails70_gems.rb
     env:
       BUNDLE_GEMFILE: gemfiles/${{ matrix.gemfile }}
 
@@ -102,8 +88,8 @@ jobs:
         run: bundle exec rake test
 
   matrix_screenshot_driver:
-    name: Test Integration
-    needs: [ 'test', 'lint' ]
+    name: Test Integration Capybara & Image Drivers
+    needs: [ 'test' ]
     runs-on: ubuntu-20.04
 
     strategy:
@@ -121,7 +107,7 @@ jobs:
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
         with:
-          ruby-version: '3.0'
+          ruby-version: '3.1'
           bundler-cache: true
 
       - name: Install libvips
