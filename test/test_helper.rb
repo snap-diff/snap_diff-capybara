@@ -51,8 +51,8 @@ module Capybara
           FileUtils.cp File.expand_path("images/#{source_image}", __dir__), file_name
         end
 
-        def make_comparison(old_img, new_img, **options)
-          comp = ImageCompare.new("#{Rails.root}/screenshot.png", **options)
+        def make_comparison(old_img, new_img, options = {})
+          comp = ImageCompare.new("#{Rails.root}/screenshot.png", nil, options)
           set_test_images(comp, old_img, new_img)
           comp
         end

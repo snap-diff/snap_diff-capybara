@@ -61,13 +61,8 @@ module Capybara
           FileUtils.rm_rf screenshot_dir
         end
 
-        # @return [Boolean] wether a screenshot was taken
-        def screenshot(
-          name,
-          stability_time_limit: Screenshot.stability_time_limit,
-          wait: Capybara.default_max_wait_time,
-          **driver_options
-        )
+        # @return [Boolean] whether a screenshot was taken
+        def screenshot(name, driver_options = {})
           return false unless Screenshot.active?
           return false if window_size_is_wrong?
 
@@ -77,8 +72,13 @@ module Capybara
             driver: Diff.driver,
             shift_distance_limit: Diff.shift_distance_limit,
             skip_area: Diff.skip_area,
-            tolerance: Diff.tolerance
+            stability_time_limit: Screenshot.stability_time_limit,
+            tolerance: Diff.tolerance,
+            wait: Capybara.default_max_wait_time
           }.merge(driver_options)
+
+          stability_time_limit = driver_options[:stability_time_limit]
+          wait = driver_options[:wait]
 
           # Allow nil or single or multiple areas
           if driver_options[:skip_area]
@@ -93,7 +93,7 @@ module Capybara
           file_name = "#{Screenshot.screenshot_area_abs}/#{name}.png"
 
           FileUtils.mkdir_p File.dirname(file_name)
-          comparison = ImageCompare.new(file_name, **driver_options)
+          comparison = ImageCompare.new(file_name, nil, driver_options)
           checkout_vcs(name, comparison)
           begin
             blurred_input = prepare_page_for_screenshot(timeout: wait)

@@ -160,8 +160,8 @@ begin
 
             private
 
-            def make_comparison(old_img, new_img, **driver_args)
-              result = ImageCompare.new(@new_screenshot_result.path, **driver_args.merge(driver: :vips))
+            def make_comparison(old_img, new_img, options = {})
+              result = ImageCompare.new(@new_screenshot_result.path, nil, options.merge(driver: :vips))
               set_test_images(result, old_img, new_img)
               result
             end
@@ -202,5 +202,5 @@ begin
     end
   end
 rescue LoadError
-  puts "VIPS not present.  Skipping VIPS driver tests."
+  warn "VIPS not present. Skipping VIPS driver tests."
 end

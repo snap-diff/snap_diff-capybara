@@ -131,8 +131,12 @@ module Capybara
 
           private
 
-          def make_comparison(old_img, new_img, **options)
-            comp = ImageCompare.new("#{Rails.root}/screenshot.png", **options.merge(driver: :chunky_png))
+          def make_comparison(old_img, new_img, options = {})
+            comp = ImageCompare.new(
+              "#{Rails.root}/screenshot.png",
+              nil,
+              options.merge(driver: :chunky_png)
+            )
             set_test_images(comp, old_img, new_img)
             comp
           end

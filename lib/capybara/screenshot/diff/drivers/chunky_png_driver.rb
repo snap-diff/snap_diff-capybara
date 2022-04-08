@@ -13,9 +13,11 @@ module Capybara
 
           attr_reader :new_file_name, :old_file_name
 
-          def initialize(new_file_name, old_file_name = nil, **options)
+          def initialize(new_file_name, old_file_name = nil, options = {})
+            options = old_file_name if old_file_name.is_a?(Hash)
+
             @new_file_name = new_file_name
-            @old_file_name = old_file_name || "#{new_file_name}~"
+            @old_file_name = old_file_name || "#{new_file_name}#{ImageCompare::TMP_FILE_SUFFIX}"
 
             @color_distance_limit = options[:color_distance_limit]
             @shift_distance_limit = options[:shift_distance_limit]

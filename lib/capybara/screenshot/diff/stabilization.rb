@@ -60,10 +60,14 @@ module Capybara
               end
             end
 
-            previous_file_name = "#{comparison.new_file_name.chomp(".png")}" \
-                "_x#{format("%02i", i)}_#{(Time.now - screenshot_started_at).round(1)}s" \
-                "_#{stabilization_comparison.difference_region&.to_s&.gsub(", ", "_") || :initial}.png~"
-            FileUtils.mv comparison.new_file_name, previous_file_name
+            previous_file_name = build_snapshot_version_file_name(
+              comparison,
+              i,
+              screenshot_started_at,
+              stabilization_comparison
+            )
+
+            FileUtils.mv(comparison.new_file_name, previous_file_name)
 
             check_max_wait_time(
               comparison,
@@ -83,8 +87,15 @@ module Capybara
 
         private
 
+        def build_snapshot_version_file_name(comparison, iteration, screenshot_started_at, stabilization_comparison)
+          "#{comparison.new_file_name.chomp(".png")}" \
+                "_x#{format("%02i", iteration)}_#{(Time.now - screenshot_started_at).round(1)}s" \
+                "_#{stabilization_comparison.difference_region&.to_s&.gsub(", ", "_") || :initial}.png" \
+                "#{ImageCompare::TMP_FILE_SUFFIX}"
+        end
+
         def make_stabilization_comparison_from(comparison, new_file_name, previous_file_name)
-          ImageCompare.new(new_file_name, previous_file_name, **comparison.driver_options)
+          ImageCompare.new(new_file_name, previous_file_name, comparison.driver_options)
         end
 
         def reduce_retina_image_size(file_name, driver)
@@ -107,7 +118,7 @@ module Capybara
         end
 
         def stabilization_images(base_file)
-          Dir["#{base_file.chomp(".png")}_x*.png~"].sort
+          Dir["#{base_file.chomp(".png")}_x*.png#{ImageCompare::TMP_FILE_SUFFIX}"].sort
         end
 
         def clean_stabilization_images(base_file)
