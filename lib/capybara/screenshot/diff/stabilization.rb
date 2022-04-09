@@ -130,7 +130,7 @@ module Capybara
           if Capybara::Screenshot.blur_active_element
             active_element = execute_script(<<-JS)
               ae = document.activeElement;
-              if (ae.nodeName == "INPUT" || ae.nodeName == "TEXTAREA") {
+              if (ae.nodeName === "INPUT" || ae.nodeName === "TEXTAREA") {
                   ae.blur();
                   return ae;
               }
