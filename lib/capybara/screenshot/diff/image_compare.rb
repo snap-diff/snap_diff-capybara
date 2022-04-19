@@ -8,27 +8,31 @@ module Capybara
       # Compare two images and determine if they are equal, different, or within some comparison
       # range considering color values and difference area size.
       class ImageCompare < SimpleDelegator
+        TMP_FILE_SUFFIX = "~"
+
         attr_reader :driver, :driver_options
 
         attr_reader :annotated_new_file_name, :annotated_old_file_name, :area_size_limit,
           :color_distance_limit, :new_file_name, :old_file_name, :shift_distance_limit,
           :skip_area
 
-        def initialize(new_file_name, old_file_name = nil, **driver_options)
+        def initialize(new_file_name, old_file_name = nil, options = {})
+          options = old_file_name if old_file_name.is_a?(Hash)
+
           @new_file_name = new_file_name
-          @old_file_name = old_file_name || "#{new_file_name}~"
+          @old_file_name = old_file_name || "#{new_file_name}#{ImageCompare::TMP_FILE_SUFFIX}"
           @annotated_old_file_name = "#{new_file_name.chomp(".png")}.committed.png"
           @annotated_new_file_name = "#{new_file_name.chomp(".png")}.latest.png"
 
-          @driver_options = driver_options
+          @driver_options = options
 
-          @color_distance_limit = driver_options[:color_distance_limit] || 0
-          @area_size_limit = driver_options[:area_size_limit]
-          @shift_distance_limit = driver_options[:shift_distance_limit]
-          @dimensions = driver_options[:dimensions]
-          @skip_area = driver_options[:skip_area]
-          @tolerance = driver_options[:tolerance]
-          @median_filter_window_size = driver_options[:median_filter_window_size]
+          @color_distance_limit = options[:color_distance_limit] || 0
+          @area_size_limit = options[:area_size_limit]
+          @shift_distance_limit = options[:shift_distance_limit]
+          @dimensions = options[:dimensions]
+          @skip_area = options[:skip_area]
+          @tolerance = options[:tolerance]
+          @median_filter_window_size = options[:median_filter_window_size]
 
           driver_klass = find_driver_class_for(@driver_options.fetch(:driver, :chunky_png))
           @driver = driver_klass.new(@new_file_name, @old_file_name, **@driver_options)
