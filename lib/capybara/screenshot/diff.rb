@@ -62,10 +62,23 @@ module Capybara
         ASSERTION = RuntimeError
       end
 
+      def self.default_options
+        {
+          area_size_limit: area_size_limit,
+          color_distance_limit: color_distance_limit,
+          driver: driver,
+          shift_distance_limit: shift_distance_limit,
+          skip_area: skip_area,
+          stability_time_limit: Screenshot.stability_time_limit,
+          tolerance: tolerance,
+          wait: Capybara.default_max_wait_time
+        }
+      end
+
       def self.included(klass)
         klass.include TestMethods
         klass.setup do
-          if Capybara::Screenshot.active? || Capybara::Screenshot.window_size
+          if Capybara::Screenshot.window_size
             if page.driver.respond_to?(:resize)
               page.driver.resize(*Capybara::Screenshot.window_size)
             elsif selenium?

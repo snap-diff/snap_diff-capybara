@@ -16,14 +16,6 @@ class BrowserScreenshotTest < SystemTestCase
     assert_equal [800, 600], window_size
   end
 
-  def window_size
-    if page.driver.respond_to?(:window_size)
-      return page.driver.window_size(page.driver.current_window_handle)
-    end
-
-    page.driver.browser.manage.window.size.to_a
-  end
-
   def test_screenshot_with_hide_caret_enabled
     Capybara::Screenshot.hide_caret = true
 
@@ -66,7 +58,29 @@ class BrowserScreenshotTest < SystemTestCase
     Capybara::Screenshot.blur_active_element = nil
   end
 
+  def test_screenshot_selected_element
+    visit "/"
+    screenshot "form_element", crop: bounds('form')
+  end
+
   private
+
+  def bounds(selector)
+    element = evaluate_script("document.querySelector('#{selector}').getBoundingClientRect()")
+    if element['left']
+      [element['left'], element['top'], element['right'], element['bottom']]
+    else
+      [0, 0, *window_size]
+    end
+  end
+
+  def window_size
+    if page.driver.respond_to?(:window_size)
+      return page.driver.window_size(page.driver.current_window_handle)
+    end
+
+    page.driver.browser.manage.window.size.to_a
+  end
 
   def assert_screenshot_error_for(screenshot_name)
     assert_equal 1, @test_screenshots.length, "expecting to have just one difference"

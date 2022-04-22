@@ -62,23 +62,15 @@ module Capybara
         end
 
         # @return [Boolean] whether a screenshot was taken
-        def screenshot(name, driver_options = {})
+        def screenshot(name, options = {})
           return false unless Screenshot.active?
           return false if window_size_is_wrong?
 
-          driver_options = {
-            area_size_limit: Diff.area_size_limit,
-            color_distance_limit: Diff.color_distance_limit,
-            driver: Diff.driver,
-            shift_distance_limit: Diff.shift_distance_limit,
-            skip_area: Diff.skip_area,
-            stability_time_limit: Screenshot.stability_time_limit,
-            tolerance: Diff.tolerance,
-            wait: Capybara.default_max_wait_time
-          }.merge(driver_options)
+          driver_options = Diff.default_options.merge(options)
 
           stability_time_limit = driver_options[:stability_time_limit]
           wait = driver_options[:wait]
+          crop = driver_options.delete(:crop)
 
           # Allow nil or single or multiple areas
           if driver_options[:skip_area]
@@ -98,9 +90,9 @@ module Capybara
           begin
             blurred_input = prepare_page_for_screenshot(timeout: wait)
             if stability_time_limit
-              take_stable_screenshot(comparison, stability_time_limit: stability_time_limit, wait: wait)
+              take_stable_screenshot(comparison, stability_time_limit: stability_time_limit, wait: wait, crop: crop)
             else
-              take_right_size_screenshot(comparison)
+              take_right_size_screenshot(comparison, crop: crop)
             end
           ensure
             blurred_input&.click

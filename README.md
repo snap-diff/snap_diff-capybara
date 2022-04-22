@@ -38,16 +38,7 @@ Or install it yourself as:
 In your test class, include the `Capybara::Screenshot::Diff` module:
 
 ```ruby
-class FeatureTest < ActionDispatch::IntegrationTest
-  include Capybara::Screenshot::Diff
-  ...
-end
-```
-
-or if you use the integration test directly:
-
-```ruby
-class ActionDispatch::IntegrationTest
+class ApplicationSystemTestCase < ActionDispatch::SystemTestCase
   include Capybara::Screenshot::Diff
   ...
 end
@@ -194,6 +185,23 @@ end
 `screenshot_section` and/or `screenshot_group` can still be overridden in each
 test.
 
+
+
+### Capturing one area instead of the whole page
+
+```ruby
+test 'the cool' do
+  visit '/feature'
+  screenshot 'cool_element', crop: bounds('#my_element')
+end
+
+private
+
+def bounds(selector)
+  element = evaluate_script("document.querySelector('#{selector}').getBoundingClientRect()")
+  [element['left'], element['top'], element['right'], element['bottom']]
+end
+```
 
 
 ### Multiple Capybara drivers
@@ -350,7 +358,7 @@ test 'max wait time' do
 end
 ```
 
-### Removing focus from the active element
+### Hiding the caret for active input elements
 
 In Chrome the screenshot includes the blinking input cursor.  This can make it impossible to get a
 stable screenshot.  To get around this you can set the `hide caret` option:

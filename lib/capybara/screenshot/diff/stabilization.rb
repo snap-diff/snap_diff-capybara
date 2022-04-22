@@ -30,13 +30,13 @@ module Capybara
           }
         JS
 
-        def take_stable_screenshot(comparison, stability_time_limit:, wait:)
+        def take_stable_screenshot(comparison, stability_time_limit:, wait:, crop:)
           previous_file_name = comparison.old_file_name
           screenshot_started_at = last_image_change_at = Time.now
           clean_stabilization_images(comparison.new_file_name)
 
           1.step do |i|
-            take_right_size_screenshot(comparison)
+            take_right_size_screenshot(comparison, crop: crop)
             if comparison.quick_equal?
               clean_stabilization_images(comparison.new_file_name)
               break
@@ -142,12 +142,18 @@ module Capybara
           blurred_input
         end
 
-        def take_right_size_screenshot(comparison)
+        def take_right_size_screenshot(comparison, crop:)
           save_screenshot(comparison.new_file_name)
 
           # TODO(uwe): Remove when chromedriver takes right size screenshots
           reduce_retina_image_size(comparison.new_file_name, comparison.driver)
           # ODOT
+
+          if crop
+            full_img = comparison.driver.from_file(comparison.new_file_name)
+            area_img = full_img.crop(crop[0], crop[1], crop[2] - crop[0], crop[3] - crop[1])
+            comparison.driver.save_image_to(area_img, comparison.new_file_name)
+          end
         end
 
         def check_max_wait_time(comparison, screenshot_started_at, max_wait_time:)
