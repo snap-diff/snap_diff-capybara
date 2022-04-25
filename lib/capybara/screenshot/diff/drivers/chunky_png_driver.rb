@@ -135,7 +135,7 @@ module Capybara
 
             old_image, new_image = _load_images(old_file, new_file)
             calculate_max_color_distance(new_image, old_image)
-            calculate_max_shift_limit(new_image, old_image)
+            calculate_max_shift_limit(new_image, old_image) if @shift_distance_limit
           end
 
           def calculate_max_color_distance(new_image, old_image)
