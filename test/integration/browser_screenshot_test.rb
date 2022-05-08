@@ -60,19 +60,11 @@ class BrowserScreenshotTest < SystemTestCase
 
   def test_screenshot_selected_element
     visit "/"
-    screenshot "form_element", crop: bounds("form")
+
+    screenshot "cropped_screenshot", crop: [0, 100, 100, 200]
   end
 
   private
-
-  def bounds(selector)
-    element = evaluate_script("document.querySelector('#{selector}').getBoundingClientRect()")
-    if element["left"]
-      [element["left"], element["top"], element["right"], element["bottom"]]
-    else
-      [0, 0, *window_size]
-    end
-  end
 
   def window_size
     if page.driver.respond_to?(:window_size)

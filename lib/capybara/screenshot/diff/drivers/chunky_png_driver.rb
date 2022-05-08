@@ -115,7 +115,7 @@ module Capybara
           end
 
           def crop(dimensions, i)
-            i.crop(0, 0, *dimensions)
+            i.crop(*dimensions)
           end
 
           def from_file(filename)
