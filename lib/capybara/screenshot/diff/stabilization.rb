@@ -110,11 +110,7 @@ module Capybara
           new_height = expected_image_width * driver.height_for(saved_image) / driver.width_for(saved_image)
           resized_image = driver.resize_image_to(saved_image, expected_image_width, new_height)
 
-          Dir.mktmpdir do |dir|
-            resized_image_file = "#{dir}/resized.png"
-            driver.save_image_to(resized_image, resized_image_file)
-            FileUtils.mv(resized_image_file, file_name)
-          end
+          driver.save_image_to(resized_image, file_name)
         end
 
         def stabilization_images(base_file)
@@ -143,16 +139,18 @@ module Capybara
         end
 
         def take_right_size_screenshot(comparison, crop:)
+          driver = comparison.driver
+
           save_screenshot(comparison.new_file_name)
 
           # TODO(uwe): Remove when chromedriver takes right size screenshots
-          reduce_retina_image_size(comparison.new_file_name, comparison.driver)
+          reduce_retina_image_size(comparison.new_file_name, driver)
           # ODOT
 
           if crop
-            full_img = comparison.driver.from_file(comparison.new_file_name)
-            area_img = full_img.crop(crop[0], crop[1], crop[2] - crop[0], crop[3] - crop[1])
-            comparison.driver.save_image_to(area_img, comparison.new_file_name)
+            full_img = driver.from_file(comparison.new_file_name)
+            area_img = driver.crop([crop[0], crop[1], crop[2] - crop[0], crop[3] - crop[1]], full_img)
+            driver.save_image_to(area_img, comparison.new_file_name)
           end
         end
 
