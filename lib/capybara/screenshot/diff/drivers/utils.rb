@@ -18,6 +18,13 @@ module Capybara
           end
           result
         end
+
+        def self.detect_test_framework_assert
+          require "minitest"
+          ::Minitest::Assertion
+        rescue
+          ::RuntimeError
+        end
       end
     end
   end

@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "test_helper"
+require "minitest/stub_const"
 
 module Capybara
   module Screenshot
@@ -104,12 +105,72 @@ module Capybara
 
       test "detect available diff drivers on the loading" do
         # NOTE for tests we are loading both drivers, so we expect that all of them are available
-        expected_drivers = if defined?(Capybara::Screenshot::Diff::Drivers::VipsDriverTest)
+        expected_drivers = if defined?(Vips)
           %i[vips chunky_png]
         else
           %i[chunky_png]
         end
         assert_equal expected_drivers, Capybara::Screenshot::Diff::AVAILABLE_DRIVERS
+      end
+
+      class SampleMiniTestCase < ActionDispatch::IntegrationTest
+        include Capybara::Screenshot::Diff
+
+        # NOTE: we need to add `_` as prefix to skip this test from auto-run
+        def _test_sample_screenshot_error
+          mock = ::Minitest::Mock.new
+          mock.expect(:different?, true)
+          mock.expect(:error_message, "expected error message")
+
+          @test_screenshots = []
+          @test_screenshots << [[], "sample_screenshot", mock]
+        end
+      end
+
+      test "aggregates failures instead of raising errors on teardown for Minitest" do
+        test_case = SampleMiniTestCase.new(:_test_sample_screenshot_error)
+
+        test_case.run
+
+        assert_equal 1, test_case.failures.size
+        assert_includes test_case.failures.first.message, "expected error message"
+      end
+
+      class SampleNotMiniTestCase
+        def self.setup
+          # noop
+        end
+
+        def self.teardown(&block)
+          @@teardown_callback = block
+        end
+
+        def teardown
+          instance_eval(&@@teardown_callback) if @@teardown_callback
+          @@teardown_callback = nil
+        end
+
+        include Capybara::Screenshot::Diff
+
+        def _test_sample_screenshot_error
+          comparison = ::Minitest::Mock.new
+          comparison.expect(:different?, true)
+          comparison.expect(:error_message, "expected error message for non minitest")
+
+          @test_screenshots = []
+          @test_screenshots << [[], "sample_screenshot", comparison]
+        end
+      end
+
+      test "raising errors on teardown for non Minitest" do
+        Capybara::Screenshot::Diff.stub_const(:ASSERTION, ::RuntimeError) do
+          test_case = SampleNotMiniTestCase.new
+          test_case._test_sample_screenshot_error
+
+          expected_message =
+            "Screenshot does not match for 'sample_screenshot' expected error message for non minitest"
+          assert_raises(RuntimeError, expected_message) { test_case.teardown }
+        end
       end
     end
   end

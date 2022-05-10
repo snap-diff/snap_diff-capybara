@@ -69,7 +69,7 @@ module Capybara
           end
 
           def crop(dimensions, i)
-            i.crop(0, 0, *dimensions)
+            i.crop(*dimensions)
           end
 
           def filter_image_with_median(image, median_filter_window_size)
@@ -104,8 +104,14 @@ module Capybara
             image.width
           end
 
+          PNG_EXTENSION = ".png"
+
+          # Vips could not work with the same file. Per each process we require to create new file
           def save_image_to(image, filename)
-            image.write_to_file(filename)
+            ::Dir::Tmpname.create([filename, PNG_EXTENSION]) do |tmp_image_filename|
+              image.write_to_file(tmp_image_filename)
+              FileUtils.mv(tmp_image_filename, filename)
+            end
           end
 
           def resize_image_to(image, new_width, new_height)

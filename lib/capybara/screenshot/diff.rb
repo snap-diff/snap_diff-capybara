@@ -55,12 +55,7 @@ module Capybara
       mattr_accessor(:tolerance) { 0.001 }
 
       AVAILABLE_DRIVERS = Utils.detect_available_drivers.freeze
-      begin
-        require "minitest"
-        ASSERTION = Minitest::Assertion
-      rescue
-        ASSERTION = RuntimeError
-      end
+      ASSERTION = Utils.detect_test_framework_assert
 
       def self.default_options
         {
@@ -89,19 +84,31 @@ module Capybara
 
         klass.teardown do
           if Capybara::Screenshot.active? && @test_screenshots
-            test_screenshot_errors = @test_screenshots
-              .map { |caller, name, compare| assert_image_not_changed(caller, name, compare) }
-            @test_screenshots = nil # release the comparison objects from memory
-            test_screenshot_errors.compact!
-            if test_screenshot_errors.any?
-              e = ASSERTION.new(test_screenshot_errors.join("\n\n"))
-              e.set_backtrace(caller)
-              if defined?(failures)
-                failures << e
-              else
-                raise e
-              end
-            end
+            track_failures(@test_screenshots, caller)
+            @test_screenshots = nil
+          end
+        end
+      end
+
+      private
+
+      EMPTY_LINE = "\n\n"
+
+      def track_failures(screenshots, original_caller)
+        test_screenshot_errors = screenshots.map do |caller, name, compare|
+          assert_image_not_changed(caller, name, compare)
+        end
+
+        test_screenshot_errors.compact!
+
+        unless test_screenshot_errors.empty?
+          error = ASSERTION.new(test_screenshot_errors.join(EMPTY_LINE))
+          error.set_backtrace(original_caller)
+
+          if is_a?(::Minitest::Runnable)
+            failures << error
+          else
+            raise error
           end
         end
       end
