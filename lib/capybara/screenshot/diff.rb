@@ -96,7 +96,11 @@ module Capybara
             if test_screenshot_errors.any?
               e = ASSERTION.new(test_screenshot_errors.join("\n\n"))
               e.set_backtrace(caller)
-              failures << e
+              if defined?(failures)
+                failures << e
+              else
+                raise e
+              end
             end
           end
         end
