@@ -52,7 +52,7 @@ module Capybara
       mattr_accessor :shift_distance_limit
       mattr_accessor :skip_area
       mattr_accessor(:driver) { :auto }
-      mattr_accessor(:tolerance) { 0.001 }
+      mattr_accessor :tolerance
 
       AVAILABLE_DRIVERS = Utils.detect_available_drivers.freeze
       ASSERTION = Utils.detect_test_framework_assert
@@ -65,7 +65,7 @@ module Capybara
           shift_distance_limit: shift_distance_limit,
           skip_area: skip_area,
           stability_time_limit: Screenshot.stability_time_limit,
-          tolerance: tolerance,
+          tolerance: tolerance || (driver == :vips ? 0.001 : nil),
           wait: Capybara.default_max_wait_time
         }
       end
