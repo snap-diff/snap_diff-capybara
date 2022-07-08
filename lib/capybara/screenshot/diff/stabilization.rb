@@ -41,6 +41,7 @@ module Capybara
               clean_stabilization_images(comparison.new_file_name)
               break
             end
+
             comparison.reset
 
             if previous_file_name

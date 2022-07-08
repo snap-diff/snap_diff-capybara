@@ -70,3 +70,7 @@ module Capybara
     end
   end
 end
+
+class ActionDispatch::IntegrationTest
+  include Capybara::Screenshot::Diff::TestMethods
+end

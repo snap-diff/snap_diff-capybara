@@ -218,9 +218,9 @@ module Capybara
 
         def annotate_and_save(images, region = difference_region)
           annotated_images = driver.draw_rectangles(images, region, DIFF_COLOR)
-          @skip_area.to_a.flatten.each_slice(4) do |region|
+          @skip_area.each do |region|
             annotated_images = driver.draw_rectangles(annotated_images, region, SKIP_COLOR)
-          end
+          end if @skip_area
           save(*annotated_images, @annotated_old_file_name, @annotated_new_file_name)
         end
       end

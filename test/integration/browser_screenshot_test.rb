@@ -64,6 +64,13 @@ class BrowserScreenshotTest < SystemTestCase
     screenshot "cropped_screenshot", crop: [0, 100, 100, 200]
   end
 
+  test "skip_area accepts passing multiple coordinates as one array" do
+    visit "/index-changed.html"
+    screenshot("index", skip_area: [8, 8, 100, 129, 100, 0, 366, 129])
+
+    assert_no_screenshot_errors
+  end
+
   private
 
   def window_size
@@ -77,6 +84,17 @@ class BrowserScreenshotTest < SystemTestCase
   def assert_screenshot_error_for(screenshot_name)
     assert_equal 1, @test_screenshots.length, "expecting to have just one difference"
     assert_equal screenshot_name, @test_screenshots[0][1], "index screenshot should have difference for changed page"
+  end
+
+  def assert_no_screenshot_errors
+    error_messages = @test_screenshots
+      .select { |screenshot_assert| p(screenshot_assert.last.different?) }
+      .map { |screenshot_error| screenshot_error.last.error_message }
+
+    assert(
+      error_messages.empty?,
+      "expecting not to have any difference. But got next: #{error_messages.join("; ")}"
+    )
   end
 
   # TODO: Add test for stability to await while image are loading
