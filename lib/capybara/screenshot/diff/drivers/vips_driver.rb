@@ -29,6 +29,10 @@ module Capybara
             reset
           end
 
+          def skip_area=(new_skip_area)
+            # noop
+          end
+
           # Resets the calculated data about the comparison with regard to the "new_image".
           # Data about the original image is kept.
           def reset
@@ -53,12 +57,6 @@ module Capybara
             [region, diff_mask]
           end
 
-          def size(region)
-            return 0 unless region
-
-            (region[2] - region[0]) * (region[3] - region[1])
-          end
-
           def adds_error_details_to(_log)
           end
 
@@ -68,8 +66,16 @@ module Capybara
             dimension(i) == dimensions || i.width < dimensions[0] || i.height < dimensions[1]
           end
 
-          def crop(dimensions, i)
-            i.crop(*dimensions)
+          def crop(region, i)
+            result = i.crop(*region.to_top_left_corner_coordinates)
+
+            # FIXME: Vips is caching operations, and if we ware going to read the same file, he will use cached version for this
+            #       so after we cropped files and stored in the same file, the next load will recover old version instead of cropped
+            #       Workaround to make vips works with cropped versions
+            Vips.cache_set_max(0)
+            Vips.vips_cache_set_max(1000)
+
+            result
           end
 
           def filter_image_with_median(image, median_filter_window_size)
@@ -77,7 +83,7 @@ module Capybara
           end
 
           def add_black_box(memo, region)
-            memo.draw_rect([0, 0, 0, 0], *region, fill: true)
+            memo.draw_rect([0, 0, 0, 0], *region.to_top_left_corner_coordinates, fill: true)
           end
 
           def chunky_png_comparator
@@ -131,10 +137,10 @@ module Capybara
             result
           end
 
-          def dimension_changed?(org_image, new_image)
-            return false if dimension(org_image) == dimension(new_image)
+          def dimension_changed?(old_image, new_image)
+            return false if dimension(old_image) == dimension(new_image)
 
-            change_msg = [org_image, new_image].map { |i| "#{i.width}x#{i.height}" }.join(" => ")
+            change_msg = [old_image, new_image].map { |i| "#{i.width}x#{i.height}" }.join(" => ")
             warn "Image size has changed for #{@new_file_name}: #{change_msg}"
 
             true
@@ -144,16 +150,16 @@ module Capybara
             [image.width, image.height]
           end
 
-          def draw_rectangles(images, (left, top, right, bottom), rgba)
+          def draw_rectangles(images, region, rgba)
             images.map do |image|
-              image.draw_rect(rgba, left - 1, top - 1, right - left + 2, bottom - top + 2)
+              image.draw_rect(rgba, region.left - 1, region.top - 1, region.width + 2, region.height + 2)
             end
           end
 
           class VipsUtil
             def self.difference(old_image, new_image, color_distance: 0)
               diff_mask = difference_mask(color_distance, new_image, old_image)
-              difference_region_by(diff_mask)
+              difference_region_by(diff_mask).to_edge_coordinates
             end
 
             def self.difference_area(old_image, new_image, color_distance: 0)
@@ -171,14 +177,17 @@ module Capybara
             end
 
             def self.difference_region_by(diff_mask)
-              columns, rows = diff_mask.project
+              columns, rows = diff_mask.bandor.project
 
               left = columns.profile[1].min
               right = columns.width - columns.flip("horizontal").profile[1].min
+
               top = rows.profile[0].min
               bottom = rows.height - rows.flip("vertical").profile[0].min
 
-              [left, top, right, bottom]
+              return nil if right < left || bottom < top
+
+              Region.from_edge_coordinates(left, top, right, bottom)
             end
           end
         end

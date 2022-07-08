@@ -21,6 +21,9 @@ begin
                 @new_screenshot_result.close
                 @new_screenshot_result.unlink
               end
+
+              Vips.cache_set_max(0)
+              Vips.vips_cache_set_max(1000)
             end
 
             test "#different? for equal is negative" do
@@ -45,7 +48,7 @@ begin
             test "when different does not clean runtime files" do
               comp = make_comparison(:a, :c)
               assert comp.different?
-              assert_equal [11.0, 3.0, 49.0, 21.0], comp.difference_region
+              assert_equal [11.0, 3.0, 49.0, 21.0], comp.difference_coordinates
               assert File.exist?(comp.old_file_name)
               assert File.exist?(comp.annotated_old_file_name)
               assert File.exist?(comp.annotated_new_file_name)
@@ -62,7 +65,7 @@ begin
             test "compare of 1 pixel wide diff" do
               comp = make_comparison(:a, :d)
               assert comp.different?
-              assert_equal [9.0, 6.0, 10.0, 14.0], comp.difference_region
+              assert_equal [9.0, 6.0, 10.0, 14.0], comp.difference_coordinates
             end
 
             test "compare with color_distance_limit above difference" do
@@ -93,26 +96,6 @@ begin
               assert_not comp.different?
             end
 
-            test "quick_equal compare with shift_distance_limit above difference" do
-              comp = make_comparison(:a, :d, shift_distance_limit: 11)
-              assert comp.quick_equal?
-            end
-
-            test "different with shift_distance_limit above difference" do
-              comp = make_comparison(:a, :d, shift_distance_limit: 20)
-              assert_not comp.different?
-            end
-
-            test "quick_equal? with shift_distance_limit below difference" do
-              comp = make_comparison(:a, :b, shift_distance_limit: 9)
-              assert_not comp.quick_equal?
-            end
-
-            test "different? with shift_distance_limit below difference" do
-              comp = make_comparison(:a, :b, shift_distance_limit: 9)
-              assert comp.different?
-            end
-
             test "quick_equal" do
               comp = make_comparison(:a, :b)
               assert_not comp.quick_equal?
@@ -131,17 +114,31 @@ begin
             test "size a vs a_cropped" do
               comp = make_comparison(:a, :a_cropped)
               comp.different?
-              assert_equal 6400, comp.size(comp.difference_region)
+              assert_equal 4800, comp.difference_region_area_size
             end
 
             test "quick_equal compare skips difference if skip_area covers it" do
-              comp = make_comparison(:a, :d, skip_area: [[9, 0, 11, 80], [79, 79, 80, 80]])
+              comp = make_comparison(
+                :a,
+                :d,
+                skip_area: [
+                  Region.from_edge_coordinates(9, 0, 11, 80),
+                  Region.from_edge_coordinates(79, 79, 80, 80)
+                ]
+              )
               assert comp.quick_equal?
               assert_not comp.different?
             end
 
             test "quick_equal compare skips difference if skip_area does not cover it" do
-              comp = make_comparison(:a, :d, skip_area: [[79, 79, 80, 80], [78, 78, 80, 80]])
+              comp = make_comparison(
+                :a,
+                :d,
+                skip_area: [
+                  Region.from_edge_coordinates(79, 79, 80, 80),
+                  Region.from_edge_coordinates(78, 78, 80, 80)
+                ]
+              )
               assert_not comp.quick_equal?
               assert comp.different?
             end
@@ -151,11 +148,6 @@ begin
             test "from_file loads image from path" do
               driver = VipsDriver.new("#{Rails.root}/screenshot.png")
               assert driver.from_file("#{TEST_IMAGES_DIR}/a.png")
-            end
-
-            test "size requires region" do
-              driver = VipsDriver.new("#{Rails.root}/screenshot.png")
-              assert driver.size(sample_region)
             end
 
             private

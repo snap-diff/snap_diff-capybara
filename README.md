@@ -1,3 +1,4 @@
+
 [![Build Status](https://travis-ci.org/donv/capybara-screenshot-diff.svg?branch=master)](https://travis-ci.org/donv/capybara-screenshot-diff)
 
 # Capybara::Screenshot::Diff
@@ -40,14 +41,14 @@ In your test class, include the `Capybara::Screenshot::Diff` module:
 ```ruby
 class ApplicationSystemTestCase < ActionDispatch::SystemTestCase
   include Capybara::Screenshot::Diff
-  ...
+  # ...
 end
 ```
 
 ### rspec
 
 ```ruby
-describe 'Permissions admin', :type => :feature, :js => true do
+describe 'Permissions admin', type: :feature, js: true do
 
   include Capybara::Screenshot::Diff
 
@@ -189,17 +190,12 @@ test.
 
 ### Capturing one area instead of the whole page
 
+You can crop images before comparison to be run, by providing region to crop as `[left, top, right, bottom]` or by css selector like `body .tag`
+
 ```ruby
 test 'the cool' do
   visit '/feature'
-  screenshot 'cool_element', crop: bounds('#my_element')
-end
-
-private
-
-def bounds(selector)
-  element = evaluate_script("document.querySelector('#{selector}').getBoundingClientRect()")
-  [element['left'], element['top'], element['right'], element['bottom']]
+  screenshot 'cool_element', crop: '#my_element'
 end
 ```
 
@@ -452,25 +448,25 @@ Capybara::Screenshot::Diff.area_size_limit = 42
 ### Skipping an area
 
 Sometimes you have expected change that you want to ignore.
-You can use the `skip_area` option to the `screenshot` method to ignore an area:
+You can use the `skip_area` option with `[left, top, right, bottom]` or css selector like `'body #skiped_element'' to the `screenshot` method to ignore an area:
 
 ```ruby
 test 'unstable area' do
   visit '/'
-  screenshot 'index', skip_area: [17, 6, 27, 16]
+  screenshot 'index', skip_area: [[17, 6, 27, 16], 'input.-to-skip', '.footer']
 end
 ```
 
-The arguments are [x1, y1, x2, y2] for the area you want to ignore.  You can also set this globally:
+The arguments are `[left, top, right, bottom]` for the area you want to ignore.  You can also set this globally:
 
 ```ruby
 Capybara::Screenshot::Diff.skip_area = [0, 0, 64, 48]
 ```
 
-If you need to ignore multiple areas, you can supply an array of arrays:
+If you need to ignore multiple areas:
 
 ```ruby
-screenshot 'index', skip_area: [[0, 0, 64, 48], [17, 6, 27, 16]]
+screenshot 'index', skip_area: [[0, 0, 64, 48], [17, 6, 27, 16], 'css_selector .element']
 ```
 
 ### Available Image Processing Drivers

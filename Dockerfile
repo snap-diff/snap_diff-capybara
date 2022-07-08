@@ -3,9 +3,7 @@
 #   $ docker build . -t csd
 #   $ docker run -v $(pwd):/app -ti csd rake test
 
-ARG RUBY_VERSION=2.7.2
-
-FROM circleci/ruby:2.7.2-node-browsers
+FROM jetthoughts/cimg-ruby:3.1-chrome
 
 RUN \
   # Install dependencies
@@ -47,6 +45,7 @@ RUN sudo /app/bin/install-vips
 ADD ./lib/capybara/screenshot/diff/version.rb /app/lib/capybara/screenshot/diff/
 ADD ./capybara-screenshot-diff.gemspec /app/
 ADD ./gems.rb /app/
+ADD ./Rakefile /app/
 
 RUN bundle install
 

@@ -14,19 +14,23 @@ env:
   FERRUM_PROCESS_TIMEOUT: '15'
   WD_CACHE_TIME: '864000' # 10 days
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   test:
     name: Functional Testing
-    runs-on: ubuntu-20.04 # In order to install libvips 8.9+ version
+    runs-on: ubuntu-22.04 # In order to install libvips 8.9+ version
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
         with:
-          ruby-version: '3.0'
+          ruby-version: '3.1'
           bundler-cache: true
 
       - name: Install libvips
@@ -38,15 +42,20 @@ jobs:
           COVERAGE: enabled
 
       - name: Upload Screenshots
-        if: ${{ always() }}
-        uses: actions/upload-artifact@v2
+        if: always()
+        uses: actions/upload-artifact@v3
         with:
-          path: test/fixtures/app/doc/screenshots/
+          name: screenshots
+          retention-days: 1
+          path: |
+            test/fixtures/app/doc/screenshots/
+            tmp/capybara/screenshots-diffs/
 
       - name: Upload Coverage
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: coverage
+          retention-days: 1
           path: coverage
 
   matrix:
@@ -73,7 +82,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
@@ -102,7 +111,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
@@ -118,3 +127,13 @@ jobs:
         env:
           SCREENSHOT_DRIVER: ${{ matrix.screenshot-driver }}
           CAPYBARA_DRIVER: ${{ matrix.capybara-driver }}
+
+      - name: Upload Screenshots
+        uses: actions/upload-artifact@v3
+        if: failure()
+        with:
+          name: screenshots-${{ matrix.screenshot-driver }}-${{ matrix.capybara-driver }}
+          retention-days: 1
+          path: |
+            test/fixtures/app/doc/screenshots/
+            tmp/capybara/screenshots-diffs/

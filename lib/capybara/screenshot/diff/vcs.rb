@@ -18,22 +18,23 @@ module Capybara
           FileUtils.rm_f(target_file_name) unless $CHILD_STATUS == 0
         end
 
-        def checkout_vcs(name, comparison)
+        def checkout_vcs(name, old_file_name, new_file_name)
           svn_file_name = "#{Capybara::Screenshot.screenshot_area_abs}/.svn/text-base/#{name}.png.svn-base"
+
           if File.exist?(svn_file_name)
             committed_file_name = svn_file_name
-            FileUtils.cp committed_file_name, comparison.old_file_name
+            FileUtils.cp committed_file_name, old_file_name
           else
-            svn_info = `svn info #{comparison.new_file_name} #{SILENCE_ERRORS}`
+            svn_info = `svn info #{new_file_name} #{SILENCE_ERRORS}`
             if svn_info.present?
               wc_root = svn_info.slice(/(?<=Working Copy Root Path: ).*$/)
               checksum = svn_info.slice(/(?<=Checksum: ).*$/)
               if checksum
                 committed_file_name = "#{wc_root}/.svn/pristine/#{checksum[0..1]}/#{checksum}.svn-base"
-                FileUtils.cp committed_file_name, comparison.old_file_name
+                FileUtils.cp committed_file_name, old_file_name
               end
             else
-              restore_git_revision(name, comparison.old_file_name)
+              restore_git_revision(name, old_file_name)
             end
           end
         end
