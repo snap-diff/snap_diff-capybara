@@ -2,7 +2,7 @@
 
 set -e
 
-version=${VIPS_VERSION:-8.10.0}
+version=${VIPS_VERSION:-8.12.2}
 
 wget "https://github.com/libvips/libvips/releases/download/v$version/vips-$version.tar.gz"
 tar xf "vips-$version.tar.gz"

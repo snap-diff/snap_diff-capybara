@@ -8,28 +8,6 @@ module Capybara
       module Stabilization
         include Os
 
-        IMAGE_WAIT_SCRIPT = <<-JS.strip_heredoc.freeze
-          function pending_image() {
-            var images = document.images;
-            for (var i = 0; i < images.length; i++) {
-              if (!images[i].complete) {
-                  return images[i].src;
-              }
-            }
-            return false;
-          }()
-        JS
-
-        HIDE_CARET_SCRIPT = <<~JS
-          if (!document.getElementById('csdHideCaretStyle')) {
-            let style = document.createElement('style');
-            style.setAttribute('id', 'csdHideCaretStyle');
-            document.head.appendChild(style);
-            let styleSheet = style.sheet;
-            styleSheet.insertRule("* { caret-color: transparent !important; }", 0);
-          }
-        JS
-
         def take_stable_screenshot(comparison, stability_time_limit:, wait:, crop:)
           previous_file_name = comparison.old_file_name
           screenshot_started_at = last_image_change_at = Time.now
@@ -41,6 +19,7 @@ module Capybara
               clean_stabilization_images(comparison.new_file_name)
               break
             end
+
             comparison.reset
 
             if previous_file_name
@@ -78,7 +57,7 @@ module Capybara
         end
 
         def notice_how_to_avoid_this
-          unless @_csd_retina_warned
+          unless defined?(@_csd_retina_warned)
             warn "Halving retina screenshot.  " \
                 'You should add "force-device-scale-factor=1" to your Chrome chromeOptions args.'
             @_csd_retina_warned = true
@@ -90,7 +69,7 @@ module Capybara
         def build_snapshot_version_file_name(comparison, iteration, screenshot_started_at, stabilization_comparison)
           "#{comparison.new_file_name.chomp(".png")}" \
                 "_x#{format("%02i", iteration)}_#{(Time.now - screenshot_started_at).round(1)}s" \
-                "_#{stabilization_comparison.difference_region&.to_s&.gsub(", ", "_") || :initial}.png" \
+                "_#{stabilization_comparison.difference_coordinates&.to_s&.gsub(", ", "_") || :initial}.png" \
                 "#{ImageCompare::TMP_FILE_SUFFIX}"
         end
 
@@ -123,18 +102,15 @@ module Capybara
 
         def prepare_page_for_screenshot(timeout:)
           assert_images_loaded(timeout: timeout)
+
           if Capybara::Screenshot.blur_active_element
-            active_element = execute_script(<<-JS)
-              ae = document.activeElement;
-              if (ae.nodeName === "INPUT" || ae.nodeName === "TEXTAREA") {
-                  ae.blur();
-                  return ae;
-              }
-              return null;
-            JS
-            blurred_input = page.driver.send :unwrap_script_result, active_element
+            blurred_input = blur_from_focused_element
           end
-          execute_script(HIDE_CARET_SCRIPT) if Capybara::Screenshot.hide_caret
+
+          if Capybara::Screenshot.hide_caret
+            hide_caret
+          end
+
           blurred_input
         end
 
@@ -148,9 +124,9 @@ module Capybara
           # ODOT
 
           if crop
-            full_img = driver.from_file(comparison.new_file_name)
-            area_img = driver.crop([crop[0], crop[1], crop[2] - crop[0], crop[3] - crop[1]], full_img)
-            driver.save_image_to(area_img, comparison.new_file_name)
+            image = driver.from_file(comparison.new_file_name)
+            cropped_image = driver.crop(crop, image)
+            driver.save_image_to(cropped_image, comparison.new_file_name)
           end
         end
 
@@ -191,7 +167,7 @@ module Capybara
 
           start = Time.now
           loop do
-            pending_image = evaluate_script IMAGE_WAIT_SCRIPT
+            pending_image = pending_image_to_load
             break unless pending_image
 
             assert(

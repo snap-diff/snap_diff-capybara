@@ -4,6 +4,8 @@
 
 ENV["CAPYBARA_DRIVER"] ||= "cuprite"
 
+SCREEN_SIZE = [800, 600]
+
 if ENV["CAPYBARA_DRIVER"] == "cuprite"
   require "capybara/cuprite"
   CHROME_ARGS = {
@@ -60,13 +62,12 @@ if ENV["CAPYBARA_DRIVER"] == "cuprite"
       app,
       browser_options: CHROME_ARGS,
       js_errors: true,
-      process_timeout: 10,
-      screen_size: [800, 600],
-      timeout: ENV["CI"] ? 40 : 10,
-      window_size: [800, 600]
+      process_timeout: 20,
+      screen_size: SCREEN_SIZE,
+      timeout: ENV["CI"] ? 40 : 40,
+      window_size: SCREEN_SIZE
     )
   end
-
 elsif ENV["CAPYBARA_DRIVER"].include?("chrome")
   require "webdrivers/chromedriver"
   Webdrivers::Chromedriver.update
@@ -75,4 +76,5 @@ else
   Webdrivers::Geckodriver.update
 end
 
+Capybara.save_path = "tmp/capybara"
 Capybara.javascript_driver = ENV.fetch("CAPYBARA_DRIVER", :cuprite).to_sym

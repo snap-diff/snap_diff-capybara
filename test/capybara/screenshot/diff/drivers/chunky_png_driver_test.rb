@@ -32,7 +32,7 @@ module Capybara
           test "compare then dimensions and cleanup" do
             comp = make_comparison(:a, :c)
             assert comp.different?
-            assert_equal [11, 3, 48, 20], comp.difference_region
+            assert_equal [11, 3, 48, 20], comp.difference_coordinates
             assert File.exist?(comp.old_file_name)
             assert File.exist?(comp.annotated_old_file_name)
             assert File.exist?(comp.annotated_new_file_name)
@@ -46,7 +46,7 @@ module Capybara
           test "compare of 1 pixel wide diff" do
             comp = make_comparison(:a, :d)
             assert comp.different?
-            assert_equal [9, 6, 9, 13], comp.difference_region
+            assert_equal [9, 6, 9, 13], comp.difference_coordinates
           end
 
           test "compare with color_distance_limit above difference" do
@@ -114,7 +114,7 @@ module Capybara
           test "size a vs a_cropped" do
             comp = make_comparison(:a, :a_cropped)
             comp.different?
-            assert_equal 6561, comp.size(comp.difference_region)
+            assert_equal 4800, comp.difference_region_area_size
           end
 
           # Test Interface Contracts
@@ -122,11 +122,6 @@ module Capybara
           test "from_file loads image from path" do
             driver = ChunkyPNGDriver.new("#{Rails.root}/screenshot.png")
             assert driver.from_file("#{TEST_IMAGES_DIR}/a.png")
-          end
-
-          test "size requires region" do
-            driver = ChunkyPNGDriver.new("#{Rails.root}/screenshot.png")
-            assert driver.size(sample_region)
           end
 
           private

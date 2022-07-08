@@ -10,3 +10,5 @@
 /pkg/
 /spec/reports/
 /tmp/
+/test/fixtures/**/*.committed.png
+/test/fixtures/**/*.latest.png
