@@ -12,6 +12,7 @@ module Capybara
           include ChunkyPNG::Color
 
           attr_reader :new_file_name, :old_file_name
+          attr_accessor :skip_area, :color_distance_limit, :shift_distance_limit
 
           def initialize(new_file_name, old_file_name = nil, options = {})
             options = old_file_name if old_file_name.is_a?(Hash)
@@ -69,7 +70,7 @@ module Capybara
             return nil, nil if new_image.pixels == old_image.pixels
 
             if fast_fail && !(color_distance_limit || shift_distance_limit || area_size_limit)
-              return [0, 0, width_for(new_image), height_for(new_image)], nil
+              return build_region_for_whole_image(new_image), nil
             end
 
             region = find_top(old_image, new_image)
@@ -90,12 +91,6 @@ module Capybara
             image.width
           end
 
-          def size(region)
-            return 0 unless region
-
-            (region[2] - region[0] + 1) * (region[3] - region[1] + 1)
-          end
-
           def max_color_distance
             calculate_metrics unless @max_color_distance
             @max_color_distance
@@ -114,8 +109,8 @@ module Capybara
             log.merge!(max_shift_distance: max_shift_distance) if max_shift_distance
           end
 
-          def crop(dimensions, i)
-            i.crop(*dimensions)
+          def crop(region, i)
+            i.crop(*region.to_top_left_corner_coordinates)
           end
 
           def from_file(filename)
@@ -183,20 +178,29 @@ module Capybara
             true
           end
 
-          def draw_rectangles(images, (left, top, right, bottom), (r, g, b))
+          def draw_rectangles(images, region, (r, g, b))
+            border_color = ChunkyPNG::Color.rgb(r, g, b)
+            border_shadow = ChunkyPNG::Color.rgba(r, g, b, 100)
+
             images.map do |image|
               new_img = image.dup
-              new_img.rect(left - 1, top - 1, right + 1, bottom + 1, ChunkyPNG::Color.rgb(r, g, b))
+              new_img.rect(region.left - 1, region.top - 1, region.right + 1, region.bottom + 1, border_color)
+              new_img.rect(region.left, region.top, region.right, region.bottom, border_shadow)
               new_img
             end
           end
 
           private
 
-          def find_diff_rectangle(org_img, new_img, region)
-            left, top, right, bottom = find_left_right_and_top(org_img, new_img, region)
+          def build_region_for_whole_image(new_image)
+            Region.from_edge_coordinates(0, 0, width_for(new_image), height_for(new_image))
+          end
+
+          def find_diff_rectangle(org_img, new_img, area_coordinates)
+            left, top, right, bottom = find_left_right_and_top(org_img, new_img, area_coordinates)
             bottom = find_bottom(org_img, new_img, left, right, bottom)
-            [left, top, right, bottom]
+
+            Region.from_edge_coordinates(left, top, right, bottom)
           end
 
           def find_top(old_img, new_img)
@@ -209,10 +213,13 @@ module Capybara
           end
 
           def find_left_right_and_top(old_img, new_img, region)
+            region = region.is_a?(Region) ? region.to_edge_coordinates : region
+
             left = region[0] || old_img.width - 1
             top = region[1]
             right = region[2] || 0
             bottom = region[3]
+
             old_img.height.times do |y|
               (0...left).find do |x|
                 next if same_color?(old_img, new_img, x, y)
@@ -230,6 +237,7 @@ module Capybara
                 end
               end
             end
+
             [left, top, right, bottom]
           end
 
@@ -241,13 +249,12 @@ module Capybara
                 end
               end
             end
+
             bottom
           end
 
           def same_color?(old_img, new_img, x, y)
-            @skip_area&.each do |skip_start_x, skip_start_y, skip_end_x, skip_end_y|
-              return true if skip_start_x <= x && x <= skip_end_x && skip_start_y <= y && y <= skip_end_y
-            end
+            return true if skipped_region?(x, y)
 
             color_distance =
               color_distance_at(new_img, old_img, x, y, shift_distance_limit: @shift_distance_limit)
@@ -264,6 +271,12 @@ module Capybara
               @max_shift_distance = shift_distance
             end
             color_matches
+          end
+
+          def skipped_region?(x, y)
+            return false unless @skip_area
+
+            @skip_area.any? { |region| region.cover?(x, y) }
           end
 
           def color_distance_at(new_img, old_img, x, y, shift_distance_limit:)

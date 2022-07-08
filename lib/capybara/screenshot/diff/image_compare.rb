@@ -12,9 +12,8 @@ module Capybara
 
         attr_reader :driver, :driver_options
 
-        attr_reader :annotated_new_file_name, :annotated_old_file_name, :area_size_limit,
-          :color_distance_limit, :new_file_name, :old_file_name, :shift_distance_limit,
-          :skip_area
+        attr_reader :annotated_new_file_name, :annotated_old_file_name, :new_file_name, :old_file_name, :skip_area
+        attr_accessor :shift_distance_limit, :area_size_limit, :color_distance_limit
 
         def initialize(new_file_name, old_file_name = nil, options = {})
           options = old_file_name if old_file_name.is_a?(Hash)
@@ -40,21 +39,23 @@ module Capybara
           super(@driver)
         end
 
+        def skip_area=(new_skip_area)
+          @skip_area = new_skip_area
+          driver.skip_area = @skip_area
+        end
+
         # Compare the two image files and return `true` or `false` as quickly as possible.
-        # Return falsish if the old file does not exist or the image dimensions do not match.
+        # Return falsely if the old file does not exist or the image dimensions do not match.
         def quick_equal?
           return false unless old_file_exists?
           return true if new_file_size == old_file_size
-
-          # old_bytes, new_bytes = load_image_files(@old_file_name, @new_file_name)
-          # return true if old_bytes == new_bytes
 
           images = driver.load_images(@old_file_name, @new_file_name)
           old_image, new_image = preprocess_images(images, driver)
 
           return false if driver.dimension_changed?(old_image, new_image)
 
-          region, meta = driver.find_difference_region(
+          self.difference_region, meta = driver.find_difference_region(
             new_image,
             old_image,
             @color_distance_limit,
@@ -63,14 +64,9 @@ module Capybara
             fast_fail: true
           )
 
-          self.difference_region = region
-
-          return true if difference_region_empty?(new_image, region)
-
-          return true if @area_size_limit && driver.size(region) <= @area_size_limit
-
-          return true if @tolerance && @tolerance >= driver.difference_level(meta, old_image, region)
-
+          return true if difference_region_area_size.zero? || difference_region_empty?(new_image, difference_region)
+          return true if @area_size_limit && difference_region_area_size <= @area_size_limit
+          return true if @tolerance && @tolerance >= driver.difference_level(meta, old_image, difference_region)
           # TODO: Remove this or find similar solution for vips
           return true if @shift_distance_limit && driver.shift_distance_equal?
 
@@ -79,41 +75,38 @@ module Capybara
 
         # Compare the two images referenced by this object, and return `true` if they are different,
         # and `false` if they are the same.
-        # Return `nil` if the old file does not exist or if the image dimensions do not match.
         def different?
-          return nil unless old_file_exists?
+          return false unless old_file_exists?
 
           images = driver.load_images(@old_file_name, @new_file_name)
-
           old_image, new_image = preprocess_images(images, driver)
 
           if driver.dimension_changed?(old_image, new_image)
-            save(new_image, old_image, @annotated_new_file_name, @annotated_old_file_name)
+            self.difference_region = Region.from_edge_coordinates(
+              0,
+              0,
+              [driver.width_for(old_image), driver.width_for(new_image)].min,
+              [driver.height_for(old_image), driver.height_for(new_image)].min
+            )
 
-            self.difference_region = 0, 0, driver.width_for(old_image), driver.height_for(old_image)
-
-            return true
+            return different(*images)
           end
 
-          region, meta = driver.find_difference_region(
+          self.difference_region, meta = driver.find_difference_region(
             new_image,
             old_image,
             @color_distance_limit,
             @shift_distance_limit,
             @area_size_limit
           )
-          self.difference_region = region
 
-          return not_different if difference_region_empty?(old_image, region)
-          return not_different if @area_size_limit && driver.size(region) <= @area_size_limit
-          return not_different if @tolerance && @tolerance > driver.difference_level(meta, old_image, region)
-
+          return not_different if difference_region_area_size.zero? || difference_region_empty?(old_image, difference_region)
+          return not_different if @area_size_limit && difference_region_area_size <= @area_size_limit
+          return not_different if @tolerance && @tolerance > driver.difference_level(meta, old_image, difference_region)
           # TODO: Remove this or find similar solution for vips
           return not_different if @shift_distance_limit && !driver.shift_distance_different?
 
-          annotate_and_save(images, region)
-
-          true
+          different(*images)
         end
 
         def clean_tmp_files
@@ -121,17 +114,6 @@ module Capybara
           File.delete(@old_file_name) if old_file_exists?
           File.delete(@annotated_old_file_name) if File.exist?(@annotated_old_file_name)
           File.delete(@annotated_new_file_name) if File.exist?(@annotated_new_file_name)
-        end
-
-        DIFF_COLOR = [255, 0, 0, 255].freeze
-        SKIP_COLOR = [255, 192, 0, 255].freeze
-
-        def annotate_and_save(images, region = difference_region)
-          annotated_images = driver.draw_rectangles(images, region, DIFF_COLOR)
-          @skip_area.to_a.flatten.each_slice(4) do |region|
-            annotated_images = driver.draw_rectangles(annotated_images, region, SKIP_COLOR)
-          end
-          save(*annotated_images, @annotated_old_file_name, @annotated_new_file_name)
         end
 
         def save(old_img, new_img, annotated_old_file_name, annotated_new_file_name)
@@ -148,24 +130,42 @@ module Capybara
           driver.reset
         end
 
+        NEW_LINE = "\n"
+
         def error_message
           result = {
-            area_size: driver.size(difference_region),
-            region: difference_region
+            area_size: difference_region_area_size,
+            region: difference_coordinates
           }
 
           driver.adds_error_details_to(result)
 
-          ["(#{result.to_json})", new_file_name, annotated_old_file_name, annotated_new_file_name].join("\n")
+          [
+            "(#{result.to_json})",
+            new_file_name,
+            annotated_old_file_name,
+            annotated_new_file_name
+          ].join(NEW_LINE)
         end
 
-        def difference_region
-          return nil unless @left || @top || @right || @bottom
+        def difference_coordinates
+          difference_region&.to_edge_coordinates
+        end
 
-          [@left, @top, @right, @bottom]
+        def difference_region_area_size
+          return 0 unless difference_region
+
+          difference_region.size
         end
 
         private
+
+        attr_accessor :difference_region
+
+        def different(old_image, new_image)
+          annotate_and_save([old_image, new_image], difference_region)
+          true
+        end
 
         def find_driver_class_for(driver)
           driver = AVAILABLE_DRIVERS.first if driver == :auto
@@ -181,23 +181,6 @@ module Capybara
             else
               fail "Wrong adapter #{driver.inspect}. Available adapters: #{AVAILABLE_DRIVERS.inspect}"
             end
-        end
-
-        def old_file_size
-          @old_file_size ||= old_file_exists? && File.size(@old_file_name)
-        end
-
-        def new_file_size
-          File.size(@new_file_name)
-        end
-
-        def not_different
-          clean_tmp_files
-          false
-        end
-
-        def load_images(old_file_name, new_file_name, driver = self)
-          [driver.from_file(old_file_name), driver.from_file(new_file_name)]
         end
 
         def preprocess_images(images, driver = self)
@@ -225,18 +208,48 @@ module Capybara
           result
         end
 
-        def difference_region=(region)
-          @left, @top, @right, @bottom = region
+        def old_file_size
+          @old_file_size ||= old_file_exists? && File.size(@old_file_name)
+        end
+
+        def new_file_size
+          File.size(@new_file_name)
+        end
+
+        def not_different
+          clean_tmp_files
+          false
         end
 
         def difference_region_empty?(new_image, region)
           region.nil? ||
             (
-              region[1] == height_for(new_image) &&
-                region[0] == width_for(new_image) &&
-                region[2].zero? &&
-                region[3].zero?
+              region.height == height_for(new_image) &&
+                region.width == width_for(new_image) &&
+                region.x.zero? &&
+                region.y.zero?
             )
+        end
+
+        def annotate_and_save(images, region)
+          annotated_images = annotate_difference(images, region)
+          annotated_images = annotate_skip_areas(annotated_images, @skip_area) if @skip_area
+
+          save(*annotated_images, @annotated_old_file_name, @annotated_new_file_name)
+        end
+
+        DIFF_COLOR = [255, 0, 0, 255].freeze
+
+        def annotate_difference(images, region)
+          driver.draw_rectangles(images, region, DIFF_COLOR)
+        end
+
+        SKIP_COLOR = [255, 192, 0, 255].freeze
+
+        def annotate_skip_areas(annotated_images, skip_areas)
+          skip_areas.reduce(annotated_images) do |annotated_images, region|
+            driver.draw_rectangles(annotated_images, region, SKIP_COLOR)
+          end
         end
       end
     end
