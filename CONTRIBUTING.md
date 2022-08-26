@@ -19,4 +19,6 @@ Run the tests for a matrix of configurations of Ruby implementations and Rails v
 
 ## Merging to master
 
-Before merging to master, please have a member of the project review your changes, and make sure the tests are green in travis-ci.
+Before merging to `master`,
+please have a member of the project review your changes,
+and make sure the tests are green.

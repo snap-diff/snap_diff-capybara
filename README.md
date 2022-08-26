@@ -1,5 +1,4 @@
-
-[![Build Status](https://travis-ci.org/donv/capybara-screenshot-diff.svg?branch=master)](https://travis-ci.org/donv/capybara-screenshot-diff)
+[![Test](https://github.com/donv/capybara-screenshot-diff/actions/workflows/test.yml/badge.svg)](https://github.com/donv/capybara-screenshot-diff/actions/workflows/test.yml)
 
 # Capybara::Screenshot::Diff
 
