@@ -44,7 +44,7 @@ class ApplicationSystemTestCase < ActionDispatch::SystemTestCase
 end
 ```
 
-### rspec
+### RSpec
 
 ```ruby
 describe 'Permissions admin', type: :feature, js: true do
@@ -64,7 +64,7 @@ But it's better to include it within your *_helper.rb file so that it can used a
 require 'capybara/screenshot/diff'
 
 RSpec.configure do |config|
-    config.include Capybara::Screenshot::Diff::TestMethods
+    config.include Capybara::Screenshot::Diff
 end
 ```
 
