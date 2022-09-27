@@ -72,6 +72,9 @@ jobs:
           - 'rails70_gems.rb'
           - 'rails61_gems.rb'
           - 'rails60_gems.rb'
+        exclude:
+          - ruby-version: 'jruby'
+            gemfile: 'rails70_gems.rb'
     env:
       BUNDLE_GEMFILE: gemfiles/${{ matrix.gemfile }}
 
