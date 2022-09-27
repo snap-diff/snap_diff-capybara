@@ -64,7 +64,7 @@ But it's better to include it within your *_helper.rb file so that it can used a
 require 'capybara/screenshot/diff'
 
 RSpec.configure do |config|
-    config.include Capybara::Screenshot::Diff
+  config.include Capybara::Screenshot::Diff
 end
 ```
 
@@ -97,8 +97,8 @@ doc
 ```
 
 To store the screen shot history, add the `doc/screenshots` directory to your
- version control system (git, svn, etc).
- 
+version control system (git, svn, etc).
+
     Screen shots are compared to the previously COMMITTED version of the same screen shot.
 
 ### Screenshot groups
@@ -300,7 +300,7 @@ Capybara::Screenshot::Diff.enabled = ENV['COMPARE_SCREENSHOTS']
 
 By default, `Capybara::Screenshot::Diff` saves screenshots to a
 `doc/screenshots` folder, relative to either `Rails.root` (if you're in Rails),
- or your current directory otherwise.
+or your current directory otherwise.
 
 If you want to change where screenshots are saved to, then there are two
 configuration options that that are relevant.
@@ -475,7 +475,7 @@ There are several image processing supported by this gem.
 There are several options to setup active driver: `:auto`, `:chunky_png` and `:vips`.
 
 * `:auto` - will try to load `:vips` if there is gem `ruby-vips`, in other cases will load `:chunky_png`
-* `:chunky_png` and `:vips` will load correspondent driver  
+* `:chunky_png` and `:vips` will load correspondent driver
 
 ### Enable VIPS image processing
 
@@ -484,8 +484,8 @@ and could be enabled by adding `ruby-vips` to `Gemfile`.
 
 If need to setup explicitly Vips driver, there are several ways to do this:
 
-  * Globally: `Capybara::Screenshot::Diff.driver = :vips`  
-  * Per screenshot option: `screenshot 'index', driver: :vips`  
+* Globally: `Capybara::Screenshot::Diff.driver = :vips`
+* Per screenshot option: `screenshot 'index', driver: :vips`
 
 With enabled VIPS there are new alternatives to process differences, which easier to find and support.
 For example, `shift_distance_limit` is very heavy operation. Instead better to use `median_filter_window_size`. 
@@ -535,14 +535,14 @@ frames when reporting image differences, you can use the `skip_stack_frames` opt
 
 ```ruby
 test 'test visiting the index' do
- visit root_path
- screenshot :index
+  visit root_path
+  screenshot :index
 end
 
 private
 
 def screenshot(name, **options)
- super(name, skip_stack_frames: 1, **options)
+  super(name, skip_stack_frames: 1, **options)
 end
 ```
 
