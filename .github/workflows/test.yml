@@ -67,18 +67,11 @@ jobs:
 
     strategy:
       matrix:
-        ruby-version: [ '3.1', '3.0', '2.7', '2.6', 'jruby' ]
+        ruby-version: [ '3.1', '3.0', '2.7', 'jruby' ]
         gemfile:
+          - 'rails70_gems.rb'
           - 'rails61_gems.rb'
           - 'rails60_gems.rb'
-          - 'rails52.gemfile'
-        include:
-          - ruby-version: 2.7
-            gemfile: rails70_gems.rb
-          - ruby-version: 3.0
-            gemfile: rails70_gems.rb
-          - ruby-version: 3.1
-            gemfile: rails70_gems.rb
     env:
       BUNDLE_GEMFILE: gemfiles/${{ matrix.gemfile }}
 

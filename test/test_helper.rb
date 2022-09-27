@@ -34,10 +34,6 @@ Capybara.server = :puma, {Silent: true}
 Capybara.threadsafe = true
 Capybara.app = Rails.application
 
-# TODO(uwe): Remove when we stop support for Rails 4.2
-ActiveSupport.test_order = :random
-# ODOT
-
 module Capybara
   module Screenshot
     module Diff
