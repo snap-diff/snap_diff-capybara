@@ -186,7 +186,6 @@ end
 test.
 
 
-
 ### Capturing one area instead of the whole page
 
 You can crop images before comparison to be run, by providing region to crop as `[left, top, right, bottom]` or by css selector like `body .tag`
