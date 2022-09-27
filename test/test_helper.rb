@@ -44,6 +44,11 @@ module Capybara
       module TestHelper
         private
 
+        # Stub of Capybara's checkout_vcs
+        def checkout_vcs(name, old_file_name, new_file_name)
+          # Do nothing
+        end
+
         # Stub of the Capybara's save_screenshot
         def save_screenshot(file_name)
           source_image = File.basename(file_name)
@@ -51,8 +56,8 @@ module Capybara
           FileUtils.cp File.expand_path("images/#{source_image}", __dir__), file_name
         end
 
-        def make_comparison(old_img, new_img, options = {})
-          comp = ImageCompare.new("#{Rails.root}/screenshot.png", nil, options)
+        def make_comparison(old_img, new_img, name: "screenshot", **options)
+          comp = ImageCompare.new("#{Rails.root}/doc/screenshots/#{name}.png", nil, **options)
           set_test_images(comp, old_img, new_img)
           comp
         end

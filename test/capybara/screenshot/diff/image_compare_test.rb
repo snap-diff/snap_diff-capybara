@@ -65,7 +65,7 @@ module Capybara
             Dir.chdir File.expand_path("../../../images", __dir__) do
               images.each do |old_img|
                 new_img = old_img
-                comparison = make_comparison(old_img, new_img, driver)
+                comparison = make_comparison(old_img, new_img, **driver)
                 assert(
                   comparison.quick_equal?,
                   "compare #{old_img} with #{new_img} with #{driver} driver should be quick_equal"

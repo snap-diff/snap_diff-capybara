@@ -423,7 +423,7 @@ Capybara::Screenshot::Diff.shift_distance_limit = 1
 this will impact performance **severely** if a match cannot be found.
 
 If `shift_distance_limit` is `nil` shift distance is not measured.  If `shift_distance_limit` is set,
-even to `0`, shift distabnce is measured and reported on image differences.
+even to `0`, shift distance is measured and reported on image differences.
 
 ### Allowed difference size
 
@@ -525,6 +525,24 @@ You can use the `median_filter_window_size` option to the `screenshot` method to
 test 'unstable area' do
   visit '/'
   screenshot 'index', median_filter_window_size: 2
+end
+```
+
+### Skipping stack frames in the error output
+
+If you would like to override the `screenshot` method or for some other reason would like to skip stack
+frames when reporting image differences, you can use the `skip_stack_frames` option:
+
+```ruby
+test 'test visiting the index' do
+ visit root_path
+ screenshot :index
+end
+
+private
+
+def screenshot(name, **options)
+ super(name, skip_stack_frames: 1, **options)
 end
 ```
 

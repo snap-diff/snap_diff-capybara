@@ -57,7 +57,7 @@ module Capybara
         end
 
         # @return [Boolean] whether a screenshot was taken
-        def screenshot(name, options = {})
+        def screenshot(name, skip_stack_frames: 0, **options)
           return false unless Screenshot.active?
           return false if window_size_is_wrong?
 
@@ -87,7 +87,7 @@ module Capybara
             comparison.skip_area = calculate_skip_area(driver_options[:skip_area], crop)
           end
 
-          (@test_screenshots ||= []) << [caller(1..1).first, name, comparison]
+          (@test_screenshots ||= []) << [caller[skip_stack_frames], name, comparison]
 
           true
         end
