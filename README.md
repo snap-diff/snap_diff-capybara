@@ -364,7 +364,6 @@ Capybara::Screenshot.hide_caret = true
 This will make the cursor (caret) transparent (invisible), so the blinking does not delay the screen shot.
 
 
-
 ### Removing focus from the active element
 
 Another way to avoid the cursor blinking is to set the `blur_active_element` option:
