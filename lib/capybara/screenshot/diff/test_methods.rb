@@ -78,7 +78,7 @@ module Capybara
 
           comparison = ImageCompare.new(file_name, nil, driver_options)
           checkout_vcs(name, comparison.old_file_name, comparison.new_file_name)
-          take_screenshot(comparison, crop, stability_time_limit, wait)
+          take_comparison_screenshot(comparison, crop, stability_time_limit, wait)
 
           return false unless comparison.old_file_exists?
 
@@ -112,7 +112,7 @@ module Capybara
           FileUtils.mkdir_p File.dirname(file_name)
         end
 
-        def take_screenshot(comparison, crop, stability_time_limit, wait)
+        def take_comparison_screenshot(comparison, crop, stability_time_limit, wait)
           blurred_input = prepare_page_for_screenshot(timeout: wait)
           if stability_time_limit
             take_stable_screenshot(
