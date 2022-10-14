@@ -78,7 +78,6 @@ module Capybara
 
           comparison = ImageCompare.new(file_name, nil, driver_options)
           checkout_vcs(name, comparison.old_file_name, comparison.new_file_name)
-          take_comparison_screenshot(comparison, crop, stability_time_limit, wait)
 
           return false unless comparison.old_file_exists?
 
@@ -86,6 +85,8 @@ module Capybara
           if driver_options[:skip_area]
             comparison.skip_area = calculate_skip_area(driver_options[:skip_area], crop)
           end
+
+          take_comparison_screenshot(comparison, crop, stability_time_limit, wait)
 
           (@test_screenshots ||= []) << [caller[skip_stack_frames], name, comparison]
 

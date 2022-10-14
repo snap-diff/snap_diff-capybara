@@ -54,6 +54,10 @@ module Capybara
           assert_equal 'a', @test_screenshots[1][1]
         end
 
+        def test_skip_area_and_stability_time_limit
+          screenshot(:a, skip_area: [0, 0, 1, 1], stability_time_limit: true)
+        end
+
         private
 
         def our_screenshot(name, skip_stack_frames)
