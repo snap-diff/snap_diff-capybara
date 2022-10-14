@@ -30,7 +30,8 @@ require "capybara/minitest"
 
 require "capybara/dsl"
 Capybara.disable_animation = true
-Capybara.server = :puma, {Silent: true}
+# FIXME: Uncomment when capybara will support puma 6
+# Capybara.server = :puma, {Silent: true}
 Capybara.threadsafe = true
 Capybara.app = Rails.application
 
