@@ -124,6 +124,18 @@ module Capybara
             assert driver.from_file("#{TEST_IMAGES_DIR}/a.png")
           end
 
+          test "tolerance" do
+            driver = ChunkyPNGDriver.new("#{Rails.root}/screenshot.png")
+
+            level = driver.difference_level(
+              nil,
+              load_test_image(driver),
+              Region.new(0, 0, 10, 10)
+            )
+
+            assert_equal 0.015625, level
+          end
+
           private
 
           def make_comparison(old_img, new_img, options = {})
@@ -138,6 +150,10 @@ module Capybara
 
           def sample_region
             [0, 0, 0, 0]
+          end
+
+          def load_test_image(driver)
+            driver.from_file("#{TEST_IMAGES_DIR}/a.png")
           end
         end
       end
