@@ -29,10 +29,10 @@ require "minitest/autorun"
 require "capybara/minitest"
 
 require "capybara/dsl"
-Capybara.disable_animation = true
-Capybara.server = :puma, {Silent: true}
-Capybara.threadsafe = true
 Capybara.app = Rails.application
+Capybara.disable_animation = true
+Capybara.server = :webrick
+Capybara.threadsafe = true
 
 module Capybara
   module Screenshot

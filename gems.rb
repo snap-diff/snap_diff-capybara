@@ -16,9 +16,6 @@ gem "minitest", require: false
 gem "minitest-stub-const", require: false
 gem "simplecov", require: false
 
-# Capybara Server
-gem "puma", require: false
-
 # Capybara Drivers
 gem "cuprite", require: false
 gem "selenium-webdriver", require: false
