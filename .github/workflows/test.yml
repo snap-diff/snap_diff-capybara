@@ -35,7 +35,9 @@ jobs:
           bundler-cache: true
 
       - name: Install libvips
-        run: sudo apt install libvips libvips-dev libvips-tools
+        run: |
+          DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --assume-yes -q --no-install-recommends \
+          libvips libvips-dev libvips-tools
 
       - name: Run Tests with coverage
         run: bundle exec rake test
@@ -89,7 +91,9 @@ jobs:
           bundler-cache: true
 
       - name: Install libvips
-        run: sudo apt install libvips libvips-dev libvips-tools
+        run: |
+          DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --assume-yes -q --no-install-recommends \
+          libvips libvips-dev libvips-tools
 
       - name: Run tests
         run: bundle exec rake test
@@ -119,7 +123,9 @@ jobs:
           bundler-cache: true
 
       - name: Install libvips
-        run: sudo apt install libvips libvips-dev libvips-tools
+        run: |
+          DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --assume-yes -q --no-install-recommends \
+          libvips libvips-dev libvips-tools
 
       - name: Run tests
         run: bundle exec rake test:integration
