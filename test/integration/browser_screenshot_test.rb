@@ -111,12 +111,23 @@ class BrowserScreenshotTest < SystemTestCase
     assert_no_screenshot_errors
   end
 
+  test "skip_area accepts css selector" do
+    visit "/"
+
+    fill_in "First Field:", with: "Changed"
+    fill_in "Second Field:", with: "Changed"
+
+    screenshot("index", skip_area: "form")
+
+    assert_no_screenshot_errors
+  end
+
   test "skip_area converts coordinates to be relative to cropped region" do
     visit "/index.html"
     fill_in "First Field:", with: "New Change"
     fill_in "Second Field:", with: "New Change"
 
-    skip_left_top_square = [0, 0, 170, 110] # skip only first filed, but the second should not be skipped
+    skip_left_top_square = [0, 0, 170, 110] # skip only first field, but the second should not be skipped
     screenshot("index-cropped", skip_area: skip_left_top_square, crop: rect_for("form"))
 
     assert @test_screenshots.last.last.different?, "second field should not be skipped"
