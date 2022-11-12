@@ -65,7 +65,7 @@ module Capybara
           shift_distance_limit: shift_distance_limit,
           skip_area: skip_area,
           stability_time_limit: Screenshot.stability_time_limit,
-          tolerance: tolerance || (driver == :vips ? 0.001 : nil),
+          tolerance: tolerance || ((driver == :vips) ? 0.001 : nil),
           wait: Capybara.default_max_wait_time
         }
       end
