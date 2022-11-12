@@ -64,7 +64,7 @@ if ENV["CAPYBARA_DRIVER"] == "cuprite"
       js_errors: true,
       process_timeout: 20,
       screen_size: SCREEN_SIZE,
-      timeout: ENV["CI"] ? 40 : 40,
+      timeout: ENV["CI"] ? 40 : 20,
       window_size: SCREEN_SIZE
     )
   end
@@ -76,5 +76,5 @@ else
   Webdrivers::Geckodriver.update
 end
 
-Capybara.save_path = "tmp/capybara"
+Capybara.save_path = Pathname.new("tmp/capybara").expand_path
 Capybara.javascript_driver = ENV.fetch("CAPYBARA_DRIVER", :cuprite).to_sym
