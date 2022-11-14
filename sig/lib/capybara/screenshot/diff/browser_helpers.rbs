@@ -1,0 +1,37 @@
+module Capybara
+  module Screenshot
+    module BrowserHelpers
+      def current_capybara_driver_class: () -> untyped
+
+      def selenium?: () -> bool
+
+      def window_size_is_wrong?: () -> bool
+
+      def rect_for: (String css_selector) -> untyped
+
+      def bounds_for_css: (*String css_selectors) -> untyped
+
+      IMAGE_WAIT_SCRIPT: String
+
+      def pending_image_to_load: () -> untyped
+
+      HIDE_CARET_SCRIPT: String
+
+      def hide_caret: () -> untyped
+
+      FIND_ACTIVE_ELEMENT_SCRIPT: String
+
+      def blur_from_focused_element: () -> untyped
+
+      GET_BOUNDING_CLIENT_RECT_SCRIPT: String
+
+      def all_visible_regions_for: (String selector) -> untyped
+
+      def region_for: (untyped element) -> untyped
+
+      private
+
+      def create_output_directory_for: (String file_name) -> untyped
+    end
+  end
+end

@@ -103,8 +103,8 @@ module Capybara
         def prepare_page_for_screenshot(timeout:)
           assert_images_loaded(timeout: timeout)
 
-          if Capybara::Screenshot.blur_active_element
-            blurred_input = blur_from_focused_element
+          blurred_input = if Capybara::Screenshot.blur_active_element
+            blur_from_focused_element
           end
 
           if Capybara::Screenshot.hide_caret

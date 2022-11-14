@@ -29,25 +29,23 @@ module Capybara
           @test_screenshots = nil
         end
 
-        def group_parts
-          parts = []
-          parts << @screenshot_section if @screenshot_section.present?
-          parts << @screenshot_group if @screenshot_group.present?
-          parts
-        end
-
+        # @param [(Symbol | String)] name
+        # @return [String]
         def full_name(name)
-          File.join group_parts.push(name).map(&:to_s)
+          File.join *group_parts.push(name.to_s)
         end
 
+        # @return [String]
         def screenshot_dir
-          File.join [Screenshot.screenshot_area] + group_parts
+          File.join *([Screenshot.screenshot_area] + group_parts)
         end
 
+        # @param [(Symbol | String)] name
         def screenshot_section(name)
           @screenshot_section = name.to_s
         end
 
+        # @param [(Symbol | String)] name of the group
         def screenshot_group(name)
           @screenshot_group = name.to_s
           @screenshot_counter = 0
@@ -56,6 +54,9 @@ module Capybara
           FileUtils.rm_rf screenshot_dir
         end
 
+        # @param [(Symbol | String)] name
+        # @param [Integer] skip_stack_frames
+        # @param [**untyped] options
         # @return [Boolean] whether a screenshot was taken
         def screenshot(name, skip_stack_frames: 0, **options)
           return false unless Screenshot.active?
@@ -94,12 +95,19 @@ module Capybara
         end
 
         def assert_image_not_changed(caller, name, comparison)
-          return unless comparison.different?
+          return nil unless comparison.different?
 
           "Screenshot does not match for '#{name}' #{comparison.error_message}\nat #{caller}"
         end
 
         private
+
+        def group_parts
+          parts = []
+          parts << @screenshot_section if @screenshot_section.present?
+          parts << @screenshot_group if @screenshot_group.present?
+          parts
+        end
 
         def calculate_crop_region(driver_options)
           crop_coordinates = driver_options.delete(:crop)
@@ -137,7 +145,7 @@ module Capybara
 
           result = []
           result.concat(build_regions_for(bounds_for_css(*css_selectors))) unless css_selectors.empty?
-          result.concat(build_regions_for(regions.flatten&.each_slice(4))) unless regions.empty?
+          result.concat(build_regions_for(regions.flatten.each_slice(4))) unless regions.empty?
           result.compact!
 
           result.map! { |region| crop_region.find_relative_intersect(region) } if crop_region

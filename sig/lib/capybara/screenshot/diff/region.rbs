@@ -1,0 +1,43 @@
+class Region
+  type raw_region_entity = [Integer, Integer, Integer, Integer]
+
+  attr_accessor x: Integer
+
+  attr_accessor y: Integer
+
+  attr_accessor width: Integer
+
+  attr_accessor height: Integer
+
+  def initialize: (Integer x, Integer y, Integer width, Integer height) -> void
+
+  def self.from_top_left_corner_coordinates: (Integer x, Integer y, Integer width, Integer height) -> (nil | Region)
+
+  def self.from_edge_coordinates: (Integer left, Integer `top`, Integer right, Integer bottom) -> (nil | Region)
+
+  def to_edge_coordinates: () -> ::Array[Integer]
+
+  def to_top_left_corner_coordinates: () -> ::Array[Integer]
+
+  def top: () -> Integer
+
+  def bottom: () -> Integer
+
+  def left: () -> Integer
+
+  def right: () -> Integer
+
+  def size: () -> Integer
+
+  def to_a: () -> ::Array[Integer]
+
+  def find_intersect_with: (Region region) -> (nil | Region)
+
+  def intersect?: (Region region) -> bool
+
+  def move_by: (Integer right_by, Integer down_by) -> Region
+
+  def find_relative_intersect: (Region region) -> (nil | Region)
+
+  def cover?: (Integer x, Integer y) -> bool
+end

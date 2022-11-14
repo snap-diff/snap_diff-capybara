@@ -124,14 +124,14 @@ module Capybara
             image.resize(1.* new_width / new_height)
           end
 
-          def load_images(old_file_name, new_file_name, driver = self)
-            [driver.from_file(old_file_name), driver.from_file(new_file_name)]
+          def load_images(old_file_name, new_file_name)
+            [from_file(old_file_name), from_file(new_file_name)]
           end
 
           def from_file(filename)
             result = ::Vips::Image.new_from_file(filename)
 
-            result = result.colourspace("srgb") if result.bands < 3
+            result = result.colourspace(:srgb) if result.bands < 3
             result = result.bandjoin(255) if result.bands == 3
 
             result
@@ -157,11 +157,6 @@ module Capybara
           end
 
           class VipsUtil
-            def self.difference(old_image, new_image, color_distance: 0)
-              diff_mask = difference_mask(color_distance, new_image, old_image)
-              difference_region_by(diff_mask).to_edge_coordinates
-            end
-
             def self.difference_area(old_image, new_image, color_distance: 0)
               difference_mask = difference_mask(color_distance, new_image, old_image)
               difference_area_size_by(difference_mask)

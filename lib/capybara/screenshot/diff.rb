@@ -36,6 +36,7 @@ module Capybara
         File.join parts
       end
 
+      # @return [Pathname] absolute path to the screenshot start directory
       def screenshot_area_abs
         root / screenshot_area
       end

@@ -85,8 +85,8 @@ module Capybara
             self.difference_region = Region.from_edge_coordinates(
               0,
               0,
-              [driver.width_for(old_image), driver.width_for(new_image)].min,
-              [driver.height_for(old_image), driver.height_for(new_image)].min
+              [driver.width_for(old_image), driver.width_for(new_image)].min || 0,
+              [driver.height_for(old_image), driver.height_for(new_image)].min || 0
             )
 
             return different(*images)
@@ -122,7 +122,7 @@ module Capybara
         end
 
         def old_file_exists?
-          @old_file_name && File.exist?(@old_file_name)
+          !!@old_file_name && File.exist?(@old_file_name)
         end
 
         def reset
