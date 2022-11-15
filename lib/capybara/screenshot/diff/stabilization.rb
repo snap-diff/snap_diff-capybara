@@ -22,21 +22,20 @@ module Capybara
 
             comparison.reset
 
-            if previous_file_name
-              stabilization_comparison = make_stabilization_comparison_from(
-                comparison,
-                comparison.new_file_name,
-                previous_file_name
-              )
-              if stabilization_comparison.quick_equal?
-                if (Time.now - last_image_change_at) > stability_time_limit
-                  clean_stabilization_images(comparison.new_file_name)
-                  break
-                end
-                next
-              else
-                last_image_change_at = Time.now
+            stabilization_comparison = make_stabilization_comparison_from(
+              comparison.new_file_name,
+              previous_file_name,
+              comparison.driver_options
+            )
+
+            if stabilization_comparison.quick_equal?
+              if (Time.now - last_image_change_at) > stability_time_limit
+                clean_stabilization_images(comparison.new_file_name)
+                break
               end
+              next
+            else
+              last_image_change_at = Time.now
             end
 
             previous_file_name = build_snapshot_version_file_name(
@@ -67,14 +66,17 @@ module Capybara
         private
 
         def build_snapshot_version_file_name(comparison, iteration, screenshot_started_at, stabilization_comparison)
+          elapsed_seconds = (Time.now - screenshot_started_at).round(1)
+          encode_diff_region = stabilization_comparison.difference_coordinates&.to_s&.gsub(", ", "_") || :initial
+
           "#{comparison.new_file_name.chomp(".png")}" \
-                "_x#{format("%02i", iteration)}_#{(Time.now - screenshot_started_at).round(1)}s" \
-                "_#{stabilization_comparison.difference_coordinates&.to_s&.gsub(", ", "_") || :initial}.png" \
+                "_x#{format("%02i", iteration)}_#{elapsed_seconds}s" \
+                "_#{encode_diff_region}.png" \
                 "#{ImageCompare::TMP_FILE_SUFFIX}"
         end
 
-        def make_stabilization_comparison_from(comparison, new_file_name, previous_file_name)
-          ImageCompare.new(new_file_name, previous_file_name, comparison.driver_options)
+        def make_stabilization_comparison_from(new_file_name, previous_file_name, driver_options)
+          ImageCompare.new(new_file_name, previous_file_name, driver_options)
         end
 
         def reduce_retina_image_size(file_name, driver)
@@ -144,9 +146,9 @@ module Capybara
           stabilization_images(comparison.new_file_name).each do |file_name|
             if File.exist? previous_file
               stabilization_comparison = make_stabilization_comparison_from(
-                comparison,
                 file_name,
-                previous_file
+                previous_file,
+                comparison.driver_options
               )
               if stabilization_comparison.different?
                 FileUtils.mv stabilization_comparison.annotated_new_file_name, file_name
