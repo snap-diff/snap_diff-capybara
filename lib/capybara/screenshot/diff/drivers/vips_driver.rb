@@ -73,7 +73,7 @@ module Capybara
             #       so after we cropped files and stored in the same file, the next load will recover old version instead of cropped
             #       Workaround to make vips works with cropped versions
             Vips.cache_set_max(0)
-            Vips.vips_cache_set_max(1000)
+            Vips.cache_set_max(1000)
 
             result
           end
@@ -121,7 +121,7 @@ module Capybara
           end
 
           def resize_image_to(image, new_width, new_height)
-            image.resize(1.* new_width / new_height)
+            image.resize(new_width.to_f / new_height)
           end
 
           def load_images(old_file_name, new_file_name)
