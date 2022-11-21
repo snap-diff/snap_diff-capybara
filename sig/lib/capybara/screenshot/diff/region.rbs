@@ -1,5 +1,5 @@
 class Region
-  type raw_region_entity = [Integer, Integer, Integer, Integer]
+  type raw_region_entity = [Numeric, Numeric, Numeric, Numeric]
 
   attr_accessor x: Integer
 
@@ -13,7 +13,7 @@ class Region
 
   def self.from_top_left_corner_coordinates: (Integer x, Integer y, Integer width, Integer height) -> (nil | Region)
 
-  def self.from_edge_coordinates: (Integer left, Integer `top`, Integer right, Integer bottom) -> (nil | Region)
+  def self.from_edge_coordinates: (Integer left, Integer `top`, Integer right, Integer bottom) -> Region?
 
   def to_edge_coordinates: () -> ::Array[Integer]
 

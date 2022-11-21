@@ -4,7 +4,7 @@ module Capybara
       module Stabilization
         include Os
 
-        def take_stable_screenshot: (ImageCompare comparison, stability_time_limit: Integer, wait: Integer, crop: Region) -> void
+        def take_stable_screenshot: (ImageCompare comparison, stability_time_limit: (Numeric | bool)?, wait: Integer?, crop: Region?) -> void
 
         def notice_how_to_avoid_this: () -> void
 

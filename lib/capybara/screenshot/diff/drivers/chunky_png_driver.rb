@@ -258,18 +258,23 @@ module Capybara
 
             color_distance =
               color_distance_at(new_img, old_img, x, y, shift_distance_limit: @shift_distance_limit)
+
             if !@max_color_distance || color_distance > @max_color_distance
               @max_color_distance = color_distance
             end
-            color_matches = color_distance == 0 || (@color_distance_limit && @color_distance_limit > 0 &&
-              color_distance <= @color_distance_limit)
+
+            color_matches = color_distance == 0 ||
+              (!!@color_distance_limit && @color_distance_limit > 0 && color_distance <= @color_distance_limit)
+
             return color_matches if !@shift_distance_limit || @max_shift_distance == Float::INFINITY
 
+            # @type [Numeric]
             shift_distance = (color_matches && 0) ||
               shift_distance_at(new_img, old_img, x, y, color_distance_limit: @color_distance_limit)
             if shift_distance && (@max_shift_distance.nil? || shift_distance > @max_shift_distance)
               @max_shift_distance = shift_distance
             end
+
             color_matches
           end
 
@@ -289,10 +294,10 @@ module Capybara
               end_y = [y + shift_distance_limit, new_img.height - 1].min
               ys = (start_y..end_y).to_a
               new_pixels = xs.product(ys)
-              distances = new_pixels.map { |dx, dy|
-                new_color = new_img[dx, dy]
-                ChunkyPNG::Color.euclidean_distance_rgba(org_color, new_color)
-              }
+
+              distances = new_pixels.map do |dx, dy|
+                ChunkyPNG::Color.euclidean_distance_rgba(org_color, new_img[dx, dy])
+              end
               distances.min
             else
               ChunkyPNG::Color.euclidean_distance_rgba(org_color, new_img[x, y])

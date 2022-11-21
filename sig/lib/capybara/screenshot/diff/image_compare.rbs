@@ -28,7 +28,7 @@ module Capybara
 
         attr_accessor color_distance_limit: untyped
 
-        def initialize: (String new_file_name, ?String? old_file_name, ?::Hash[Symbol, untyped] options) -> void
+        def initialize: (String new_file_name, ?(String | Drivers::BaseDriver::options_entity)? old_file_name, ?Drivers::BaseDriver::options_entity options) -> void
 
         def skip_area=: (Array[Region] new_skip_area) -> void
 
@@ -52,9 +52,9 @@ module Capybara
 
         def error_message: () -> String
 
-        def difference_coordinates: () -> Array[Integer]
+        def difference_coordinates: () -> Region::raw_region_entity
 
-        def difference_region_area_size: () -> Integer
+        def difference_region_area_size: () -> Numeric
 
         private
 

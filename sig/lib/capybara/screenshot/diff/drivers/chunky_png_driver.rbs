@@ -1,10 +1,10 @@
 module ChunkyPNG
   class Canvas
-
   end
 
   class Image
     def self.from_blob: (String str) -> Image
+
     def self.from_file: (String filename) -> Image
   end
 end
@@ -16,27 +16,59 @@ module Capybara
         class ChunkyPNGDriver < BaseDriver[ChunkyPNG::Canvas]
           private
 
-          def build_region_for_whole_image: (untyped new_image) -> untyped
+          def build_region_for_whole_image: (ChunkyPNG::Image new_image) -> Region?
 
-          def find_diff_rectangle: (untyped org_img, untyped new_img, untyped area_coordinates) -> (Region? | nil)
+          def find_diff_rectangle: (
+              ChunkyPNG::Image org_img,
+              ChunkyPNG::Image new_img,
+              (Region | Region::raw_region_entity) area_coordinates
+            ) -> Region?
 
-          def find_top: (untyped old_img, untyped new_img) -> (::Array[untyped] | nil)
+          def find_top: (ChunkyPNG::Image old_img, ChunkyPNG::Image new_img) -> Region::raw_region_entity?
 
-          def find_left_right_and_top: (untyped old_img, untyped new_img, untyped region) -> ::Array[untyped]
+          def find_left_right_and_top: (
+              ChunkyPNG::Image old_img,
+              ChunkyPNG::Image new_img,
+              (Region | Region::raw_region_entity) region
+            ) -> Region::raw_region_entity
 
-          def find_bottom: (untyped old_img, untyped new_img, untyped left, untyped right, untyped bottom) -> untyped
+          def find_bottom: (
+              ChunkyPNG::Image old_img,
+              ChunkyPNG::Image new_img,
+              Integer left,
+              Integer right,
+              Integer bottom
+            ) -> Integer
 
-          def same_color?: (untyped old_img, untyped new_img, untyped x, untyped y) -> (true | untyped)
+          def same_color?: (ChunkyPNG::Image old_img, ChunkyPNG::Image new_img, Integer x, Integer y) -> bool
 
-          def skipped_region?: (untyped x, untyped y) -> (false | untyped)
+          def skipped_region?: (Integer x, Integer y) -> bool
 
-          def color_distance_at: (untyped new_img, untyped old_img, untyped x, untyped y, shift_distance_limit: untyped) -> untyped
+          def color_distance_at: (
+              ChunkyPNG::Image new_img,
+              ChunkyPNG::Image old_img,
+              Integer x,
+              Integer y,
+              shift_distance_limit: Numeric?
+            ) -> Float
 
-          def shift_distance_at: (untyped new_img, untyped old_img, untyped x, untyped y, color_distance_limit: untyped) -> untyped
+          def shift_distance_at: (
+              ChunkyPNG::Image new_img,
+              ChunkyPNG::Image old_img,
+              Integer x,
+              Integer y,
+              color_distance_limit: Numeric?
+            ) -> Numeric
 
-          def color_matches: (untyped new_img, untyped org_color, untyped x, untyped y, untyped color_distance_limit) -> untyped
+          def color_matches: (
+              ChunkyPNG::Image new_img,
+              Integer org_color,
+              Integer x,
+              Integer y,
+              Numeric? color_distance_limit
+            ) -> bool
 
-          def _load_images: (untyped old_file, untyped new_file) -> ::Array[untyped]
+          def _load_images: (String old_file, String new_file) -> [ChunkyPNG::Image, ChunkyPNG::Image]
         end
       end
     end

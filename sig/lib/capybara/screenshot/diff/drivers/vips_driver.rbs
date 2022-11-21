@@ -18,7 +18,7 @@ module Capybara
 
             def self.difference_area_size_by: (Vips::Image difference_mask) -> (Integer | Float)
 
-            def self.difference_mask: (Float color_distance, Vips::Image old_image, Vips::Image new_image) -> Vips::Image
+            def self.difference_mask: (Numeric color_distance, Vips::Image old_image, Vips::Image new_image) -> Vips::Image
 
             def self.difference_region_by: (Vips::Image diff_mask) -> (nil | Region)
           end
