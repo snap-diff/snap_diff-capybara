@@ -19,7 +19,7 @@ module Capybara
 
       ASSERTION: untyped
 
-      def self.default_options: () -> { area_size_limit: untyped, color_distance_limit: untyped, driver: untyped, shift_distance_limit: untyped, skip_area: untyped, stability_time_limit: untyped, tolerance: untyped, wait: untyped }
+      def self.default_options: () -> TestMethods::input_options
 
       def self.included: (untyped klass) -> untyped
 

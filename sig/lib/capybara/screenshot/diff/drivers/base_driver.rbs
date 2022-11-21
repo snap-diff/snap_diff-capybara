@@ -4,14 +4,14 @@ module Capybara
       module Drivers
         class BaseDriver[ImageEntity]
           type options_entity = {
-              area_size_limit: Integer?,
-              color_distance_limit: Integer?,
-              driver: [:vips, :chunky_png],
-              shift_distance_limit: Integer?,
-              skip_area: Array[Region],
-              stability_time_limit: Float?,
-              tolerance: Float?,
-              wait: Integer?
+              area_size_limit?: Integer?,
+              color_distance_limit?: Integer?,
+              driver: (:auto | :vips | :chunky_png),
+              shift_distance_limit?: Integer?,
+              skip_area?: Array[Region],
+              stability_time_limit?: Float?,
+              tolerance?: Float?,
+              wait?: Integer?
             }
 
           type color = [Integer, Integer, Integer, Integer]

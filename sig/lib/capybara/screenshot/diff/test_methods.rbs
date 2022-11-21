@@ -11,7 +11,7 @@ module Capybara
 
         type name_entity = (Symbol | String)
 
-        def initialize: () -> void
+        def initialize: (*untyped) -> void
 
         def group_parts: () -> Array[String]
 
@@ -21,22 +21,34 @@ module Capybara
 
         def screenshot_section: (name_entity name) -> void
 
-        def screenshot_group: (name_entity name) -> void
+        def screenshot_group: (name_entity? name) -> void
 
         # @return [Boolean] whether a screenshot was taken
         def screenshot: (name_entity name, ?skip_stack_frames: ::Integer, **untyped options) -> bool
 
-        def assert_image_not_changed: (String caller, String name, ImageCompare comparison) -> ::String?
+        %a{rbs:test:skip} def assert_image_not_changed: (String caller, String name, ImageCompare comparison) -> ::String?
 
         private
 
-        def calculate_crop_region: (Drivers::BaseDriver::options_entity driver_options) -> (nil | Region)
+        type input_options = {
+            area_size_limit: Integer?,
+            color_distance_limit: Integer?,
+            driver: (:auto | :vips | :chunky_png),
+            shift_distance_limit: Integer?,
+            skip_area: nil | Array[[Integer, Integer, Integer, Integer] | String] | String | [Integer, Integer, Integer, Integer],
+            stability_time_limit: Float?,
+            tolerance: Float?,
+            wait: Integer?
+          }
+
+        def calculate_crop_region: (input_options driver_options) -> (nil | Region)
 
         def create_output_directory_for: (String file_name) -> void
 
         def take_comparison_screenshot: (ImageCompare comparison, Region? crop, Integer stability_time_limit, Integer wait) -> void
 
         type skip_area_entity = String | Region::raw_region_entity
+
         def calculate_skip_area: ((skip_area_entity | Array[skip_area_entity]) skip_area, (nil | Region::raw_region_entity) crop) -> Array[Region]
 
         def build_regions_for: ((Enumerable[Region::raw_region_entity]) coordinates) -> Array[(Region | nil)]
