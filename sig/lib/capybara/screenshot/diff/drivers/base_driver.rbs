@@ -3,7 +3,17 @@ module Capybara
     module Diff
       module Drivers
         class BaseDriver[ImageEntity]
-          type options_entity = ::Hash[Symbol, untyped]
+          type options_entity = {
+              area_size_limit: Integer?,
+              color_distance_limit: Integer?,
+              driver: [:vips, :chunky_png],
+              shift_distance_limit: Integer?,
+              skip_area: Array[Region],
+              stability_time_limit: Float?,
+              tolerance: Float?,
+              wait: Integer?
+            }
+
           type color = [Integer, Integer, Integer, Integer]
 
           attr_reader new_file_name: String
@@ -12,7 +22,7 @@ module Capybara
 
           attr_reader options: options_entity
 
-          def initialize: (String new_file_name, ?untyped? old_file_name, ?options_entity options) -> void
+          def initialize: (String new_file_name, ?String? old_file_name, ?options_entity options) -> void
 
           def skip_area=: (Array[Region] new_skip_area) -> void
 
