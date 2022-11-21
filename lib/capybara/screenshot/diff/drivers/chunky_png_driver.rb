@@ -49,7 +49,7 @@ module Capybara
           end
 
           def difference_level(_diff_mask, old_img, region)
-            size(region).to_f / image_area_size(old_img)
+            region.size.to_f / image_area_size(old_img)
           end
 
           def image_area_size(old_img)
