@@ -23,15 +23,9 @@ module Capybara
           @annotated_old_file_name = "#{new_file_name.chomp(".png")}.committed.png"
           @annotated_new_file_name = "#{new_file_name.chomp(".png")}.latest.png"
 
-          @driver_options = options
+          @driver_options = options.dup
 
-          @color_distance_limit = options[:color_distance_limit] || 0
-          @area_size_limit = options[:area_size_limit]
-          @shift_distance_limit = options[:shift_distance_limit]
-          @dimensions = options[:dimensions]
-          @skip_area = options[:skip_area]
-          @tolerance = options[:tolerance]
-          @median_filter_window_size = options[:median_filter_window_size]
+          assign_attributes_with(@driver_options)
 
           driver_klass = find_driver_class_for(@driver_options.fetch(:driver, :chunky_png))
           @driver = driver_klass.new(@new_file_name, @old_file_name, **@driver_options)
@@ -159,6 +153,16 @@ module Capybara
         end
 
         private
+
+        def assign_attributes_with(options)
+          @color_distance_limit = options[:color_distance_limit] || 0
+          @area_size_limit = options[:area_size_limit]
+          @shift_distance_limit = options[:shift_distance_limit]
+          @dimensions = options[:dimensions].dup
+          @skip_area = options[:skip_area].dup
+          @tolerance = options[:tolerance]
+          @median_filter_window_size = options[:median_filter_window_size]
+        end
 
         attr_accessor :difference_region
 
