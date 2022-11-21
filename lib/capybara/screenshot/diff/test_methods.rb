@@ -67,6 +67,12 @@ module Capybara
           wait = driver_options[:wait]
           crop = calculate_crop_region(driver_options)
 
+          # Allow nil or single or multiple areas
+          if driver_options[:skip_area]
+            # Cast skip area args to Region and makes relative to crop
+            driver_options[:skip_area] = calculate_skip_area(driver_options[:skip_area], crop)
+          end
+
           if @screenshot_counter
             name = "#{format("%02i", @screenshot_counter)}_#{name}"
             @screenshot_counter += 1
@@ -80,11 +86,6 @@ module Capybara
           checkout_vcs(name, comparison.old_file_name, comparison.new_file_name)
 
           return false unless comparison.old_file_exists?
-
-          # Allow nil or single or multiple areas
-          if driver_options[:skip_area]
-            comparison.skip_area = calculate_skip_area(driver_options[:skip_area], crop)
-          end
 
           take_comparison_screenshot(comparison, crop, stability_time_limit, wait)
 
@@ -129,6 +130,8 @@ module Capybara
           blurred_input&.click
         end
 
+        # Cast skip areas params into Region
+        # and if there is crop then makes absolute coordinates to eb relative to crop top left corner
         def calculate_skip_area(skip_area, crop)
           crop_region = crop && Region.new(*crop)
           skip_area = Array(skip_area)
