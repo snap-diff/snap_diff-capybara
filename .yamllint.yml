@@ -1,0 +1,17 @@
+---
+
+extends: relaxed
+
+rules:
+  line-length:
+    max: 120
+  indentation:
+    indent-sequences: whatever
+
+ignore: |
+  coverage
+  gemfiles
+  sig
+  test
+  tmp
+  vendor

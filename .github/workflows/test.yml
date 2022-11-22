@@ -1,13 +1,18 @@
+---
+
 name: Test
 
 on:
   push:
     branches: [ master ]
   pull_request:
+    type: [ opened, synchronize, reopened, review_requested ]
     paths:
-      - '**.rb'
       - '**.gemfile'
+      - '**.rb'
+      - '.github/workflows/**'
       - '!bin/**'
+  workflow_dispatch:
 
 env:
   BUNDLE_GEMFILE: 'gemfiles/rails70_gems.rb'
@@ -28,21 +33,22 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
+      - name: Install libvips
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: sudo apt-get install -qq --no-install-recommends libvips libvips-dev libvips-tools
+
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
         with:
-          ruby-version: '3.1'
+          ruby-version: '3.2.0-preview3'
           bundler-cache: true
 
-      - name: Install libvips
-        run: |
-          DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --assume-yes -q --no-install-recommends \
-          libvips libvips-dev libvips-tools
-
       - name: Run Tests with coverage
-        run: bundle exec rake test
         env:
           COVERAGE: enabled
+          RUBY_YJIT_ENABLE: 1
+        run: bundle exec rake test
 
       - name: Upload Screenshots
         if: always()
@@ -63,20 +69,27 @@ jobs:
 
   matrix:
     name: Test Integration Rails & Ruby
+    if: github.ref == 'refs/heads/master' || github.event.inputs ||
+      github.event.pull_request.requested_reviewers.length > 0
     needs: [ 'test' ]
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     timeout-minutes: 5
 
     strategy:
       matrix:
-        ruby-version: [ '3.1', '3.0', '2.7', 'jruby' ]
+        ruby-version: [ '3.2.0-preview3', '3.1', '3.0', '2.7', 'jruby', 'jruby-9.4.0.0' ]
         gemfile:
           - 'rails70_gems.rb'
           - 'rails61_gems.rb'
           - 'rails60_gems.rb'
         exclude:
+          # We already tested last version
+          - ruby-version: '3.2.0-preview3'
+            gemfile: 'gemfiles/rails70_gems.rb'
+          # JRuby < 9.4 is compatible with Ruby 2.6, but Rails 7 is compatible with Ruby 2.7+
           - ruby-version: 'jruby'
             gemfile: 'rails70_gems.rb'
+
     env:
       BUNDLE_GEMFILE: gemfiles/${{ matrix.gemfile }}
 
@@ -91,26 +104,27 @@ jobs:
           bundler-cache: true
 
       - name: Install libvips
-        run: |
-          DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --assume-yes -q --no-install-recommends \
-          libvips libvips-dev libvips-tools
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: sudo apt-get install -qq --no-install-recommends libvips libvips-dev libvips-tools
 
       - name: Run tests
         run: bundle exec rake test
 
-  matrix_screenshot_driver:
+  matrix-screenshot-driver:
     name: Test Integration Capybara & Image Drivers
+    if: github.ref == 'refs/heads/master' || github.event.inputs ||
+      github.event.pull_request.requested_reviewers.length > 0
     needs: [ 'test' ]
-    runs-on: ubuntu-20.04
-    timeout-minutes: 5
 
     strategy:
       matrix:
-        screenshot-driver: [ 'vips', 'chunky_png' ]
-        capybara-driver: [ 'selenium_headless', 'selenium_chrome_headless' ]
-        include:
-          - screenshot-driver: 'chunky_png'
-            capybara-driver: 'cuprite'
+        screenshot-driver: [ vips, chunky_png ]
+        capybara-driver: [ selenium_headless, selenium_chrome_headless, cuprite ]
+
+    runs-on: ${{ matrix.capybara-driver == 'selenium_headless' && 'ubuntu-20.04' || 'ubuntu-22.04' }}
+
+    timeout-minutes: 5
 
     steps:
       - name: Checkout code
@@ -119,13 +133,14 @@ jobs:
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
         with:
-          ruby-version: '3.1'
+          ruby-version: '3.2.0-preview3'
           bundler-cache: true
 
       - name: Install libvips
-        run: |
-          DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y --assume-yes -q --no-install-recommends \
-          libvips libvips-dev libvips-tools
+        if: matrix.screenshot-driver == 'vips'
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: sudo apt-get install -qq --no-install-recommends libvips libvips-dev libvips-tools
 
       - name: Run tests
         run: bundle exec rake test:integration

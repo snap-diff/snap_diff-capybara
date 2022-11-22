@@ -77,7 +77,7 @@ module Capybara
           rescue Vips::Error => e
             warn(
               "[capybara-screenshot-diff] Crop has been failed for " \
-              "{ region: #{region.to_top_left_corner_coordinates.inspect}, image: #{dimension(i).join('x')} }"
+              "{ region: #{region.to_top_left_corner_coordinates.inspect}, image: #{dimension(i).join("x")} }"
             )
             raise e
           end

@@ -1,15 +1,19 @@
-name: Ruby Linter
+---
+name: Lint Code Base
 
 on:
   pull_request:
+    branches: [master]
     paths:
       - '*.rb'
+      - '*.yml'
+      - '.github/workflows/lint.yml'
       - '!bin/**'
 
 jobs:
-  lint:
-    name: Lint
-    runs-on: ubuntu-latest
+  standard:
+    name: Standard
+    runs-on: ubuntu-22.04
 
     steps:
       - name: Checkout code
@@ -23,3 +27,6 @@ jobs:
 
       - name: Run Standard Ruby linter
         run: bin/standardrb --no-fix --fail-fast
+
+      - name: Run Yaml linter
+        run: sudo apt-get install -qq --no-install-recommends yamllint && yamllint  ./
