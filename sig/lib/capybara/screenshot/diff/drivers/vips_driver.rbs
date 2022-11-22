@@ -1,0 +1,29 @@
+module ::Vips
+  class Image
+    def self.new_from_file: (String filename) -> Image
+  end
+end
+
+module Capybara
+  module Screenshot
+    module Diff
+      module Drivers
+        class VipsDriver < BaseDriver[Vips::Image]
+          PNG_EXTENSION: String
+
+          class VipsUtil
+            def self.difference: (Vips::Image old_image, Vips::Image new_image, ?color_distance: ::Integer) -> [Integer, Integer, Integer, Integer]
+
+            def self.difference_area: (Vips::Image old_image, Vips::Image new_image, ?color_distance: ::Integer) -> (Integer | Float)
+
+            def self.difference_area_size_by: (Vips::Image difference_mask) -> (Integer | Float)
+
+            def self.difference_mask: (Numeric color_distance, Vips::Image old_image, Vips::Image new_image) -> Vips::Image
+
+            def self.difference_region_by: (Vips::Image diff_mask) -> (nil | Region)
+          end
+        end
+      end
+    end
+  end
+end

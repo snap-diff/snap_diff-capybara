@@ -1,0 +1,37 @@
+module Capybara
+  module Screenshot
+    module Diff
+      module Stabilization
+        include Os
+
+        def take_stable_screenshot: (ImageCompare comparison, stability_time_limit: (Numeric | bool)?, wait: Integer?, crop: Region?) -> void
+
+        def notice_how_to_avoid_this: () -> void
+
+        private
+
+        def build_snapshot_version_file_name: (ImageCompare comparison, Integer iteration, Time screenshot_started_at, ImageCompare stabilization_comparison) -> ::String
+
+        def make_stabilization_comparison_from: (String new_file_name, String previous_file_name, Drivers::BaseDriver::options_entity driver_options) -> ImageCompare
+
+        def reduce_retina_image_size: (String file_name, (Drivers::VipsDriver | Drivers::ChunkyPNGDriver) driver) -> void
+
+        def stabilization_images: (String base_file) -> Array[String]
+
+        def clean_stabilization_images: (String base_file) -> void
+
+        def prepare_page_for_screenshot: (timeout: Integer) -> untyped
+
+        def take_right_size_screenshot: (ImageCompare comparison, crop: (Region | nil)) -> void
+
+        def check_max_wait_time: (ImageCompare comparison, Time screenshot_started_at, max_wait_time: Integer) -> void
+
+        def annotate_stabilization_images: (ImageCompare comparison) -> void
+
+        def max_wait_time: (Float shift_distance_limit, Integer wait) -> Integer
+
+        def assert_images_loaded: (timeout: Integer) -> void
+      end
+    end
+  end
+end

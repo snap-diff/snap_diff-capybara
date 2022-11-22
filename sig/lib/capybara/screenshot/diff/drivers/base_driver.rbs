@@ -1,0 +1,77 @@
+module Capybara
+  module Screenshot
+    module Diff
+      module Drivers
+        class BaseDriver[ImageEntity]
+          type options_entity = {
+              area_size_limit?: Integer?,
+              color_distance_limit?: Numeric?,
+              driver: (:auto | :vips | :chunky_png)?,
+              shift_distance_limit?: (Numeric | bool)?,
+              skip_area?: Array[Region]?,
+              stability_time_limit?: (Numeric | bool)?,
+              tolerance?: Float?,
+              wait?: Integer?
+            }
+
+          type color = [Integer, Integer, Integer, Integer]
+
+          attr_reader new_file_name: String
+
+          attr_reader old_file_name: String
+
+          attr_reader options: options_entity
+
+          def initialize: (String new_file_name, ?String? old_file_name, ?options_entity options) -> void
+
+          def skip_area=: (Array[Region] new_skip_area) -> void
+
+          # Resets the calculated data about the comparison with regard to the "new_image".
+          # Data about the original image is kept.
+          def reset: () -> void
+
+          def shift_distance_equal?: () -> bool
+
+          def shift_distance_different?: () -> bool
+
+          def find_difference_region: (ImageEntity new_image, ImageEntity old_image, (Integer | Float) color_distance_limit, (Integer | Float) _shift_distance_limit, Integer _area_size_limit, ?fast_fail: bool) -> [(Region | nil), (ImageEntity | untyped | nil)]
+
+          def adds_error_details_to: (::Hash[Symbol, untyped] _log) -> void
+
+          def inscribed?: (untyped dimensions, ImageEntity i) -> bool
+
+          def crop: (Region region, ImageEntity i) -> ImageEntity
+
+          def filter_image_with_median: (ImageEntity image, untyped median_filter_window_size) -> ImageEntity
+
+          def add_black_box: (untyped memo, Region region) -> void
+
+          def chunky_png_comparator: () -> ImageCompare
+
+          def difference_level: (untyped diff_mask, ImageEntity old_img, ?Region? _region) -> Float
+
+          def image_area_size: (ImageEntity old_img) -> Integer
+
+          def height_for: (ImageEntity image) -> Integer
+
+          def width_for: (ImageEntity image) -> Integer
+
+          # Vips could not work with the same file. Per each process we require to create new file
+          def save_image_to: (ImageEntity image, String filename) -> void
+
+          def resize_image_to: (ImageEntity image, Integer new_width, Integer new_height) -> ImageEntity
+
+          def load_images: (String old_file_name, String new_file_name) -> [ImageEntity, ImageEntity]
+
+          def from_file: (String filename) -> ImageEntity
+
+          def dimension_changed?: (ImageEntity old_image, ImageEntity new_image) -> bool
+
+          def dimension: (ImageEntity image) -> ::Array[untyped]
+
+          def draw_rectangles: ([ImageEntity, ImageEntity] images, Region region, color rgba) -> untyped
+        end
+      end
+    end
+  end
+end

@@ -29,19 +29,12 @@ module Capybara
           @test_screenshots = nil
         end
 
-        def group_parts
-          parts = []
-          parts << @screenshot_section if @screenshot_section.present?
-          parts << @screenshot_group if @screenshot_group.present?
-          parts
-        end
-
         def full_name(name)
-          File.join group_parts.push(name).map(&:to_s)
+          File.join(*group_parts.push(name.to_s))
         end
 
         def screenshot_dir
-          File.join [Screenshot.screenshot_area] + group_parts
+          File.join(*([Screenshot.screenshot_area] + group_parts))
         end
 
         def screenshot_section(name)
@@ -56,7 +49,6 @@ module Capybara
           FileUtils.rm_rf screenshot_dir
         end
 
-        # @return [Boolean] whether a screenshot was taken
         def screenshot(name, skip_stack_frames: 0, **options)
           return false unless Screenshot.active?
           return false if window_size_is_wrong?
@@ -102,6 +94,13 @@ module Capybara
 
         private
 
+        def group_parts
+          parts = []
+          parts << @screenshot_section if @screenshot_section.present?
+          parts << @screenshot_group if @screenshot_group.present?
+          parts
+        end
+
         def calculate_crop_region(driver_options)
           crop_coordinates = driver_options.delete(:crop)
           return nil unless crop_coordinates
@@ -140,7 +139,7 @@ module Capybara
 
           result = []
           result.concat(build_regions_for(bounds_for_css(*css_selectors))) unless css_selectors.empty?
-          result.concat(build_regions_for(regions.flatten&.each_slice(4))) unless regions.empty?
+          result.concat(build_regions_for(regions.flatten.each_slice(4))) unless regions.empty?
           result.compact!
 
           result.map! { |region| crop_region.find_relative_intersect(region) } if crop_region

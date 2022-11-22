@@ -168,7 +168,7 @@ begin
               old_image = Vips::Image.new_from_file("#{TEST_IMAGES_DIR}/a.png")
               new_image = Vips::Image.new_from_file("#{TEST_IMAGES_DIR}/b.png")
 
-              left, top, right, bottom = VipsDriver::VipsUtil.difference(old_image, new_image)
+              left, top, right, bottom = difference(old_image, new_image)
 
               assert_equal [20.0, 15.0, 30.0, 25.0], [left, top, right, bottom]
             end
@@ -177,7 +177,7 @@ begin
               old_image = Vips::Image.new_from_file("#{TEST_IMAGES_DIR}/a.png")
               new_image = Vips::Image.new_from_file("#{TEST_IMAGES_DIR}/b.png")
 
-              left, top, right, bottom = VipsDriver::VipsUtil.difference(old_image, new_image)
+              left, top, right, bottom = difference(old_image, new_image)
 
               assert_equal [20.0, 15.0, 30.0, 25.0], [left, top, right, bottom]
             end
@@ -187,6 +187,13 @@ begin
               new_image = Vips::Image.new_from_file("#{TEST_IMAGES_DIR}/d.png").bandjoin(255)
 
               assert_equal 8, VipsDriver::VipsUtil.difference_area(old_image, new_image, color_distance: 10)
+            end
+
+            private
+
+            def difference(old_image, new_image, color_distance: 0)
+              diff_mask = VipsDriver::VipsUtil.difference_mask(color_distance, new_image, old_image)
+              VipsDriver::VipsUtil.difference_region_by(diff_mask).to_edge_coordinates
             end
           end
         end

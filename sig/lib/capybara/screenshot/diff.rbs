@@ -1,0 +1,32 @@
+module Capybara
+  module Screenshot
+    extend Os
+
+    def self.root=: (untyped path) -> untyped
+
+    def self.active?: () -> bool
+
+    def self.screenshot_area: () -> untyped
+
+    def self.screenshot_area_abs: () -> untyped
+
+    # Module to track screen shot changes
+    module Diff
+      include Capybara::Screenshot::Os
+
+      AVAILABLE_DRIVERS: untyped
+
+      ASSERTION: untyped
+
+      def self.default_options: () -> TestMethods::input_options
+
+      def self.included: (untyped klass) -> untyped
+
+      private
+
+      EMPTY_LINE: "\n\n"
+
+      def track_failures: (Array[untyped] screenshots, (Array[String] | String) original_caller) -> void
+    end
+  end
+end
