@@ -10,7 +10,7 @@ module Capybara
       end
 
       def selenium?
-        !!(current_capybara_driver_class <= Capybara::Selenium::Driver)
+        current_capybara_driver_class <= Capybara::Selenium::Driver
       end
 
       def window_size_is_wrong?

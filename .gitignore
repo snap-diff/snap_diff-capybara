@@ -13,4 +13,3 @@
 /test/fixtures/**/*.committed.png
 /test/fixtures/**/*.latest.png
 /vendor/sigs/
-/*_*.png

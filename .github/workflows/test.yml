@@ -11,7 +11,7 @@ on:
 
 env:
   BUNDLE_GEMFILE: 'gemfiles/rails70_gems.rb'
-  FERRUM_PROCESS_TIMEOUT: '15'
+  FERRUM_PROCESS_TIMEOUT: '40'
   WD_CACHE_TIME: '864000' # 10 days
 
 concurrency:

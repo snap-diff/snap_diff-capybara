@@ -8,7 +8,6 @@ module Capybara
 
     def self.screenshot_area: () -> untyped
 
-    # @return [Pathname] absolute path to the screenshot start directory
     def self.screenshot_area_abs: () -> untyped
 
     # Module to track screen shot changes

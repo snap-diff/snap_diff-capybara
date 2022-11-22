@@ -10,7 +10,6 @@ module Capybara
         include TestHelper
 
         test 'several iterations to take stable screenshot' do
-          # @type [ImageCompare]
           comparison = ::Minitest::Mock.new
           def comparison.old_file_name; 'old.png'; end
           def comparison.new_file_name; '01_a.png'; end

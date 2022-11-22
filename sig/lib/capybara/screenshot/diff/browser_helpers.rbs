@@ -3,7 +3,7 @@ module Capybara
     module BrowserHelpers
       def current_capybara_driver_class: () -> untyped
 
-      def selenium?: () -> bool
+      def selenium?: () -> bool?
 
       def window_size_is_wrong?: () -> bool
 
