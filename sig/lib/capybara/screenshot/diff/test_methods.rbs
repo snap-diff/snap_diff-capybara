@@ -23,7 +23,7 @@ module Capybara
 
         def screenshot_group: (name_entity? name) -> void
 
-:        def screenshot: (name_entity name, ?skip_stack_frames: ::Integer, **untyped options) -> bool
+        def screenshot: (name_entity name, ?skip_stack_frames: ::Integer, **untyped options) -> bool
 
         %a{rbs:test:skip} def assert_image_not_changed: (String caller, String name, ImageCompare comparison) -> ::String?
 
