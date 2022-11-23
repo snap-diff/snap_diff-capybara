@@ -2,7 +2,9 @@ module Capybara
   module Screenshot
     module Diff
       module Utils
-        def self.detect_available_drivers: () -> Array[Symbol]
+        def self.detect_available_drivers: () -> Array[(:vips | :chunky_png)]
+
+        def self.find_driver_class_for: (Symbol driver) -> top
 
         def self.detect_test_framework_assert: () -> (untyped | RuntimeError)
       end

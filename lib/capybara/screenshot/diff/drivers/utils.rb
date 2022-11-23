@@ -19,6 +19,22 @@ module Capybara
           result
         end
 
+        def self.find_driver_class_for(driver)
+          driver = AVAILABLE_DRIVERS.first if driver == :auto
+
+          LOADED_DRIVERS[driver] ||=
+            case driver
+            when :chunky_png
+              require "capybara/screenshot/diff/drivers/chunky_png_driver"
+              Drivers::ChunkyPNGDriver
+            when :vips
+              require "capybara/screenshot/diff/drivers/vips_driver"
+              Drivers::VipsDriver
+            else
+              fail "Wrong adapter #{driver.inspect}. Available adapters: #{AVAILABLE_DRIVERS.inspect}"
+            end
+        end
+
         def self.detect_test_framework_assert
           require "minitest"
           ::Minitest::Assertion

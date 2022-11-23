@@ -2,9 +2,10 @@
 
 if ENV["COVERAGE"]
   require "simplecov"
-  SimpleCov.start do
+  SimpleCov.start "test_frameworks" do
     enable_coverage :branch
     minimum_coverage line: 90, branch: 68
+    add_filter("gemfiles")
   end
 end
 

@@ -16,20 +16,16 @@ module Capybara
       # range considering color values and difference area size.
       module Drivers
         class VipsDriver
-          attr_reader :new_file_name, :old_file_name, :options
+          attr_reader :new_file_name, :old_file_name
 
-          def initialize(new_file_name, old_file_name = nil, options = {})
-            options = old_file_name if old_file_name.is_a?(Hash)
-
+          def initialize(new_file_name, old_file_name, _options = nil)
             @new_file_name = new_file_name
-            @old_file_name = old_file_name || "#{new_file_name}#{ImageCompare::TMP_FILE_SUFFIX}"
-
-            @options = options || {}
+            @old_file_name = old_file_name
 
             reset
           end
 
-          def skip_area=(new_skip_area)
+          def skip_area=(_new_skip_area)
             # noop
           end
 
@@ -40,14 +36,16 @@ module Capybara
 
           def shift_distance_equal?
             warn "[capybara-screenshot-diff] Instead of shift_distance_limit " \
-                   "please use median_filter_window_size and color_distance_limit options"
-            chunky_png_comparator.quick_equal?
+                   "please use median_filter_window_size and color_distance_limit options" \
+                   "or set explicit chunky_png driver"
+            raise NotImplementedError
           end
 
           def shift_distance_different?
             warn "[capybara-screenshot-diff] Instead of shift_distance_limit " \
-                   "please use median_filter_window_size and color_distance_limit options"
-            chunky_png_comparator.different?
+                   "please use median_filter_window_size and color_distance_limit options" \
+                   "or set explicit chunky_png driver"
+            raise NotImplementedError
           end
 
           def find_difference_region(new_image, old_image, color_distance_limit, _shift_distance_limit, _area_size_limit, fast_fail: false)
@@ -86,15 +84,7 @@ module Capybara
             memo.draw_rect([0, 0, 0, 0], *region.to_top_left_corner_coordinates, fill: true)
           end
 
-          def chunky_png_comparator
-            @chunky_png_comparator ||= ImageCompare.new(
-              @new_file_name,
-              @old_file_name,
-              **@options.merge(driver: :chunky_png, tolerance: nil, median_filter_window_size: nil)
-            )
-          end
-
-          def difference_level(diff_mask, old_img, _region = nil)
+          def difference_level(diff_mask, old_img, _region)
             VipsUtil.difference_area_size_by(diff_mask).to_f / image_area_size(old_img)
           end
 
@@ -137,17 +127,8 @@ module Capybara
             result
           end
 
-          def dimension_changed?(old_image, new_image)
-            return false if dimension(old_image) == dimension(new_image)
-
-            change_msg = [old_image, new_image].map { |i| "#{i.width}x#{i.height}" }.join(" => ")
-            warn "Image size has changed for #{@new_file_name}: #{change_msg}"
-
-            true
-          end
-
           def dimension(image)
-            [image.width, image.height]
+            [width_for(image), height_for(image)]
           end
 
           def draw_rectangles(images, region, rgba)
@@ -175,10 +156,10 @@ module Capybara
               columns, rows = diff_mask.bandor.project
 
               left = columns.profile[1].min
-              right = columns.width - columns.flip("horizontal").profile[1].min
+              right = columns.width - columns.flip(:horizontal).profile[1].min
 
               top = rows.profile[0].min
-              bottom = rows.height - rows.flip("vertical").profile[0].min
+              bottom = rows.height - rows.flip(:vertical).profile[0].min
 
               return nil if right < left || bottom < top
 

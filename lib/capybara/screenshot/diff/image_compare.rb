@@ -7,7 +7,7 @@ module Capybara
 
       # Compare two images and determine if they are equal, different, or within some comparison
       # range considering color values and difference area size.
-      class ImageCompare < SimpleDelegator
+      class ImageCompare
         TMP_FILE_SUFFIX = "~"
 
         attr_reader :driver, :driver_options
@@ -16,8 +16,6 @@ module Capybara
         attr_accessor :shift_distance_limit, :area_size_limit, :color_distance_limit
 
         def initialize(new_file_name, old_file_name = nil, options = {})
-          options = old_file_name if old_file_name.is_a?(Hash)
-
           @new_file_name = new_file_name
           @old_file_name = old_file_name || "#{new_file_name}#{ImageCompare::TMP_FILE_SUFFIX}"
           @annotated_old_file_name = "#{new_file_name.chomp(".png")}.committed.png"
@@ -27,10 +25,8 @@ module Capybara
 
           assign_attributes_with(@driver_options)
 
-          driver_klass = find_driver_class_for(@driver_options.fetch(:driver, :chunky_png))
+          driver_klass = Utils.find_driver_class_for(@driver_options.fetch(:driver, :chunky_png))
           @driver = driver_klass.new(@new_file_name, @old_file_name, **@driver_options)
-
-          super(@driver)
         end
 
         def skip_area=(new_skip_area)
@@ -45,9 +41,12 @@ module Capybara
           return true if new_file_size == old_file_size
 
           images = driver.load_images(@old_file_name, @new_file_name)
-          old_image, new_image = preprocess_images(images, driver)
+          old_image, new_image = preprocess_images(images)
 
-          return false if driver.dimension_changed?(old_image, new_image)
+          if dimension_changed?(new_image, old_image)
+            notice_dimensions_have_been_changed(new_image, old_image)
+            return false
+          end
 
           self.difference_region, meta = driver.find_difference_region(
             new_image,
@@ -73,9 +72,9 @@ module Capybara
           return false unless old_file_exists?
 
           images = driver.load_images(@old_file_name, @new_file_name)
-          old_image, new_image = preprocess_images(images, driver)
+          old_image, new_image = preprocess_images(images)
 
-          if driver.dimension_changed?(old_image, new_image)
+          if dimension_changed?(old_image, new_image)
             self.difference_region = Region.from_edge_coordinates(
               0,
               0,
@@ -147,12 +146,22 @@ module Capybara
         end
 
         def difference_region_area_size
-          return 0 unless difference_region
-
-          difference_region.size
+          difference_region&.size || 0
         end
 
         private
+
+        def notice_dimensions_have_been_changed(new_image, old_image)
+          change_msg = [old_image, new_image]
+            .map { |i| driver.dimension(i).join("x") }
+            .join(" => ")
+
+          warn("[capybara-screenshot-diff]: Image size has changed for #{@new_file_name}: #{change_msg}")
+        end
+
+        def dimension_changed?(new_image, old_image)
+          driver.dimension(old_image) != driver.dimension(new_image)
+        end
 
         def assign_attributes_with(options)
           @color_distance_limit = options[:color_distance_limit] || 0
@@ -171,30 +180,14 @@ module Capybara
           true
         end
 
-        def find_driver_class_for(driver)
-          driver = AVAILABLE_DRIVERS.first if driver == :auto
-
-          LOADED_DRIVERS[driver] ||=
-            case driver
-            when :chunky_png
-              require "capybara/screenshot/diff/drivers/chunky_png_driver"
-              Drivers::ChunkyPNGDriver
-            when :vips
-              require "capybara/screenshot/diff/drivers/vips_driver"
-              Drivers::VipsDriver
-            else
-              fail "Wrong adapter #{driver.inspect}. Available adapters: #{AVAILABLE_DRIVERS.inspect}"
-            end
-        end
-
-        def preprocess_images(images, driver = self)
-          old_img = preprocess_image(images.first, driver)
-          new_img = preprocess_image(images.last, driver)
+        def preprocess_images(images)
+          old_img = preprocess_image(images.first)
+          new_img = preprocess_image(images.last)
 
           [old_img, new_img]
         end
 
-        def preprocess_image(image, driver = self)
+        def preprocess_image(image)
           result = image
 
           if @dimensions && driver.inscribed?(@dimensions, result)
@@ -228,8 +221,8 @@ module Capybara
         def difference_region_empty?(new_image, region)
           region.nil? ||
             (
-              region.height == height_for(new_image) &&
-                region.width == width_for(new_image) &&
+              region.height == driver.height_for(new_image) &&
+                region.width == driver.width_for(new_image) &&
                 region.x.zero? &&
                 region.y.zero?
             )
@@ -251,8 +244,8 @@ module Capybara
         SKIP_COLOR = [255, 192, 0, 255].freeze
 
         def annotate_skip_areas(annotated_images, skip_areas)
-          skip_areas.reduce(annotated_images) do |annotated_images, region|
-            driver.draw_rectangles(annotated_images, region, SKIP_COLOR)
+          skip_areas.reduce(annotated_images) do |memo, region|
+            driver.draw_rectangles(memo, region, SKIP_COLOR)
           end
         end
       end

@@ -38,11 +38,11 @@ begin
             end
 
             test "it can be instantiated" do
-              assert VipsDriver.new("images/b.png")
+              assert VipsDriver.new("images/b.png", "images/a.png")
             end
 
             test "it can be instantiated with dimensions" do
-              assert VipsDriver.new("images/b.png", dimensions: [80, 80])
+              assert VipsDriver.new("images/b.png", "images/a.png", dimensions: [80, 80])
             end
 
             test "when different does not clean runtime files" do
@@ -146,7 +146,7 @@ begin
             # Test Interface Contracts
 
             test "from_file loads image from path" do
-              driver = VipsDriver.new("#{Rails.root}/screenshot.png")
+              driver = VipsDriver.new("#{Rails.root}/screenshot.png", "images/a.png")
               assert driver.from_file("#{TEST_IMAGES_DIR}/a.png")
             end
 

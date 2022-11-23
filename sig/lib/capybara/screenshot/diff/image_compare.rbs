@@ -1,16 +1,20 @@
 module Capybara
   module Screenshot
     module Diff
-      LOADED_DRIVERS: ::Hash[Symbol, untyped]
+      LOADED_DRIVERS: { vips: ImageCompare::driver_entity, chunky_png: ImageCompare::driver_entity }
 
-      # Compare two images and determine if they are equal, different, or within some comparison
+      # Compare two images_entities and determine if they are equal, different, or within some comparison
       # range considering color values and difference area size.
       class ImageCompare
+        type driver_entity = Drivers::VipsDriver | Drivers::ChunkyPNGDriver
+        type image_entity = ChunkyPNG::Canvas | Vips::Image
+        type images_entities = [image_entity, image_entity]
+
         TMP_FILE_SUFFIX: "~"
 
-        attr_reader driver: untyped
+        attr_reader driver: driver_entity
 
-        attr_reader driver_options: untyped
+        attr_reader driver_options: Drivers::BaseDriver::options_entity
 
         attr_reader annotated_new_file_name: String
 
@@ -20,29 +24,33 @@ module Capybara
 
         attr_reader old_file_name: String
 
-        attr_reader skip_area: untyped
+        attr_reader skip_area: Array[Region]?
 
-        attr_accessor shift_distance_limit: untyped
+        attr_accessor shift_distance_limit: Numeric?
 
-        attr_accessor area_size_limit: untyped
+        attr_accessor area_size_limit: Numeric?
 
-        attr_accessor color_distance_limit: untyped
+        attr_accessor color_distance_limit: Numeric?
 
-        def initialize: (String new_file_name, ?(String | Drivers::BaseDriver::options_entity)? old_file_name, ?Drivers::BaseDriver::options_entity options) -> void
+        @median_filter_window_size: Numeric?
+        @dimensions: Drivers::BaseDriver::dimension_entity?
+        @tolerance: Numeric?
+
+        def initialize: (String new_file_name, (String | Drivers::BaseDriver::options_entity)? old_file_name, ?Drivers::BaseDriver::options_entity options) -> void
 
         def skip_area=: (Array[Region] new_skip_area) -> void
 
-        # Compare the two image files and return `true` or `false` as quickly as possible.
-        # Return falsely if the old file does not exist or the image dimensions do not match.
+        # Compare the two image_entity files and return `true` or `false` as quickly as possible.
+        # Return falsely if the old file does not exist or the image_entity dimensions do not match.
         def quick_equal?: () -> bool
 
-        # Compare the two images referenced by this object, and return `true` if they are different,
+        # Compare the two images_entities referenced by this object, and return `true` if they are different,
         # and `false` if they are the same.
         def different?: () -> bool
 
         def clean_tmp_files: () -> void
 
-        def save: (untyped old_img, untyped new_img, String annotated_old_file_name, String annotated_new_file_name) -> void
+        def save: (image_entity old_img, image_entity new_img, String annotated_old_file_name, String annotated_new_file_name) -> void
 
         def old_file_exists?: () -> bool
 
@@ -52,21 +60,19 @@ module Capybara
 
         def error_message: () -> String
 
-        def difference_coordinates: () -> Region::raw_region_entity
+        def difference_coordinates: () -> Region::raw_region_entity?
 
         def difference_region_area_size: () -> Numeric
 
         private
 
-        attr_accessor difference_region: untyped
+        attr_accessor difference_region: Region?
 
-        def different: (untyped old_image, untyped new_image) -> true
+        def different: (image_entity old_image, image_entity new_image) -> true
 
-        def find_driver_class_for: (untyped driver) -> void
+        def preprocess_images: (images_entities images) -> images_entities
 
-        def preprocess_images: (Array[untyped] images, ?untyped driver) -> ::Array[untyped]
-
-        def preprocess_image: (untyped image, ?untyped driver) -> untyped
+        def preprocess_image: (image_entity image) -> image_entity
 
         def old_file_size: () -> Integer
 
@@ -74,17 +80,17 @@ module Capybara
 
         def not_different: () -> false
 
-        def difference_region_empty?: (untyped new_image, Region region) -> bool
+        def difference_region_empty?: (image_entity new_image, Region? region) -> bool
 
-        def annotate_and_save: (untyped images, Region region) -> void
+        def annotate_and_save: (images_entities images, Region region) -> void
 
-        DIFF_COLOR: ::Array[255 | 0]
+        DIFF_COLOR: [255, 0, 0, 255]
 
-        def annotate_difference: (untyped images, Region region) -> void
+        def annotate_difference: (images_entities images, Region region) -> void
 
-        SKIP_COLOR: ::Array[255 | 192 | 0]
+        SKIP_COLOR: [255, 192, 0, 255]
 
-        def annotate_skip_areas: (untyped annotated_images, Array[Region] skip_areas) -> void
+        def annotate_skip_areas: (images_entities annotated_images, Array[Region] skip_areas) -> void
       end
     end
   end

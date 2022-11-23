@@ -9,20 +9,22 @@ module Capybara
         include TestMethods
         include TestHelper
 
-        test 'several iterations to take stable screenshot' do
-          comparison = ::Minitest::Mock.new
-          def comparison.old_file_name; 'old.png'; end
-          def comparison.new_file_name; '01_a.png'; end
-          def comparison.driver; :vips; end
-          def comparison.reset; end
-          def comparison.driver_options; Capybara::Screenshot::Diff.default_options; end
-          def comparison.shift_distance_limit; nil; end
+        ImageCompareStub = Struct.new(
+          :old_file_name, :new_file_name, :driver, :reset, :driver_options, :shift_distance_limit
+        )
 
-          comparison.expect(:quick_equal?, false)
-          comparison.expect(:quick_equal?, false)
-          comparison.expect(:quick_equal?, true)
+        test "several iterations to take stable screenshot" do
+          image_compare_stub = ImageCompareStub.new(
+            "old.png", "tmp/01_a.png", ::Minitest::Mock.new, nil, Capybara::Screenshot::Diff.default_options, nil
+          )
 
-          take_stable_screenshot(comparison, stability_time_limit: 1, wait: 1, crop: nil)
+          mock = ::Minitest::Mock.new(image_compare_stub)
+
+          mock.expect(:quick_equal?, false)
+          mock.expect(:quick_equal?, false)
+          mock.expect(:quick_equal?, true)
+
+          take_stable_screenshot(mock, stability_time_limit: 1, wait: 1, crop: nil)
         end
       end
     end

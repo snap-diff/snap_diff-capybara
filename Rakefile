@@ -18,6 +18,7 @@ Rake::TestTask.new("test:integration") do |t|
 end
 
 Rake::TestTask.new("test:signatures") do |t|
+  ENV["RBS_TEST_DOUBLE_SUITE"] ||= "minitest"
   ENV["RBS_TEST_TARGET"] ||= "Capybara::Screenshot::Diff::*"
 
   t.libs << "test"

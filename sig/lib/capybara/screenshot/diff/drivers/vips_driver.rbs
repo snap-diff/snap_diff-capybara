@@ -12,15 +12,13 @@ module Capybara
           PNG_EXTENSION: String
 
           class VipsUtil
-            def self.difference: (Vips::Image old_image, Vips::Image new_image, ?color_distance: ::Integer) -> [Integer, Integer, Integer, Integer]
+            def self.difference_area: (Vips::Image old_image, Vips::Image new_image, ?color_distance: ::Integer) -> Numeric
 
-            def self.difference_area: (Vips::Image old_image, Vips::Image new_image, ?color_distance: ::Integer) -> (Integer | Float)
-
-            def self.difference_area_size_by: (Vips::Image difference_mask) -> (Integer | Float)
+            def self.difference_area_size_by: (Vips::Image difference_mask) -> Numeric
 
             def self.difference_mask: (Numeric color_distance, Vips::Image old_image, Vips::Image new_image) -> Vips::Image
 
-            def self.difference_region_by: (Vips::Image diff_mask) -> (nil | Region)
+            def self.difference_region_by: (Vips::Image diff_mask) -> Region?
           end
         end
       end

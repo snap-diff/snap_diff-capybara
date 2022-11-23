@@ -35,7 +35,7 @@ module Capybara
         end
 
         def test_screenshot_support_drivers_options
-          skip 'vips is disabled' unless defined?(Capybara::Screenshot::Diff::Drivers::VipsDriverTest)
+          skip "vips is disabled" unless defined?(Capybara::Screenshot::Diff::Drivers::VipsDriverTest)
           screenshot("a", driver: :vips)
         end
 
@@ -45,12 +45,16 @@ module Capybara
 
           our_screenshot("a", 0)
           assert_equal 1, @test_screenshots.size
-          assert_match(/test_methods_test.rb:\d+:in `our_screenshot'/, @test_screenshots[0][0])
+          unless ENV["RBS_TEST_TARGET"] # RBS generates new methods for checking types, so we do not know their names
+            assert_match(/test_methods_test.rb:\d+:in `our_screenshot'/, @test_screenshots[0][0])
+          end
           assert_equal "a", @test_screenshots[0][1]
 
           our_screenshot("a", 1)
           assert_equal 2, @test_screenshots.size
-          assert_match(/test_methods_test.rb:\d+:in `test_skip_stack_frames'/, @test_screenshots[1][0])
+          unless ENV["RBS_TEST_TARGET"] # RBS generates new methods for checking types, so we do not know their names
+            assert_match(/test_methods_test.rb:\d+:in `test_skip_stack_frames'/, @test_screenshots[1][0])
+          end
           assert_equal "a", @test_screenshots[1][1]
         end
 

@@ -5,10 +5,6 @@ require_relative "region"
 module Capybara
   module Screenshot
     module BrowserHelpers
-      def current_capybara_driver_class
-        Capybara.current_session.driver.class
-      end
-
       def selenium?
         current_capybara_driver_class <= Capybara::Selenium::Driver
       end
@@ -40,10 +36,6 @@ module Capybara
           return false;
         }()
       JS
-
-      def pending_image_to_load
-        evaluate_script IMAGE_WAIT_SCRIPT
-      end
 
       HIDE_CARET_SCRIPT = <<~JS
         if (!document.getElementById('csdHideCaretStyle')) {
@@ -95,6 +87,16 @@ module Capybara
 
       def create_output_directory_for(file_name)
         FileUtils.mkdir_p File.dirname(file_name)
+      end
+
+      private
+
+      def pending_image_to_load
+        evaluate_script IMAGE_WAIT_SCRIPT
+      end
+
+      def current_capybara_driver_class
+        Capybara.current_session.driver.class
       end
     end
   end

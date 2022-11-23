@@ -12,17 +12,17 @@ module Capybara
         include TestHelper
 
         test "it can be instantiated with chunky_png driver" do
-          comparison = ImageCompare.new("images/b.png")
+          comparison = ImageCompare.new("images/b.png", nil)
           assert_kind_of Drivers::ChunkyPNGDriver, comparison.driver
         end
 
         test "it can be instantiated with explicit chunky_png adapter" do
-          comparison = ImageCompare.new("images/b.png", driver: :chunky_png)
+          comparison = ImageCompare.new("images/b.png", nil, driver: :chunky_png)
           assert_kind_of Drivers::ChunkyPNGDriver, comparison.driver
         end
 
         test "it can be instantiated with vips adapter" do
-          comparison = ImageCompare.new("images/b.png", driver: :vips)
+          comparison = ImageCompare.new("images/b.png", nil, driver: :vips)
           assert_kind_of Drivers::VipsDriver, comparison.driver
         end
 
@@ -33,22 +33,22 @@ module Capybara
         end
 
         test "could pass use tolerance for chunky_png driver" do
-          ImageCompare.new("images/b.png", driver: :chunky_png, tolerance: 0.02)
+          ImageCompare.new("images/b.png", nil, driver: :chunky_png, tolerance: 0.02)
         end
 
         test "it can be instantiated with dimensions" do
-          assert ImageCompare.new("images/b.png", dimensions: [80, 80])
+          assert ImageCompare.new("images/b.png", nil, dimensions: [80, 80])
         end
 
         test "for driver: :auto returns first from available drivers" do
-          comparison = ImageCompare.new("images/b.png", driver: :auto)
+          comparison = ImageCompare.new("images/b.png", nil, driver: :auto)
           assert_kind_of Drivers::VipsDriver, comparison.driver
         end
 
         test "for driver: :auto raise error if no drivers are available" do
           Capybara::Screenshot::Diff.stub_const(:AVAILABLE_DRIVERS, []) do
             assert_raise(RuntimeError) do
-              ImageCompare.new("images/b.png", driver: :auto)
+              ImageCompare.new("images/b.png", nil, driver: :auto)
             end
           end
         end
