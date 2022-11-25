@@ -74,6 +74,12 @@ module Capybara
             Vips.cache_set_max(1000)
 
             result
+          rescue Vips::Error => e
+            warn(
+              "[capybara-screenshot-diff] Crop has been failed for " \
+              "{ region: #{region.to_top_left_corner_coordinates.inspect}, image: #{dimension(i).join('x')} }"
+            )
+            raise e
           end
 
           def filter_image_with_median(image, median_filter_window_size)
