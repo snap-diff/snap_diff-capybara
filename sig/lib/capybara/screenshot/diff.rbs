@@ -2,25 +2,25 @@ module Capybara
   module Screenshot
     extend Os
 
-    def self.root=: (untyped path) -> untyped
+    def self.root=: ((String | Pathname) path) -> Pathname
 
     def self.active?: () -> bool
 
-    def self.screenshot_area: () -> untyped
+    def self.screenshot_area: () -> String
 
-    def self.screenshot_area_abs: () -> untyped
+    def self.screenshot_area_abs: () -> String
 
     # Module to track screen shot changes
     module Diff
       include Capybara::Screenshot::Os
 
-      AVAILABLE_DRIVERS: untyped
+      AVAILABLE_DRIVERS: Array[(:vips | :chunky_png)]
 
-      ASSERTION: untyped
+      ASSERTION: (top | RuntimeError)
 
       def self.default_options: () -> TestMethods::input_options
 
-      def self.included: (untyped klass) -> untyped
+      def self.included: (top klass) -> void
 
       private
 

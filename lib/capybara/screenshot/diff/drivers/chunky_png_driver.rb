@@ -14,11 +14,9 @@ module Capybara
           attr_reader :new_file_name, :old_file_name
           attr_accessor :skip_area, :color_distance_limit, :shift_distance_limit
 
-          def initialize(new_file_name, old_file_name = nil, options = {})
-            options = old_file_name if old_file_name.is_a?(Hash)
-
+          def initialize(new_file_name, old_file_name, options = {})
             @new_file_name = new_file_name
-            @old_file_name = old_file_name || "#{new_file_name}#{ImageCompare::TMP_FILE_SUFFIX}"
+            @old_file_name = old_file_name
 
             @color_distance_limit = options[:color_distance_limit]
             @shift_distance_limit = options[:shift_distance_limit]
@@ -170,14 +168,6 @@ module Capybara
             [old_file, new_file]
           end
 
-          def dimension_changed?(old_image, new_image)
-            return unless old_image.dimension != new_image.dimension
-
-            change_msg = [old_image, new_image].map { |i| "#{i.width}x#{i.height}" }.join(" => ")
-            warn "Image size has changed for #{@new_file_name}: #{change_msg}"
-            true
-          end
-
           def draw_rectangles(images, region, (r, g, b))
             border_color = ChunkyPNG::Color.rgb(r, g, b)
             border_shadow = ChunkyPNG::Color.rgba(r, g, b, 100)
@@ -188,6 +178,10 @@ module Capybara
               new_img.rect(region.left, region.top, region.right, region.bottom, border_shadow)
               new_img
             end
+          end
+
+          def dimension(image)
+            [width_for(image), height_for(image)]
           end
 
           private

@@ -33,7 +33,7 @@ module Capybara
         parts = [Capybara::Screenshot.save_path]
         parts << Capybara.current_driver.to_s if Capybara::Screenshot.add_driver_path
         parts << os_name if Capybara::Screenshot.add_os_path
-        File.join parts
+        File.join(*parts)
       end
 
       def screenshot_area_abs

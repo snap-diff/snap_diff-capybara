@@ -1,4 +1,7 @@
 module Capybara
+  class Result
+    def map: () -> Result
+  end
   module Screenshot
     module BrowserHelpers
       def current_capybara_driver_class: () -> untyped
@@ -7,31 +10,31 @@ module Capybara
 
       def window_size_is_wrong?: () -> bool
 
-      def rect_for: (String css_selector) -> untyped
+      def rect_for: (String css_selector) -> Region::raw_region_entity
 
-      def bounds_for_css: (*String css_selectors) -> untyped
+      def bounds_for_css: (*String css_selectors) -> Array[Region::raw_region_entity]
 
       IMAGE_WAIT_SCRIPT: String
 
-      def pending_image_to_load: () -> untyped
+      def pending_image_to_load: () -> top?
 
       HIDE_CARET_SCRIPT: String
 
-      def hide_caret: () -> untyped
+      def hide_caret: () -> void
 
       FIND_ACTIVE_ELEMENT_SCRIPT: String
 
-      def blur_from_focused_element: () -> untyped
+      def blur_from_focused_element: () -> top?
 
       GET_BOUNDING_CLIENT_RECT_SCRIPT: String
 
-      def all_visible_regions_for: (String selector) -> untyped
+      def all_visible_regions_for: (String selector) -> Array[Region::raw_region_entity]
 
-      def region_for: (untyped element) -> untyped
+      def region_for: (Result element) -> Region::raw_region_entity
 
       private
 
-      def create_output_directory_for: (String file_name) -> untyped
+      def create_output_directory_for: (String file_name) -> void
     end
   end
 end
