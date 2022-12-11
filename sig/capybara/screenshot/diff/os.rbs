@@ -2,12 +2,10 @@ module Capybara
   module Screenshot
     module Os
       ON_WINDOWS: bool
-
       ON_MAC: bool
-
       ON_LINUX: bool
 
-      def os_name: () -> ("windows" | "macos" | "linux" | "unknown")
+      def self.name: () -> ("windows" | "macos" | "linux" | "unknown")
     end
   end
 end

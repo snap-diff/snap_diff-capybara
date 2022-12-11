@@ -1,0 +1,40 @@
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+  body {
+    width: 100%;
+  }
+
+  #box {
+    width: 100px;
+    height: 100px;
+    background-color: red;
+    position: absolute;
+  }
+  </style>
+</head>
+<body>
+
+<h1>Animation</h1>
+
+<div id="box"></div>
+
+<script>
+
+const randomizeBox = () => {
+  const randomColor = new Date().getTime().toString(16).split("")
+    .sort(() => (Math.random() > 0.5) ? 1 : -1).splice(5).join("")
+  document.getElementById("box").style.backgroundColor = `#${randomColor}`
+  document.getElementById("box").style.left = `${Math.random() * 400}px`
+  document.getElementById("box").style.top = `${Math.random() * 600}px`
+  document.getElementById("box").style.width = `${Math.random() * 200}px`
+  document.getElementById("box").style.height = `${Math.random() * 200}px`
+}
+randomizeBox()
+setInterval(randomizeBox, 100)
+
+</script>
+
+</body>
+</html>

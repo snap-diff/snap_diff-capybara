@@ -9,21 +9,28 @@ module Capybara
   module Screenshot
     module Diff
       class ImageCompareTest < ActionDispatch::IntegrationTest
-        include TestHelper
+        include TestMethodsStub
 
         test "it can be instantiated with chunky_png driver" do
-          comparison = ImageCompare.new("images/b.png", nil)
+          comparison = ImageCompare.new("images/b.png", "images/b.base.png")
           assert_kind_of Drivers::ChunkyPNGDriver, comparison.driver
         end
 
         test "it can be instantiated with explicit chunky_png adapter" do
-          comparison = ImageCompare.new("images/b.png", nil, driver: :chunky_png)
+          comparison = ImageCompare.new("images/b.png", "images/b.base.png", driver: :chunky_png)
           assert_kind_of Drivers::ChunkyPNGDriver, comparison.driver
         end
 
         test "it can be instantiated with vips adapter" do
-          comparison = ImageCompare.new("images/b.png", nil, driver: :vips)
+          comparison = ImageCompare.new("images/b.png", "images/b.base.png", driver: :vips)
           assert_kind_of Drivers::VipsDriver, comparison.driver
+        end
+
+        test "it generates annotation files on difference" do
+          comparison = make_comparison(:a, :b, driver: :vips)
+          assert comparison.different?
+          assert comparison.annotated_base_image_path.exist?
+          assert comparison.annotated_image_path.exist?
         end
 
         test "it can be instantiated with vips adapter and tolerance option" do
@@ -33,29 +40,29 @@ module Capybara
         end
 
         test "could pass use tolerance for chunky_png driver" do
-          ImageCompare.new("images/b.png", nil, driver: :chunky_png, tolerance: 0.02)
+          ImageCompare.new("images/b.png", "images/b.base.png", driver: :chunky_png, tolerance: 0.02)
         end
 
         test "it can be instantiated with dimensions" do
-          assert ImageCompare.new("images/b.png", nil, dimensions: [80, 80])
+          assert ImageCompare.new("images/b.png", "images/b.base.png", dimensions: [80, 80])
         end
 
         test "for driver: :auto returns first from available drivers" do
-          comparison = ImageCompare.new("images/b.png", nil, driver: :auto)
+          comparison = ImageCompare.new("images/b.png", "images/b.base.png", driver: :auto)
           assert_kind_of Drivers::VipsDriver, comparison.driver
         end
 
         test "for driver: :auto raise error if no drivers are available" do
           Capybara::Screenshot::Diff.stub_const(:AVAILABLE_DRIVERS, []) do
             assert_raise(RuntimeError) do
-              ImageCompare.new("images/b.png", nil, driver: :auto)
+              ImageCompare.new("images/b.png", "images/b.base.png", driver: :auto)
             end
           end
         end
       end
 
       class IntegrationRegressionTest < ActionDispatch::IntegrationTest
-        include TestHelper
+        include TestMethodsStub
 
         AVAILABLE_DRIVERS = [{}, {driver: :chunky_png}]
 

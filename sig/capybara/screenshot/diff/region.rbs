@@ -33,11 +33,11 @@ class Region
 
   def find_intersect_with: (Region region) -> Region?
 
-  def intersect?: (Region region) -> bool
+  def intersect?: (Region region) -> boolish
 
   def move_by: (Numeric right_by, Numeric down_by) -> Region
 
   def find_relative_intersect: (Region region) -> Region?
 
-  def cover?: (Numeric x, Numeric y) -> bool
+  def cover?: (Numeric x, Numeric y) -> boolish
 end

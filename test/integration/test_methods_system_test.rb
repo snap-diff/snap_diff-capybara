@@ -17,7 +17,7 @@ module Capybara
     module Diff
       class TestMethodsSystemTest < ActionDispatch::SystemTestCase
         include TestMethods
-        include TestHelper
+        include TestMethodsStub
 
         driven_by :selenium, using: :headless_chrome
 
@@ -26,7 +26,7 @@ module Capybara
           #       so each of them will have separate instance
           other_activated_drivers = ObjectSpace.each_object(Capybara::Selenium::Driver).count
 
-          3.times { current_capybara_driver_class }
+          3.times { BrowserHelpers.current_capybara_driver_class }
 
           run_chrome_drivers = ObjectSpace.each_object(Capybara::Selenium::Driver).count
           assert run_chrome_drivers.positive?

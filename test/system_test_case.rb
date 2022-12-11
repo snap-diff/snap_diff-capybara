@@ -58,33 +58,36 @@ class SystemTestCase < ActionDispatch::IntegrationTest
 
   private
 
-  def rollback_comparison_runtime_files(screenshot_error)
-    screenshot_name, comparison = screenshot_error[1], screenshot_error[2]
-    debug_diffs_save_path = Pathname.new(Capybara.save_path) / "screenshots-diffs" / name
+  def rollback_comparison_runtime_files((_, _, comparison))
+    save_annotations_for_debug(comparison)
 
-    save_annotations_for_debug(comparison, debug_diffs_save_path)
+    screenshot_path = Pathname.new(comparison.new_file_name)
+    Vcs.restore_git_revision(screenshot_path, screenshot_path)
 
-    restore_git_revision(screenshot_name, comparison.new_file_name)
     comparison.clean_tmp_files
   end
 
-  def save_annotations_for_debug(comparison, debug_diffs_save_path)
+  def save_annotations_for_debug(comparison)
+    debug_diffs_save_path = Pathname.new(Capybara.save_path) / "screenshots-diffs" / name
+
     FileUtils.mkdir_p(debug_diffs_save_path)
 
     if File.exist?(comparison.new_file_name)
-      FileUtils.mv(comparison.new_file_name, debug_diffs_save_path)
+      FileUtils.cp(comparison.new_file_name, debug_diffs_save_path)
     end
 
-    if File.exist?(comparison.annotated_old_file_name)
-      FileUtils.mv(comparison.annotated_old_file_name, debug_diffs_save_path)
+    if comparison.annotated_base_image_path.exist?
+      FileUtils.mv(comparison.annotated_base_image_path, debug_diffs_save_path, force: true)
     end
 
-    if File.exist?(comparison.annotated_new_file_name)
-      FileUtils.mv(comparison.annotated_new_file_name, debug_diffs_save_path)
+    if comparison.annotated_image_path.exist?
+      FileUtils.mv(comparison.annotated_image_path, debug_diffs_save_path, force: true)
     end
   end
 
   def validate_screenshots
-    Array(@test_screenshots&.select { |screenshot_assert| screenshot_assert.last.different? })
+    return [] unless @test_screenshots
+
+    @test_screenshots.select { |screenshot_assert| screenshot_assert.last.different? }
   end
 end

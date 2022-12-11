@@ -5,10 +5,10 @@ require "capybara/screenshot/diff/version"
 require "capybara/screenshot/diff/drivers/utils"
 require "capybara/screenshot/diff/image_compare"
 require "capybara/screenshot/diff/test_methods"
+require "capybara/screenshot/diff/screenshoter"
 
 module Capybara
   module Screenshot
-    extend Os
     mattr_accessor :add_driver_path
     mattr_accessor :add_os_path
     mattr_accessor :blur_active_element
@@ -30,9 +30,9 @@ module Capybara
       end
 
       def screenshot_area
-        parts = [Capybara::Screenshot.save_path]
-        parts << Capybara.current_driver.to_s if Capybara::Screenshot.add_driver_path
-        parts << os_name if Capybara::Screenshot.add_os_path
+        parts = [Screenshot.save_path]
+        parts << Capybara.current_driver.to_s if Screenshot.add_driver_path
+        parts << Os.name if Screenshot.add_os_path
         File.join(*parts)
       end
 
@@ -44,7 +44,6 @@ module Capybara
     # Module to track screen shot changes
     module Diff
       include Capybara::DSL
-      include Capybara::Screenshot::Os
 
       mattr_accessor :area_size_limit
       mattr_accessor :color_distance_limit
@@ -53,6 +52,8 @@ module Capybara
       mattr_accessor :skip_area
       mattr_accessor(:driver) { :auto }
       mattr_accessor :tolerance
+
+      mattr_accessor(:screenshoter) { Screenshoter }
 
       AVAILABLE_DRIVERS = Utils.detect_available_drivers.freeze
       ASSERTION = Utils.detect_test_framework_assert
@@ -73,19 +74,13 @@ module Capybara
       def self.included(klass)
         klass.include TestMethods
         klass.setup do
-          if Capybara::Screenshot.window_size
-            if page.driver.respond_to?(:resize)
-              page.driver.resize(*Capybara::Screenshot.window_size)
-            elsif selenium?
-              page.driver.browser.manage.window.resize_to(*Capybara::Screenshot.window_size)
-            end
-          end
+          BrowserHelpers.resize_to(Screenshot.window_size) if Screenshot.window_size
         end
 
         klass.teardown do
-          if Capybara::Screenshot.active? && @test_screenshots
+          if Screenshot.active? && @test_screenshots.present?
             track_failures(@test_screenshots, caller)
-            @test_screenshots = nil
+            @test_screenshots.clear
           end
         end
       end

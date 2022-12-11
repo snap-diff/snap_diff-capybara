@@ -49,12 +49,5 @@ module Capybara::Screenshot::Diff
         end
       end
     end
-
-    def build_driver_and_comparison(driver, base_screenshot_path, new_screenshot_path)
-      images = driver.new.load_images(new_screenshot_path, base_screenshot_path)
-      chunky_comparison = ImageCompare::Comparison.new(*images, {tolerance: 0.03})
-
-      [chunky_comparison, driver.new]
-    end
   end
 end

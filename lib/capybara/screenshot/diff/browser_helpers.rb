@@ -5,21 +5,24 @@ require_relative "region"
 module Capybara
   module Screenshot
     module BrowserHelpers
-      def selenium?
+      def self.resize_to(window_size)
+        if session.driver.respond_to?(:resize)
+          session.driver.resize(*window_size)
+        elsif BrowserHelpers.selenium?
+          session.driver.browser.manage.window.resize_to(*window_size)
+        end
+      end
+
+      def self.selenium?
         current_capybara_driver_class <= Capybara::Selenium::Driver
       end
 
-      def window_size_is_wrong?
-        selenium? &&
-          Screenshot.window_size &&
-          page.driver.browser.manage.window.size != ::Selenium::WebDriver::Dimension.new(*Screenshot.window_size)
+      def self.window_size_is_wrong?(expected_window_size = nil)
+        selenium? && expected_window_size &&
+          session.driver.browser.manage.window.size != ::Selenium::WebDriver::Dimension.new(*expected_window_size)
       end
 
-      def rect_for(css_selector)
-        all_visible_regions_for(css_selector).first
-      end
-
-      def bounds_for_css(*css_selectors)
+      def self.bounds_for_css(*css_selectors)
         css_selectors.reduce([]) do |regions, selector|
           regions.concat(all_visible_regions_for(selector))
         end
@@ -34,7 +37,7 @@ module Capybara
             }
           }
           return false;
-        }()
+        }(window)
       JS
 
       HIDE_CARET_SCRIPT = <<~JS
@@ -47,8 +50,8 @@ module Capybara
         }
       JS
 
-      def hide_caret
-        execute_script(HIDE_CARET_SCRIPT)
+      def self.hide_caret
+        session.execute_script(HIDE_CARET_SCRIPT)
       end
 
       FIND_ACTIVE_ELEMENT_SCRIPT = <<~JS
@@ -59,11 +62,11 @@ module Capybara
             return ae;
           }
           return null;
-        }();
+        }(window);
       JS
 
-      def blur_from_focused_element
-        page.evaluate_script(FIND_ACTIVE_ELEMENT_SCRIPT)
+      def self.blur_from_focused_element
+        session.evaluate_script(FIND_ACTIVE_ELEMENT_SCRIPT)
       end
 
       GET_BOUNDING_CLIENT_RECT_SCRIPT = <<~JS
@@ -75,28 +78,24 @@ module Capybara
         ]
       JS
 
-      def all_visible_regions_for(selector)
-        all(selector, visible: true).map(&method(:region_for))
+      def self.all_visible_regions_for(selector)
+        BrowserHelpers.session.all(selector, visible: true).map(&method(:region_for))
       end
 
-      def region_for(element)
+      def self.region_for(element)
         element.evaluate_script(GET_BOUNDING_CLIENT_RECT_SCRIPT).map { |point| point.negative? ? 0 : point.to_i }
       end
 
-      private
-
-      def create_output_directory_for(file_name)
-        FileUtils.mkdir_p File.dirname(file_name)
+      def self.session
+        Capybara.current_session
       end
 
-      private
-
-      def pending_image_to_load
-        evaluate_script IMAGE_WAIT_SCRIPT
+      def self.pending_image_to_load
+        BrowserHelpers.session.evaluate_script(IMAGE_WAIT_SCRIPT)
       end
 
-      def current_capybara_driver_class
-        Capybara.current_session.driver.class
+      def self.current_capybara_driver_class
+        session.driver.class
       end
     end
   end
