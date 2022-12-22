@@ -77,9 +77,9 @@ module Capybara
           comparison = ImageCompare.new(file_name, nil, driver_options)
           checkout_vcs(name, comparison.old_file_name, comparison.new_file_name)
 
-          return false unless comparison.old_file_exists?
-
           take_comparison_screenshot(comparison, crop, stability_time_limit, wait)
+
+          return false unless comparison.old_file_exists?
 
           (@test_screenshots ||= []) << [caller[skip_stack_frames], name, comparison]
 
