@@ -8,7 +8,7 @@ gemspec path: __dir__
 gem "rake"
 
 # Image processing libraries
-gem "oily_png", platform: :ruby
+gem "oily_png", platform: :ruby, git: "https://github.com/donv/oily_png", branch: "patch-2"
 gem "ruby-vips", require: false
 
 # Test
