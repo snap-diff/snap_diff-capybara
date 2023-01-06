@@ -23,7 +23,7 @@ begin
               end
 
               Vips.cache_set_max(0)
-              Vips.vips_cache_set_max(1000)
+              Vips.cache_set_max(1000)
             end
 
             test "#different? for equal is negative" do

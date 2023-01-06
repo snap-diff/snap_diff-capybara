@@ -103,6 +103,8 @@ module Capybara
         end
 
         def clean_tmp_files
+          return if @old_file_name == @new_file_name
+
           FileUtils.cp @old_file_name, @new_file_name if old_file_exists?
           File.delete(@old_file_name) if old_file_exists?
           File.delete(@annotated_old_file_name) if File.exist?(@annotated_old_file_name)
