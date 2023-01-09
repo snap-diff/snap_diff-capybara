@@ -26,4 +26,5 @@ gem "webdrivers", require: false
 
 group :tools do
   gem "standard", require: false
+  gem "rbs", require: false, platform: :ruby
 end

@@ -52,7 +52,7 @@ class SystemTestCase < ActionDispatch::IntegrationTest
 
     if Capybara::Screenshot::Diff.driver == :vips
       Vips.cache_set_max(0)
-      Vips.vips_cache_set_max(1000)
+      Vips.cache_set_max(1000)
     end
   end
 

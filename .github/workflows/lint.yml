@@ -29,4 +29,6 @@ jobs:
         run: bin/standardrb --no-fix --fail-fast
 
       - name: Run Yaml linter
-        run: sudo apt-get install -qq --no-install-recommends yamllint && yamllint  ./
+        run: |
+          sudo apt-get install --fix-missing -qq --no-install-recommends yamllint
+          yamllint ./
