@@ -55,11 +55,11 @@ module Capybara
           end
         end
 
-        def notice_how_to_avoid_this
-          unless defined?(@_csd_retina_warned)
-            warn "Halving retina screenshot.  " \
+        def notice_how_to_avoid_this(expected_image_width, actual_image_width)
+          unless defined?(@@_csd_retina_warned)
+            warn "Halving retina screenshot. (#{actual_image_width}px => #{expected_image_width}px)  " \
                 'You should add "force-device-scale-factor=1" to your Chrome chromeOptions args.'
-            @_csd_retina_warned = true
+            @@_csd_retina_warned = true
           end
         end
 
@@ -84,11 +84,12 @@ module Capybara
 
           expected_image_width = Capybara::Screenshot.window_size[0]
           saved_image = driver.from_file(file_name)
-          return if driver.width_for(saved_image) < expected_image_width * 2
+          actual_image_width = driver.width_for(saved_image)
+          return if actual_image_width < expected_image_width * 2
 
-          notice_how_to_avoid_this
+          notice_how_to_avoid_this(expected_image_width, actual_image_width)
 
-          new_height = expected_image_width * driver.height_for(saved_image) / driver.width_for(saved_image)
+          new_height = expected_image_width * driver.height_for(saved_image) / actual_image_width
           resized_image = driver.resize_image_to(saved_image, expected_image_width, new_height)
 
           driver.save_image_to(resized_image, file_name)
