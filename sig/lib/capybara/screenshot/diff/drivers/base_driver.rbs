@@ -72,7 +72,7 @@ module Capybara
 
           def dimension: (ImageEntity image) -> dimension_entity
 
-          def draw_rectangles: (images_entity[ImageEntity] images, Region region, color rgba) -> void
+          def draw_rectangles: (images_entity[ImageEntity] images, Region region, color rgba, Integer offset) -> void
         end
       end
     end

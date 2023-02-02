@@ -231,16 +231,16 @@ module Capybara
         end
 
         def annotate_and_save(images, region)
-          annotated_images = annotate_difference(images, region)
-          annotated_images = annotate_skip_areas(annotated_images, @skip_area) if @skip_area
+          images = annotate_skip_areas(images, @skip_area) if @skip_area
+          images = annotate_difference(images, region)
 
-          save(*annotated_images, @annotated_old_file_name, @annotated_new_file_name)
+          save(*images, @annotated_old_file_name, @annotated_new_file_name)
         end
 
         DIFF_COLOR = [255, 0, 0, 255].freeze
 
         def annotate_difference(images, region)
-          driver.draw_rectangles(images, region, DIFF_COLOR)
+          driver.draw_rectangles(images, region, DIFF_COLOR, offset: 1)
         end
 
         SKIP_COLOR = [255, 192, 0, 255].freeze

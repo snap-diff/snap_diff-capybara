@@ -168,13 +168,13 @@ module Capybara
             [old_file, new_file]
           end
 
-          def draw_rectangles(images, region, (r, g, b))
+          def draw_rectangles(images, region, (r, g, b), offset: 0)
             border_color = ChunkyPNG::Color.rgb(r, g, b)
             border_shadow = ChunkyPNG::Color.rgba(r, g, b, 100)
 
             images.map do |image|
               new_img = image.dup
-              new_img.rect(region.left - 1, region.top - 1, region.right + 1, region.bottom + 1, border_color)
+              new_img.rect(region.left - offset, region.top - offset, region.right + offset, region.bottom + offset, border_color)
               new_img.rect(region.left, region.top, region.right, region.bottom, border_shadow)
               new_img
             end
