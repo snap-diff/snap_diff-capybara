@@ -78,10 +78,16 @@ module Capybara
         end
 
         def assert_image_not_changed(caller, name, comparison)
-          return unless comparison.different?
+          result = comparison.different?
 
-          # TODO: Remove original file
-          # FileUtils.rm_rf(comparison.base_image_path) if comparison.base_image_path.exist?
+
+          if !result && comparison.base_image_path.exist?
+            FileUtils.mv(comparison.base_image_path, comparison.image_path, force: true)
+          else
+            FileUtils.rm_rf(comparison.base_image_path)
+          end
+
+          return unless result
 
           "Screenshot does not match for '#{name}' #{comparison.error_message}\nat #{caller.join("\n")}"
         end

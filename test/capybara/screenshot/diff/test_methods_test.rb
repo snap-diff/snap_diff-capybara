@@ -78,6 +78,18 @@ module Capybara
           assert (Capybara::Screenshot.screenshot_area_abs / "c.png").exist?
         end
 
+        def test_cleanup_base_image_for_no_change
+          comparison = make_comparison(:a, :a)
+          assert_image_not_changed(["caller"], "name", comparison)
+          assert_not comparison.base_image_path.exist?
+        end
+
+        def test_cleanup_base_image_for_changes
+          comparison = make_comparison(:a, :b)
+          assert_image_not_changed(["caller"], "name", comparison)
+          assert_not comparison.base_image_path.exist?
+        end
+
         private
 
         def our_screenshot(name, skip_stack_frames)

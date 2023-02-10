@@ -122,6 +122,7 @@ module Capybara
         def _test_sample_screenshot_error
           mock = ::Minitest::Mock.new
           mock.expect(:different?, true)
+          mock.expect(:base_image_path, Pathname.new("screenshot.base.png"))
           mock.expect(:error_message, "expected error message")
 
           @test_screenshots = []
@@ -157,6 +158,7 @@ module Capybara
         def _test_sample_screenshot_error
           comparison = ::Minitest::Mock.new
           comparison.expect(:different?, true)
+          comparison.expect(:base_image_path, Pathname.new("screenshot.base.png"))
           comparison.expect(:error_message, "expected error message for non minitest")
 
           @test_screenshots = []

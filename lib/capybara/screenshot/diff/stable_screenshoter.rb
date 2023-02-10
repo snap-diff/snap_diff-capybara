@@ -90,7 +90,7 @@ module Capybara
                   "#{previous_file} and #{file_name} are equal"
               end
 
-              FileUtils.rm attempts_comparison.annotated_image_path, force: true
+              FileUtils.rm(attempts_comparison.annotated_image_path, force: true)
             end
 
             previous_file = file_name

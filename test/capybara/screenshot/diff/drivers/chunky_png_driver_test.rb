@@ -37,10 +37,9 @@ module Capybara
             assert File.exist?(comp.annotated_base_image_path)
             assert File.exist?(comp.annotated_image_path)
             comp = make_comparison(:c, :c)
-            assert !comp.different?
-            assert !File.exist?(comp.old_file_name)
-            assert !File.exist?(comp.annotated_base_image_path)
-            assert !File.exist?(comp.annotated_image_path)
+            assert_not comp.different?
+            assert_not File.exist?(comp.annotated_base_image_path)
+            assert_not File.exist?(comp.annotated_image_path)
           end
 
           test "compare of 1 pixel wide diff" do
@@ -74,19 +73,19 @@ module Capybara
 
           test "quick_equal with color distance limit above max color distance" do
             comp = make_comparison(:a, :b, color_distance_limit: 224)
-            assert !comp.different?
+            assert_not comp.different?
           end
 
           test "quick_equal with color distance limit" do
             comp = make_comparison(:a, :b, color_distance_limit: 222)
-            assert !comp.quick_equal?
+            assert_not comp.quick_equal?
             assert comp.different?
             assert_includes comp.error_message, "222.7"
           end
 
           test "max_color_distance a vs b" do
             comp = make_comparison(:a, :b)
-            assert !comp.quick_equal?
+            assert_not comp.quick_equal?
             comp.different?
             assert_includes comp.error_message, "85"
           end

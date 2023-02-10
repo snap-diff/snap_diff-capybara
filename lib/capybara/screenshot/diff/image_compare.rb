@@ -80,11 +80,6 @@ module Capybara
         end
 
         def clean_tmp_files
-          return if @old_file_name == @new_file_name
-
-          # TODO: Need to move out from this class
-          FileUtils.mv(@old_file_name, @new_file_name, force: true) if image_files_exist? && @old_file_name != @new_file_name
-
           @annotated_base_image_path.unlink if @annotated_base_image_path.exist?
           @annotated_image_path.unlink if @annotated_image_path.exist?
         end
