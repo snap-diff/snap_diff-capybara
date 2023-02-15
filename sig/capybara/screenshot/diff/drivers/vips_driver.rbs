@@ -9,14 +9,12 @@ module Capybara
     module Diff
       module Drivers
         class VipsDriver < BaseDriver[Vips::Image]
-          PNG_EXTENSION: String
-
           class VipsUtil
             def self.difference_area: (Vips::Image old_image, Vips::Image new_image, ?color_distance: ::Integer) -> Numeric
 
             def self.difference_area_size_by: (Vips::Image difference_mask) -> Numeric
 
-            def self.difference_mask: (Numeric color_distance, Vips::Image old_image, Vips::Image new_image) -> Vips::Image
+            def self.difference_mask: (Vips::Image, Vips::Image, ?Numeric? color_distance) -> Vips::Image
 
             def self.difference_region_by: (Vips::Image diff_mask) -> Region?
           end

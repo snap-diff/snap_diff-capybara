@@ -1,0 +1,48 @@
+module Capybara
+  module Screenshot
+    class Screenshoter
+      @_csd_retina_warned: bool?
+
+      attr_reader capture_options: Diff::ScreenshotMatcher::capture_options_entity
+
+      attr_reader comparison_options: Diff::Drivers::BaseDriver::options_entity
+
+      attr_reader driver: Diff::ImageCompare::driver_entity
+
+      def initialize: (?Diff::ScreenshotMatcher::capture_options_entity capture_options, Diff::ImageCompare::driver_entity driver) -> void
+
+      def crop: () -> Numeric?
+
+      def wait: () -> Numeric?
+
+      def self.attempts_screenshot_paths: (Diff::TestMethods::path_entity base_file) -> Array[String]
+
+      def self.cleanup_attempts_screenshots: (Diff::TestMethods::path_entity base_file) -> void
+
+      # Try to get screenshot from browser.
+      # On `stability_time_limit` it checks that page stop updating by comparison several screenshot attempts
+      # On reaching `wait` limit then it has been failed. On failing we annotate screenshot attempts to help to debug
+      def take_comparison_screenshot: (Diff::TestMethods::path_entity screenshot_path) -> void
+
+      def self.gen_next_attempt_path: (Diff::TestMethods::path_entity screenshot_path, Integer iteration) -> Pathname
+
+      def take_screenshot: (Diff::TestMethods::path_entity screenshot_path) -> void
+
+      def browser_save_screenshot: (Diff::TestMethods::path_entity screenshot_path) -> void
+
+      def process_screenshot: (Diff::TestMethods::path_entity screenshot_path) -> void
+
+      def reduce_retina_image_size: (Diff::TestMethods::path_entity file_name) -> void
+
+      def notice_how_to_avoid_this: () -> void
+
+      def prepare_page_for_screenshot: (timeout: Numeric) -> BrowserHelpers::capybara_element?
+
+      def wait_images_loaded: (timeout: Numeric) -> void
+
+      private
+
+      def selenium_with_retina_screen?: () -> boolish
+    end
+  end
+end

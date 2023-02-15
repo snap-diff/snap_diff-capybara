@@ -7,7 +7,7 @@ module Capybara
       ON_MAC = !!(RbConfig::CONFIG["host_os"] =~ /darwin/)
       ON_LINUX = !!(RbConfig::CONFIG["host_os"] =~ /linux/)
 
-      def os_name
+      def self.name
         return "windows" if ON_WINDOWS
         return "macos" if ON_MAC
         return "linux" if ON_LINUX

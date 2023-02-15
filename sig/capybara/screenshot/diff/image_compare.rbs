@@ -6,43 +6,45 @@ module Capybara
       # Compare two images_entities and determine if they are equal, different, or within some comparison
       # range considering color values and difference area size.
       class ImageCompare
-        type driver_entity = Drivers::VipsDriver | Drivers::ChunkyPNGDriver
-        type image_entity = ChunkyPNG::Canvas | Vips::Image
+        TOLERABLE_OPTIONS: [:tolerance, :color_distance_limit, :shift_distance_limit, :area_size_limit]
+
+        class Comparison
+
+        end
+
+        type driver_entity = (Drivers::VipsDriver | Drivers::ChunkyPNGDriver)
+        type image_entity = (ChunkyPNG::Canvas | Vips::Image)
         type images_entities = [image_entity, image_entity]
+        type cache_entity = (::Hash[Symbol, top] | top)
 
-        TMP_FILE_SUFFIX: "~"
+        @annotated_base_image_path: Pathname
+        @annotated_image_path: Pathname
+        @difference: Difference
+        @error_message: String?
 
+        attr_reader error_message: String?
+        attr_reader annotated_base_image_path: Pathname
+        attr_reader annotated_image_path: Pathname
         attr_reader driver: driver_entity
-
         attr_reader driver_options: Drivers::BaseDriver::options_entity
-
-        attr_reader annotated_new_file_name: String
-
-        attr_reader annotated_old_file_name: String
-
+        attr_reader annotated_new_file_name: TestMethods::path_entity
+        attr_reader annotated_old_file_name: TestMethods::path_entity
         attr_reader new_file_name: String
-
         attr_reader old_file_name: String
-
         attr_reader skip_area: Array[Region]?
-
         attr_accessor shift_distance_limit: Numeric?
-
         attr_accessor area_size_limit: Numeric?
-
         attr_accessor color_distance_limit: Numeric?
 
         @median_filter_window_size: Numeric?
         @dimensions: Drivers::BaseDriver::dimension_entity?
         @tolerance: Numeric?
 
-        def initialize: (String new_file_name, (String | Drivers::BaseDriver::options_entity)? old_file_name, ?Drivers::BaseDriver::options_entity options) -> void
-
-        def skip_area=: (Array[Region] new_skip_area) -> void
+        def initialize: (TestMethods::path_entity new_file_name, TestMethods::path_entity old_file_name, ?Drivers::BaseDriver::options_entity options) -> void
 
         # Compare the two image_entity files and return `true` or `false` as quickly as possible.
         # Return falsely if the old file does not exist or the image_entity dimensions do not match.
-        def quick_equal?: () -> bool
+        def quick_equal?: () -> boolish
 
         # Compare the two images_entities referenced by this object, and return `true` if they are different,
         # and `false` if they are the same.
@@ -50,25 +52,19 @@ module Capybara
 
         def clean_tmp_files: () -> void
 
-        def save: (image_entity old_img, image_entity new_img, String annotated_old_file_name, String annotated_new_file_name) -> void
+        def save: (Drivers::BaseDriver::images_entity, TestMethods::path_entity) -> void
 
-        def old_file_exists?: () -> bool
+        def old_file_exists?: () -> boolish
 
         def reset: () -> void
 
         NEW_LINE: "\n"
 
-        def error_message: () -> String
-
-        def difference_coordinates: () -> Region::raw_region_entity?
-
-        def difference_region_area_size: () -> Numeric
-
         private
 
-        attr_accessor difference_region: Region?
+        def _different?: -> String?
 
-        def different: (image_entity old_image, image_entity new_image) -> true
+        def different: (Difference images) -> String
 
         def preprocess_images: (images_entities images) -> images_entities
 
@@ -78,19 +74,18 @@ module Capybara
 
         def new_file_size: () -> Integer
 
-        def not_different: () -> false
+        def not_different: () -> nil
 
-        def difference_region_empty?: (image_entity new_image, Region? region) -> bool
-
-        def annotate_and_save: (images_entities images, Region region) -> void
+        def annotate_and_save_images: (Difference) -> void
+        def annotate_and_save_image: (Drivers::BaseDriver::images_entity, TestMethods::path_entity, Region) -> void
 
         DIFF_COLOR: [255, 0, 0, 255]
 
-        def annotate_difference: (images_entities images, Region region) -> void
+        def annotate_difference: (images_entities, Region) -> void
 
         SKIP_COLOR: [255, 192, 0, 255]
 
-        def annotate_skip_areas: (images_entities annotated_images, Array[Region] skip_areas) -> void
+        def annotate_skip_areas: (images_entities comparison, Array[Region] skip_areas) -> void
       end
     end
   end

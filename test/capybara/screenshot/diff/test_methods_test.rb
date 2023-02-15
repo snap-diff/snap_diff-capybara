@@ -7,29 +7,32 @@ module Capybara
     module Diff
       class TestMethodsTest < ActionDispatch::IntegrationTest
         include TestMethods
-        include TestHelper
+        include TestMethodsStub
 
         def test_assert_image_not_changed
-          message = assert_image_not_changed("caller", "name", make_comparison(:a, :c))
+          message = assert_image_not_changed(["caller"], "name", make_comparison(:a, :c))
           value = (RUBY_VERSION >= "2.4") ? 187.4 : 188
           assert_equal <<-MSG.strip_heredoc.chomp, message
             Screenshot does not match for 'name' ({"area_size":629,"region":[11,3,48,20],"max_color_distance":#{value}})
             #{Rails.root}/doc/screenshots/screenshot.png
-            #{Rails.root}/doc/screenshots/screenshot.committed.png
-            #{Rails.root}/doc/screenshots/screenshot.latest.png
+            #{Rails.root}/doc/screenshots/screenshot.base.diff.png
+            #{Rails.root}/doc/screenshots/screenshot.diff.png
             at caller
           MSG
         end
 
         def test_assert_image_not_changed_with_shift_distance_limit
-          message =
-            assert_image_not_changed("caller", "name", make_comparison(:a, :c, shift_distance_limit: 1, driver: :chunky_png))
+          message = assert_image_not_changed(
+            ["caller"],
+            "name",
+            make_comparison(:a, :c, shift_distance_limit: 1, driver: :chunky_png)
+          )
           value = (RUBY_VERSION >= "2.4") ? 5.0 : 5
           assert_equal <<-MSG.strip_heredoc.chomp, message
             Screenshot does not match for 'name' ({"area_size":629,"region":[11,3,48,20],"max_color_distance":#{value},"max_shift_distance":15})
             #{Rails.root}/doc/screenshots/screenshot.png
-            #{Rails.root}/doc/screenshots/screenshot.committed.png
-            #{Rails.root}/doc/screenshots/screenshot.latest.png
+            #{Rails.root}/doc/screenshots/screenshot.base.diff.png
+            #{Rails.root}/doc/screenshots/screenshot.diff.png
             at caller
           MSG
         end
@@ -40,26 +43,51 @@ module Capybara
         end
 
         def test_skip_stack_frames
-          assert_nil @test_screenshots
-          make_comparison(:a, :c, name: "a")
+          Vcs.stub(:checkout_vcs, true) do
+            assert_predicate @test_screenshots, :blank?
+            make_comparison(:a, :c, destination: Rails.root / "doc/screenshots/a.png")
 
-          our_screenshot("a", 0)
-          assert_equal 1, @test_screenshots.size
-          unless ENV["RBS_TEST_TARGET"] # RBS generates new methods for checking types, so we do not know their names
-            assert_match(/test_methods_test.rb:\d+:in `our_screenshot'/, @test_screenshots[0][0])
-          end
-          assert_equal "a", @test_screenshots[0][1]
+            our_screenshot("a", 1)
+            assert_equal 1, @test_screenshots.size
+            unless ENV["RBS_TEST_TARGET"] # RBS generates new methods for checking types, so we do not know their names
+              assert_match(
+                /test_methods_test.rb:\d+:in `our_screenshot'/,
+                @test_screenshots.dig(0, 0, 0)
+              )
+            end
+            assert_equal "a", @test_screenshots[0][1]
 
-          our_screenshot("a", 1)
-          assert_equal 2, @test_screenshots.size
-          unless ENV["RBS_TEST_TARGET"] # RBS generates new methods for checking types, so we do not know their names
-            assert_match(/test_methods_test.rb:\d+:in `test_skip_stack_frames'/, @test_screenshots[1][0])
+            our_screenshot("a", 2)
+            assert_equal 2, @test_screenshots.size
+            unless ENV["RBS_TEST_TARGET"] # RBS generates new methods for checking types, so we do not know their names
+              assert_match(
+                /test_methods_test.rb:.*?test_skip_stack_frames/,
+                @test_screenshots.dig(1, 0, 0)
+              )
+            end
+            assert_equal "a", @test_screenshots[1][1]
           end
-          assert_equal "a", @test_screenshots[1][1]
         end
 
         def test_skip_area_and_stability_time_limit
           screenshot(:a, skip_area: [0, 0, 1, 1], stability_time_limit: 0.01)
+        end
+
+        def test_creates_new_screenshot
+          screenshot(:c)
+          assert (Capybara::Screenshot.screenshot_area_abs / "c.png").exist?
+        end
+
+        def test_cleanup_base_image_for_no_change
+          comparison = make_comparison(:a, :a)
+          assert_image_not_changed(["caller"], "name", comparison)
+          assert_not comparison.base_image_path.exist?
+        end
+
+        def test_cleanup_base_image_for_changes
+          comparison = make_comparison(:a, :b)
+          assert_image_not_changed(["caller"], "name", comparison)
+          assert_not comparison.base_image_path.exist?
         end
 
         private

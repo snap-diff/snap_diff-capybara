@@ -1,0 +1,29 @@
+module Capybara
+  module Screenshot
+    module Diff
+      class StableScreenshoter
+        STABILITY_OPTIONS: [:stability_time_limit, :wait]
+
+        @_csd_retina_warned: boolish
+
+        @comparison_options: Drivers::BaseDriver::options_entity
+        @screenshoter: (StableScreenshoter | Screenshoter)
+        @stability_time_limit: Numeric
+
+        def take_comparison_screenshot: (TestMethods::path_entity screenshot_path) -> void
+
+        def take_stable_screenshot: (TestMethods::path_entity) -> Pathname?
+
+        private
+
+        def annotate_attempts_and_fail!: (TestMethods::path_entity screenshot_path) -> void
+
+        def build_comparison_for: -> ImageCompare
+
+        def prepare_page_for_screenshot: (timeout: Numeric) -> top?
+
+        def annotate_stabilization_images: (Array[String]) -> void
+      end
+    end
+  end
+end

@@ -3,13 +3,14 @@ module Capybara
     module Diff
       module Drivers
         class BaseDriver[ImageEntity]
+
           type images_entity[out T] = [T, T]
           type dimension_entity = [Numeric, Numeric]
 
           type options_entity = {
               area_size_limit?: Numeric?,
               color_distance_limit?: Numeric?,
-              driver: (:auto | :vips | :chunky_png)?,
+              driver: (:auto | :vips | :chunky_png | VipsDriver | ChunkyPNGDriver)?,
               dimensions: dimension_entity?,
               median_filter_window_size: Numeric?,
               shift_distance_limit?: Numeric?,
@@ -21,29 +22,9 @@ module Capybara
 
           type color = [Integer, Integer, Integer, Integer]
 
-          attr_reader new_file_name: String
+          def find_difference_region: (ImageEntity new_image, ImageEntity old_image, Numeric color_distance_limit, Numeric _shift_distance_limit, Integer _area_size_limit, ?fast_fail: bool) -> Difference
 
-          attr_reader old_file_name: String
-
-          attr_reader options: options_entity
-
-          def initialize: (String new_file_name, String old_file_name, ?options_entity options) -> void
-
-          def skip_area=: (Array[Region] new_skip_area) -> void
-
-          # Resets the calculated data about the comparison with regard to the "new_image".
-          # Data about the original image is kept.
-          def reset: () -> void
-
-          def shift_distance_equal?: () -> bool
-
-          def shift_distance_different?: () -> bool
-
-          def find_difference_region: (ImageEntity new_image, ImageEntity old_image, Numeric color_distance_limit, Numeric _shift_distance_limit, Integer _area_size_limit, ?fast_fail: bool) -> [Region?, (ImageEntity | top | nil)]
-
-          def adds_error_details_to: (::Hash[Symbol, untyped] _log) -> void
-
-          def inscribed?: (dimension_entity dimensions, ImageEntity i) -> bool
+          def inscribed?: (dimension_entity dimensions, ImageEntity i) -> boolish
 
           def crop: (Region region, ImageEntity i) -> ImageEntity
 
@@ -66,14 +47,16 @@ module Capybara
 
           def load_images: (String old_file_name, String new_file_name) -> images_entity[ImageEntity]
 
-          def from_file: (String filename) -> ImageEntity
-
-          def dimension_changed?: (ImageEntity old_image, ImageEntity new_image) -> bool
+          def from_file: (TestMethods::path_entity filename) -> ImageEntity
 
           def dimension: (ImageEntity image) -> dimension_entity
 
           def draw_rectangles: (images_entity[ImageEntity] images, Region region, color rgba, Integer offset) -> void
+
+          def same_pixels?: () -> boolish
         end
+
+        def self.for: (ScreenshotMatcher::input_options) -> (VipsDriver | ChunkyPNGDriver)
       end
     end
   end

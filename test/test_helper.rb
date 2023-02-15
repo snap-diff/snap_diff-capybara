@@ -5,13 +5,16 @@ if ENV["COVERAGE"]
   SimpleCov.start "test_frameworks" do
     enable_coverage :branch
     minimum_coverage line: 90, branch: 68
+
     add_filter("gemfiles")
+    add_filter("test")
   end
 end
 
 $LOAD_PATH.unshift File.expand_path("../lib", __dir__)
 
-TEST_IMAGES_DIR = File.expand_path("images", __dir__)
+require "pathname"
+TEST_IMAGES_DIR = Pathname.new(File.expand_path("images", __dir__))
 
 # NOTE: Simulate Rails Environment
 module Rails
@@ -37,40 +40,19 @@ Capybara.server = :puma, {Silent: true}
 Capybara.threadsafe = true
 Capybara.app = Rails.application
 
-module Capybara
-  module Screenshot
-    module Diff
-      module TestHelper
-        private
+require "support/stub_test_methods"
 
-        # Stub of Capybara's checkout_vcs
-        def checkout_vcs(name, old_file_name, new_file_name)
-          # Do nothing
-        end
+class ActiveSupport::TestCase
+  self.file_fixture_path = Pathname.new(File.expand_path("fixtures/app", __dir__))
 
-        # Stub of the Capybara's save_screenshot
-        def save_screenshot(file_name)
-          source_image = File.basename(file_name)
-          source_image.slice!(/^\d\d_/)
-          FileUtils.cp File.expand_path("images/#{source_image}", __dir__), file_name
-        end
+  teardown do
+    FileUtils.rm_rf Capybara::Screenshot.screenshot_area_abs
+    FileUtils.rm_rf Dir[Capybara::Screenshot.root / "*.png"]
+  end
 
-        def make_comparison(old_img, new_img, name: "screenshot", **options)
-          comp = ImageCompare.new("#{Rails.root}/doc/screenshots/#{name}.png", nil, **options)
-          set_test_images(comp, old_img, new_img)
-          comp
-        end
-
-        def set_test_images(comp, old_img, new_img)
-          FileUtils.mkdir_p File.dirname(comp.old_file_name)
-          FileUtils.cp "#{TEST_IMAGES_DIR}/#{old_img}.png", comp.old_file_name
-          FileUtils.cp "#{TEST_IMAGES_DIR}/#{new_img}.png", comp.new_file_name
-        end
-
-        def evaluate_script(*)
-          # Do nothing
-        end
-      end
+  def optional_test
+    unless ENV["DISABLE_SKIP_TESTS"]
+      skip "This is optional test! To enable need to provide DISABLE_SKIP_TESTS=1"
     end
   end
 end

@@ -18,9 +18,11 @@ module Capybara
       end
 
       include Capybara::Screenshot::Diff
-      include Diff::TestHelper
+      include Diff::TestMethodsStub
 
       teardown do
+        FileUtils.rm_rf Capybara::Screenshot.screenshot_area_abs
+
         Capybara::Screenshot.add_os_path = @orig_add_os_path
         Capybara::Screenshot.add_driver_path = @orig_add_driver_path
         Capybara::Screenshot.window_size = @orig_window_size
@@ -79,7 +81,7 @@ module Capybara
         a_img = ChunkyPNG::Image.from_blob(File.binread("#{TEST_IMAGES_DIR}/a.png"))
         a_val = a_img[9, 14]
         a_img[9, 14] = a_val + 0x010000 + 0x000100 + 0x000001
-        rev_filename = "#{Rails.root}/#{screenshot_dir}/a_0.png~"
+        rev_filename = "#{Rails.root}/#{screenshot_dir}/0_a.png"
         FileUtils.mkdir_p(File.dirname(rev_filename))
         a_img.save(rev_filename)
 
@@ -88,19 +90,19 @@ module Capybara
         File.delete(rev_filename) if File.exist?(rev_filename)
       end
 
-      test "full_name" do
-        assert_equal "a", full_name("a")
+      test "build_full_name" do
+        assert_equal "a", build_full_name("a")
         screenshot_group "b"
-        assert_equal "b/a", full_name("a")
+        assert_equal "b/00_a", build_full_name("a")
         screenshot_section "c"
-        assert_equal "c/b/a", full_name("a")
+        assert_equal "c/b/01_a", build_full_name("a")
         screenshot_group nil
-        assert_equal "c/a", full_name("a")
+        assert_equal "c/a", build_full_name("a")
       end
 
-      test "full_name allows symbol" do
+      test "build_full_name allows symbol" do
         screenshot_group :b
-        assert_equal "b/a", full_name(:a)
+        assert_equal "b/00_a", build_full_name(:a)
       end
 
       test "detect available diff drivers on the loading" do
@@ -120,6 +122,7 @@ module Capybara
         def _test_sample_screenshot_error
           mock = ::Minitest::Mock.new
           mock.expect(:different?, true)
+          mock.expect(:base_image_path, Pathname.new("screenshot.base.png"))
           mock.expect(:error_message, "expected error message")
 
           @test_screenshots = []
@@ -155,6 +158,7 @@ module Capybara
         def _test_sample_screenshot_error
           comparison = ::Minitest::Mock.new
           comparison.expect(:different?, true)
+          comparison.expect(:base_image_path, Pathname.new("screenshot.base.png"))
           comparison.expect(:error_message, "expected error message for non minitest")
 
           @test_screenshots = []

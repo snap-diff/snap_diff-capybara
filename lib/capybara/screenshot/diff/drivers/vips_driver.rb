@@ -7,7 +7,7 @@ rescue LoadError => e
   raise
 end
 
-require_relative "./chunky_png_driver"
+require "capybara/screenshot/diff/drivers/base_driver"
 
 module Capybara
   module Screenshot
@@ -15,65 +15,27 @@ module Capybara
       # Compare two images and determine if they are equal, different, or within some comparison
       # range considering color values and difference area size.
       module Drivers
-        class VipsDriver
-          attr_reader :new_file_name, :old_file_name
+        class VipsDriver < BaseDriver
+          def find_difference_region(comparison)
+            new_image, base_image, options = comparison.new_image, comparison.base_image, comparison.options
 
-          def initialize(new_file_name, old_file_name, _options = nil)
-            @new_file_name = new_file_name
-            @old_file_name = old_file_name
-
-            reset
-          end
-
-          def skip_area=(_new_skip_area)
-            # noop
-          end
-
-          # Resets the calculated data about the comparison with regard to the "new_image".
-          # Data about the original image is kept.
-          def reset
-          end
-
-          def shift_distance_equal?
-            warn "[capybara-screenshot-diff] Instead of shift_distance_limit " \
-                   "please use median_filter_window_size and color_distance_limit options" \
-                   "or set explicit chunky_png driver"
-            raise NotImplementedError
-          end
-
-          def shift_distance_different?
-            warn "[capybara-screenshot-diff] Instead of shift_distance_limit " \
-                   "please use median_filter_window_size and color_distance_limit options" \
-                   "or set explicit chunky_png driver"
-            raise NotImplementedError
-          end
-
-          def find_difference_region(new_image, old_image, color_distance_limit, _shift_distance_limit, _area_size_limit, fast_fail: false)
-            diff_mask = VipsUtil.difference_mask(color_distance_limit, old_image, new_image)
+            diff_mask = VipsUtil.difference_mask(base_image, new_image, options[:color_distance_limit])
             region = VipsUtil.difference_region_by(diff_mask)
+            region = nil if region && same_as?(region, base_image)
 
-            [region, diff_mask]
-          end
+            result = Difference.new(region, {}, comparison)
 
-          def adds_error_details_to(_log)
-          end
+            unless result.blank?
+              meta = {}
+              meta[:difference_level] = difference_level(diff_mask, base_image) if comparison.options[:tolerance]
+              result.meta = meta
+            end
 
-          # old private
-
-          def inscribed?(dimensions, i)
-            dimension(i) == dimensions || i.width < dimensions[0] || i.height < dimensions[1]
+            result
           end
 
           def crop(region, i)
-            result = i.crop(*region.to_top_left_corner_coordinates)
-
-            # FIXME: Vips is caching operations, and if we ware going to read the same file, he will use cached version for this
-            #       so after we cropped files and stored in the same file, the next load will recover old version instead of cropped
-            #       Workaround to make vips works with cropped versions
-            Vips.cache_set_max(0)
-            Vips.cache_set_max(1000)
-
-            result
+            i.crop(*region.to_top_left_corner_coordinates)
           rescue Vips::Error => e
             warn(
               "[capybara-screenshot-diff] Crop has been failed for " \
@@ -90,27 +52,13 @@ module Capybara
             memo.draw_rect([0, 0, 0, 0], *region.to_top_left_corner_coordinates, fill: true)
           end
 
-          def difference_level(diff_mask, old_img, _region)
+          def difference_level(diff_mask, old_img, _region = nil)
             VipsUtil.difference_area_size_by(diff_mask).to_f / image_area_size(old_img)
           end
 
-          def image_area_size(old_img)
-            width_for(old_img) * height_for(old_img)
-          end
-
-          def height_for(image)
-            image.height
-          end
-
-          def width_for(image)
-            image.width
-          end
-
-          PNG_EXTENSION = ".png"
-
           # Vips could not work with the same file. Per each process we require to create new file
           def save_image_to(image, filename)
-            ::Dir::Tmpname.create([filename, PNG_EXTENSION]) do |tmp_image_filename|
+            ::Dir::Tmpname.create([filename.to_s, PNG_EXTENSION]) do |tmp_image_filename|
               image.write_to_file(tmp_image_filename)
               FileUtils.mv(tmp_image_filename, filename)
             end
@@ -125,7 +73,7 @@ module Capybara
           end
 
           def from_file(filename)
-            result = ::Vips::Image.new_from_file(filename)
+            result = ::Vips::Image.new_from_file(filename.to_s)
 
             result = result.colourspace(:srgb) if result.bands < 3
             result = result.bandjoin(255) if result.bands == 3
@@ -143,9 +91,22 @@ module Capybara
             end
           end
 
+          def same_pixels?(comparison)
+            (comparison.new_image == comparison.base_image).min == 255
+          end
+
+          private
+
+          def same_as?(region, base_image)
+            region.x.zero? &&
+              region.y.zero? &&
+              region.height == height_for(base_image) &&
+              region.width == width_for(base_image)
+          end
+
           class VipsUtil
             def self.difference_area(old_image, new_image, color_distance: 0)
-              difference_mask = difference_mask(color_distance, new_image, old_image)
+              difference_mask = difference_mask(new_image, old_image, color_distance)
               difference_area_size_by(difference_mask)
             end
 
@@ -154,8 +115,10 @@ module Capybara
               diff_mask.hist_find.to_a[0][0].max
             end
 
-            def self.difference_mask(color_distance, old_image, new_image)
-              (new_image - old_image).abs > color_distance
+            def self.difference_mask(base_image, new_image, color_distance = nil)
+              result = (new_image - base_image).abs
+
+              color_distance ? result > color_distance : result
             end
 
             def self.difference_region_by(diff_mask)

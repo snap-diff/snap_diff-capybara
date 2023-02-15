@@ -1,42 +1,64 @@
 # frozen_string_literal: true
 
 require_relative "os"
+
 module Capybara
   module Screenshot
     module Diff
       module Vcs
         SILENCE_ERRORS = Os::ON_WINDOWS ? "2>nul" : "2>/dev/null"
 
-        def restore_git_revision(name, target_file_name)
-          redirect_target = "#{target_file_name} #{SILENCE_ERRORS}"
-          show_command = "git show HEAD~0:./#{Capybara::Screenshot.screenshot_area}/#{name}.png"
-          if Capybara::Screenshot.use_lfs
+        def self.restore_git_revision(screenshot_path, checkout_path)
+          vcs_file_path = screenshot_path.relative_path_from(Screenshot.root)
+
+          redirect_target = "#{checkout_path} #{SILENCE_ERRORS}"
+          show_command = "git show HEAD~0:./#{vcs_file_path}"
+          if Screenshot.use_lfs
             `#{show_command} | git lfs smudge > #{redirect_target}`
           else
             `#{show_command} > #{redirect_target}`
           end
-          FileUtils.rm_f(target_file_name) unless $CHILD_STATUS == 0
+
+          if $CHILD_STATUS != 0
+            FileUtils.rm_f(checkout_path)
+            false
+          else
+            true
+          end
         end
 
-        def checkout_vcs(name, old_file_name, new_file_name)
-          svn_file_name = "#{Capybara::Screenshot.screenshot_area_abs}/.svn/text-base/#{name}.png.svn-base"
-
-          if File.exist?(svn_file_name)
-            committed_file_name = svn_file_name
-            FileUtils.cp committed_file_name, old_file_name
+        def self.checkout_vcs(screenshot_path, checkout_path)
+          if svn?
+            restore_svn_revision(screenshot_path, checkout_path)
           else
-            svn_info = `svn info #{new_file_name} #{SILENCE_ERRORS}`
-            if svn_info.present?
-              wc_root = svn_info.slice(/(?<=Working Copy Root Path: ).*$/)
-              checksum = svn_info.slice(/(?<=Checksum: ).*$/)
-              if checksum
-                committed_file_name = "#{wc_root}/.svn/pristine/#{checksum[0..1]}/#{checksum}.svn-base"
-                FileUtils.cp committed_file_name, old_file_name
-              end
-            else
-              restore_git_revision(name, old_file_name)
+            restore_git_revision(screenshot_path, checkout_path)
+          end
+        end
+
+        def self.restore_svn_revision(screenshot_path, checkout_path)
+          committed_file_name = screenshot_path + "../.svn/text-base/" + "#{screenshot_path.basename}.svn-base"
+          if committed_file_name.exist?
+            FileUtils.cp(committed_file_name, checkout_path)
+            return true
+          end
+
+          svn_info = `svn info #{screenshot_path} #{SILENCE_ERRORS}`
+          if svn_info.present?
+            wc_root = svn_info.slice(/(?<=Working Copy Root Path: ).*$/)
+            checksum = svn_info.slice(/(?<=Checksum: ).*$/)
+
+            if checksum
+              committed_file_name = "#{wc_root}/.svn/pristine/#{checksum[0..1]}/#{checksum}.svn-base"
+              FileUtils.cp(committed_file_name, checkout_path)
+              return true
             end
           end
+
+          false
+        end
+
+        def self.svn?
+          (Screenshot.screenshot_area_abs / ".svn").exist?
         end
       end
     end

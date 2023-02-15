@@ -1,0 +1,89 @@
+module ChunkyPNG
+  class Canvas
+  end
+
+  class Image
+    def self.from_blob: (String str) -> Image
+
+    def self.from_file: (String filename) -> Image
+  end
+end
+
+module Capybara
+  module Screenshot
+    module Diff
+      module Drivers
+        class ChunkyPNGDriver < BaseDriver[ChunkyPNG::Canvas]
+
+          def _load_images: (String old_file, String new_file) -> [ChunkyPNG::Image, ChunkyPNG::Image]
+
+          class DifferenceRegionFinder
+            def find_diff_rectangle: (
+                ChunkyPNG::Image org_img,
+                ChunkyPNG::Image new_img,
+                (Region | Region::raw_region_entity) area_coordinates,
+                cache: ImageCompare::cache_entity
+              ) -> Region?
+
+            def find_top: (
+                ChunkyPNG::Image old_img,
+                ChunkyPNG::Image new_img,
+                cache: ImageCompare::cache_entity
+              ) -> Region::raw_region_entity?
+
+            def find_left_right_and_top: (
+                ChunkyPNG::Image old_img,
+                ChunkyPNG::Image new_img,
+                (Region | Region::raw_region_entity) region,
+                cache: ImageCompare::cache_entity
+              ) -> Region::raw_region_entity
+
+            def find_bottom: (
+                ChunkyPNG::Image old_img,
+                ChunkyPNG::Image new_img,
+                Integer left,
+                Integer right,
+                Integer bottom,
+                cache: ImageCompare::cache_entity
+              ) -> Integer
+
+            def same_color?: (
+                ChunkyPNG::Image old_img,
+                ChunkyPNG::Image new_img,
+                Integer x,
+                Integer y,
+                ?cache: ImageCompare::cache_entity
+              ) -> boolish
+
+            def skipped_region?: (Integer x, Integer y) -> boolish
+
+            def color_distance_at: (
+                ChunkyPNG::Image new_img,
+                ChunkyPNG::Image old_img,
+                Integer x,
+                Integer y,
+                shift_distance_limit: Numeric?
+              ) -> Float
+
+            def shift_distance_at: (
+                ChunkyPNG::Image new_img,
+                ChunkyPNG::Image old_img,
+                Integer x,
+                Integer y,
+                color_distance_limit: Numeric?
+              ) -> Numeric
+
+            def color_matches: (
+                ChunkyPNG::Image new_img,
+                Integer org_color,
+                Integer x,
+                Integer y,
+                Numeric? color_distance_limit
+              ) -> boolish
+          end
+
+        end
+      end
+    end
+  end
+end

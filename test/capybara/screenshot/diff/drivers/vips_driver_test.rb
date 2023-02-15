@@ -10,7 +10,7 @@ begin
       module Diff
         module Drivers
           class VipsDriverTest < ActionDispatch::IntegrationTest
-            include TestHelper
+            include TestMethodsStub
 
             setup do
               @new_screenshot_result = Tempfile.new(%w[screenshot .png], Rails.root)
@@ -38,34 +38,29 @@ begin
             end
 
             test "it can be instantiated" do
-              assert VipsDriver.new("images/b.png", "images/a.png")
-            end
-
-            test "it can be instantiated with dimensions" do
-              assert VipsDriver.new("images/b.png", "images/a.png", dimensions: [80, 80])
+              assert VipsDriver.new
             end
 
             test "when different does not clean runtime files" do
               comp = make_comparison(:a, :c)
               assert comp.different?
-              assert_equal [11.0, 3.0, 49.0, 21.0], comp.difference_coordinates
+              assert_includes comp.error_message, "[11.0,3.0,49.0,21.0]"
               assert File.exist?(comp.old_file_name)
-              assert File.exist?(comp.annotated_old_file_name)
-              assert File.exist?(comp.annotated_new_file_name)
+              assert File.exist?(comp.annotated_base_image_path)
+              assert File.exist?(comp.annotated_image_path)
             end
 
             test "when equal clean runtime files" do
               comp = make_comparison(:c, :c)
               assert_not comp.different?
-              assert_not File.exist?(comp.old_file_name)
-              assert_not File.exist?(comp.annotated_old_file_name)
-              assert_not File.exist?(comp.annotated_new_file_name)
+              assert_not File.exist?(comp.annotated_base_image_path)
+              assert_not File.exist?(comp.annotated_image_path)
             end
 
             test "compare of 1 pixel wide diff" do
               comp = make_comparison(:a, :d)
               assert comp.different?
-              assert_equal [9.0, 6.0, 10.0, 14.0], comp.difference_coordinates
+              assert_includes comp.error_message, "[9.0,6.0,10.0,14.0]"
             end
 
             test "compare with color_distance_limit above difference" do
@@ -82,6 +77,7 @@ begin
               comp = make_comparison(:a, :b, tolerance: 0.01)
               assert comp.quick_equal?
               assert_not comp.different?
+              assert_not comp.error_message
             end
 
             test "compare with tolerance level less then area of the difference" do
@@ -113,8 +109,9 @@ begin
 
             test "size a vs a_cropped" do
               comp = make_comparison(:a, :a_cropped)
-              comp.different?
-              assert_equal 4800, comp.difference_region_area_size
+              assert comp.different?
+              assert_includes comp.error_message, "Screenshot dimension has been changed for "
+              assert_includes comp.error_message, "80x60"
             end
 
             test "quick_equal compare skips difference if skip_area covers it" do
@@ -146,16 +143,15 @@ begin
             # Test Interface Contracts
 
             test "from_file loads image from path" do
-              driver = VipsDriver.new("#{Rails.root}/screenshot.png", "images/a.png")
-              assert driver.from_file("#{TEST_IMAGES_DIR}/a.png")
+              driver = VipsDriver.new
+              assert driver.from_file(TEST_IMAGES_DIR / "a.png")
             end
 
             private
 
             def make_comparison(old_img, new_img, options = {})
-              result = ImageCompare.new(@new_screenshot_result.path, nil, options.merge(driver: :vips))
-              set_test_images(result, old_img, new_img)
-              result
+              destination = Pathname.new(@new_screenshot_result.path)
+              super(old_img, new_img, destination: destination, **options.merge(driver: :vips))
             end
 
             def sample_region
@@ -171,6 +167,19 @@ begin
               left, top, right, bottom = difference(old_image, new_image)
 
               assert_equal [20.0, 15.0, 30.0, 25.0], [left, top, right, bottom]
+
+              left, top, right, bottom = difference(old_image, new_image, color_distance: 0)
+
+              assert_equal [20.0, 15.0, 30.0, 25.0], [left, top, right, bottom]
+            end
+
+            test "segment difference with min color difference" do
+              old_image = Vips::Image.new_from_file("#{TEST_IMAGES_DIR}/a.png")
+              new_image = Vips::Image.new_from_file("#{TEST_IMAGES_DIR}/b.png")
+
+              left, top, right, bottom = difference(old_image, new_image, color_distance: 150)
+
+              assert_equal [26.0, 18.0, 27.0, 19.0], [left, top, right, bottom]
             end
 
             test "segment difference" do
@@ -191,8 +200,8 @@ begin
 
             private
 
-            def difference(old_image, new_image, color_distance: 0)
-              diff_mask = VipsDriver::VipsUtil.difference_mask(color_distance, new_image, old_image)
+            def difference(old_image, new_image, color_distance: nil)
+              diff_mask = VipsDriver::VipsUtil.difference_mask(new_image, old_image, color_distance)
               VipsDriver::VipsUtil.difference_region_by(diff_mask).to_edge_coordinates
             end
           end
