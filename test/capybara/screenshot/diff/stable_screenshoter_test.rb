@@ -48,30 +48,26 @@ module Capybara
 
         test "#take_comparison_screenshot fail on missing find stable image in time and generates annotated history screenshots" do
           screenshot_path = Pathname.new("tmp/01_a.png")
-          image_compare_stub = build_image_compare_stub(equal: false)
 
           # Stub annotated files for generated comparison annotations
           attempts_paths = [
             screenshot_path.sub_ext(".attempt_00.png"),
-            screenshot_path.sub_ext(".attempt_01.png")
+            screenshot_path.sub_ext(".attempt_01.png"),
+            screenshot_path.sub_ext(".attempt_02.png")
           ]
-
-          FileUtils.touch(attempts_paths)
 
           # Stub annotated files for generated comparison annotations
           # We need to have different from screenshot_path name because of other stubs
           annotated_screenshot_path = Pathname.new("tmp/02_a.png")
           annotated_attempts_paths = [
-            annotated_screenshot_path.sub_ext(".attempt_00.latest.png"),
-            annotated_screenshot_path.sub_ext(".attempt_00.committed.png"),
-            annotated_screenshot_path.sub_ext(".attempt_01.latest.png"),
-            annotated_screenshot_path.sub_ext(".attempt_01.committed.png")
+            [annotated_screenshot_path.sub_ext(".attempt_01.latest.png"), annotated_screenshot_path.sub_ext(".attempt_01.committed.png")],
+            [annotated_screenshot_path.sub_ext(".attempt_02.latest.png"), annotated_screenshot_path.sub_ext(".attempt_02.committed.png")]
           ]
 
           FileUtils.touch(annotated_attempts_paths)
 
-          mock = ::Minitest::Mock.new(image_compare_stub)
-          annotated_attempts_paths.each_slice(2) do |latest_path, committed_path|
+          mock = ::Minitest::Mock.new(build_image_compare_stub(equal: false))
+          annotated_attempts_paths.reverse_each do |(latest_path, committed_path)|
             mock.expect(:annotated_image_path, latest_path.to_s)
             mock.expect(:annotated_base_image_path, committed_path.to_s)
           end
@@ -80,7 +76,7 @@ module Capybara
             ImageCompare.stub :new, mock do
               # Wait time is less then stability time, which will generate problem
               StableScreenshoter
-                .new({stability_time_limit: 1, wait: 0.5}, image_compare_stub.driver_options)
+                .new({stability_time_limit: 1, wait: 0.5}, build_image_compare_stub(equal: false).driver_options)
                 .take_comparison_screenshot(screenshot_path.to_s)
             end
           end
@@ -92,7 +88,10 @@ module Capybara
           assert_empty Dir["tmp/*_a*.committed.png"]
 
           # All stabilization files should be annotated
-          assert_equal(0, Pathname.new(Dir["tmp/01_a*.png"].last).size)
+          last_annotation = screenshot_path.sub_ext(".attempt_02.png")
+          assert_equal 0, last_annotation.size, "#{last_annotation.to_path} should be override with annotated version"
+          last_annotation = screenshot_path.sub_ext(".attempt_01.png")
+          assert_equal 0, last_annotation.size, "#{last_annotation.to_path} should be override with annotated version"
         ensure
           FileUtils.rm_rf Dir["tmp/01_a*.png"]
         end
