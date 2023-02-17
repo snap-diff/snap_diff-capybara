@@ -43,7 +43,7 @@ Capybara.app = Rails.application
 require "support/stub_test_methods"
 
 class ActiveSupport::TestCase
-  self.file_fixture_path = Pathname.new(File.expand_path("fixtures/app", __dir__))
+  self.file_fixture_path = Pathname.new(File.expand_path("fixtures", __dir__))
 
   teardown do
     FileUtils.rm_rf Capybara::Screenshot.screenshot_area_abs
@@ -54,5 +54,10 @@ class ActiveSupport::TestCase
     unless ENV["DISABLE_SKIP_TESTS"]
       skip "This is optional test! To enable need to provide DISABLE_SKIP_TESTS=1"
     end
+  end
+
+  def assert_same_images(expected_image_name, image_path)
+    expected_image_path = file_fixture("files/comparisons/#{expected_image_name}")
+    assert_predicate(Capybara::Screenshot::Diff::ImageCompare.new(image_path, expected_image_path), :quick_equal?)
   end
 end
