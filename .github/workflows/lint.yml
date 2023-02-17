@@ -1,19 +1,22 @@
 ---
-name: Lint Code Base
+name: Lint
 
 on:
   pull_request:
-    branches: [master]
+    branches: [ master ]
     paths:
       - '*.rb'
       - '*.yml'
       - '.github/workflows/lint.yml'
       - '!bin/**'
 
+env:
+  RUBY_YJIT_ENABLE: 1
+
 jobs:
-  standard:
-    name: Standard
-    runs-on: ubuntu-22.04
+  lint:
+    name: Ruby & YAML
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout code
@@ -22,7 +25,7 @@ jobs:
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
         with:
-          ruby-version: '3.1'
+          ruby-version: '3.2'
           bundler-cache: true
 
       - name: Run Standard Ruby linter

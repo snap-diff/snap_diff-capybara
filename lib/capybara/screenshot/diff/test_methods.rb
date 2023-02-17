@@ -80,7 +80,6 @@ module Capybara
         def assert_image_not_changed(caller, name, comparison)
           result = comparison.different?
 
-
           if !result && comparison.base_image_path.exist?
             FileUtils.mv(comparison.base_image_path, comparison.image_path, force: true)
           else

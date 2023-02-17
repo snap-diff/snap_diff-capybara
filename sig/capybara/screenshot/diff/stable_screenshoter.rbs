@@ -18,7 +18,7 @@ module Capybara
 
         def annotate_attempts_and_fail!: (TestMethods::path_entity screenshot_path) -> void
 
-        def build_comparison_for: -> ImageCompare
+        def build_comparison_for: (TestMethods::path_entity attempt_path, TestMethods::path_entity previous_attempt_path) -> ImageCompare
 
         def prepare_page_for_screenshot: (timeout: Numeric) -> top?
 

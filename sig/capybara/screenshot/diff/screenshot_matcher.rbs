@@ -13,7 +13,7 @@ module Capybara
         def build_screenshot_matches_job: -> job_entity?
         def cleanup: -> void
 
-        def self.base_image_path_from: -> Pathname
+        def self.base_image_path_from: (TestMethods::path_entity) -> Pathname
 
         private
 
