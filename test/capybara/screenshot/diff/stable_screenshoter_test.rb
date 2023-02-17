@@ -50,13 +50,6 @@ module Capybara
           screenshot_path = Pathname.new("tmp/01_a.png")
 
           # Stub annotated files for generated comparison annotations
-          attempts_paths = [
-            screenshot_path.sub_ext(".attempt_00.png"),
-            screenshot_path.sub_ext(".attempt_01.png"),
-            screenshot_path.sub_ext(".attempt_02.png")
-          ]
-
-          # Stub annotated files for generated comparison annotations
           # We need to have different from screenshot_path name because of other stubs
           annotated_screenshot_path = Pathname.new("tmp/02_a.png")
           annotated_attempts_paths = [
