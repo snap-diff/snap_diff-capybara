@@ -52,7 +52,7 @@ module Capybara
 
         def clean_tmp_files: () -> void
 
-        def save: (Drivers::BaseDriver::images_entity, TestMethods::path_entity) -> void
+        def save: (image_entity, TestMethods::path_entity) -> void
 
         def old_file_exists?: () -> boolish
 
@@ -77,15 +77,16 @@ module Capybara
         def not_different: () -> nil
 
         def annotate_and_save_images: (Difference) -> void
-        def annotate_and_save_image: (Drivers::BaseDriver::images_entity, TestMethods::path_entity, Region) -> void
+
+        def annotate_and_save_image: (Difference, image_entity, TestMethods::path_entity) -> void
 
         DIFF_COLOR: [255, 0, 0, 255]
 
-        def annotate_difference: (images_entities, Region) -> void
+        def annotate_difference: (image_entity, Region) -> void
 
         SKIP_COLOR: [255, 192, 0, 255]
 
-        def annotate_skip_areas: (images_entities comparison, Array[Region] skip_areas) -> void
+        def annotate_skip_areas: (image_entity, Array[Region] skip_areas) -> void
       end
     end
   end

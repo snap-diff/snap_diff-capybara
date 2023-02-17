@@ -18,6 +18,7 @@ env:
   BUNDLE_GEMFILE: 'gemfiles/rails70_gems.rb'
   DEBIAN_FRONTEND: 'noninteractive'
   FERRUM_PROCESS_TIMEOUT: '40'
+  RUBY_YJIT_ENABLE: 1
   WD_CACHE_TIME: '864000' # 10 days
 
 concurrency:
@@ -27,11 +28,8 @@ concurrency:
 jobs:
   test:
     name: Functional Testing
-    runs-on: ubuntu-22.04 # In order to install libvips 8.9+ version
+    runs-on: ubuntu-latest # In order to install libvips 8.9+ version
     timeout-minutes: 5
-
-    env:
-      DISABLE_SKIP_TESTS: 1
 
     steps:
       - name: Checkout code
@@ -45,14 +43,15 @@ jobs:
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
         with:
-          ruby-version: '3.2.0'
+          ruby-version: 3.2
           bundler-cache: true
 
       - name: Run Tests with coverage
         env:
           COVERAGE: enabled
-          RUBY_YJIT_ENABLE: 1
-        run: bundle exec rake test
+          DISABLE_SKIP_TESTS: 1
+          SCREENSHOT_DRIVER: vips
+        run: bin/rake test
 
       - name: Upload Screenshots
         if: always()
@@ -71,24 +70,49 @@ jobs:
           retention-days: 1
           path: coverage
 
+  test-signature:
+    name: Testing Signatures
+    needs: [ 'test' ]
+    runs-on: ubuntu-latest # In order to install libvips 8.9+ version
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Install libvips
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -qq --no-install-recommends libvips libvips-dev libvips-tools
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: 3.2
+          bundler-cache: true
+
+      - name: Tests Signatures
+        env:
+          SCREENSHOT_DRIVER: vips
+        run: bin/rake test:signatures
+
   matrix:
     name: Test Integration Rails & Ruby
     if: github.ref == 'refs/heads/master' || github.event_name == 'workflow_dispatch' ||
       github.event.pull_request.requested_reviewers.length > 0
     needs: [ 'test' ]
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     timeout-minutes: 5
 
     strategy:
       matrix:
-        ruby-version: [ '3.2.0', '3.1', '3.0', '2.7', 'jruby', 'jruby-9.4.0.0' ]
+        ruby-version: [ '3.2', '3.1', '3.0', '2.7', 'jruby', 'jruby-9.4.0.0' ]
         gemfile:
           - 'rails70_gems.rb'
           - 'rails61_gems.rb'
           - 'rails60_gems.rb'
         exclude:
           # We already tested last version
-          - ruby-version: '3.2.0'
+          - ruby-version: 3.2
             gemfile: 'gemfiles/rails70_gems.rb'
           # JRuby < 9.4 is compatible with Ruby 2.6, but Rails 7 is compatible with Ruby 2.7+
           - ruby-version: 'jruby'
@@ -113,7 +137,7 @@ jobs:
           sudo apt-get install --fix-missing -qq --no-install-recommends libvips libvips-dev libvips-tools
 
       - name: Run tests
-        run: bundle exec rake test
+        run: bin/rake test
 
   matrix-screenshot-driver:
     name: Test Integration Capybara & Image Drivers
@@ -126,7 +150,7 @@ jobs:
         screenshot-driver: [ vips, chunky_png ]
         capybara-driver: [ selenium_headless, selenium_chrome_headless, cuprite ]
 
-    runs-on: ${{ matrix.capybara-driver == 'selenium_headless' && 'ubuntu-20.04' || 'ubuntu-22.04' }}
+    runs-on: ubuntu-latest
 
     timeout-minutes: 5
 
@@ -137,7 +161,7 @@ jobs:
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
         with:
-          ruby-version: '3.2.0'
+          ruby-version: 3.2
           bundler-cache: true
 
       - name: Install libvips
@@ -147,7 +171,7 @@ jobs:
           sudo apt-get install --fix-missing -qq --no-install-recommends libvips libvips-dev libvips-tools
 
       - name: Run tests
-        run: bundle exec rake test:integration
+        run: bin/rake test:integration
         env:
           SCREENSHOT_DRIVER: ${{ matrix.screenshot-driver }}
           CAPYBARA_DRIVER: ${{ matrix.capybara-driver }}
