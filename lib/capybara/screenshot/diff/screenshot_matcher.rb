@@ -120,7 +120,7 @@ module Capybara
         end
 
         def build_regions_for(coordinates)
-          coordinates.map { Region.from_edge_coordinates(*_1) }
+          coordinates.map { |coordinates_entity| Region.from_edge_coordinates(*coordinates_entity) }
         end
       end
     end

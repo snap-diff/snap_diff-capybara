@@ -33,6 +33,7 @@ end
 require "capybara/screenshot/diff"
 require "minitest/autorun"
 require "capybara/minitest"
+require "rackup" if Rack::RELEASE >= "3"
 
 require "capybara/dsl"
 Capybara.disable_animation = true

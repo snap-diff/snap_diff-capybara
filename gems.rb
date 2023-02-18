@@ -18,11 +18,12 @@ gem "simplecov", require: false
 
 # Capybara Server
 gem "puma", RUBY_PLATFORM.include?("java") ? "< 6" : ">= 5", require: false
+gem "rackup", require: false
 
 # Capybara Drivers
 gem "cuprite", require: false
 gem "selenium-webdriver", require: false
-gem "webdrivers", require: false
+gem "webdrivers", "~> 5.0", require: false
 
 group :tools do
   gem "standard", require: false
