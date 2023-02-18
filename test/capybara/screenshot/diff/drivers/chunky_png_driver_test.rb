@@ -36,6 +36,10 @@ module Capybara
             assert File.exist?(comp.old_file_name)
             assert File.exist?(comp.annotated_base_image_path)
             assert File.exist?(comp.annotated_image_path)
+
+            assert_same_images("a-and-c.diff.png", comp.annotated_base_image_path)
+            assert_same_images("c-and-a.diff.png", comp.annotated_image_path)
+
             comp = make_comparison(:c, :c)
             assert_not comp.different?
             assert_not File.exist?(comp.annotated_base_image_path)

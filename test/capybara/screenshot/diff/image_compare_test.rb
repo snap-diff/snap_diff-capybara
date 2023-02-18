@@ -28,9 +28,11 @@ module Capybara
 
         test "it generates annotation files on difference" do
           comparison = make_comparison(:a, :b, driver: :vips)
+
           assert comparison.different?
-          assert comparison.annotated_base_image_path.exist?
-          assert comparison.annotated_image_path.exist?
+
+          assert_same_images("a-and-b.diff.png", comparison.annotated_base_image_path)
+          assert_same_images("b-and-a.diff.png", comparison.annotated_image_path)
         end
 
         test "it can be instantiated with vips adapter and tolerance option" do
