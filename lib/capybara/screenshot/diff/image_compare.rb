@@ -152,7 +152,7 @@ module Capybara
         end
 
         def preprocess_images(images)
-          images.map { preprocess_image(_1) }
+          images.map { |image| preprocess_image(image) }
         end
 
         def preprocess_image(image)
