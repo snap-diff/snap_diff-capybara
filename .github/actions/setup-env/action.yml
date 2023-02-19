@@ -1,0 +1,76 @@
+name: Setup Test Environment
+description: Allow to setup test environment
+
+inputs:
+  ruby-version :
+    description: 'Ruby Version'
+    required: false
+    default: '3.2'
+
+  gemfile:
+    description: 'Gemfile'
+    required: false
+    default: 'rails70_gems.rb'
+
+  cache-webdriver:
+    description: 'Allow pre-download webdrivers for Selenium tests'
+    required: false
+
+  skip-vips:
+    description: Prevent to install libvips for optimization purposes
+    required: false
+
+runs:
+  using: "composite"
+  steps:
+    - name: Set BUNDLE_GEMFILE
+      shell: bash
+      run: |
+        sudo mkdir -p /var/lib/apt /var/cache/apt
+
+        sudo chmod a+w+r -R /var/lib
+        sudo chmod a+w+r -R /var/cache
+
+        sudo chown $(whoami) -R /var/cache/apt
+        sudo chown $(whoami) -R /var/lib/apt
+
+        echo "BUNDLE_GEMFILE=gemfiles/${{ inputs.gemfile }}" >> $GITHUB_ENV
+
+    - name: Cache APT
+      if: ${{ !inputs.skip-vips }}
+      uses: actions/cache@v3
+      with:
+        path: |
+          /var/lib/apt/lists
+          /var/cache/apt/archives
+        key: ${{ runner.os }}-apt-3
+
+    - name: Install libvips
+      if: ${{ !inputs.skip-vips }}
+      run: |
+        [[ -z "$(sudo find /var/cache/apt/pkgcache.bin -mmin -3000)" ]] && sudo apt-get update -y
+        sudo apt-get install -qq --no-install-recommends libvips libvips-dev libvips-tools
+        
+        sudo chown $(whoami) -R /var/cache/apt
+        sudo chown $(whoami) -R /var/lib/apt
+
+        sudo chmod a+w+r -R /var/lib/apt
+        sudo chmod a+w+r -R /var/cache/apt
+      env:
+        DEBIAN_FRONTEND: noninteractive
+      shell: bash
+
+    - name: Set up Ruby
+      uses: ruby/setup-ruby@v1
+      with:
+        bundler: 'latest'
+        bundler-cache: true
+        cache-version: ${{ inputs.ruby-version }}-${{ inputs.gemfile }}-1
+        ruby-version: ${{ inputs.ruby-version }}
+
+    - name: Cache Webdrivers
+      if: inputs.cache-webdriver
+      uses: actions/cache@v3
+      with:
+        path: ~/.webdrivers
+        key: ${{ runner.os }}-webdrivers-${{ matrix.capybara-driver }}

@@ -5,6 +5,7 @@ name: Test
 on:
   push:
     branches: [ master ]
+
   pull_request:
     type: [ opened, synchronize, reopened, review_requested ]
     paths:
@@ -12,11 +13,10 @@ on:
       - '**.rb'
       - '.github/workflows/**'
       - '!bin/**'
+
   workflow_dispatch:
 
 env:
-  BUNDLE_GEMFILE: gemfiles/rails70_gems.rb
-  DEBIAN_FRONTEND: noninteractive
   FERRUM_PROCESS_TIMEOUT: 40
   RUBY_YJIT_ENABLE: 1
   WD_CACHE_TIME: 864000 # 10 days
@@ -28,53 +28,38 @@ concurrency:
 jobs:
   test:
     name: Functional Testing
-    runs-on: ubuntu-latest # In order to install libvips 8.9+ version
+    runs-on: ubuntu-latest
     timeout-minutes: 5
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Install libvips
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install --fix-missing -qq --no-install-recommends libvips libvips-dev libvips-tools
-
-      - name: Set up Ruby
-        uses: ruby/setup-ruby@v1
-        with:
-          ruby-version: 3.2
-          bundler-cache: true
-
-      - name: Cache Webdrivers
-        uses: actions/cache@v3
-        with:
-          path: ~/.webdrivers
-          key: ${{ runner.os }}-webdrivers
-
-      - name: Run Tests with coverage
-        env:
-          COVERAGE: enabled
-          DISABLE_SKIP_TESTS: 1
-          SCREENSHOT_DRIVER: vips
-        run: bin/rake test
-
-      - name: Upload Screenshots
-        if: always()
-        uses: actions/upload-artifact@v3
-        with:
-          name: screenshots
-          retention-days: 1
-          path: |
-            test/fixtures/app/doc/screenshots/
-            tmp/capybara/screenshots-diffs/
-
-      - name: Upload Coverage
-        uses: actions/upload-artifact@v3
-        with:
-          name: coverage
-          retention-days: 1
-          path: coverage
+      - uses: ./.github/actions/setup-env
+#
+#      - name: Run Tests with coverage
+#        env:
+#          COVERAGE: enabled
+#          DISABLE_SKIP_TESTS: 1
+#          SCREENSHOT_DRIVER: vips
+#        run: bin/rake test
+#
+#      - name: Upload Screenshots
+#        if: always()
+#        uses: actions/upload-artifact@v3
+#        with:
+#          name: screenshots
+#          retention-days: 1
+#          path: |
+#            test/fixtures/app/doc/screenshots/
+#            tmp/capybara/screenshots-diffs/
+#
+#      - name: Upload Coverage
+#        uses: actions/upload-artifact@v3
+#        with:
+#          name: coverage
+#          retention-days: 1
+#          path: coverage
 
   test-signature:
     name: Testing Signatures
@@ -85,22 +70,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Install libvips
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -qq --no-install-recommends libvips libvips-dev libvips-tools
-
-      - name: Set up Ruby
-        uses: ruby/setup-ruby@v1
-        with:
-          ruby-version: 3.2
-          bundler-cache: true
-
-      - name: Cache Webdrivers
-        uses: actions/cache@v3
-        with:
-          path: ~/.webdrivers
-          key: ${{ runner.os }}-webdrivers
+      - uses: ./.github/actions/setup-env
 
       - name: Tests Signatures
         env:
@@ -109,12 +79,16 @@ jobs:
 
   matrix:
     name: Test Integration Rails & Ruby
-    if: github.ref == 'refs/heads/master' || github.event_name == 'workflow_dispatch' ||
-      github.event.pull_request.requested_reviewers.length > 0
+    #    if: >
+    #      github.ref == 'refs/heads/master'
+    #      || github.event_name == 'workflow_dispatch'
+    #      || github.event.pull_request.requested_reviewers.length > 0
     needs: [ test ]
     runs-on: ubuntu-latest
     timeout-minutes: 7
+
     continue-on-error: ${{ matrix.experimental }}
+
     strategy:
       matrix:
         ruby-version: [ 3.2, 2.7, jruby ]
@@ -126,7 +100,7 @@ jobs:
         exclude:
           # We already tested last version
           - ruby-version: 3.2
-            gemfile: gemfiles/rails70_gems.rb
+            gemfile: rails70_gems.rb
             experimental: false
         include:
           - ruby-version: 3.1
@@ -154,79 +128,47 @@ jobs:
             gemfile: rails70_gems.rb
             experimental: true
 
-    env:
-      BUNDLE_GEMFILE: gemfiles/${{ matrix.gemfile }}
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Set up Ruby
-        uses: ruby/setup-ruby@v1
+      - uses: ./.github/actions/setup-env
         with:
           ruby-version: ${{ matrix.ruby-version }}
-          bundler-cache: true
-          cache-version: ${{ matrix.ruby-version }}-${{ matrix.gemfile }}-1
-
-      - name: Install libvips
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install --fix-missing -qq --no-install-recommends libvips libvips-dev libvips-tools
-
-      - name: Cache Webdrivers
-        uses: actions/cache@v3
-        with:
-          path: ~/.webdrivers
-          key: ${{ runner.os }}-webdrivers
+          gemfile: ${{ matrix.gemfile }}
 
       - name: Run tests
         run: bin/rake test
 
   matrix-screenshot-driver:
     name: Test Integration Capybara & Image Drivers
-    if: >
-      github.ref == 'refs/heads/master'
-      || github.event.inputs
-      || github.event_name == 'workflow_dispatch'
-      || github.event.pull_request.requested_reviewers.length > 0
-    needs: [ 'test' ]
+    needs: [ test ]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    #    if: >
+    #      github.ref == 'refs/heads/master'
+    #      || github.event.inputs
+    #      || github.event_name == 'workflow_dispatch'
+    #      || github.event.pull_request.requested_reviewers.length > 0
 
     strategy:
       matrix:
+        ruby-version: [ 3.2, 2.7, jruby, truffleruby ]
         screenshot-driver: [ vips, chunky_png ]
-        capybara-driver: [ selenium_headless, selenium_chrome_headless, cuprite ]
-
-    runs-on: ubuntu-latest
-
-    timeout-minutes: 5
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Set up Ruby
-        uses: ruby/setup-ruby@v1
+      - uses: ./.github/actions/setup-env
         with:
-          ruby-version: 3.2
-          bundler-cache: true
-
-      - name: Install libvips
-        if: matrix.screenshot-driver == 'vips'
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install --fix-missing -qq --no-install-recommends libvips libvips-dev libvips-tools
-
-      - name: Cache Webdrivers
-        uses: actions/cache@v3
-        with:
-          path: ~/.webdrivers
-          key: ${{ runner.os }}-webdrivers-${{ matrix.capybara-driver }}
+          ruby-version: ${{ matrix.ruby-version }}
+          skip-vips: ${{ matrix.screenshot-driver != 'vips' }}}
 
       - name: Run tests
         run: bin/rake test:integration
         env:
           SCREENSHOT_DRIVER: ${{ matrix.screenshot-driver }}
-          CAPYBARA_DRIVER: ${{ matrix.capybara-driver }}
 
       - name: Upload Screenshots
         uses: actions/upload-artifact@v3
@@ -237,3 +179,38 @@ jobs:
           path: |
             test/fixtures/app/doc/screenshots/
             tmp/capybara/screenshots-diffs/
+
+
+  matrix-capybara-driver:
+    name: Test Integration Capybara & Image Drivers
+    needs: [ test ]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    #    if: >
+    #      github.ref == 'refs/heads/master'
+    #      || github.event.inputs
+    #      || github.event_name == 'workflow_dispatch'
+    #      || github.event.pull_request.requested_reviewers.length > 0
+
+    strategy:
+      matrix:
+        ruby-version: [ 3.2, jruby ]
+        capybara-driver: [ selenium_headless, selenium_chrome_headless, cuprite ]
+        exclude:
+          - ruby-version: jruby
+            capybara-driver: selenium_chrome_headless
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - uses: ./.github/actions/setup-env
+        with:
+          ruby-version: ${{ matrix.ruby-version }}
+          cache-webdrivers: true
+
+      - name: Run tests
+        run: bin/rake test:integration
+        env:
+          CAPYBARA_DRIVER: ${{ matrix.capybara-driver }}
+          SCREENSHOT_DRIVER: vips
