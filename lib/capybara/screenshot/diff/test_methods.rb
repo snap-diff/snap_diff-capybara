@@ -79,7 +79,7 @@ module Capybara
           if Screenshot::Diff.delayed
             schedule_match_job([test_caller] + job)
           else
-            error_msg = assert_image_not_changed(test_caller, job.first, job.last, backtrace: false)
+            error_msg = assert_image_not_changed(job.first, job.last)
             if error_msg
               error = ASSERTION.new(error_msg)
               error.set_backtrace(caller(2))
@@ -88,7 +88,7 @@ module Capybara
           end
         end
 
-        def assert_image_not_changed(caller, name, comparison, backtrace: true)
+        def assert_image_not_changed(name, comparison)
           result = comparison.different?
 
           # Cleanup after comparisons
@@ -100,9 +100,7 @@ module Capybara
 
           return unless result
 
-          result = +"Screenshot does not match for '#{name}' #{comparison.error_message}"
-          result += "\nat #{caller.join("\n")}" if backtrace
-          result
+          "Screenshot does not match for '#{name}' #{comparison.error_message}"
         end
 
         private

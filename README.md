@@ -75,6 +75,14 @@ Load Cucumber support by adding the following line (typically to your `features/
 require 'capybara/screenshot/diff/cucumber'
 ```
 
+And in the steps you can use:
+
+```ruby
+Then('I should not see any visual difference') do
+  screenshot 'homepage'
+end
+```
+
 ### Taking screenshots
 
 Add `screenshot '<my_feature>'` to your tests.  The screenshot will be saved in

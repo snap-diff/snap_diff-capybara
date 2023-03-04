@@ -92,7 +92,7 @@ module Capybara
 
       def track_failures(screenshots, original_caller)
         test_screenshot_errors = screenshots.map do |caller, name, compare|
-          assert_image_not_changed(caller, name, compare)
+          assert_image_not_changed(name, compare)
         end
 
         test_screenshot_errors.compact!

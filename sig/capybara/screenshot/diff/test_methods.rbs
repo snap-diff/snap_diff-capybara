@@ -28,7 +28,7 @@ module Capybara
 
         def screenshot: (name_entity name, ?skip_stack_frames: ::Integer, **untyped options) -> boolish
 
-        def assert_image_not_changed: (Array[String] caller, String name, ImageCompare comparison) -> ::String?
+        def assert_image_not_changed: (String name, ImageCompare comparison) -> ::String?
 
         private
 
