@@ -67,6 +67,13 @@ RSpec.configure do |config|
   config.include Capybara::Screenshot::Diff
 end
 ```
+### Cucumber
+
+Load Cucumber support by adding the following line (typically to your `features/support/env.rb` file):
+
+```ruby
+require 'capybara/screenshot/diff/cucumber'
+```
 
 ### Taking screenshots
 
