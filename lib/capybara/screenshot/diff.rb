@@ -45,6 +45,7 @@ module Capybara
     module Diff
       include Capybara::DSL
 
+      mattr_accessor(:delayed) { true }
       mattr_accessor :area_size_limit
       mattr_accessor :color_distance_limit
       mattr_accessor(:enabled) { true }
