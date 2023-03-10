@@ -25,6 +25,10 @@ gem "cuprite", require: false
 gem "selenium-webdriver", require: false
 gem "webdrivers", "~> 5.0", require: false
 
+# Test Frameworks
+# gem "cucumber", require: false
+# gem "cucumber-rails", require: false
+
 group :tools do
   gem "standard", require: false
   gem "rbs", require: false, platform: :ruby

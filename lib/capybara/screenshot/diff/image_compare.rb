@@ -103,7 +103,8 @@ module Capybara
         end
 
         def _different?
-          raise "There are no screenshots to compare!" unless image_files_exist?
+          raise "There is no original (base) screenshot version to compare, located: #{@base_image_path}" unless @base_image_path.exist?
+          raise "There is no new screenshot version to compare, located: #{@image_path}" unless @image_path.exist?
 
           comparison = load_and_process_images
 
