@@ -32,7 +32,7 @@ module Capybara
 
           def add_black_box: (ImageEntity memo, Region region) -> void
 
-          def difference_level: (Vips::Image diff_mask, ImageEntity old_img, Region _region) -> Float
+          def difference_level: (ImageEntity diff_mask, ImageEntity old_img, Region _region) -> Float
 
           def image_area_size: (ImageEntity old_img) -> Integer
 

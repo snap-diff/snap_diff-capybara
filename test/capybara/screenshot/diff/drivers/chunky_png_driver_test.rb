@@ -19,6 +19,12 @@ module Capybara
             assert ChunkyPNGDriver.new
           end
 
+          test "#different? supports tolerance option" do
+            comp = make_comparison(:a, :b, tolerance: 2)
+            assert_not comp.different?
+            assert comp.quick_equal?
+          end
+
           test "#different? for equal is negative" do
             comp = make_comparison(:a, :a)
             assert_not comp.different?
@@ -131,18 +137,6 @@ module Capybara
           test "from_file loads image from path" do
             driver = ChunkyPNGDriver.new
             assert driver.from_file("#{TEST_IMAGES_DIR}/a.png")
-          end
-
-          test "tolerance" do
-            driver = ChunkyPNGDriver.new
-
-            level = driver.difference_level(
-              nil,
-              load_test_image(driver),
-              Region.new(0, 0, 10, 10)
-            )
-
-            assert_equal 0.015625, level
           end
 
           private

@@ -27,12 +27,8 @@ module Capybara
             image
           end
 
-          def difference_level(_diff_mask, base_image, region)
-            region.size.to_f / image_area_size(base_image)
-          end
-
           def find_difference_region(comparison)
-            DifferenceRegionFinder.new(comparison).perform
+            DifferenceRegionFinder.new(comparison, self).perform
           end
 
           def crop(region, i)
@@ -80,8 +76,10 @@ module Capybara
           class DifferenceRegionFinder
             attr_accessor :skip_area, :color_distance_limit, :shift_distance_limit
 
-            def initialize(comparison)
+            def initialize(comparison, driver = nil)
               @comparison = comparison
+              @driver = driver
+
               @color_distance_limit = comparison.options[:color_distance_limit]
               @shift_distance_limit = comparison.options[:shift_distance_limit]
               @skip_area = comparison.options[:skip_area]
@@ -116,6 +114,13 @@ module Capybara
               end
 
               result
+            end
+
+            def difference_level(_diff_mask, base_image, region)
+              image_area_size = @driver.image_area_size(base_image)
+              return nil if image_area_size.zero?
+
+              region.size.to_f / image_area_size
             end
 
             def find_diff_rectangle(org_img, new_img, area_coordinates, cache:)
