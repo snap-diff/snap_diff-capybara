@@ -212,6 +212,18 @@ test 'the cool' do
 end
 ```
 
+**Note:** When using a retina device screenshots dimensions might be off. If
+you are using (headless) chrome you can prevent this by setting the
+`force-device-scale-factor` argument to `1`.
+
+For Rails system specs using selenium you can do so for example by using the
+following snippet:
+
+```ruby
+driven_by :selenium, using: :chrome_headless do |options|
+  options.args << '--force-device-scale-factor=1'
+end
+```
 
 ### Multiple Capybara drivers
 
