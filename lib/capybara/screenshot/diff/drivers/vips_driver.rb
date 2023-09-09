@@ -56,9 +56,14 @@ module Capybara
             VipsUtil.difference_area_size_by(diff_mask).to_f / image_area_size(old_img)
           end
 
+          MAX_FILENAME_LENGTH = 200
+
           # Vips could not work with the same file. Per each process we require to create new file
           def save_image_to(image, filename)
-            ::Dir::Tmpname.create([filename.to_s, PNG_EXTENSION]) do |tmp_image_filename|
+            # Dir::Tmpname will happily produce tempfile names that are too long for most unix filesystems,
+            # which leads to "unix error: File name too long". Apply a limit to avoid this.
+            limited_filename = filename.to_s[-MAX_FILENAME_LENGTH..] || filename.to_s
+            ::Dir::Tmpname.create([limited_filename, PNG_EXTENSION]) do |tmp_image_filename|
               image.write_to_file(tmp_image_filename)
               FileUtils.mv(tmp_image_filename, filename)
             end

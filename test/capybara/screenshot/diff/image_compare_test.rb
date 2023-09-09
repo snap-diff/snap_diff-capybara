@@ -35,6 +35,16 @@ module Capybara
           assert_same_images("b-and-a.diff.png", comparison.annotated_image_path)
         end
 
+        test "it can handle very long input filenames" do
+          filename = %w(this-0000000000000000000000000000000000000000000000000-path/is/extremely/
+            long/and/if/the/directories/are/flattened/in/
+            the_temporary_they_will_cause_the_filename_to_exceed_
+            the_limit_on_most_unix_systems_which_nobody_wants.png).join
+          comparison = make_comparison(:a, :b, destination: (Rails.root / filename), driver: :vips)
+
+          assert comparison.different?
+        end
+
         test "it can be instantiated with vips adapter and tolerance option" do
           comp = make_comparison(:a, :b, driver: :vips, tolerance: 0.02)
           assert comp.quick_equal?
