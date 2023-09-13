@@ -29,6 +29,11 @@ Or install it yourself as:
 
 ### Requirements
 
+`capybara-screenshot-diff` supports the currently supported versions of Ruby and Rails:
+
+* Ruby 3.0+ (https://www.ruby-lang.org/en/downloads/branches/)
+* Rails 6.1+ (https://guides.rubyonrails.org/maintenance_policy.html)
+
 * [for :vips driver] libvips 8.9 or later, see the [libvips install instructions](https://libvips.github.io/libvips/install.html)
 
 ## Usage

@@ -117,11 +117,10 @@ jobs:
     continue-on-error: ${{ matrix.experimental }}
     strategy:
       matrix:
-        ruby-version: [ 3.2, 2.7, jruby ]
+        ruby-version: [ 3.2, 3.1, 3.0, jruby ]
         gemfile:
           - rails70_gems.rb
           - rails61_gems.rb
-          - rails60_gems.rb
         experimental: [ false ]
         exclude:
           # We already tested last version
@@ -129,21 +128,12 @@ jobs:
             gemfile: gemfiles/rails70_gems.rb
             experimental: false
         include:
-          - ruby-version: 3.1
-            gemfile: rails70_gems.rb
-            experimental: false
-          - ruby-version: 3.0
-            gemfile: rails70_gems.rb
-            experimental: false
           - ruby-version: 3.2
-            gemfile: rails-head_gems.rb
+            gemfile: edge_gems.rb
             experimental: true
           - ruby-version: ruby-head
             gemfile: rails70_gems.rb
             experimental: true
-          - ruby-version: jruby-9.3
-            gemfile: rails60_gems.rb
-            experimental: false
           - ruby-version: jruby-head
             gemfile: rails70_gems.rb
             experimental: true
