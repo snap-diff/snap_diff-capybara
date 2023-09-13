@@ -113,7 +113,7 @@ jobs:
       github.event.pull_request.requested_reviewers.length > 0
     needs: [ test ]
     runs-on: ubuntu-latest
-    timeout-minutes: 7
+    timeout-minutes: 10
     continue-on-error: ${{ matrix.experimental }}
     strategy:
       matrix:
