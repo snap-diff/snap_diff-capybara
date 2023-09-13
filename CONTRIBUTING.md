@@ -17,7 +17,7 @@ Before merging to `master`,
 please have a member of the project review your changes,
 and make sure the tests are green.
 
-## Release
+## Releasing
 
 New versions are released to RubyGems.
 
