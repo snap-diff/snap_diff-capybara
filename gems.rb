@@ -17,7 +17,7 @@ gem "minitest-stub-const", require: false
 gem "simplecov", require: false
 
 # Capybara Server
-gem "puma", RUBY_PLATFORM.include?("java") ? "< 6" : ">= 5", require: false
+gem "puma", require: false
 gem "rackup", require: false
 
 # Capybara Drivers

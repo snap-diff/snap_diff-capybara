@@ -11,14 +11,14 @@ Run the tests before committing using Rake
 
     rake
 
-### Matrix testing
-
-Run the tests for a matrix of configurations of Ruby implementations and Rails versions
-
-    ./matrix_text.rb
-
 ## Merging to master
 
 Before merging to `master`,
 please have a member of the project review your changes,
 and make sure the tests are green.
+
+## Release
+
+New versions are released to RubyGems.
+
+    rake release
