@@ -5,8 +5,8 @@ require "system_test_case"
 # NOTE: For this test we need only chrome browser,
 #       because we can spot problem by counting running chrome driver processes
 require "action_pack/version"
-unless [ActionPack::VERSION::MAJOR, ActionPack::VERSION::MINOR].join >= "60" && ENV["CAPYBARA_DRIVER"].include?("selenium_chrome")
-  warn "Regression only for 6x Rails and driven_by construction"
+unless ENV["CAPYBARA_DRIVER"].include?("selenium_chrome")
+  warn "Regression only for `driven_by :selenium_chrome` construction."
   return
 end
 

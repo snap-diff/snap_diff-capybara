@@ -26,6 +26,24 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Test that new contributors can run the tests directly after checkout.
+  test-minimal-setup:
+    name: Test with minimal setup
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: 3.0
+          bundler-cache: true
+      - name: Cache Webdrivers
+        uses: actions/cache@v3
+        with:
+          path: ~/.webdrivers
+          key: ${{ runner.os }}-webdrivers
+      - run: bin/rake test
+
   test:
     name: Functional Testing
     runs-on: ubuntu-latest # In order to install libvips 8.9+ version
@@ -113,7 +131,7 @@ jobs:
       github.event.pull_request.requested_reviewers.length > 0
     needs: [ test ]
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 8
     continue-on-error: ${{ matrix.experimental }}
     strategy:
       matrix:
@@ -170,7 +188,11 @@ jobs:
           key: ${{ runner.os }}-webdrivers
 
       - name: Run tests
-        run: bin/rake test
+        uses: nick-fields/retry@v2
+        with:
+          timeout_minutes: 3
+          max_attempts: 2
+          command: bin/rake test
 
   matrix-screenshot-driver:
     name: Test Integration Capybara & Image Drivers

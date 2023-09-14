@@ -9,6 +9,7 @@ module Capybara
     module Diff
       class UtilsTest < ActiveSupport::TestCase
         test "detect_available_drivers add vips when ruby-vips is available" do
+          skip "VIPS not present. Skipping VIPS driver tests." unless defined?(Vips)
           Object.stub :require, ->(gem) { gem == "vips" } do
             assert_includes Utils.detect_available_drivers, :vips
           end
