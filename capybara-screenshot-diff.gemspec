@@ -25,5 +25,5 @@ Gem::Specification.new do |spec|
 
   spec.add_runtime_dependency "actionpack", ">= 6.1", "< 8"
   spec.add_runtime_dependency "capybara", ">= 2", "< 4"
-  spec.add_runtime_dependency "chunky_png", ">= 1.3", "< 2"
+  spec.add_runtime_dependency "chunky_png", "~> 1.3"
 end
