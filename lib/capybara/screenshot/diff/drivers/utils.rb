@@ -10,11 +10,13 @@ module Capybara
             result << :vips if defined?(Vips) || require("vips")
           rescue LoadError
             # vips not present
+            Object.send :remove_const, :Vips
           end
           begin
             result << :chunky_png if defined?(ChunkyPNG) || require("chunky_png")
           rescue LoadError
             # chunky_png not present
+            Object.send :remove_const, :ChunkyPNG
           end
           result
         end

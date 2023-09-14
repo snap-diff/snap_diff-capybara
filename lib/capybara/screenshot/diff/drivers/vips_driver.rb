@@ -3,7 +3,7 @@
 begin
   require "vips"
 rescue LoadError => e
-  warn 'Required ruby-vips gem is missing. Add `gem "ruby-vips"` to Gemfile' if e.message.include?("vips")
+  raise 'Required ruby-vips gem is missing. Add `gem "ruby-vips"` to Gemfile' if e.message.match?(/vips/i)
   raise
 end
 

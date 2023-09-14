@@ -3,7 +3,11 @@
 require "test_helper"
 require "minitest/stub_const"
 require "capybara/screenshot/diff/drivers/chunky_png_driver"
-require "capybara/screenshot/diff/drivers/vips_driver"
+if defined?(Vips)
+  require "capybara/screenshot/diff/drivers/vips_driver"
+elsif ENV['SCREENSHOT_DRIVER'] == 'vips'
+  raise 'Required `ruby-vips` gem or `vips` library is missing. Ensure "ruby-vips" gem and "vips" library is installed.'
+end
 
 module Capybara
   module Screenshot
@@ -22,11 +26,13 @@ module Capybara
         end
 
         test "it can be instantiated with vips adapter" do
+          skip "VIPS not present. Skipping VIPS driver tests." unless defined?(Vips)
           comparison = ImageCompare.new("images/b.png", "images/b.base.png", driver: :vips)
           assert_kind_of Drivers::VipsDriver, comparison.driver
         end
 
         test "it generates annotation files on difference" do
+          skip "VIPS not present. Skipping VIPS driver tests." unless defined?(Vips)
           comparison = make_comparison(:a, :b, driver: :vips)
 
           assert comparison.different?
@@ -36,6 +42,7 @@ module Capybara
         end
 
         test "it can handle very long input filenames" do
+          skip "VIPS not present. Skipping VIPS driver tests." unless defined?(Vips)
           filename = %w(this-0000000000000000000000000000000000000000000000000-path/is/extremely/
             long/and/if/the/directories/are/flattened/in/
             the_temporary_they_will_cause_the_filename_to_exceed_
@@ -46,6 +53,7 @@ module Capybara
         end
 
         test "it can be instantiated with vips adapter and tolerance option" do
+          skip "VIPS not present. Skipping VIPS driver tests." unless defined?(Vips)
           comp = make_comparison(:a, :b, driver: :vips, tolerance: 0.02)
           assert comp.quick_equal?
           assert_not comp.different?
@@ -60,6 +68,7 @@ module Capybara
         end
 
         test "for driver: :auto returns first from available drivers" do
+          skip "VIPS not present. Skipping VIPS driver tests." unless defined?(Vips)
           comparison = ImageCompare.new("images/b.png", "images/b.base.png", driver: :auto)
           assert_kind_of Drivers::VipsDriver, comparison.driver
         end
