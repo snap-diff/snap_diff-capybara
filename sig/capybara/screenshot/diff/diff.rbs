@@ -22,7 +22,7 @@ module Capybara
 
       private
 
-      def track_failures: (Array[untyped] screenshots, (Array[String] | String) original_caller) -> void
+      def track_failures: (Array[untyped] screenshots) -> void
     end
   end
 end
