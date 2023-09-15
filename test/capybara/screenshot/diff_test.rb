@@ -126,7 +126,7 @@ module Capybara
           mock.expect(:error_message, "expected error message")
 
           @test_screenshots = []
-          @test_screenshots << [[], "sample_screenshot", mock]
+          @test_screenshots << ["my_test.rb:42", "sample_screenshot", mock]
         end
       end
 
@@ -162,7 +162,7 @@ module Capybara
           comparison.expect(:error_message, "expected error message for non minitest")
 
           @test_screenshots = []
-          @test_screenshots << [[], "sample_screenshot", comparison]
+          @test_screenshots << ["my_test.rb:42", "sample_screenshot", comparison]
         end
       end
 
