@@ -80,7 +80,7 @@ module Capybara
 
         klass.teardown do
           if Screenshot.active? && @test_screenshots.present?
-            track_failures(@test_screenshots, caller)
+            track_failures(@test_screenshots)
             @test_screenshots.clear
           end
         end
@@ -90,7 +90,7 @@ module Capybara
 
       EMPTY_LINE = "\n\n"
 
-      def track_failures(screenshots, original_caller)
+      def track_failures(screenshots)
         test_screenshot_errors = screenshots.map do |caller, name, compare|
           assert_image_not_changed(caller, name, compare)
         end
@@ -99,7 +99,7 @@ module Capybara
 
         unless test_screenshot_errors.empty?
           error = ASSERTION.new(test_screenshot_errors.join(EMPTY_LINE))
-          error.set_backtrace(original_caller)
+          error.set_backtrace([])
 
           if is_a?(::Minitest::Runnable)
             failures << error
