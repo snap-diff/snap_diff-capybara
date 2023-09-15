@@ -189,6 +189,16 @@ module Capybara::Screenshot
       FileUtils.rm_rf(Capybara::Screenshot.screenshot_area_abs / "index-with-anim.png")
     end
 
+    def test_await_all_images_are_loaded
+      visit "/index.html"
+      assert_raises Minitest::Assertion do
+        BrowserHelpers.stub(:pending_image_to_load, 'http://127.0.0.1:62815/image.png') do
+          screenshot :index
+        end
+      end
+      assert_no_screenshot_errors
+    end
+
     private
 
     def rect_for(css_selector)
@@ -220,7 +230,5 @@ module Capybara::Screenshot
         "expecting not to have any difference. But got next: #{error_messages.join("; ")}"
       )
     end
-
-    # TODO: Add test for stability to await while image are loading
   end
 end
