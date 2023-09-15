@@ -10,18 +10,20 @@ module Capybara
         include TestMethodsStub
 
         def test_assert_image_not_changed
-          message = assert_image_not_changed("name", make_comparison(:a, :c))
+          message = assert_image_not_changed("my_test.rb:42", "name", make_comparison(:a, :c))
           value = (RUBY_VERSION >= "2.4") ? 187.4 : 188
           assert_equal <<-MSG.strip_heredoc.chomp, message
             Screenshot does not match for 'name' ({"area_size":629,"region":[11,3,48,20],"max_color_distance":#{value}})
             #{Rails.root}/doc/screenshots/screenshot.png
             #{Rails.root}/doc/screenshots/screenshot.base.diff.png
             #{Rails.root}/doc/screenshots/screenshot.diff.png
+            my_test.rb:42
           MSG
         end
 
         def test_assert_image_not_changed_with_shift_distance_limit
           message = assert_image_not_changed(
+            "my_test.rb:42",
             "name",
             make_comparison(:a, :c, shift_distance_limit: 1, driver: :chunky_png)
           )
@@ -31,6 +33,7 @@ module Capybara
             #{Rails.root}/doc/screenshots/screenshot.png
             #{Rails.root}/doc/screenshots/screenshot.base.diff.png
             #{Rails.root}/doc/screenshots/screenshot.diff.png
+            my_test.rb:42
           MSG
         end
 
@@ -77,13 +80,13 @@ module Capybara
 
         def test_cleanup_base_image_for_no_change
           comparison = make_comparison(:a, :a)
-          assert_image_not_changed("name", comparison)
+          assert_image_not_changed("my_test.rb:42", "name", comparison)
           assert_not comparison.base_image_path.exist?
         end
 
         def test_cleanup_base_image_for_changes
           comparison = make_comparison(:a, :b)
-          assert_image_not_changed("name", comparison)
+          assert_image_not_changed("my_test.rb:42", "name", comparison)
           assert_not comparison.base_image_path.exist?
         end
 
