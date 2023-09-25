@@ -14,7 +14,11 @@ module Capybara
           redirect_target = "#{checkout_path} #{SILENCE_ERRORS}"
           show_command = "git show HEAD~0:./#{vcs_file_path}"
           if Screenshot.use_lfs
-            `#{show_command} | git lfs smudge > #{redirect_target} ; exit ${PIPESTATUS[0]}`
+            `#{show_command} > #{checkout_path}.tmp #{SILENCE_ERRORS}`
+            if $CHILD_STATUS == 0
+              `git lfs smudge < #{checkout_path}.tmp > #{redirect_target}`
+            end
+            File.delete "#{checkout_path}.tmp"
           else
             `#{show_command} > #{redirect_target}`
           end
