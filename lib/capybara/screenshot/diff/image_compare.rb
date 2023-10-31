@@ -159,11 +159,6 @@ module Capybara
         def preprocess_image(image)
           result = image
 
-          # FIXME: How can we access to this method from public interface? Is this not documented feature?
-          if dimensions && driver.inscribed?(dimensions, result)
-            result = driver.crop(dimensions, result)
-          end
-
           if skip_area
             result = ignore_skipped_area(result)
           end
