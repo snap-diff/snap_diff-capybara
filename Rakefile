@@ -33,7 +33,7 @@ task "clobber" do
 end
 
 task "test:benchmark" do
-  require_relative "./scripts/benchmark/find_region_benchmark"
+  require_relative "scripts/benchmark/find_region_benchmark"
   benchmark = Capybara::Screenshot::Diff::Drivers::FindRegionBenchmark.new
 
   puts "For Medium Screen Size: 800x600"
