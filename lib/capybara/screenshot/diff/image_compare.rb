@@ -209,14 +209,14 @@ module Capybara
         DIFF_COLOR = [255, 0, 0, 255].freeze
 
         def annotate_difference(image, region)
-          driver.draw_rectangles(Array[image], region, DIFF_COLOR, offset: 1).first
+          driver.draw_rectangles([image], region, DIFF_COLOR, offset: 1).first
         end
 
         SKIP_COLOR = [255, 192, 0, 255].freeze
 
         def annotate_skip_areas(image, skip_areas)
           skip_areas.reduce(image) do |memo, region|
-            driver.draw_rectangles(Array[memo], region, SKIP_COLOR).first
+            driver.draw_rectangles([memo], region, SKIP_COLOR).first
           end
         end
       end

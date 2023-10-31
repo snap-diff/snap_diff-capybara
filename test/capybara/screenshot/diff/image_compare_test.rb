@@ -5,7 +5,7 @@ require "minitest/stub_const"
 require "capybara/screenshot/diff/drivers/chunky_png_driver"
 if defined?(Vips)
   require "capybara/screenshot/diff/drivers/vips_driver"
-elsif ENV['SCREENSHOT_DRIVER'] == 'vips'
+elsif ENV["SCREENSHOT_DRIVER"] == "vips"
   raise 'Required `ruby-vips` gem or `vips` library is missing. Ensure "ruby-vips" gem and "vips" library is installed.'
 end
 
@@ -43,10 +43,10 @@ module Capybara
 
         test "it can handle very long input filenames" do
           skip "VIPS not present. Skipping VIPS driver tests." unless defined?(Vips)
-          filename = %w(this-0000000000000000000000000000000000000000000000000-path/is/extremely/
+          filename = %w[this-0000000000000000000000000000000000000000000000000-path/is/extremely/
             long/and/if/the/directories/are/flattened/in/
             the_temporary_they_will_cause_the_filename_to_exceed_
-            the_limit_on_most_unix_systems_which_nobody_wants.png).join
+            the_limit_on_most_unix_systems_which_nobody_wants.png].join
           comparison = make_comparison(:a, :b, destination: (Rails.root / filename), driver: :vips)
 
           assert comparison.different?
