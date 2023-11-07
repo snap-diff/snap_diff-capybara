@@ -192,7 +192,7 @@ module Capybara::Screenshot
     def test_await_all_images_are_loaded
       visit "/index.html"
       assert_raises Minitest::Assertion do
-        BrowserHelpers.stub(:pending_image_to_load, 'http://127.0.0.1:62815/image.png') do
+        BrowserHelpers.stub(:pending_image_to_load, "http://127.0.0.1:62815/image.png") do
           screenshot :index
         end
       end

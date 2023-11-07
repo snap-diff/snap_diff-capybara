@@ -5,8 +5,8 @@ on:
   pull_request:
     branches: [ master ]
     paths:
-      - '*.rb'
-      - '*.yml'
+      - '**.rb'
+      - '**.yml'
       - '.github/workflows/lint.yml'
       - '!bin/**'
 
