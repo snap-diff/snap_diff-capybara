@@ -47,22 +47,19 @@ module Capybara
             assert_predicate @test_screenshots, :blank?
             make_comparison(:a, :c, destination: Rails.root / "doc/screenshots/a.png")
 
-            our_screenshot("a", 1)
+            our_screenshot("a", 0)
             assert_equal 1, @test_screenshots.size
             unless ENV["RBS_TEST_TARGET"] # RBS generates new methods for checking types, so we do not know their names
-              assert_match(
-                /test_methods_test.rb:\d+:in `our_screenshot'/,
-                @test_screenshots.dig(0, 0, 0)
-              )
+              assert_match(/test_methods_test\.rb:\d+:in `our_screenshot'/, @test_screenshots[0][0])
             end
             assert_equal "a", @test_screenshots[0][1]
 
-            our_screenshot("a", 2)
+            our_screenshot("a", 1)
             assert_equal 2, @test_screenshots.size
             unless ENV["RBS_TEST_TARGET"] # RBS generates new methods for checking types, so we do not know their names
               assert_match(
-                /test_methods_test.rb:.*?test_skip_stack_frames/,
-                @test_screenshots.dig(1, 0, 0)
+                /test_methods_test\.rb:.*?test_skip_stack_frames/, # RBS generates new methods for checking types, so we do not know their names
+                @test_screenshots[1][0]
               )
             end
             assert_equal "a", @test_screenshots[1][1]
