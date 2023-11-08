@@ -83,7 +83,7 @@ module Capybara
       end
 
       def self.region_for(element)
-        element.evaluate_script(GET_BOUNDING_CLIENT_RECT_SCRIPT).map { |point| point.negative? ? 0 : point.to_i }
+        element.evaluate_script(GET_BOUNDING_CLIENT_RECT_SCRIPT).map { |point| point.negative? ? 0 : point.ceil.to_i }
       end
 
       def self.session
