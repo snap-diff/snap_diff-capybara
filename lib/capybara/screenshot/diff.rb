@@ -80,8 +80,11 @@ module Capybara
 
         klass.teardown do
           if Screenshot.active? && @test_screenshots.present?
-            track_failures(@test_screenshots)
-            @test_screenshots.clear
+            begin
+              track_failures(@test_screenshots)
+            ensure
+              @test_screenshots.clear
+            end
           end
         end
       end

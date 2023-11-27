@@ -127,6 +127,7 @@ module Capybara
 
           @test_screenshots = []
           @test_screenshots << ["my_test.rb:42", "sample_screenshot", mock]
+          mock.expect(:clear_screenshots, @test_screenshots)
         end
       end
 
@@ -174,6 +175,7 @@ module Capybara
           expected_message =
             "Screenshot does not match for 'sample_screenshot' expected error message for non minitest"
           assert_raises(RuntimeError, expected_message) { test_case.teardown }
+          assert(test_case.instance_variable_get(:@test_screenshots).empty?)
         end
       end
     end
