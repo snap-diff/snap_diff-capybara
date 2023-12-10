@@ -64,9 +64,10 @@ module Capybara
         private
 
         def build_comparison_for(attempt_path, previous_attempt_path)
-          ImageCompare.build(attempt_path, previous_attempt_path, @comparison_options)
+          ImageCompare.new(attempt_path, previous_attempt_path, @comparison_options)
         end
 
+        # TODO: Move to the HistoricalReporter
         def annotate_attempts_and_fail!(screenshot_path)
           screenshot_attempts = Screenshoter.attempts_screenshot_paths(screenshot_path)
 
@@ -84,13 +85,13 @@ module Capybara
               attempts_comparison = build_comparison_for(file_name, previous_file)
 
               if attempts_comparison.different?
-                FileUtils.mv(attempts_comparison.annotated_base_image_path, previous_file, force: true)
+                FileUtils.mv(attempts_comparison.reporter.annotated_base_image_path, previous_file, force: true)
               else
                 warn "[capybara-screenshot-diff] Some attempts was stable, but mistakenly marked as not: " \
                   "#{previous_file} and #{file_name} are equal"
               end
 
-              FileUtils.rm(attempts_comparison.annotated_image_path, force: true)
+              FileUtils.rm(attempts_comparison.reporter.annotated_image_path, force: true)
             end
 
             previous_file = file_name

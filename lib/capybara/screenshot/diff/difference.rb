@@ -10,6 +10,10 @@ module Capybara
           failed? || !(blank? || tolerable?)
         end
 
+        def equal?
+          !different?
+        end
+
         def failed?
           !!failed_by
         end

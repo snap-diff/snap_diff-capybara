@@ -64,7 +64,9 @@ class SystemTestCase < ActionDispatch::IntegrationTest
     screenshot_path = Pathname.new(comparison.new_file_name)
     Vcs.restore_git_revision(screenshot_path, screenshot_path)
 
-    comparison.clean_tmp_files
+    if comparison.difference
+      comparison.reporter.clean_tmp_files
+    end
   end
 
   def save_annotations_for_debug(comparison)
@@ -76,12 +78,12 @@ class SystemTestCase < ActionDispatch::IntegrationTest
       FileUtils.cp(comparison.new_file_name, debug_diffs_save_path)
     end
 
-    if comparison.annotated_base_image_path.exist?
-      FileUtils.mv(comparison.annotated_base_image_path, debug_diffs_save_path, force: true)
+    if comparison.reporter.annotated_base_image_path.exist?
+      FileUtils.mv(comparison.reporter.annotated_base_image_path, debug_diffs_save_path, force: true)
     end
 
-    if comparison.annotated_image_path.exist?
-      FileUtils.mv(comparison.annotated_image_path, debug_diffs_save_path, force: true)
+    if comparison.reporter.annotated_image_path.exist?
+      FileUtils.mv(comparison.reporter.annotated_image_path, debug_diffs_save_path, force: true)
     end
   end
 
