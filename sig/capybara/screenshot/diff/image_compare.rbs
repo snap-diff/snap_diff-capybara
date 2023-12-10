@@ -64,7 +64,7 @@ module Capybara
 
         private
 
-        def _different?: -> String?
+        def find_difference: -> Difference
 
         def different: (Difference images) -> String
 

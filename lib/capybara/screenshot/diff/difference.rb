@@ -5,9 +5,13 @@ require "json"
 module Capybara
   module Screenshot
     module Diff
-      class Difference < Struct.new(:region, :meta, :comparison)
+      class Difference < Struct.new(:region, :meta, :comparison, :failed_by)
         def different?
-          !(blank? || tolerable?)
+          failed? || !(blank? || tolerable?)
+        end
+
+        def failed?
+          !!failed_by
         end
 
         def base_image
