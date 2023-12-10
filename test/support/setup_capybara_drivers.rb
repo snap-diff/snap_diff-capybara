@@ -68,12 +68,6 @@ if ENV["CAPYBARA_DRIVER"] == "cuprite"
       window_size: SCREEN_SIZE
     )
   end
-elsif ENV["CAPYBARA_DRIVER"].include?("chrome")
-  require "webdrivers/chromedriver"
-  Webdrivers::Chromedriver.update
-else
-  require "webdrivers/geckodriver"
-  Webdrivers::Geckodriver.update
 end
 
 Capybara.save_path = Pathname.new("tmp/capybara").expand_path
