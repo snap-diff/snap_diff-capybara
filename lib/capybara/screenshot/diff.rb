@@ -11,7 +11,6 @@ require "capybara/screenshot/diff/reporters/default"
 
 module Capybara
   module Screenshot
-
     mattr_accessor :add_driver_path
     mattr_accessor :add_os_path
     mattr_accessor :blur_active_element

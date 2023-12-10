@@ -41,7 +41,7 @@ module Capybara
           comparison = load_and_process_images
 
           unless driver.same_dimension?(comparison)
-            @difference = failed_difference(comparison, { different_dimensions: true })
+            @difference = failed_difference(comparison, {different_dimensions: true})
             @reporter = nil
             @error_message = nil
 
@@ -113,7 +113,7 @@ module Capybara
           comparison = load_and_process_images
 
           unless driver.same_dimension?(comparison)
-            return failed_difference(comparison, { different_dimensions: true })
+            return failed_difference(comparison, {different_dimensions: true})
           end
 
           if driver.same_pixels?(comparison)
@@ -126,7 +126,7 @@ module Capybara
         def failed_difference(comparison, failed_by)
           Difference.new(
             nil,
-            { difference_level: nil, max_color_distance: 0 },
+            {difference_level: nil, max_color_distance: 0},
             comparison,
             failed_by
           )
@@ -190,7 +190,7 @@ module Capybara
         def no_difference(comparison = nil)
           Difference.new(
             nil,
-            { difference_level: nil, max_color_distance: 0 },
+            {difference_level: nil, max_color_distance: 0},
             comparison || build_comparison
           ).freeze
         end
