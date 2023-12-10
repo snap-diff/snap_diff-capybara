@@ -53,7 +53,7 @@ module Capybara
           # Add comparison job in the queue
           [
             screenshot_full_name,
-            ImageCompare.new(screenshot_path.to_s, base_screenshot_path.to_s, driver_options)
+            ImageCompare.build(screenshot_path.to_s, base_screenshot_path.to_s, driver_options)
           ]
         end
 

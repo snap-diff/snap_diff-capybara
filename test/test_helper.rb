@@ -59,6 +59,6 @@ class ActiveSupport::TestCase
 
   def assert_same_images(expected_image_name, image_path)
     expected_image_path = file_fixture("files/comparisons/#{expected_image_name}")
-    assert_predicate(Capybara::Screenshot::Diff::ImageCompare.new(image_path, expected_image_path), :quick_equal?)
+    assert_predicate(Capybara::Screenshot::Diff::ImageCompare.build(image_path, expected_image_path), :quick_equal?)
   end
 end

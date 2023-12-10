@@ -24,7 +24,7 @@ module Capybara
 
           set_test_images(destination, fixture_base_image, fixture_new_image)
 
-          ImageCompare.new(destination, ScreenshotMatcher.base_image_path_from(destination), **options)
+          ImageCompare.build(destination, ScreenshotMatcher.base_image_path_from(destination), **options)
         end
 
         def set_test_images(destination, original_base_image, original_new_image)
