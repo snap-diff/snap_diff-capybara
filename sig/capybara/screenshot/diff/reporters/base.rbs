@@ -1,0 +1,17 @@
+module Capybara
+  module Screenshot
+    module Diff
+      module Reporters
+        interface _Reporting
+          def generate: -> ::String?
+        end
+
+        class Base
+          include _Reporting
+
+          def initialize: (Difference) -> void
+        end
+      end
+    end
+  end
+end

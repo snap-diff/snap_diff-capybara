@@ -48,7 +48,7 @@ module Capybara
           end
 
           def load_image_files(old_file_name, file_name)
-            [File.binread(old_file_name), File.binread(file_name)]
+            [old_file_name.binread, file_name.binread]
           end
 
           def draw_rectangles(images, region, (r, g, b), offset: 0)

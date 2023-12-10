@@ -61,7 +61,7 @@ class SystemTestCase < ActionDispatch::IntegrationTest
   def rollback_comparison_runtime_files((_, _, comparison))
     save_annotations_for_debug(comparison)
 
-    screenshot_path = Pathname.new(comparison.new_file_name)
+    screenshot_path = comparison.image_path
     Vcs.restore_git_revision(screenshot_path, screenshot_path)
 
     if comparison.difference
@@ -74,8 +74,8 @@ class SystemTestCase < ActionDispatch::IntegrationTest
 
     FileUtils.mkdir_p(debug_diffs_save_path)
 
-    if File.exist?(comparison.new_file_name)
-      FileUtils.cp(comparison.new_file_name, debug_diffs_save_path)
+    if File.exist?(comparison.image_path)
+      FileUtils.cp(comparison.image_path, debug_diffs_save_path)
     end
 
     if comparison.reporter.annotated_base_image_path.exist?

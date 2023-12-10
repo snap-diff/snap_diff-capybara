@@ -32,8 +32,14 @@ module Capybara
             [width_for(image), height_for(image)]
           end
 
-          def inscribed?(dimensions, i)
-            width_for(i) < dimensions[0] || height_for(i) < dimensions[1]
+          # Checks if the given image fits within the specified dimensions.
+          #
+          # @param dimensions [Array<Integer>] An array containing the width and height to check against.
+          # @param image [ChunkyPNG::Image] The image to check.
+          #
+          # @return [Boolean] Returns `true` if the image's width and height are both less than the corresponding dimensions, and `false` otherwise.
+          def inscribed?(dimensions, image)
+            width_for(image) < dimensions[0] || height_for(image) < dimensions[1]
           end
         end
       end

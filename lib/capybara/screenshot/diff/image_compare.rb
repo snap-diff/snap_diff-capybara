@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require "capybara/screenshot/diff/comparison"
+
 module Capybara
   module Screenshot
     module Diff
@@ -12,7 +14,7 @@ module Capybara
 
         attr_reader :driver, :driver_options
 
-        attr_reader :image_path, :base_image_path, :new_file_name, :old_file_name
+        attr_reader :image_path, :base_image_path
 
         attr_reader :difference
 
@@ -21,14 +23,7 @@ module Capybara
           @error_message = nil
 
           @image_path = Pathname.new(image_path)
-
-          @new_file_name = @image_path.to_s
-          @annotated_image_path = @image_path.sub_ext(".diff.png")
-
           @base_image_path = Pathname.new(base_image_path)
-
-          @old_file_name = @base_image_path.to_s
-          @annotated_base_image_path = @base_image_path.sub_ext(".diff.png")
 
           @driver_options = options.dup
 
@@ -38,16 +33,28 @@ module Capybara
         # Compare the two image files and return `true` or `false` as quickly as possible.
         # Return falsely if the old file does not exist or the image dimensions do not match.
         def quick_equal?
-
+          # TODO: What to do with this? Raise Argument Error?
           return false unless image_files_exist?
           # TODO: Confirm this change. There are screenshots with the same size, but there is a big difference
           return true if new_file_size == old_file_size
 
           comparison = load_and_process_images
 
-          return false unless driver.same_dimension?(comparison)
+          unless driver.same_dimension?(comparison)
+            @difference = failed_difference(comparison, { different_dimensions: true })
+            @reporter = nil
+            @error_message = nil
 
-          return true if driver.same_pixels?(comparison)
+            return false
+          end
+
+          if driver.same_pixels?(comparison)
+            @difference = no_difference(comparison)
+            @reporter = nil
+            @error_message = nil
+
+            return true
+          end
 
           # Could not make any difference to be tolerable, so skip and return as not equal
           return false if without_tolerable_options?
@@ -67,39 +74,28 @@ module Capybara
 
           @difference = find_difference unless processed?
 
-          @error_message = report(@difference)
+          @error_message = report
 
           @difference.different?
         end
+
+        attr_reader :error_message
+
+        def reporter
+          @reporter ||= begin
+            current_difference = difference || no_difference(nil)
+            Capybara::Screenshot::Diff::Reporters::Default.new(current_difference)
+          end
+        end
+
+        private
 
         def image_files_exist?
           @base_image_path.exist? && @image_path.exist?
         end
 
-        attr_reader :error_message
-
-        def reporter(difference = @difference)
-          @reporter ||= Capybara::Screenshot::Diff::Reporters::Default.new(difference || no_difference)
-        end
-
-        # TODO: Delete me
-        def annotated_image_path
-          return unless different?
-
-          reporter.annotated_image_path
-        end
-
-        # TODO: Delete me
-        def annotated_base_image_path
-          return unless different?
-
-          reporter.annotated_base_image_path
-        end
-
-        private
-
-        def report(difference)
-          reporter(difference).generate
+        def report
+          reporter.generate
         end
 
         def processed?
@@ -137,7 +133,7 @@ module Capybara
         end
 
         def load_and_process_images
-          images = driver.load_images(old_file_name, new_file_name)
+          images = driver.load_images(base_image_path, image_path)
           base_image, new_image = preprocess_images(images)
           Comparison.new(new_image, base_image, @driver_options, driver, image_path, base_image_path)
         end
@@ -148,10 +144,6 @@ module Capybara
 
         def median_filter_window_size
           @driver_options[:median_filter_window_size]
-        end
-
-        def dimensions
-          @driver_options[:dimensions]
         end
 
         def preprocess_images(images)
@@ -166,7 +158,14 @@ module Capybara
           end
 
           if median_filter_window_size
-            result = blur_image_by(image, median_filter_window_size)
+            if driver.is_a?(Drivers::VipsDriver)
+              result = blur_image_by(image, median_filter_window_size)
+            else
+              warn(
+                "[capybara-screenshot-diff] Median filter has been skipped for #{image_path} " \
+                  "because it is not supported by #{driver.class.name}"
+              )
+            end
           end
 
           result
@@ -177,28 +176,28 @@ module Capybara
         end
 
         def ignore_skipped_area(image)
-          skip_area.reduce(image) { |memo, region| driver.add_black_box(memo, region) }
+          skip_area&.reduce(image) { |memo, region| driver.add_black_box(memo, region) }
         end
 
         def old_file_size
-          @old_file_size ||= image_files_exist? && File.size(@old_file_name)
+          base_image_path.size
         end
 
         def new_file_size
-          File.size(@new_file_name)
+          image_path.size
         end
 
         def no_difference(comparison = nil)
           Difference.new(
             nil,
             { difference_level: nil, max_color_distance: 0 },
-            comparison || Comparison.new(nil, nil, driver_options, driver, image_path, base_image_path)
+            comparison || build_comparison
           ).freeze
         end
 
-      end
-
-      class Comparison < Struct.new(:new_image, :base_image, :options, :driver, :new_image_path, :base_image_path)
+        def build_comparison
+          Capybara::Screenshot::Diff::Comparison.new(nil, nil, driver_options, driver, image_path, base_image_path)
+        end
       end
     end
   end

@@ -22,7 +22,7 @@ module Capybara
 
           type color = [Integer, Integer, Integer, Integer]
 
-          def find_difference_region: (ImageEntity new_image, ImageEntity old_image, Numeric color_distance_limit, Numeric _shift_distance_limit, Integer _area_size_limit, ?fast_fail: bool) -> Difference
+          def find_difference_region: (Comparison) -> Difference
 
           def inscribed?: (dimension_entity dimensions, ImageEntity i) -> boolish
 
@@ -45,7 +45,7 @@ module Capybara
 
           def resize_image_to: (ImageEntity image, Integer new_width, Integer new_height) -> ImageEntity
 
-          def load_images: (String old_file_name, String new_file_name) -> images_entity[ImageEntity]
+          def load_images: (TestMethods::path_entity old_file_name, TestMethods::path_entity new_file_name) -> images_entity[ImageEntity]
 
           def from_file: (TestMethods::path_entity filename) -> ImageEntity
 

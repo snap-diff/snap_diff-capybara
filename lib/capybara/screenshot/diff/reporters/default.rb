@@ -20,11 +20,11 @@ module Capybara::Screenshot::Diff
         end
 
         if difference.failed? && difference.failed_by[:different_dimensions]
-          return build_error_for_different_dimensions(difference.failed_by[:different_dimensions])
+          return build_error_for_different_dimensions
         end
 
-        annotate_and_save_images(difference)
-        build_error_message(difference)
+        annotate_and_save_images
+        build_error_message
       end
 
       def clean_tmp_files
@@ -32,20 +32,20 @@ module Capybara::Screenshot::Diff
         annotated_image_path.unlink if annotated_image_path.exist?
       end
 
-      def build_error_for_different_dimensions(failed_by = nil)
+      def build_error_for_different_dimensions
         change_msg = [comparison.base_image, comparison.new_image]
-          .map { |i| driver.dimension(i).join("x") }
+          .map { |image| driver.dimension(image).join("x") }
           .join(" => ")
 
         "Screenshot dimension has been changed for #{new_file_name}: #{change_msg}"
       end
 
-      def annotate_and_save_images(difference)
-        annotate_and_save_image(difference, difference.comparison.new_image, annotated_image_path)
-        annotate_and_save_image(difference, difference.comparison.base_image, annotated_base_image_path)
+      def annotate_and_save_images
+        annotate_and_save_image(difference.comparison.new_image, annotated_image_path)
+        annotate_and_save_image(difference.comparison.base_image, annotated_base_image_path)
       end
 
-      def annotate_and_save_image(difference, image, image_path)
+      def annotate_and_save_image(image, image_path)
         image = annotate_difference(image, difference.region)
         image = annotate_skip_areas(image, difference.skip_area) if difference.skip_area
 
@@ -72,7 +72,7 @@ module Capybara::Screenshot::Diff
 
       NEW_LINE = "\n".freeze
 
-      def build_error_message(difference)
+      def build_error_message
         [
           "(#{difference.inspect})",
           new_image_path.to_path,
