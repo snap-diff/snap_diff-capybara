@@ -40,7 +40,7 @@ module Capybara::Screenshot::Diff
     private
 
     def experiment_for(x, driver, method, suffix, new_path, base_path)
-      x.report("[#{suffix}] #{driver}##{method}") do
+      x.reporter.generate do
         50.times do
           ImageCompare.new(new_path, base_path, driver: driver).public_send(method)
 
