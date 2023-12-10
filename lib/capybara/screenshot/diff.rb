@@ -7,8 +7,11 @@ require "capybara/screenshot/diff/image_compare"
 require "capybara/screenshot/diff/test_methods"
 require "capybara/screenshot/diff/screenshoter"
 
+require "capybara/screenshot/diff/reporters/default"
+
 module Capybara
   module Screenshot
+
     mattr_accessor :add_driver_path
     mattr_accessor :add_os_path
     mattr_accessor :blur_active_element
