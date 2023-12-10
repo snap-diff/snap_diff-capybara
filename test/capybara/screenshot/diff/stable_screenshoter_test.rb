@@ -61,8 +61,8 @@ module Capybara
 
           mock = ::Minitest::Mock.new(build_image_compare_stub(equal: false))
           annotated_attempts_paths.reverse_each do |(latest_path, committed_path)|
-            mock.expect(:annotated_image_path, latest_path.to_s)
-            mock.expect(:annotated_base_image_path, committed_path.to_s)
+            mock.reporter.expect(:annotated_image_path, latest_path.to_s)
+            mock.reporter.expect(:annotated_base_image_path, committed_path.to_s)
           end
 
           assert_raises RuntimeError, "Could not get stable screenshot within 1s" do
@@ -75,6 +75,7 @@ module Capybara
           end
 
           mock.verify
+          mock.reporter.verify
 
           # There are no runtime files to find difference on stabilization
           assert_empty Dir["tmp/*_a*.latest.png"]
@@ -92,12 +93,13 @@ module Capybara
         private
 
         ImageCompareStub = Struct.new(
-          :driver, :driver_options, :shift_distance_limit, :quick_equal?, :different?, keyword_init: true
+          :driver, :driver_options, :shift_distance_limit, :quick_equal?, :different?, :reporter, keyword_init: true
         )
 
         def build_image_compare_stub(equal: true)
           ImageCompareStub.new(
             driver: ::Minitest::Mock.new,
+            reporter: ::Minitest::Mock.new,
             driver_options: Capybara::Screenshot::Diff.default_options,
             shift_distance_limit: nil,
             quick_equal?: equal,

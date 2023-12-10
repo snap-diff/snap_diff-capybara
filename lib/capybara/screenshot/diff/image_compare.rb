@@ -12,11 +12,14 @@ module Capybara
 
         attr_reader :driver, :driver_options
 
-        attr_reader :annotated_image_path, :annotated_base_image_path,
-          :image_path, :base_image_path,
-          :new_file_name, :old_file_name
+        attr_reader :image_path, :base_image_path, :new_file_name, :old_file_name
+
+        attr_reader :difference
 
         def initialize(image_path, base_image_path, options = {})
+          @reporter = nil
+          @error_message = nil
+
           @image_path = Pathname.new(image_path)
 
           @new_file_name = @image_path.to_s
@@ -30,16 +33,12 @@ module Capybara
           @driver_options = options.dup
 
           @driver = Drivers.for(@driver_options)
-          @reporter = Capybara::Screenshot::Diff::Reporters::Default.new(self, @annotated_image_path, @annotated_base_image_path)
-        end
-
-        def self.build(image_path, base_image_path, options = {})
-          self.new(image_path, base_image_path, options)
         end
 
         # Compare the two image files and return `true` or `false` as quickly as possible.
         # Return falsely if the old file does not exist or the image dimensions do not match.
         def quick_equal?
+
           return false unless image_files_exist?
           # TODO: Confirm this change. There are screenshots with the same size, but there is a big difference
           return true if new_file_size == old_file_size
@@ -54,6 +53,8 @@ module Capybara
           return false if without_tolerable_options?
 
           @difference = driver.find_difference_region(comparison)
+          @reporter = nil
+          @error_message = nil
 
           !@difference.different?
         end
@@ -62,18 +63,13 @@ module Capybara
         # and `false` if they are the same.
         def different?
           @error_message = nil
+          @reporter = nil
 
           @difference = find_difference unless processed?
 
-          @error_message = reporter.generate(@difference)
-
-          clean_tmp_files unless @difference.different?
+          @error_message = report(@difference)
 
           @difference.different?
-        end
-
-        def clean_tmp_files
-          reporter.clean_tmp_files
         end
 
         def image_files_exist?
@@ -82,7 +78,29 @@ module Capybara
 
         attr_reader :error_message
 
+        def reporter(difference = @difference)
+          @reporter ||= Capybara::Screenshot::Diff::Reporters::Default.new(difference || no_difference)
+        end
+
+        # TODO: Delete me
+        def annotated_image_path
+          return unless different?
+
+          reporter.annotated_image_path
+        end
+
+        # TODO: Delete me
+        def annotated_base_image_path
+          return unless different?
+
+          reporter.annotated_base_image_path
+        end
+
         private
+
+        def report(difference)
+          reporter(difference).generate
+        end
 
         def processed?
           !!@difference
@@ -99,25 +117,29 @@ module Capybara
           comparison = load_and_process_images
 
           unless driver.same_dimension?(comparison)
-            return Difference.new(
-              nil,
-              { difference_level: nil, max_color_distance: 0 },
-              self,
-              { different_dimensions: { comparison: comparison, new_file_name: new_file_name } }
-            )
+            return failed_difference(comparison, { different_dimensions: true })
           end
 
           if driver.same_pixels?(comparison)
-            no_difference
+            no_difference(comparison)
           else
             driver.find_difference_region(comparison)
           end
         end
 
+        def failed_difference(comparison, failed_by)
+          Difference.new(
+            nil,
+            { difference_level: nil, max_color_distance: 0 },
+            comparison,
+            failed_by
+          )
+        end
+
         def load_and_process_images
           images = driver.load_images(old_file_name, new_file_name)
           base_image, new_image = preprocess_images(images)
-          Comparison.new(new_image, base_image, @driver_options)
+          Comparison.new(new_image, base_image, @driver_options, driver, image_path, base_image_path)
         end
 
         def skip_area
@@ -166,21 +188,17 @@ module Capybara
           File.size(@new_file_name)
         end
 
-        def not_different
-          no_difference.different? || nil
-        end
-
-        def no_difference
-          @difference = Difference.new(nil, { difference_level: nil, max_color_distance: 0 }, self).freeze
-        end
-
-        def reporter
-          @reporter ||= Capybara::Screenshot::Diff::Reporters::Default.new(self)
+        def no_difference(comparison = nil)
+          Difference.new(
+            nil,
+            { difference_level: nil, max_color_distance: 0 },
+            comparison || Comparison.new(nil, nil, driver_options, driver, image_path, base_image_path)
+          ).freeze
         end
 
       end
 
-      class Comparison < Struct.new(:new_image, :base_image, :options)
+      class Comparison < Struct.new(:new_image, :base_image, :options, :driver, :new_image_path, :base_image_path)
       end
     end
   end

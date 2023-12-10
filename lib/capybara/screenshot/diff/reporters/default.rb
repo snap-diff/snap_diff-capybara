@@ -3,16 +3,21 @@
 module Capybara::Screenshot::Diff
   module Reporters
     class Default
-      attr_reader :comparer, :annotated_image_path, :annotated_base_image_path
+      attr_reader :annotated_image_path, :annotated_base_image_path, :difference
 
-      def initialize(comparer, annotated_image_path = nil, annotated_base_image_path = nil)
-        @comparer = comparer
-        @annotated_image_path = annotated_image_path || comparer.annotated_image_path
-        @annotated_base_image_path = annotated_base_image_path || comparer.annotated_base_image_path
+      def initialize(difference)
+        @difference = difference
+
+        @annotated_image_path = comparison.new_image_path.sub_ext(".diff.png")
+        @annotated_base_image_path = comparison.base_image_path.sub_ext(".diff.png")
       end
 
-      def generate(difference)
-        return nil unless difference.different?
+      def generate
+        if difference.equal?
+          # NOTE: Delete previous run runtime files
+          clean_tmp_files
+          return nil
+        end
 
         if difference.failed? && difference.failed_by[:different_dimensions]
           return build_error_for_different_dimensions(difference.failed_by[:different_dimensions])
@@ -22,14 +27,12 @@ module Capybara::Screenshot::Diff
         build_error_message(difference)
       end
 
-
       def clean_tmp_files
         annotated_base_image_path.unlink if annotated_base_image_path.exist?
         annotated_image_path.unlink if annotated_image_path.exist?
       end
 
-      def build_error_for_different_dimensions(failed_by)
-        comparison, new_file_name = failed_by[:comparison], failed_by[:new_file_name]
+      def build_error_for_different_dimensions(failed_by = nil)
         change_msg = [comparison.base_image, comparison.new_image]
           .map { |i| driver.dimension(i).join("x") }
           .join(" => ")
@@ -72,7 +75,7 @@ module Capybara::Screenshot::Diff
       def build_error_message(difference)
         [
           "(#{difference.inspect})",
-          new_file_name,
+          new_image_path.to_path,
           annotated_base_image_path.to_path,
           annotated_image_path.to_path
         ].join(NEW_LINE)
@@ -80,16 +83,20 @@ module Capybara::Screenshot::Diff
 
       private
 
-      def reporter
-        self
+      def new_image_path
+        comparison.new_image_path
       end
 
       def driver
-        @comparer.driver
+        @_driver ||= comparison.driver
+      end
+
+      def comparison
+        @_comparison ||= difference.comparison
       end
 
       def new_file_name
-        @comparer.new_file_name
+        @_new_file_name ||= comparison.new_image_path.to_path
       end
     end
   end

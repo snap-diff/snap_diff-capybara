@@ -49,15 +49,19 @@ module Capybara
             assert comp.different?
             assert_includes comp.error_message, "[11.0,3.0,49.0,21.0]"
             assert File.exist?(comp.old_file_name)
-            assert File.exist?(comp.annotated_base_image_path)
-            assert File.exist?(comp.annotated_image_path)
+            assert File.exist?(comp.reporter.annotated_base_image_path)
+            assert File.exist?(comp.reporter.annotated_image_path)
           end
 
           test "when equal clean runtime files" do
             comp = make_comparison(:c, :c)
             assert_not comp.different?
-            assert_not File.exist?(comp.annotated_base_image_path)
-            assert_not File.exist?(comp.annotated_image_path)
+
+            assert comp.reporter.annotated_base_image_path
+            assert comp.reporter.annotated_image_path
+
+            assert_not File.exist?(comp.reporter.annotated_base_image_path)
+            assert_not File.exist?(comp.reporter.annotated_image_path)
           end
 
           test "compare of 1 pixel wide diff" do

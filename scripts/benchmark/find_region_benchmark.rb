@@ -42,7 +42,7 @@ module Capybara::Screenshot::Diff
     def experiment_for(x, driver, method, suffix, new_path, base_path)
       x.report("[#{suffix}] #{driver}##{method}") do
         50.times do
-          ImageCompare.build(new_path, base_path, driver: driver).public_send(method)
+          ImageCompare.new(new_path, base_path, driver: driver).public_send(method)
 
           Vips.cache_set_max(0)
           Vips.cache_set_max(1000)
