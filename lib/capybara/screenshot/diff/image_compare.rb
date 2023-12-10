@@ -13,10 +13,8 @@ module Capybara
         TOLERABLE_OPTIONS = [:tolerance, :color_distance_limit, :shift_distance_limit, :area_size_limit].freeze
 
         attr_reader :driver, :driver_options
-
         attr_reader :image_path, :base_image_path
-
-        attr_reader :difference
+        attr_reader :difference, :error_message
 
         def initialize(image_path, base_image_path, options = {})
           @reporter = nil
@@ -41,17 +39,13 @@ module Capybara
           comparison = load_and_process_images
 
           unless driver.same_dimension?(comparison)
-            @difference = failed_difference(comparison, {different_dimensions: true})
-            @reporter = nil
-            @error_message = nil
+            self.difference = failed_difference(comparison, { different_dimensions: true })
 
             return false
           end
 
           if driver.same_pixels?(comparison)
-            @difference = no_difference(comparison)
-            @reporter = nil
-            @error_message = nil
+            self.difference = no_difference(comparison)
 
             return true
           end
@@ -59,27 +53,16 @@ module Capybara
           # Could not make any difference to be tolerable, so skip and return as not equal
           return false if without_tolerable_options?
 
-          @difference = driver.find_difference_region(comparison)
-          @reporter = nil
-          @error_message = nil
+          self.difference = driver.find_difference_region(comparison)
 
-          !@difference.different?
+          !difference.different?
         end
 
         # Compare the two image referenced by this object, and return `true` if they are different,
         # and `false` if they are the same.
         def different?
-          @error_message = nil
-          @reporter = nil
-
-          @difference = find_difference unless processed?
-
-          @error_message = report
-
-          @difference.different?
+          processed.difference.different?
         end
-
-        attr_reader :error_message
 
         def reporter
           @reporter ||= begin
@@ -88,18 +71,26 @@ module Capybara
           end
         end
 
+        def processed?
+          !!@difference
+        end
+
+        def processed
+          self.difference = find_difference unless processed?
+          @error_message = reporter.generate unless @error_message
+          self
+        end
+
         private
+
+        def difference=(new_difference)
+          @error_message = nil
+          @reporter = nil
+          @difference = new_difference
+        end
 
         def image_files_exist?
           @base_image_path.exist? && @image_path.exist?
-        end
-
-        def report
-          reporter.generate
-        end
-
-        def processed?
-          !!@difference
         end
 
         def without_tolerable_options?
@@ -113,7 +104,7 @@ module Capybara
           comparison = load_and_process_images
 
           unless driver.same_dimension?(comparison)
-            return failed_difference(comparison, {different_dimensions: true})
+            return failed_difference(comparison, { different_dimensions: true })
           end
 
           if driver.same_pixels?(comparison)
@@ -126,7 +117,7 @@ module Capybara
         def failed_difference(comparison, failed_by)
           Difference.new(
             nil,
-            {difference_level: nil, max_color_distance: 0},
+            { difference_level: nil, max_color_distance: 0 },
             comparison,
             failed_by
           )
@@ -190,13 +181,13 @@ module Capybara
         def no_difference(comparison = nil)
           Difference.new(
             nil,
-            {difference_level: nil, max_color_distance: 0},
+            { difference_level: nil, max_color_distance: 0 },
             comparison || build_comparison
           ).freeze
         end
 
         def build_comparison
-          Capybara::Screenshot::Diff::Comparison.new(nil, nil, driver_options, driver, image_path, base_image_path)
+          Capybara::Screenshot::Diff::Comparison.new(nil, nil, driver_options, driver, image_path, base_image_path).freeze
         end
       end
     end

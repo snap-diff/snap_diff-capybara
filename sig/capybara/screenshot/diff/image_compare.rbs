@@ -48,11 +48,17 @@ module Capybara
 
         def reporter: -> ::Capybara::Screenshot::Diff::ImageCompare::reporter_entity
 
+        def processed?: -> bool
+
+        def processed: -> ImageCompare
+
         private
 
         %a{rbs:test:skip} def blur_image_by: (Vips::Image, Numeric) -> image_entity
 
         def build_comparison: -> Comparison
+
+        def difference=: (Difference) -> void
 
         def failed_difference: (Comparison, top) -> Difference
 
@@ -64,19 +70,15 @@ module Capybara
 
         def median_filter_window_size: -> Numeric?
 
-        def no_difference: (::Capybara::Screenshot::Diff::Comparison?) -> ::Capybara::Screenshot::Diff::Difference
+        def new_file_size: () -> Integer
 
-        def preprocess_images: (images_entities images) -> images_entities
-
-        def preprocess_image: (image_entity image) -> image_entity
+        def no_difference: (Comparison?) -> Difference
 
         def old_file_size: () -> Integer
 
-        def new_file_size: () -> Integer
+        def preprocess_image: (image_entity image) -> image_entity
 
-        def processed?: -> boolish
-
-        def report: -> ::String?
+        def preprocess_images: (images_entities images) -> images_entities
 
         def without_tolerable_options?: -> boolish
       end
