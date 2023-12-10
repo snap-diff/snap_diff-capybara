@@ -42,6 +42,8 @@ module Capybara
 
         def initialize: (TestMethods::path_entity new_file_name, TestMethods::path_entity old_file_name, ?Drivers::BaseDriver::options_entity options) -> void
 
+        def self.build: (TestMethods::path_entity new_file_name, TestMethods::path_entity old_file_name, ?Drivers::BaseDriver::options_entity options) -> ImageCompare
+
         # Compare the two image_entity files and return `true` or `false` as quickly as possible.
         # Return falsely if the old file does not exist or the image_entity dimensions do not match.
         def quick_equal?: () -> boolish
