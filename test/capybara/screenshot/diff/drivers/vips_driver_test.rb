@@ -48,7 +48,7 @@ module Capybara
             comp = make_comparison(:a, :c)
             assert comp.different?
             assert_includes comp.error_message, "[11.0,3.0,49.0,21.0]"
-            assert File.exist?(comp.old_file_name)
+            assert File.exist?(comp.base_image_path)
             assert File.exist?(comp.reporter.annotated_base_image_path)
             assert File.exist?(comp.reporter.annotated_image_path)
           end

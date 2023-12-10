@@ -39,7 +39,7 @@ module Capybara
             comp = make_comparison(:a, :c)
             assert comp.different?
             assert_includes comp.error_message, "[11,3,48,20]"
-            assert File.exist?(comp.old_file_name)
+            assert File.exist?(comp.base_image_path)
             assert File.exist?(comp.reporter.annotated_base_image_path)
             assert File.exist?(comp.reporter.annotated_image_path)
 
@@ -121,7 +121,7 @@ module Capybara
             a_img[9, 6] += 0x010000
 
             comp = make_comparison(:a, :b)
-            other_img_filename = comp.new_file_name
+            other_img_filename = comp.image_path
             a_img.save(other_img_filename)
 
             comp.different?

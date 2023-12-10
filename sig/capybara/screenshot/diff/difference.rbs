@@ -2,7 +2,7 @@ module Capybara
   module Screenshot
     module Diff
       class Difference
-        attr_reader comparison: ImageCompare::Comparison
+        attr_reader comparison: Comparison
 
         def different?: () -> bool
 

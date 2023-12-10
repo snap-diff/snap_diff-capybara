@@ -8,29 +8,23 @@ module Capybara
       class ImageCompare
         TOLERABLE_OPTIONS: [:tolerance, :color_distance_limit, :shift_distance_limit, :area_size_limit]
 
-        class Comparison
-
-        end
-
         type driver_entity = (Drivers::VipsDriver | Drivers::ChunkyPNGDriver)
         type image_entity = (ChunkyPNG::Canvas | Vips::Image)
         type images_entities = [image_entity, image_entity]
         type cache_entity = (::Hash[Symbol, top] | top)
+        type reporter_entity = (Reporters::Base | Reporters::Default)
 
-        @annotated_base_image_path: Pathname
-        @annotated_image_path: Pathname
         @difference: Difference
         @error_message: String?
 
+        @reporter: reporter_entity?
+
+        attr_reader difference: Difference?
         attr_reader error_message: String?
-        attr_reader annotated_base_image_path: Pathname
-        attr_reader annotated_image_path: Pathname
+        attr_reader base_image_path: Pathname
+        attr_reader image_path: Pathname
         attr_reader driver: driver_entity
         attr_reader driver_options: Drivers::BaseDriver::options_entity
-        attr_reader annotated_new_file_name: TestMethods::path_entity
-        attr_reader annotated_old_file_name: TestMethods::path_entity
-        attr_reader new_file_name: String
-        attr_reader old_file_name: String
         attr_reader skip_area: Array[Region]?
         attr_accessor shift_distance_limit: Numeric?
         attr_accessor area_size_limit: Numeric?
@@ -52,21 +46,25 @@ module Capybara
         # and `false` if they are the same.
         def different?: () -> bool
 
-        def clean_tmp_files: () -> void
-
-        def save: (image_entity, TestMethods::path_entity) -> void
-
-        def old_file_exists?: () -> boolish
-
-        def reset: () -> void
-
-        NEW_LINE: "\n"
+        def reporter: -> ::Capybara::Screenshot::Diff::ImageCompare::reporter_entity
 
         private
 
+        %a{rbs:test:skip} def blur_image_by: (Vips::Image, Numeric) -> image_entity
+
+        def build_comparison: -> Comparison
+
+        def failed_difference: (Comparison, top) -> Difference
+
         def find_difference: -> Difference
 
-        def different: (Difference images) -> String
+        def image_files_exist?: -> boolish
+
+        def load_and_process_images: -> Comparison
+
+        def median_filter_window_size: -> Numeric?
+
+        def no_difference: (::Capybara::Screenshot::Diff::Comparison?) -> ::Capybara::Screenshot::Diff::Difference
 
         def preprocess_images: (images_entities images) -> images_entities
 
@@ -76,19 +74,11 @@ module Capybara
 
         def new_file_size: () -> Integer
 
-        def not_different: () -> nil
+        def processed?: -> boolish
 
-        def annotate_and_save_images: (Difference) -> void
+        def report: -> ::String?
 
-        def annotate_and_save_image: (Difference, image_entity, TestMethods::path_entity) -> void
-
-        DIFF_COLOR: [255, 0, 0, 255]
-
-        def annotate_difference: (image_entity, Region) -> void
-
-        SKIP_COLOR: [255, 192, 0, 255]
-
-        def annotate_skip_areas: (image_entity, Array[Region] skip_areas) -> void
+        def without_tolerable_options?: -> boolish
       end
     end
   end
