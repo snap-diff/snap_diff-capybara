@@ -50,7 +50,7 @@ module Capybara
             our_screenshot("a", 1)
             assert_equal 1, @test_screenshots.size
             unless ENV["RBS_TEST_TARGET"] # RBS generates new methods for checking types, so we do not know their names
-              skip "FIXME: flaky test for local environment"
+              skip "FIXME: flaky test for local environment" unless ENV["CI"]
 
               assert_match(
                 /test_methods_test.rb:\d+:in `our_screenshot'/,
