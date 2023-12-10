@@ -64,7 +64,7 @@ module Capybara
         private
 
         def build_comparison_for(attempt_path, previous_attempt_path)
-          ImageCompare.new(attempt_path, previous_attempt_path, @comparison_options)
+          ImageCompare.build(attempt_path, previous_attempt_path, @comparison_options)
         end
 
         def annotate_attempts_and_fail!(screenshot_path)
