@@ -6,6 +6,7 @@ ruby_version: 3.0       # default: RUBY_VERSION
 default_ignores: false  # default: true
 
 ignore: # default: []
+  - '.*'
   - 'bin/**/*'
   - 'coverage/**/*'
   - 'gemfiles/**/*':

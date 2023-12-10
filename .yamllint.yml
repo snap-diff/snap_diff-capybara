@@ -9,8 +9,10 @@ rules:
     indent-sequences: whatever
 
 ignore: |
+  bin
   coverage
   gemfiles
+  scripts
   sig
   test
   tmp

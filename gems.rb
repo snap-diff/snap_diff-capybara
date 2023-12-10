@@ -8,7 +8,7 @@ gemspec path: __dir__
 gem "rake"
 
 # Image processing libraries
-gem "chunky_png", "~> 1.3", require: false
+gem "chunky_png", ">= 1.3", require: false
 gem "oily_png", platform: :ruby, git: "https://github.com/wvanbergen/oily_png", ref: "44042006e79efd42ce4b52c1d78a4c70f0b4b1b2"
 gem "ruby-vips", require: false
 
@@ -23,8 +23,7 @@ gem "rackup", require: false
 
 # Capybara Drivers
 gem "cuprite", require: false
-gem "selenium-webdriver", require: false
-gem "webdrivers", "~> 5.0", require: false
+gem "selenium-webdriver", ">= 4.11", require: false
 
 # Test Frameworks
 # gem "cucumber", require: false
