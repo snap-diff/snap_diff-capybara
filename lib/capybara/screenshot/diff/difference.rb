@@ -18,10 +18,6 @@ module Capybara
           !!failed_by
         end
 
-        def base_image
-          comparison.base_image
-        end
-
         def options
           comparison.options
         end

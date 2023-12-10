@@ -57,10 +57,6 @@ module Capybara
           ]
         end
 
-        def cleanup
-          FileUtils.rm_f(base_screenshot_path)
-        end
-
         def self.base_image_path_from(screenshot_path)
           screenshot_path.sub_ext(".base.png")
         end
