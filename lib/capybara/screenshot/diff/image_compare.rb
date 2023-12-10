@@ -28,8 +28,8 @@ module Capybara
         # Compare the two image files and return `true` or `false` as quickly as possible.
         # Return falsely if the old file does not exist or the image dimensions do not match.
         def quick_equal?
-          # TODO: What to do with this? Raise Argument Error?
-          return false unless image_files_exist?
+          require_images_exists!
+
           # NOTE: This is very fuzzy logic, but so far it's helps to support current performance.
           return true if new_file_size == old_file_size
 
@@ -78,23 +78,8 @@ module Capybara
 
         private
 
-        def difference=(new_difference)
-          @error_message = nil
-          @reporter = nil
-          @difference = new_difference
-        end
-
-        def image_files_exist?
-          @base_image_path.exist? && @image_path.exist?
-        end
-
-        def without_tolerable_options?
-          (@driver_options.keys & TOLERABLE_OPTIONS).empty?
-        end
-
         def find_difference
-          raise ArgumentError, "There is no original (base) screenshot version to compare, located: #{@base_image_path}" unless @base_image_path.exist?
-          raise ArgumentError, "There is no new screenshot version to compare, located: #{@image_path}" unless @image_path.exist?
+          require_images_exists!
 
           comparison = load_and_process_images
 
@@ -107,6 +92,25 @@ module Capybara
           else
             driver.find_difference_region(comparison)
           end
+        end
+
+        def require_images_exists!
+          raise ArgumentError, "There is no original (base) screenshot version to compare, located: #{base_image_path}" unless base_image_path.exist?
+          raise ArgumentError, "There is no new screenshot version to compare, located: #{image_path}" unless image_path.exist?
+        end
+
+        def difference=(new_difference)
+          @error_message = nil
+          @reporter = nil
+          @difference = new_difference
+        end
+
+        def image_files_exist?
+          @base_image_path.exist? && @image_path.exist?
+        end
+
+        def without_tolerable_options?
+          (@driver_options.keys & TOLERABLE_OPTIONS).empty?
         end
 
         def build_failed_difference(comparison, failed_by)

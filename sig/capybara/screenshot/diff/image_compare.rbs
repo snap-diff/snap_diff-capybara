@@ -80,6 +80,8 @@ module Capybara
 
         def preprocess_images: (images_entities images) -> images_entities
 
+        def require_images_exists!: -> void
+
         def without_tolerable_options?: -> boolish
       end
     end
