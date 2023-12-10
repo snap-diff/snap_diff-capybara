@@ -7,14 +7,14 @@ module Capybara::Screenshot::Diff
   class DifferenceTest < ActiveSupport::TestCase
     class WithFailedByTest < DifferenceTest
       setup do
-        @difference = Difference.new(nil, {}, nil, { different_dimensions: [] })
+        @difference = Difference.new(nil, {}, nil, {different_dimensions: []})
       end
 
-      test 'it is different' do
+      test "it is different" do
         assert_predicate @difference, :different?
       end
 
-      test 'it is failed' do
+      test "it is failed" do
         assert_predicate @difference, :failed?
       end
     end

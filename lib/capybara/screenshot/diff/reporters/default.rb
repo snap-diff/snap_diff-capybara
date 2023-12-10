@@ -70,7 +70,7 @@ module Capybara::Screenshot::Diff
         driver.save_image_to(image, image_path.to_s)
       end
 
-      NEW_LINE = "\n".freeze
+      NEW_LINE = "\n"
 
       def build_error_message
         [
