@@ -54,7 +54,7 @@ module Capybara
             stabilization_comparator = build_comparison_for(attempt_path, prev_attempt_path)
 
             # If previous screenshot is equal to the current, then we are good
-            return attempt_path if prev_attempt_path && stabilization_comparator.quick_equal?
+            return attempt_path if prev_attempt_path && does_not_require_next_attempt?(stabilization_comparator)
 
             # If timeout then we failed to generate valid screenshot
             return nil if timeout?(elapsed_time)
@@ -62,6 +62,12 @@ module Capybara
         end
 
         private
+
+        def does_not_require_next_attempt?(stabilization_comparator)
+          stabilization_comparator.quick_equal?
+        rescue ArgumentError
+          false
+        end
 
         def build_comparison_for(attempt_path, previous_attempt_path)
           ImageCompare.new(attempt_path, previous_attempt_path, @comparison_options)
