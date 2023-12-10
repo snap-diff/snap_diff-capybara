@@ -17,9 +17,6 @@ module Capybara
         attr_reader :difference, :error_message
 
         def initialize(image_path, base_image_path, options = {})
-          @reporter = nil
-          @error_message = nil
-
           @image_path = Pathname.new(image_path)
           @base_image_path = Pathname.new(base_image_path)
 
@@ -33,24 +30,22 @@ module Capybara
         def quick_equal?
           # TODO: What to do with this? Raise Argument Error?
           return false unless image_files_exist?
-          # TODO: Confirm this change. There are screenshots with the same size, but there is a big difference
+          # NOTE: This is very fuzzy logic, but so far it's helps to support current performance.
           return true if new_file_size == old_file_size
 
           comparison = load_and_process_images
 
           unless driver.same_dimension?(comparison)
-            self.difference = failed_difference(comparison, { different_dimensions: true })
-
+            self.difference = build_failed_difference(comparison, {different_dimensions: true})
             return false
           end
 
           if driver.same_pixels?(comparison)
-            self.difference = no_difference(comparison)
-
+            self.difference = build_no_difference(comparison)
             return true
           end
 
-          # Could not make any difference to be tolerable, so skip and return as not equal
+          # NOTE: Could not make any difference to be tolerable, so skip and return as not equal.
           return false if without_tolerable_options?
 
           self.difference = driver.find_difference_region(comparison)
@@ -66,18 +61,18 @@ module Capybara
 
         def reporter
           @reporter ||= begin
-            current_difference = difference || no_difference(nil)
+            current_difference = difference || build_no_difference(nil)
             Capybara::Screenshot::Diff::Reporters::Default.new(current_difference)
           end
         end
 
         def processed?
-          !!@difference
+          !!difference
         end
 
         def processed
           self.difference = find_difference unless processed?
-          @error_message = reporter.generate unless @error_message
+          @error_message ||= reporter.generate
           self
         end
 
@@ -104,20 +99,20 @@ module Capybara
           comparison = load_and_process_images
 
           unless driver.same_dimension?(comparison)
-            return failed_difference(comparison, { different_dimensions: true })
+            return build_failed_difference(comparison, {different_dimensions: true})
           end
 
           if driver.same_pixels?(comparison)
-            no_difference(comparison)
+            build_no_difference(comparison)
           else
             driver.find_difference_region(comparison)
           end
         end
 
-        def failed_difference(comparison, failed_by)
+        def build_failed_difference(comparison, failed_by)
           Difference.new(
             nil,
-            { difference_level: nil, max_color_distance: 0 },
+            {difference_level: nil, max_color_distance: 0},
             comparison,
             failed_by
           )
@@ -178,10 +173,10 @@ module Capybara
           image_path.size
         end
 
-        def no_difference(comparison = nil)
+        def build_no_difference(comparison = nil)
           Difference.new(
             nil,
-            { difference_level: nil, max_color_distance: 0 },
+            {difference_level: nil, max_color_distance: 0},
             comparison || build_comparison
           ).freeze
         end
