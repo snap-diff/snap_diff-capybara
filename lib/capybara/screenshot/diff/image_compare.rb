@@ -32,6 +32,10 @@ module Capybara
           @driver = Drivers.for(@driver_options)
         end
 
+        def self.build(image_path, base_image_path, options = {})
+          self.new(image_path, base_image_path, options)
+        end
+
         # Compare the two image files and return `true` or `false` as quickly as possible.
         # Return falsely if the old file does not exist or the image dimensions do not match.
         def quick_equal?
