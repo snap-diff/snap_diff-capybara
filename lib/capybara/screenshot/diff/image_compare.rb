@@ -123,9 +123,11 @@ module Capybara
         end
 
         def load_and_process_images
-          images = driver.load_images(base_image_path, image_path)
-          base_image, new_image = preprocess_images(images)
-          Comparison.new(new_image, base_image, @driver_options, driver, image_path, base_image_path)
+          @comparison ||= begin
+            images = driver.load_images(base_image_path, image_path)
+            base_image, new_image = preprocess_images(images)
+            Comparison.new(new_image, base_image, @driver_options, driver, image_path, base_image_path)
+          end
         end
 
         def skip_area

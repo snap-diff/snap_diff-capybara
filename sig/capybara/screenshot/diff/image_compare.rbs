@@ -14,6 +14,7 @@ module Capybara
         type cache_entity = (::Hash[Symbol, top] | top)
         type reporter_entity = (Reporters::Base | Reporters::Default)
 
+        @comparison: Comparison?
         @difference: Difference
         @error_message: String?
 
