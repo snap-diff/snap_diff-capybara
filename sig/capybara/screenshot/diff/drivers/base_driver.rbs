@@ -24,8 +24,6 @@ module Capybara
 
           def find_difference_region: (Comparison) -> Difference
 
-          def inscribed?: (dimension_entity dimensions, ImageEntity i) -> boolish
-
           def crop: (Region region, ImageEntity i) -> ImageEntity
 
           def filter_image_with_median: (ImageEntity image, Numeric median_filter_window_size) -> ImageEntity
