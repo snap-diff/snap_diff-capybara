@@ -90,6 +90,15 @@ module Capybara
         File.delete(rev_filename) if File.exist?(rev_filename)
       end
 
+      def test_screenshot_with_screenshot_format
+        skip "VIPS not present. Skipping VIPS driver tests." unless defined?(Vips)
+
+        Capybara::Screenshot.screenshot_format = "webp"
+        screenshot "a", driver: :vips
+      ensure
+        Capybara::Screenshot.screenshot_format = "webp"
+      end
+
       test "build_full_name" do
         assert_equal "a", build_full_name("a")
         screenshot_group "b"

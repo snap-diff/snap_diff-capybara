@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require "test_helper"
-require "capybara/screenshot/diff/drivers/utils"
+require "capybara/screenshot/diff/utils"
 require "minitest/stub_const"
 
 module Capybara

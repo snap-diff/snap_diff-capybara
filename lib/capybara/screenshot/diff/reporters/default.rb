@@ -5,12 +5,12 @@ module Capybara::Screenshot::Diff
     class Default
       attr_reader :annotated_image_path, :annotated_base_image_path, :heatmap_diff_path, :difference
 
-      def initialize(difference)
+      def initialize(difference, format: "png")
         @difference = difference
 
-        @annotated_image_path = comparison.new_image_path.sub_ext(".diff.png")
-        @annotated_base_image_path = comparison.base_image_path.sub_ext(".diff.png")
-        @heatmap_diff_path = comparison.new_image_path.sub_ext(".heatmap.diff.png")
+        @annotated_image_path = comparison.new_image_path.sub_ext(".diff.#{format}")
+        @annotated_base_image_path = comparison.base_image_path.sub_ext(".diff.#{format}")
+        @heatmap_diff_path = comparison.new_image_path.sub_ext(".heatmap.diff.#{format}")
       end
 
       def generate
