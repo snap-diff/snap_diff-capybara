@@ -31,7 +31,7 @@ module Capybara
           assert_kind_of Drivers::VipsDriver, comparison.driver
         end
 
-        test "it generates annotation files on difference" do
+        test "for vips it generates annotation files on difference" do
           skip "VIPS not present. Skipping VIPS driver tests." unless defined?(Vips)
           comparison = make_comparison(:a, :b, driver: :vips)
 
