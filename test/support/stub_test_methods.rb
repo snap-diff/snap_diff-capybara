@@ -33,7 +33,6 @@ module Capybara
           FileUtils.cp TEST_IMAGES_DIR / "#{original_base_image}.png", ScreenshotMatcher.base_image_path_from(destination)
         end
 
-
         ImageCompareStub = Struct.new(
           :driver, :driver_options, :shift_distance_limit, :quick_equal?, :different?, :reporter, keyword_init: true
         )

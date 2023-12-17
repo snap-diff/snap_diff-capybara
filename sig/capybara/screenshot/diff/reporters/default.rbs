@@ -5,11 +5,12 @@ module Capybara
         class Default < Base
           @annotated_base_image_path: Pathname
           @annotated_image_path: Pathname
+          @heatmap_diff_path: Pathname
           @difference: Difference
 
           attr_reader annotated_base_image_path: Pathname
           attr_reader annotated_image_path: Pathname
-
+          attr_reader heatmap_diff_path: Pathname
           attr_reader difference: Difference
 
           def annotate_and_save_images: -> void
