@@ -68,6 +68,7 @@ module Capybara
           color_distance_limit: color_distance_limit,
           driver: driver,
           shift_distance_limit: shift_distance_limit,
+          screenshot_format: "png",
           skip_area: skip_area,
           stability_time_limit: Screenshot.stability_time_limit,
           tolerance: tolerance || ((driver == :vips) ? 0.001 : nil),

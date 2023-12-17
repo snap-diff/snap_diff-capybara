@@ -15,7 +15,7 @@ module Capybara
           @screenshot_full_name = screenshot_full_name
           @driver_options = Diff.default_options.merge(options)
 
-          @screenshot_format = options[:screenshot_format] || "png"
+          @screenshot_format = @driver_options[:screenshot_format]
           @screenshot_path = Screenshot.screenshot_area_abs / Pathname.new(screenshot_full_name).sub_ext(".#{screenshot_format}")
           @base_screenshot_path = ScreenshotMatcher.base_image_path_from(@screenshot_path)
         end

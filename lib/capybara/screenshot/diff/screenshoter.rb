@@ -28,7 +28,7 @@ module Capybara
 
       def self.attempts_screenshot_paths(base_file)
         extname = Pathname.new(base_file).extname
-        Dir["#{base_file.to_s.chomp("#{extname}")}.attempt_*#{extname}"].sort
+        Dir["#{base_file.to_s.chomp(extname)}.attempt_*#{extname}"].sort
       end
 
       def self.cleanup_attempts_screenshots(base_file)
