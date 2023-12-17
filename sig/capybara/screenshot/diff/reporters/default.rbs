@@ -27,6 +27,12 @@ module Capybara
           def build_error_message: -> ::String
 
           def clean_tmp_files: () -> void
+
+          private
+
+          def driver: -> ImageCompare::driver_entity
+
+          def image_path: -> Pathname
         end
       end
     end

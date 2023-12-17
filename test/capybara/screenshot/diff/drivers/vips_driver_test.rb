@@ -150,8 +150,7 @@ module Capybara
           # Test Interface Contracts
 
           test "from_file loads image from path" do
-            driver = VipsDriver.new
-            assert driver.from_file(TEST_IMAGES_DIR / "a.png")
+            assert VipsDriver.new.from_file(TEST_IMAGES_DIR / "a.png")
           end
 
           private
@@ -190,8 +189,8 @@ module Capybara
           end
 
           test "segment difference" do
-            old_image = Vips::Image.new_from_file("#{TEST_IMAGES_DIR}/a.png")
-            new_image = Vips::Image.new_from_file("#{TEST_IMAGES_DIR}/b.png")
+            old_image = Vips::Image.new_from_file(TEST_IMAGES_DIR.join("a.png").to_path)
+            new_image = Vips::Image.new_from_file(TEST_IMAGES_DIR.join("b.png").to_path)
 
             left, top, right, bottom = difference(old_image, new_image)
 

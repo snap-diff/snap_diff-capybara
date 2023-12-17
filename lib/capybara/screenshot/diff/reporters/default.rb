@@ -3,13 +3,14 @@
 module Capybara::Screenshot::Diff
   module Reporters
     class Default
-      attr_reader :annotated_image_path, :annotated_base_image_path, :difference
+      attr_reader :annotated_image_path, :annotated_base_image_path, :heatmap_diff_path, :difference
 
       def initialize(difference)
         @difference = difference
 
         @annotated_image_path = comparison.new_image_path.sub_ext(".diff.png")
         @annotated_base_image_path = comparison.base_image_path.sub_ext(".diff.png")
+        @heatmap_diff_path = comparison.new_image_path.sub_ext(".heatmap.diff.png")
       end
 
       def generate
@@ -37,15 +38,16 @@ module Capybara::Screenshot::Diff
           .map { |image| driver.dimension(image).join("x") }
           .join(" => ")
 
-        "Screenshot dimension has been changed for #{new_file_name}: #{change_msg}"
+        "Screenshot dimension has been changed for #{image_path.to_path}: #{change_msg}"
       end
 
       def annotate_and_save_images
-        annotate_and_save_image(difference.comparison.new_image, annotated_image_path)
-        annotate_and_save_image(difference.comparison.base_image, annotated_base_image_path)
+        save_annotation_for(new_image, annotated_image_path)
+        save_annotation_for(base_image, annotated_base_image_path)
+        save_heatmap_diff if difference.meta[:diff_mask]
       end
 
-      def annotate_and_save_image(image, image_path)
+      def save_annotation_for(image, image_path)
         image = annotate_difference(image, difference.region)
         image = annotate_skip_areas(image, difference.skip_area) if difference.skip_area
 
@@ -75,7 +77,7 @@ module Capybara::Screenshot::Diff
       def build_error_message
         [
           "(#{difference.inspect})",
-          new_image_path.to_path,
+          image_path.to_path,
           annotated_base_image_path.to_path,
           annotated_image_path.to_path
         ].join(NEW_LINE)
@@ -83,7 +85,22 @@ module Capybara::Screenshot::Diff
 
       private
 
-      def new_image_path
+      def save_heatmap_diff
+        merged_image = driver.merge(new_image, base_image)
+        highlighted_mask = driver.highlight_mask(difference.meta[:diff_mask], merged_image, color: DIFF_COLOR)
+
+        save(highlighted_mask, heatmap_diff_path.to_path)
+      end
+
+      def base_image
+        difference.comparison.base_image
+      end
+
+      def new_image
+        difference.comparison.new_image
+      end
+
+      def image_path
         comparison.new_image_path
       end
 
@@ -93,10 +110,6 @@ module Capybara::Screenshot::Diff
 
       def comparison
         @_comparison ||= difference.comparison
-      end
-
-      def new_file_name
-        @_new_file_name ||= comparison.new_image_path.to_path
       end
     end
   end

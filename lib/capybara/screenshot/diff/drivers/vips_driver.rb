@@ -15,6 +15,8 @@ module Capybara
       # Compare two images and determine if they are equal, different, or within some comparison
       # range considering color values and difference area size.
       module Drivers
+        DEFAULT_HIGHLIGHT_COLOR = [255, 0, 0, 255].freeze
+
         class VipsDriver < BaseDriver
           def find_difference_region(comparison)
             new_image, base_image, options = comparison.new_image, comparison.base_image, comparison.options
@@ -26,9 +28,8 @@ module Capybara
             result = Difference.new(region, {}, comparison)
 
             unless result.blank?
-              meta = {}
-              meta[:difference_level] = difference_level(diff_mask, base_image) if comparison.options[:tolerance]
-              result.meta = meta
+              result.meta[:difference_level] = difference_level(diff_mask, base_image) if comparison.options[:tolerance]
+              result.meta[:diff_mask] = diff_mask
             end
 
             result
@@ -98,6 +99,14 @@ module Capybara
 
           def same_pixels?(comparison)
             (comparison.new_image == comparison.base_image).min == 255
+          end
+
+          def merge(new_image, base_image)
+            base_image.composite2(new_image, :over)
+          end
+
+          def highlight_mask(diff_mask, merged_image, color: DEFAULT_HIGHLIGHT_COLOR)
+            diff_mask.ifthenelse(color, merged_image * 0.75)
           end
 
           private
