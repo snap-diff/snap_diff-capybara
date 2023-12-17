@@ -11,7 +11,9 @@ module Capybara
         def initialize(capture_options, comparison_options = nil)
           @stability_time_limit, @wait = capture_options.fetch_values(:stability_time_limit, :wait)
           @comparison_options = comparison_options || Diff.default_options
-          @screenshoter = Diff.screenshoter.new(capture_options.except(*STABILITY_OPTIONS), @comparison_options[:driver])
+
+          driver = Diff::Drivers.for(@comparison_options)
+          @screenshoter = Diff.screenshoter.new(capture_options.except(*STABILITY_OPTIONS), driver)
         end
 
         # Try to get screenshot from browser.
@@ -31,6 +33,7 @@ module Capybara
         end
 
         def take_stable_screenshot(screenshot_path)
+          screenshot_path = screenshot_path.is_a?(String) ? Pathname.new(screenshot_path) : screenshot_path
           # We try to compare first attempt with checkout version, in order to not run next screenshots
           attempt_path = nil
           screenshot_started_at = last_attempt_at = Time.now

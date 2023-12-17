@@ -9,13 +9,14 @@ module Capybara
   module Screenshot
     module Diff
       class ScreenshotMatcher
-        attr_reader :screenshot_full_name, :driver_options, :screenshot_path, :base_screenshot_path
+        attr_reader :screenshot_full_name, :driver_options, :screenshot_path, :base_screenshot_path, :screenshot_format
 
         def initialize(screenshot_full_name, options = {})
           @screenshot_full_name = screenshot_full_name
           @driver_options = Diff.default_options.merge(options)
 
-          @screenshot_path = Screenshot.screenshot_area_abs / Pathname.new(screenshot_full_name).sub_ext(".png")
+          @screenshot_format = options[:screenshot_format] || "png"
+          @screenshot_path = Screenshot.screenshot_area_abs / Pathname.new(screenshot_full_name).sub_ext(".#{screenshot_format}")
           @base_screenshot_path = ScreenshotMatcher.base_image_path_from(@screenshot_path)
         end
 
@@ -43,7 +44,8 @@ module Capybara
           capture_options = {
             crop: crop,
             stability_time_limit: driver_options.delete(:stability_time_limit),
-            wait: driver_options.delete(:wait)
+            wait: driver_options.delete(:wait),
+            screenshot_format: driver_options[:screenshot_format]
           }
 
           take_comparison_screenshot(capture_options, driver_options, screenshot_path)
@@ -58,7 +60,7 @@ module Capybara
         end
 
         def self.base_image_path_from(screenshot_path)
-          screenshot_path.sub_ext(".base.png")
+          screenshot_path.sub_ext(".base#{screenshot_path.extname}")
         end
 
         private

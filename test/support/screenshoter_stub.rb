@@ -7,12 +7,14 @@ class Capybara::Screenshot::ScreenshoterStub < Capybara::Screenshot::Screenshote
   end
 
   # Stub of the Capybara's save_screenshot
-  def save_screenshot(file_name)
-    source_image = File.basename(file_name)
+  def save_screenshot(path)
+    source_image = path.basename.to_path
     source_image.slice!(/\.attempt_\d+/)
     source_image.slice!(/^\d\d_/)
 
-    FileUtils.cp(File.expand_path(source_image, TEST_IMAGES_DIR), file_name)
+    FileUtils.cp(File.expand_path(source_image, TEST_IMAGES_DIR), path)
+
+    path
   end
 
   def evaluate_script(*)
@@ -24,8 +26,8 @@ class Capybara::Screenshot::ScreenshoterStub < Capybara::Screenshot::Screenshote
   end
 
   def take_screenshot(screenshot_path)
-    save_screenshot(screenshot_path)
+    stored_path = save_screenshot(screenshot_path)
 
-    process_screenshot(screenshot_path)
+    process_screenshot(stored_path, screenshot_path)
   end
 end

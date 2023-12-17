@@ -15,6 +15,14 @@ class RecordScreenshotTest < SystemTestCase
     screenshot "index-cropped", crop: "form"
   end
 
+  def test_record_index_as_webp
+    skip "VIPS not present. Skipping VIPS driver tests." unless defined?(Vips)
+
+    visit "/"
+
+    screenshot "index-vips", screenshot_format: "webp", driver: :vips
+  end
+
   def test_record_index_with_stability
     visit "/"
 

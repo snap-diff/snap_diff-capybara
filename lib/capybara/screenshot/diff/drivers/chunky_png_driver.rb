@@ -35,8 +35,8 @@ module Capybara
             i.crop(*region.to_top_left_corner_coordinates)
           end
 
-          def from_file(filename)
-            ChunkyPNG::Image.from_file(filename.to_s)
+          def from_file(filename_or_path)
+            ChunkyPNG::Image.from_file(filename_or_path.to_s)
           end
 
           def save_image_to(image, filename)

@@ -2,7 +2,7 @@
 
 require "capybara/dsl"
 require "capybara/screenshot/diff/version"
-require "capybara/screenshot/diff/drivers/utils"
+require "capybara/screenshot/diff/utils"
 require "capybara/screenshot/diff/image_compare"
 require "capybara/screenshot/diff/test_methods"
 require "capybara/screenshot/diff/screenshoter"
@@ -21,6 +21,7 @@ module Capybara
     mattr_accessor :window_size
     mattr_accessor(:save_path) { "doc/screenshots" }
     mattr_accessor(:use_lfs)
+    mattr_accessor(:screenshot_format) { "png" }
 
     class << self
       def root=(path)

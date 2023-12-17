@@ -89,28 +89,6 @@ module Capybara
         ensure
           FileUtils.rm_rf Dir["tmp/01_a*.png"]
         end
-
-        private
-
-        ImageCompareStub = Struct.new(
-          :driver, :driver_options, :shift_distance_limit, :quick_equal?, :different?, :reporter, keyword_init: true
-        )
-
-        def build_image_compare_stub(equal: true)
-          ImageCompareStub.new(
-            driver: ::Minitest::Mock.new,
-            reporter: ::Minitest::Mock.new,
-            driver_options: Capybara::Screenshot::Diff.default_options,
-            shift_distance_limit: nil,
-            quick_equal?: equal,
-            different?: !equal
-          )
-        end
-
-        def take_stable_screenshot_with(screenshot_path, stability_time_limit: 0.01, wait: 10)
-          screenshoter = StableScreenshoter.new({stability_time_limit: stability_time_limit, wait: wait})
-          screenshoter.take_stable_screenshot(screenshot_path)
-        end
       end
     end
   end

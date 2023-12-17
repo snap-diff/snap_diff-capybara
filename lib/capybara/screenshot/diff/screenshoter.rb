@@ -22,8 +22,13 @@ module Capybara
         @capture_options[:wait]
       end
 
+      def screenshot_format
+        @capture_options[:screenshot_format] || "png"
+      end
+
       def self.attempts_screenshot_paths(base_file)
-        Dir["#{base_file.to_s.chomp(".png")}.attempt_*.png"].sort
+        extname = Pathname.new(base_file).extname
+        Dir["#{base_file.to_s.chomp("#{extname}")}.attempt_*#{extname}"].sort
       end
 
       def self.cleanup_attempts_screenshots(base_file)
@@ -43,38 +48,34 @@ module Capybara
       end
 
       def self.gen_next_attempt_path(screenshot_path, iteration)
-        Pathname.new(screenshot_path).sub_ext(format(".attempt_%02i.png", iteration))
+        screenshot_path.sub_ext(format(".attempt_%02i#{screenshot_path.extname}", iteration))
       end
 
       def take_screenshot(screenshot_path)
         blurred_input = prepare_page_for_screenshot(timeout: wait)
 
         # Take browser screenshot and save
-        browser_save_screenshot(screenshot_path)
+        tmpfile = Tempfile.new([screenshot_path.basename.to_s, ".png"])
+        BrowserHelpers.session.save_screenshot(tmpfile.path)
 
         # Load saved screenshot and pre-process it
-        process_screenshot(screenshot_path)
+        process_screenshot(tmpfile.path, screenshot_path)
       ensure
+        File.unlink(tmpfile) if tmpfile
         blurred_input&.click
       end
 
-      def browser_save_screenshot(screenshot_path)
-        BrowserHelpers.session.save_screenshot(screenshot_path)
-      end
+      def process_screenshot(stored_path, screenshot_path)
+        screenshot_image = driver.from_file(stored_path)
 
-      def process_screenshot(screenshot_path)
         # TODO(uwe): Remove when chromedriver takes right size screenshots
         # TODO: Adds tests when this case is true
-        if selenium_with_retina_screen?
-          reduce_retina_image_size(screenshot_path)
-        end
+        screenshot_image = resize_if_needed(screenshot_image) if selenium_with_retina_screen?
         # ODOT
 
-        if crop
-          image = driver.from_file(screenshot_path)
-          cropped_image = driver.crop(crop, image)
-          driver.save_image_to(cropped_image, screenshot_path)
-        end
+        screenshot_image = driver.crop(crop, screenshot_image) if crop
+
+        driver.save_image_to(screenshot_image, screenshot_path)
       end
 
       def reduce_retina_image_size(file_name)
@@ -82,10 +83,7 @@ module Capybara
         saved_image = driver.from_file(file_name.to_s)
         return if driver.width_for(saved_image) < expected_image_width * 2
 
-        notice_how_to_avoid_this
-
-        new_height = expected_image_width * driver.height_for(saved_image) / driver.width_for(saved_image)
-        resized_image = driver.resize_image_to(saved_image, expected_image_width, new_height)
+        resized_image = resize_if_needed(saved_image)
 
         driver.save_image_to(resized_image, file_name)
       end
@@ -127,6 +125,16 @@ module Capybara
       end
 
       private
+
+      def resize_if_needed(saved_image)
+        expected_image_width = Screenshot.window_size[0]
+        return saved_image if driver.width_for(saved_image) < expected_image_width * 2
+
+        notice_how_to_avoid_this
+
+        new_height = expected_image_width * driver.height_for(saved_image) / driver.width_for(saved_image)
+        driver.resize_image_to(saved_image, expected_image_width, new_height)
+      end
 
       def selenium_with_retina_screen?
         Os::ON_MAC && BrowserHelpers.selenium? && Screenshot.window_size
