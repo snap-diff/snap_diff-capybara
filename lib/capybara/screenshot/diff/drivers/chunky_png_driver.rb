@@ -1,6 +1,5 @@
 # frozen_string_literal: true
 
-
 begin
   require "chunky_png"
 rescue LoadError => e

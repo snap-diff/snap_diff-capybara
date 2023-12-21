@@ -3,7 +3,7 @@
 #   $ docker build . -t csd
 #   $ docker run -v $(pwd):/app -ti csd rake test
 
-FROM jetthoughts/cimg-ruby:3.1-chrome
+FROM jetthoughts/cimg-ruby:3.2-chrome
 
 RUN \
   # Install dependencies
