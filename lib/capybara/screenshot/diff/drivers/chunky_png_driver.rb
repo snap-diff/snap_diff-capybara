@@ -1,6 +1,12 @@
 # frozen_string_literal: true
 
-require "chunky_png"
+
+begin
+  require "chunky_png"
+rescue LoadError => e
+  raise 'Required chunky_png gem is missing. Add `gem "chunky_png"` to Gemfile' if e.message.match?(/chunky_png/i)
+  raise
+end
 
 require "capybara/screenshot/diff/drivers/base_driver"
 

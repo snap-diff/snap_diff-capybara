@@ -8,7 +8,8 @@ gemspec path: __dir__
 gem "rake"
 
 # Image processing libraries
-gem "oily_png", platform: :ruby, git: "https://github.com/donv/oily_png", branch: "patch-2"
+gem "chunky_png", "~> 1.3", require: false
+gem "oily_png", platform: :ruby, git: "https://github.com/wvanbergen/oily_png", ref: "44042006e79efd42ce4b52c1d78a4c70f0b4b1b2"
 gem "ruby-vips", require: false
 
 # Test

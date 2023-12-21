@@ -16,7 +16,7 @@ Gem::Specification.new do |spec|
   spec.license = "MIT"
   spec.metadata["allowed_push_host"] = "https://rubygems.org/"
   spec.files = `git ls-files -z`.split("\x0").reject do |f|
-    f.match(%r{(^(\.|tmp|bin|test|spec|features|gemfiles|scripts)/)|(^(\.|Dockerfile|CONTRIBUTING|README))})
+    f.match(%r{(^(\.|tmp|bin|test|spec|features|gemfiles|scripts|foo)/)|(^(\.|Dockerfile|CONTRIBUTING|README))})
   end
 
   spec.bindir = "exe"
@@ -25,5 +25,4 @@ Gem::Specification.new do |spec|
 
   spec.add_runtime_dependency "actionpack", ">= 6.1", "< 8"
   spec.add_runtime_dependency "capybara", ">= 2", "< 4"
-  spec.add_runtime_dependency "chunky_png", "~> 1.3"
 end
