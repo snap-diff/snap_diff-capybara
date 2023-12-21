@@ -6,6 +6,7 @@ unless defined?(Vips)
   warn "VIPS not present. Skipping VIPS driver tests."
   return
 end
+
 require "capybara/screenshot/diff/drivers/vips_driver"
 
 module Capybara

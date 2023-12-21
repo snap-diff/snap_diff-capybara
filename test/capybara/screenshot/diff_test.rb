@@ -7,11 +7,13 @@ module Capybara
   module Screenshot
     class DiffTest < ActionDispatch::IntegrationTest
       setup do
+        @orig_add_driver_path = Capybara::Screenshot.add_driver_path
+        Capybara::Screenshot.add_driver_path = true
+
         @orig_add_os_path = Capybara::Screenshot.add_os_path
         Capybara::Screenshot.add_os_path = true
 
-        @orig_add_driver_path = Capybara::Screenshot.add_driver_path
-        Capybara::Screenshot.add_driver_path = true
+        @orig_screenshot_format = Capybara::Screenshot.screenshot_format
 
         @orig_window_size = Capybara::Screenshot.window_size
         Capybara::Screenshot.window_size = [80, 80]
@@ -23,8 +25,9 @@ module Capybara
       teardown do
         FileUtils.rm_rf Capybara::Screenshot.screenshot_area_abs
 
-        Capybara::Screenshot.add_os_path = @orig_add_os_path
         Capybara::Screenshot.add_driver_path = @orig_add_driver_path
+        Capybara::Screenshot.add_os_path = @orig_add_os_path
+        Capybara::Screenshot.screenshot_format = @orig_screenshot_format
         Capybara::Screenshot.window_size = @orig_window_size
       end
 
@@ -90,15 +93,6 @@ module Capybara
         File.delete(rev_filename) if File.exist?(rev_filename)
       end
 
-      def test_screenshot_with_screenshot_format
-        skip "VIPS not present. Skipping VIPS driver tests." unless defined?(Vips)
-
-        Capybara::Screenshot.screenshot_format = "webp"
-        screenshot "a", driver: :vips
-      ensure
-        Capybara::Screenshot.screenshot_format = "webp"
-      end
-
       test "build_full_name" do
         assert_equal "a", build_full_name("a")
         screenshot_group "b"
@@ -124,6 +118,27 @@ module Capybara
         assert_equal expected_drivers, Capybara::Screenshot::Diff::AVAILABLE_DRIVERS
       end
 
+      test "aggregates failures instead of raising errors on teardown for Minitest" do
+        test_case = SampleMiniTestCase.new(:_test_sample_screenshot_error)
+
+        test_case.run
+
+        assert_equal 1, test_case.failures.size
+        assert_includes test_case.failures.first.message, "expected error message"
+      end
+
+      test "raising errors on teardown for non Minitest" do
+        Capybara::Screenshot::Diff.stub_const(:ASSERTION, ::RuntimeError) do
+          test_case = SampleNotMiniTestCase.new
+          test_case._test_sample_screenshot_error
+
+          expected_message =
+            "Screenshot does not match for 'sample_screenshot' expected error message for non minitest"
+          assert_raises(RuntimeError, expected_message) { test_case.teardown }
+          assert(test_case.instance_variable_get(:@test_screenshots).empty?)
+        end
+      end
+
       class SampleMiniTestCase < ActionDispatch::IntegrationTest
         include Capybara::Screenshot::Diff
 
@@ -138,15 +153,6 @@ module Capybara
           @test_screenshots << ["my_test.rb:42", "sample_screenshot", mock]
           mock.expect(:clear_screenshots, @test_screenshots)
         end
-      end
-
-      test "aggregates failures instead of raising errors on teardown for Minitest" do
-        test_case = SampleMiniTestCase.new(:_test_sample_screenshot_error)
-
-        test_case.run
-
-        assert_equal 1, test_case.failures.size
-        assert_includes test_case.failures.first.message, "expected error message"
       end
 
       class SampleNotMiniTestCase
@@ -176,15 +182,34 @@ module Capybara
         end
       end
 
-      test "raising errors on teardown for non Minitest" do
-        Capybara::Screenshot::Diff.stub_const(:ASSERTION, ::RuntimeError) do
-          test_case = SampleNotMiniTestCase.new
-          test_case._test_sample_screenshot_error
+      class ScreenshotFormatTest < ActionDispatch::IntegrationTest
+        setup do
+          @orig_screenshot_format = Capybara::Screenshot.screenshot_format
+        end
 
-          expected_message =
-            "Screenshot does not match for 'sample_screenshot' expected error message for non minitest"
-          assert_raises(RuntimeError, expected_message) { test_case.teardown }
-          assert(test_case.instance_variable_get(:@test_screenshots).empty?)
+        include Capybara::Screenshot::Diff
+        include Diff::TestMethodsStub
+
+        teardown do
+          Capybara::Screenshot.screenshot_format = @orig_screenshot_format
+        end
+
+        test "use default screenshot format" do
+          skip "VIPS not present. Skipping VIPS driver tests." unless defined?(Vips)
+
+          Capybara::Screenshot.screenshot_format = "webp"
+
+          screenshot "a", driver: :vips
+
+          assert_stored_screenshot("a.webp")
+        end
+
+        test "override default screenshot format" do
+          Capybara::Screenshot.screenshot_format = "webp"
+
+          screenshot "a", screenshot_format: "png"
+
+          assert_stored_screenshot("a.png")
         end
       end
     end
