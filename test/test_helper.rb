@@ -47,8 +47,7 @@ class ActiveSupport::TestCase
   self.file_fixture_path = Pathname.new(File.expand_path("fixtures", __dir__))
 
   teardown do
-    FileUtils.rm_rf Capybara::Screenshot.screenshot_area_abs
-    FileUtils.rm_rf Dir[Capybara::Screenshot.root / "*.png"]
+    FileUtils.rm_rf Dir[Capybara::Screenshot.root / "*"]
   end
 
   def optional_test
@@ -60,5 +59,15 @@ class ActiveSupport::TestCase
   def assert_same_images(expected_image_name, image_path)
     expected_image_path = file_fixture("files/comparisons/#{expected_image_name}")
     assert_predicate(Capybara::Screenshot::Diff::ImageCompare.new(image_path, expected_image_path), :quick_equal?)
+  end
+
+  def assert_stored_screenshot(filename)
+    screenshots = Capybara::Screenshot.screenshot_area_abs.children.map { |f| f.basename.to_s }
+
+    assert_includes(
+      screenshots,
+      filename,
+      "Screenshot #{filename} not found in #{Capybara::Screenshot.screenshot_area_abs}"
+    )
   end
 end
