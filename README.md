@@ -576,6 +576,14 @@ def screenshot(name, **options)
 end
 ```
 
+### Screenshot Format
+
+You can specify the format of the screenshots taken by setting the `screenshot_format` option. By default, the format is set to `"png"`. However, you can change this to any format supported by your image processing driver. For example, to set the format to `"webp"`, you can do the following:
+
+```ruby
+Capybara::Screenshot.screenshot_format = "webp"
+```
+
 ## Development
 
 After checking out the repo, run `bin/setup` to install dependencies.
