@@ -28,7 +28,7 @@ module Capybara
 
           def filter_image_with_median: (ImageEntity image, Numeric median_filter_window_size) -> ImageEntity
 
-          def add_black_box: (ImageEntity memo, Region region) -> void
+          def add_black_box: (ImageEntity memo, Region? region) -> void
 
           def difference_level: (ImageEntity diff_mask, ImageEntity old_img, Region _region) -> Float
 
@@ -54,7 +54,7 @@ module Capybara
           def same_pixels?: () -> boolish
         end
 
-        def self.for: (ScreenshotMatcher::input_options) -> (VipsDriver | ChunkyPNGDriver)
+        def self.for: (ScreenshotMatcher::input_options | top) -> (VipsDriver | ChunkyPNGDriver)
       end
     end
   end

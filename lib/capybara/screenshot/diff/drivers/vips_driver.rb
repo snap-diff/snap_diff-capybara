@@ -50,6 +50,8 @@ module Capybara
           end
 
           def add_black_box(memo, region)
+            return memo unless region
+
             memo.draw_rect([0, 0, 0, 0], *region.to_top_left_corner_coordinates, fill: true)
           end
 

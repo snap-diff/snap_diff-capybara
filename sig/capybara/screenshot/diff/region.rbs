@@ -15,6 +15,12 @@ class Region
 
   def self.from_edge_coordinates: (Numeric left, Numeric `top`, Numeric right, Numeric bottom) -> Region?
 
+  def empty?: -> bool
+
+  def blank?: -> bool
+
+  def present?: -> bool
+
   def to_edge_coordinates: () -> ::Array[Numeric]
 
   def to_top_left_corner_coordinates: () -> ::Array[Numeric]

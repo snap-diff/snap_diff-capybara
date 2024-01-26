@@ -36,10 +36,11 @@ require "capybara/minitest"
 require "rackup" if Rack::RELEASE >= "3"
 
 require "capybara/dsl"
+Capybara.app = Rails.application
+Capybara.default_max_wait_time = 1
 Capybara.disable_animation = true
 Capybara.server = :puma, {Silent: true}
 Capybara.threadsafe = true
-Capybara.app = Rails.application
 
 require "support/stub_test_methods"
 

@@ -83,4 +83,32 @@ class Region
   def cover?(x, y)
     left <= x && x <= right && top <= y && y <= bottom
   end
+
+  def empty?
+    width.zero? || height.zero?
+  end
+
+  def blank?
+    empty?
+  end
+
+  def present?
+    !empty?
+  end
+
+  def inspect
+    "Region(x: #{x}, y: #{y}, width: #{width}, height: #{height})"
+  end
+
+  # need to add this method to make it work with assert_equal
+  def ==(other)
+    case other
+    when Region
+      x == other.x && y == other.y && width == other.width && height == other.height
+    when Array
+      to_a == other
+    else
+      false
+    end
+  end
 end

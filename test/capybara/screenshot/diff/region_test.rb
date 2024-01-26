@@ -58,5 +58,15 @@ module Capybara::Screenshot::Diff
       assert_nil Region.from_top_left_corner_coordinates(10, 10, -1, 11)
       assert_nil Region.from_top_left_corner_coordinates(10, 10, 11, -1)
     end
+
+    test "#== can compare with Region" do
+      assert_equal Region.new(10, 10, 10, 10), Region.new(10, 10, 10, 10)
+      assert_not_equal Region.new(10, 10, 10, 10), Region.new(10, 10, 10, 11)
+    end
+
+    test "#== can compare with Array of coordinates" do
+      assert_equal Region.new(10, 10, 10, 10), [10, 10, 10, 10]
+      assert_not_equal Region.new(10, 10, 10, 10), [10, 10, 10, 11]
+    end
   end
 end

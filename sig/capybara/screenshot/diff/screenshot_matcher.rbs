@@ -13,6 +13,7 @@ module Capybara
         attr_reader screenshot_path: Pathname
 
         def build_screenshot_matches_job: -> job_entity?
+
         def cleanup: -> void
 
         def self.base_image_path_from: (TestMethods::path_entity) -> Pathname
@@ -23,15 +24,14 @@ module Capybara
 
         def checkout_base_screenshot: -> void
 
-        def take_comparison_screenshot: (capture_options_entity capture_options, Drivers::BaseDriver::options_entity driver_options, TestMethods::path_entity screenshot_path) -> void
+        def take_comparison_screenshot:
+          (
+            capture_options_entity capture_options,
+            Drivers::BaseDriver::options_entity driver_options,
+            TestMethods::path_entity screenshot_path
+          ) -> void
 
         def create_output_directory_for: (Pathname file_name) -> void
-
-        type skip_area_entity = String | Region::raw_region_entity
-        type flex_skip_area_entity = (skip_area_entity | Array[skip_area_entity])
-        type flex_crop_entity = (nil | String | Region | Region::raw_region_entity)
-
-        def calculate_skip_area: (flex_skip_area_entity skip_area, flex_crop_entity crop) -> Array[Region]
 
         type input_region = (Region::raw_region_entity | String | Region)
 
@@ -47,15 +47,11 @@ module Capybara
             wait: Numeric?
           }
 
-        def calculate_crop_region: (input_options driver_options) -> Region?
-
         type capture_options_entity = {
             stability_time_limit: Numeric?,
             wait: Numeric?,
             crop: Region?
           }
-
-        def build_regions_for: ((Enumerable[Region::raw_region_entity]) coordinates) -> Array[Region?]
       end
     end
   end

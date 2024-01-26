@@ -31,7 +31,7 @@ class SystemTestCase < ActionDispatch::IntegrationTest
     Capybara::Screenshot.add_driver_path = false
     # NOTE: Only works before `include Capybara::Screenshot::Diff` line
     @orig_window_size = Capybara::Screenshot.window_size
-    Capybara::Screenshot.window_size = [800, 600]
+    Capybara::Screenshot.window_size = SCREEN_SIZE
 
     # NOTE: For small screenshots we should have pixel perfect comparisons
     @orig_tolerance = Capybara::Screenshot::Diff.tolerance
