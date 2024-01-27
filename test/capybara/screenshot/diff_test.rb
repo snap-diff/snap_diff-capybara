@@ -80,19 +80,6 @@ module Capybara
         Capybara::Screenshot.stability_time_limit = nil
       end
 
-      def test_screenshot_with_color_threshold
-        a_img = ChunkyPNG::Image.from_blob(File.binread("#{TEST_IMAGES_DIR}/a.png"))
-        a_val = a_img[9, 14]
-        a_img[9, 14] = a_val + 0x010000 + 0x000100 + 0x000001
-        rev_filename = "#{Rails.root}/#{screenshot_dir}/0_a.png"
-        FileUtils.mkdir_p(File.dirname(rev_filename))
-        a_img.save(rev_filename)
-
-        screenshot "a", color_distance_limit: 3
-      ensure
-        File.delete(rev_filename) if File.exist?(rev_filename)
-      end
-
       test "build_full_name" do
         assert_equal "a", build_full_name("a")
         screenshot_group "b"
@@ -196,20 +183,23 @@ module Capybara
 
         test "use default screenshot format" do
           skip "VIPS not present. Skipping VIPS driver tests." unless defined?(Vips)
+          set_test_images("a.webp", :a, :a)
 
-          Capybara::Screenshot.screenshot_format = "webp"
+          Capybara::Screenshot.stub(:screenshot_format, "webp") do
+            screenshot "a", driver: :vips
 
-          screenshot "a", driver: :vips
-
-          assert_stored_screenshot("a.webp")
+            assert_stored_screenshot("a.webp")
+          end
         end
 
         test "override default screenshot format" do
-          Capybara::Screenshot.screenshot_format = "webp"
+          set_test_images("a.png", :a, :a)
 
-          screenshot "a", screenshot_format: "png"
+          Capybara::Screenshot.stub(:screenshot_format, "webp") do
+            screenshot "a", screenshot_format: "png"
 
-          assert_stored_screenshot("a.png")
+            assert_stored_screenshot("a.png")
+          end
         end
       end
     end

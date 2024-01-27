@@ -24,7 +24,7 @@ module Capybara
           end
 
           if $CHILD_STATUS != 0
-            FileUtils.rm_f(checkout_path)
+            checkout_path.delete if checkout_path.exist?
             false
           else
             true

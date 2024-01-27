@@ -9,6 +9,16 @@ module Capybara
         include TestMethods
         include TestMethodsStub
 
+        test "raise error on missing screenshot when fail_if_new is true" do
+          Vcs.stub(:checkout_vcs, false) do
+            Capybara::Screenshot::Diff.stub(:fail_if_new, true) do
+              assert_raises ::Minitest::Assertion, match: /No existing screenshot found for/ do
+                screenshot "not_existing_screenshot-name"
+              end
+            end
+          end
+        end
+
         def test_assert_image_not_changed
           message = assert_image_not_changed("my_test.rb:42", "name", make_comparison(:a, :c))
           value = (RUBY_VERSION >= "2.4") ? 187.4 : 188
@@ -77,7 +87,7 @@ module Capybara
 
         def test_creates_new_screenshot
           screenshot(:c)
-          assert (Capybara::Screenshot.screenshot_area_abs / "c.png").exist?
+          assert_predicate (Capybara::Screenshot.screenshot_area_abs / "c.png"), :exist?
         end
 
         def test_cleanup_base_image_for_no_change

@@ -27,10 +27,17 @@ module Capybara
           ImageCompare.new(destination, ScreenshotMatcher.base_image_path_from(destination), **options)
         end
 
-        def set_test_images(destination, original_base_image, original_new_image)
-          FileUtils.mkdir_p destination.dirname
-          FileUtils.cp TEST_IMAGES_DIR / "#{original_new_image}.png", destination
-          FileUtils.cp TEST_IMAGES_DIR / "#{original_base_image}.png", ScreenshotMatcher.base_image_path_from(destination)
+        def set_test_images(destination, original_base_image, original_new_image, ext: "png")
+          destination = Pathname.new(destination) unless destination.is_a?(Pathname)
+          destination = Capybara::Screenshot.screenshot_area_abs.join(destination) unless destination.absolute?
+          destination.dirname.mkpath unless destination.dirname.exist?
+
+          ext = destination.extname[1..] if destination.extname.present?
+          FileUtils.cp(TEST_IMAGES_DIR / "#{original_new_image}.#{ext}", destination)
+          FileUtils.cp(
+            TEST_IMAGES_DIR / "#{original_base_image}.#{ext}",
+            ScreenshotMatcher.base_image_path_from(destination)
+          )
         end
 
         ImageCompareStub = Struct.new(

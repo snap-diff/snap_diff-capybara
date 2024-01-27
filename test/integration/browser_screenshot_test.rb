@@ -133,7 +133,8 @@ module Capybara::Screenshot
 
       screenshot("index-cropped", skip_area: "#first-field", crop: "form")
 
-      assert @test_screenshots.last.last.different?, "second field should not be skipped"
+      assert_not_predicate @test_screenshots, :empty?, "differences have not been found when they should have been"
+      assert @test_screenshots.last.last.different?, "should provide comparison object in the error"
     end
 
     test "skip_area by css selectors" do

@@ -71,8 +71,7 @@ class SystemTestCase < ActionDispatch::IntegrationTest
 
   def save_annotations_for_debug(comparison)
     debug_diffs_save_path = Pathname.new(Capybara.save_path) / "screenshots-diffs" / name
-
-    FileUtils.mkdir_p(debug_diffs_save_path)
+    debug_diffs_save_path.mkpath unless debug_diffs_save_path.exist?
 
     if File.exist?(comparison.image_path)
       FileUtils.cp(comparison.image_path, debug_diffs_save_path)
