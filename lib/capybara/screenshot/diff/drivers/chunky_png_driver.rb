@@ -45,7 +45,7 @@ module Capybara
           end
 
           def save_image_to(image, filename)
-            image.save(filename)
+            image.save(filename, :fast_rgba)
           end
 
           def resize_image_to(image, new_width, new_height)
