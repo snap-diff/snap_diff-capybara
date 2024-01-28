@@ -1,0 +1,23 @@
+module Capybara
+  module Screenshot
+    module Diff
+      class AreaCalculator
+        type area_entity = String | Region | Region::raw_region_entity
+        type flex_skip_area_entity = area_entity | Array[area_entity]
+
+        @_calculated_crop: Region?
+        @crop_coordinates: area_entity?
+        @skip_area: area_entity?
+
+        def initialize: (area_entity?, flex_skip_area_entity?) -> void
+
+        def build_regions_for: ((Enumerable[Region::raw_region_entity]) coordinates) -> Array[Region]
+
+        def calculate_crop: -> Region?
+
+        def calculate_skip_area: -> Array[Region]?
+
+      end
+    end
+  end
+end

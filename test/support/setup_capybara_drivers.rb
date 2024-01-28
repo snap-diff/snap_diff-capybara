@@ -62,9 +62,9 @@ if ENV["CAPYBARA_DRIVER"] == "cuprite"
       app,
       browser_options: CHROME_ARGS,
       js_errors: true,
-      process_timeout: ENV["CI"] ? 40 : 20,
+      process_timeout: ENV["CI"] ? 40 : 5,
       screen_size: SCREEN_SIZE,
-      timeout: ENV["CI"] ? 40 : 20,
+      timeout: ENV["CI"] ? 40 : 5,
       window_size: SCREEN_SIZE
     )
   end
