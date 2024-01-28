@@ -9,6 +9,7 @@ module Capybara
 
         attr_reader base_screenshot_path: TestMethods::path_entity
         attr_reader driver_options: Drivers::BaseDriver::options_entity
+        attr_reader screenshot_format: String
         attr_reader screenshot_full_name: TestMethods::path_entity
         attr_reader screenshot_path: Pathname
 

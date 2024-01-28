@@ -50,6 +50,7 @@ module Capybara
 
       mattr_accessor(:delayed) { true }
       mattr_accessor :area_size_limit
+      mattr_accessor(:fail_if_new) { false }
       mattr_accessor :color_distance_limit
       mattr_accessor(:enabled) { true }
       mattr_accessor :shift_distance_limit

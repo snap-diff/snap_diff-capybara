@@ -25,8 +25,6 @@ module Capybara
           # TODO: Move this into screenshot stage, in order to re-evaluate coordinates after page updates
           return if BrowserHelpers.window_size_is_wrong?(Screenshot.window_size)
 
-          # Stability Screenshoter Options
-
           # TODO: Move this into screenshot stage, in order to re-evaluate coordinates after page updates
           area_calculator = AreaCalculator.new(driver_options.delete(:crop), driver_options[:skip_area])
           driver_options[:crop] = area_calculator.calculate_crop
@@ -37,9 +35,13 @@ module Capybara
 
           driver_options[:driver] = Drivers.for(driver_options[:driver])
 
+          # Load base screenshot from VCS
           create_output_directory_for(screenshot_path) unless screenshot_path.exist?
 
           checkout_base_screenshot
+
+          # When fail_if_new is true no need to create screenshot if base screenshot is missing
+          return if Capybara::Screenshot::Diff.fail_if_new && !base_screenshot_path.exist?
 
           capture_options = {
             crop: driver_options.delete(:crop),
@@ -48,15 +50,14 @@ module Capybara
             screenshot_format: driver_options[:screenshot_format]
           }
 
+          # Load new screenshot from Browser
           take_comparison_screenshot(capture_options, driver_options, screenshot_path)
 
+          # Pre-computation: No need to compare without base screenshot
           return unless base_screenshot_path.exist?
 
           # Add comparison job in the queue
-          [
-            screenshot_full_name,
-            ImageCompare.new(screenshot_path.to_s, base_screenshot_path.to_s, driver_options)
-          ]
+          [screenshot_full_name, ImageCompare.new(screenshot_path, base_screenshot_path, driver_options)]
         end
 
         def self.base_image_path_from(screenshot_path)

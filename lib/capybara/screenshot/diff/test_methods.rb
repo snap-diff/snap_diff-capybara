@@ -72,7 +72,13 @@ module Capybara
           screenshot_full_name = build_full_name(name)
           job = build_screenshot_matches_job(screenshot_full_name, options)
 
-          return false unless job
+          unless job
+            if Screenshot::Diff.fail_if_new
+              raise_error("No existing screenshot found for #{screenshot_full_name}!\nTo stop seeing this error disable by Capybara::Screenshot::Diff.fail_if_new=false", caller(2))
+            end
+
+            return false
+          end
 
           job.prepend(caller[skip_stack_frames])
 
@@ -80,11 +86,7 @@ module Capybara
             schedule_match_job(job)
           else
             error_msg = assert_image_not_changed(*job)
-            if error_msg
-              error = ASSERTION.new(error_msg)
-              error.set_backtrace(caller(2))
-              raise error
-            end
+            raise_error(error_msg, caller(2)) if error_msg
           end
         end
 
@@ -104,6 +106,12 @@ module Capybara
         end
 
         private
+
+        def raise_error(error_msg, backtrace)
+          error = ASSERTION.new(error_msg)
+          error.set_backtrace(backtrace)
+          raise error
+        end
 
         def build_screenshot_matches_job(screenshot_full_name, options)
           ScreenshotMatcher
