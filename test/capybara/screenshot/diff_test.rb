@@ -48,13 +48,13 @@ module Capybara
         assert_nil @screenshot_group
         screenshot_section "a"
         assert_equal "a", @screenshot_section
-        assert_match %r{doc/screenshots/rack_test/(macos|linux)/a}, screenshot_dir
+        assert_match %r{doc/screenshots/(macos|linux)/rack_test/a}, screenshot_dir
         screenshot_group "b"
         assert_equal "b", @screenshot_group
-        assert_match %r{doc/screenshots/rack_test/(macos|linux)/a/b}, screenshot_dir
+        assert_match %r{doc/screenshots/(macos|linux)/rack_test/a/b}, screenshot_dir
         screenshot_group "c"
         assert_equal "c", @screenshot_group
-        assert_match %r{doc/screenshots/rack_test/(macos|linux)/a/c}, screenshot_dir
+        assert_match %r{doc/screenshots/(macos|linux)/rack_test/a/c}, screenshot_dir
       end
 
       test "screenshot" do
@@ -68,7 +68,7 @@ module Capybara
         screenshot_section "a"
         screenshot_group "b"
         screenshot "a"
-        assert_match %r{foo/bar/rack_test/(macos|linux)/a/b}, screenshot_dir
+        assert_match %r{foo/bar/(macos|linux)/rack_test/a/b}, screenshot_dir
       ensure
         Capybara::Screenshot.save_path = default_path
       end
