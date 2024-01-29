@@ -13,7 +13,7 @@ gem "oily_png", platform: :ruby, git: "https://github.com/wvanbergen/oily_png", 
 gem "ruby-vips", require: false
 
 # Test
-gem "minitest", require: false
+gem "minitest", "~> 5.20.0", require: false
 gem "minitest-stub-const", require: false
 gem "simplecov", require: false
 
