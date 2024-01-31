@@ -478,7 +478,9 @@ Capybara::Screenshot::Diff.area_size_limit = 42
 
 Sometimes you have expected change that you want to ignore.
 You can use the `skip_area` option with `[left, top, right, bottom]`
-or css selector like `'#footer'` or `'.container .skipped_element'` to the `screenshot` method to ignore an area:
+or css selector like `'#footer'` or `'.container .skipped_element'` to the `screenshot` method to ignore an area.
+Be aware that if the selector is not in the page then the library will wait the default wait time for it to appear.
+Therefore, it is best to only use css selectors for skip_areas you know will be in the page:
 
 ```ruby
 test 'unstable area' do
