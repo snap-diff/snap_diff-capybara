@@ -108,9 +108,9 @@ module Capybara
 
         unless test_screenshot_errors.empty?
           error = ASSERTION.new(test_screenshot_errors.join(EMPTY_LINE))
-          error.set_backtrace([])
 
           if Capybara::Screenshot::Diff.fail_on_difference
+            error.set_backtrace([])
             if is_a?(::Minitest::Runnable)
               failures << error
             else
@@ -118,7 +118,6 @@ module Capybara
             end
           else
             puts error
-            puts
           end
         end
       end
