@@ -116,6 +116,8 @@ module Capybara
             else
               raise error
             end
+          else
+            puts error
           end
         end
       end
