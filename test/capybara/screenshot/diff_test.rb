@@ -62,6 +62,16 @@ module Capybara
         screenshot "a"
       end
 
+      test "succeed on screenshot diff when fail_on_difference is false" do
+        Capybara::Screenshot::Diff.stub(:enabled, true) do
+          Capybara::Screenshot::Diff.stub(:fail_on_difference, false) do
+            test_case = SampleMiniTestCase.new(:_test_sample_screenshot_error)
+            test_case.run
+            assert_equal 0, test_case.failures.size
+          end
+        end
+      end
+
       def test_screenshot_with_alternate_save_path
         default_path = Capybara::Screenshot.save_path
         Capybara::Screenshot.save_path = "foo/bar"

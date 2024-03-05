@@ -51,6 +51,7 @@ module Capybara
       mattr_accessor(:delayed) { true }
       mattr_accessor :area_size_limit
       mattr_accessor(:fail_if_new) { false }
+      mattr_accessor(:fail_on_difference) { true }
       mattr_accessor :color_distance_limit
       mattr_accessor(:enabled) { true }
       mattr_accessor :shift_distance_limit
@@ -109,10 +110,12 @@ module Capybara
           error = ASSERTION.new(test_screenshot_errors.join(EMPTY_LINE))
           error.set_backtrace([])
 
-          if is_a?(::Minitest::Runnable)
-            failures << error
-          else
-            raise error
+          if Capybara::Screenshot::Diff.fail_on_difference
+            if is_a?(::Minitest::Runnable)
+              failures << error
+            else
+              raise error
+            end
           end
         end
       end

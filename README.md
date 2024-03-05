@@ -327,6 +327,17 @@ Using an environment variable
 Capybara::Screenshot::Diff.enabled = ENV['COMPARE_SCREENSHOTS']
 ```
 
+### Tolerate screenshot differences
+
+To allow screenshot differences, but still fail on functional errors, you can set the followin option:
+
+```ruby
+Capybara::Screenshot::Diff.fail_on_difference = false
+```
+
+It defaults to `true`.  This can be useful in continuous integration to a generate a screenshot difference
+report while still reporting functional errors.
+
 ### Screen shot save path
 
 By default, `Capybara::Screenshot::Diff` saves screenshots to a
