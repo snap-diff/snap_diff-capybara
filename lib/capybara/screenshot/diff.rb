@@ -118,6 +118,7 @@ module Capybara
             end
           else
             puts error
+            puts
           end
         end
       end
