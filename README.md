@@ -329,7 +329,7 @@ Capybara::Screenshot::Diff.enabled = ENV['COMPARE_SCREENSHOTS']
 
 ### Tolerate screenshot differences
 
-To allow screenshot differences, but still fail on functional errors, you can set the followin option:
+To allow screenshot differences, but still fail on functional errors, you can set the following option:
 
 ```ruby
 Capybara::Screenshot::Diff.fail_on_difference = false
@@ -337,6 +337,19 @@ Capybara::Screenshot::Diff.fail_on_difference = false
 
 It defaults to `true`.  This can be useful in continuous integration to a generate a screenshot difference
 report while still reporting functional errors.
+
+### Does not tolerate new screenshots
+
+To fail the test if a new screenshot is taken, set the following option:
+
+```ruby
+Capybara::Screenshot::Diff.fail_if_new = true
+```
+
+If `fail_if_new` is set to `true`, the test will fail if a new screenshot is taken
+that does not have a corresponding previous image to compare against.
+This can be useful in situations where you want to ensure
+that every screenshot taken by your tests corresponds to an expected state of your application.
 
 ### Screen shot save path
 
