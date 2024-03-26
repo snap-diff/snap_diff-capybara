@@ -36,9 +36,9 @@ module Capybara
 
       def notice_how_to_avoid_this: () -> void
 
-      def prepare_page_for_screenshot: (timeout: Numeric) -> BrowserHelpers::capybara_element?
+      def prepare_page_for_screenshot: (timeout: Numeric?) -> BrowserHelpers::capybara_element?
 
-      def wait_images_loaded: (timeout: Numeric) -> void
+      def wait_images_loaded: (timeout: Numeric?) -> void
 
       private
 
