@@ -41,7 +41,7 @@ module Capybara
           screenshot_path = screenshot_path.is_a?(String) ? Pathname.new(screenshot_path) : screenshot_path
           # We try to compare first attempt with checkout version, in order to not run next screenshots
           attempt_path = nil
-          screenshot_started_at = last_attempt_at = Time.now
+          screenshot_started_at = last_attempt_at = Process.clock_gettime(Process::CLOCK_MONOTONIC)
 
           # Cleanup all previous attempts for sure
           Screenshoter.cleanup_attempts_screenshots(screenshot_path)
@@ -57,7 +57,7 @@ module Capybara
             attempt_path = Screenshoter.gen_next_attempt_path(screenshot_path, i)
 
             @screenshoter.take_screenshot(attempt_path)
-            last_attempt_at = Time.now
+            last_attempt_at = Process.clock_gettime(Process::CLOCK_MONOTONIC)
 
             next unless prev_attempt_path
             stabilization_comparator = build_comparison_for(attempt_path, prev_attempt_path)

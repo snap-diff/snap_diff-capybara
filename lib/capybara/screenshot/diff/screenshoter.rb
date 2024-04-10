@@ -113,12 +113,12 @@ module Capybara
       def wait_images_loaded(timeout:)
         return unless timeout
 
-        start = Time.now
+        start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
         loop do
           pending_image = BrowserHelpers.pending_image_to_load
           break unless pending_image
 
-          if (Time.now - start) >= timeout
+          if (Process.clock_gettime(Process::CLOCK_MONOTONIC) - start) >= timeout
             raise Capybara::Screenshot::Diff::ASSERTION, "Images have not been loaded after #{timeout}s: #{pending_image.inspect}"
           end
 
