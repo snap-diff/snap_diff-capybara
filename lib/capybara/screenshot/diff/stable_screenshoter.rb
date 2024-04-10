@@ -10,6 +10,11 @@ module Capybara
 
         def initialize(capture_options, comparison_options = nil)
           @stability_time_limit, @wait = capture_options.fetch_values(:stability_time_limit, :wait)
+
+          raise ArgumentError, "wait should be provided for stable screenshots" unless wait
+          raise ArgumentError, "stability_time_limit should be provided for stable screenshots" unless stability_time_limit
+          raise ArgumentError, "stability_time_limit (#{stability_time_limit}) should be less or equal than wait (#{wait}) for stable screenshots" unless stability_time_limit <= wait
+
           @comparison_options = comparison_options || Diff.default_options
 
           driver = Diff::Drivers.for(@comparison_options)
@@ -43,6 +48,7 @@ module Capybara
 
           0.step do |i|
             # Prevents redundant screenshots generations
+            # FIXME: it should be wait, and wait should be replaced with stability_time_limit
             sleep(stability_time_limit) unless i == 0
 
             elapsed_time = last_attempt_at - screenshot_started_at

@@ -10,6 +10,11 @@ module Capybara
         @screenshoter: (StableScreenshoter | Screenshoter)
         @stability_time_limit: Numeric
 
+        attr_reader stability_time_limit: Numeric?
+        attr_reader wait: Numeric?
+
+        def initialize: (?Diff::ScreenshotMatcher::capture_options_entity capture_options, ?ScreenshotMatcher::input_options? comparison_options) -> void
+
         def take_comparison_screenshot: (TestMethods::path_entity screenshot_path) -> void
 
         def take_stable_screenshot: (TestMethods::path_entity) -> Pathname?

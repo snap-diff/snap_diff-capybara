@@ -97,7 +97,7 @@ module Capybara
       end
 
       def prepare_page_for_screenshot(timeout:)
-        wait_images_loaded(timeout: timeout)
+        wait_images_loaded(timeout: timeout) if timeout
 
         blurred_input = if Screenshot.blur_active_element
           BrowserHelpers.blur_from_focused_element
@@ -111,13 +111,15 @@ module Capybara
       end
 
       def wait_images_loaded(timeout:)
+        return unless timeout
+
         start = Time.now
         loop do
           pending_image = BrowserHelpers.pending_image_to_load
           break unless pending_image
 
           if (Time.now - start) >= timeout
-            raise Capybara::Screenshot::Diff::ASSERTION, "Images not loaded after #{timeout}s: #{pending_image.inspect}"
+            raise Capybara::Screenshot::Diff::ASSERTION, "Images have not been loaded after #{timeout}s: #{pending_image.inspect}"
           end
 
           sleep 0.025
