@@ -2,7 +2,6 @@
 
 require "test_helper"
 require "minitest/mock"
-require "capybara/screenshot/diff/drivers/chunky_png_driver"
 
 module Capybara
   module Screenshot
@@ -11,7 +10,7 @@ module Capybara
       include Diff::TestMethodsStub
 
       test "#take_screenshot without wait skips image loading" do
-        screenshoter = Screenshoter.new({wait: nil}, Diff::Drivers::ChunkyPNGDriver.new)
+        screenshoter = Screenshoter.new({wait: nil}, ::Minitest::Mock.new)
 
         mock = ::Minitest::Mock.new
         mock.expect(:save_screenshot, true) { |path| path.include?("01_a.png") }
@@ -26,7 +25,7 @@ module Capybara
       end
 
       test "#prepare_page_for_screenshot without wait does not raise any error" do
-        screenshoter = Screenshoter.new({wait: nil}, Diff::Drivers::ChunkyPNGDriver.new)
+        screenshoter = Screenshoter.new({wait: nil}, ::Minitest::Mock.new)
 
         screenshoter.prepare_page_for_screenshot(timeout: nil) # does not raise an error
       end

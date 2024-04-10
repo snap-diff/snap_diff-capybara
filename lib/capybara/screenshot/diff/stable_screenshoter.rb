@@ -10,6 +10,10 @@ module Capybara
 
         def initialize(capture_options, comparison_options = nil)
           @stability_time_limit, @wait = capture_options.fetch_values(:stability_time_limit, :wait)
+          raise ArgumentError, "wait should be provided" unless @wait
+          raise ArgumentError, "stability_time_limit should be provided for stable screenshots" unless @stability_time_limit
+          raise ArgumentError, "stability_time_limit should be less than wait for stable screenshots" if @stability_time_limit > @wait
+
           @comparison_options = comparison_options || Diff.default_options
 
           driver = Diff::Drivers.for(@comparison_options)

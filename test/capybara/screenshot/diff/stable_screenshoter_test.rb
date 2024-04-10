@@ -25,6 +25,18 @@ module Capybara
           mock.verify
         end
 
+        test "#take_stable_screenshot without wait raises any error" do
+          assert_raises ArgumentError, "wait should be provided" do
+            take_stable_screenshot_with("tmp/02_a.png", wait: nil)
+          end
+        end
+
+        test "#take_stable_screenshot without stability_time_limit raises any error" do
+          assert_raises ArgumentError, "stability_time_limit should be provided" do
+            take_stable_screenshot_with("tmp/02_a.png", stability_time_limit: nil)
+          end
+        end
+
         test "#take_comparison_screenshot deletes runtime files on completion" do
           image_compare_stub = build_image_compare_stub
 
@@ -36,7 +48,7 @@ module Capybara
 
           ImageCompare.stub :new, mock do
             StableScreenshoter
-              .new({stability_time_limit: 1, wait: 0.5}, image_compare_stub.driver_options)
+              .new({stability_time_limit: 0.5, wait: 0.5}, image_compare_stub.driver_options)
               .take_comparison_screenshot("tmp/02_a.png")
           end
 
@@ -69,7 +81,7 @@ module Capybara
             ImageCompare.stub :new, mock do
               # Wait time is less then stability time, which will generate problem
               StableScreenshoter
-                .new({stability_time_limit: 1, wait: 0.5}, build_image_compare_stub(equal: false).driver_options)
+                .new({stability_time_limit: 0.5, wait: 0.5}, build_image_compare_stub(equal: false).driver_options)
                 .take_comparison_screenshot(screenshot_path.to_s)
             end
           end
