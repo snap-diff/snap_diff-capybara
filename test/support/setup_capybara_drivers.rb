@@ -55,7 +55,7 @@ if ENV["CAPYBARA_DRIVER"] == "cuprite"
     "password-store=basic" => nil,
     "test-type" => nil,
     "use-mock-keychain" => nil
-  }.freeze
+  }
 
   Capybara.register_driver(:cuprite) do |app|
     Capybara::Cuprite::Driver.new(
