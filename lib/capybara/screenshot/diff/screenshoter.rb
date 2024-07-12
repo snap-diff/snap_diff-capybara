@@ -26,6 +26,10 @@ module Capybara
         @capture_options[:screenshot_format] || "png"
       end
 
+      def capybara_screenshot_options
+        @capture_options[:capybara_screenshot_options] || {}
+      end
+
       def self.attempts_screenshot_paths(base_file)
         extname = Pathname.new(base_file).extname
         Dir["#{base_file.to_s.chomp(extname)}.attempt_*#{extname}"].sort
@@ -51,12 +55,14 @@ module Capybara
         screenshot_path.sub_ext(format(".attempt_%02i#{screenshot_path.extname}", iteration))
       end
 
+      PNG_EXTENSION = ".png"
+
       def take_screenshot(screenshot_path)
         blurred_input = prepare_page_for_screenshot(timeout: wait)
 
         # Take browser screenshot and save
-        tmpfile = Tempfile.new([screenshot_path.basename.to_s, ".png"])
-        BrowserHelpers.session.save_screenshot(tmpfile.path)
+        tmpfile = Tempfile.new([screenshot_path.basename.to_s, PNG_EXTENSION])
+        BrowserHelpers.session.save_screenshot(tmpfile.path, **capybara_screenshot_options)
 
         # Load saved screenshot and pre-process it
         process_screenshot(tmpfile.path, screenshot_path)

@@ -22,6 +22,7 @@ module Capybara
     mattr_accessor(:save_path) { "doc/screenshots" }
     mattr_accessor(:use_lfs)
     mattr_accessor(:screenshot_format) { "png" }
+    mattr_accessor(:capybara_screenshot_options) { {} }
 
     class << self
       def root=(path)
@@ -70,6 +71,7 @@ module Capybara
           color_distance_limit: color_distance_limit,
           driver: driver,
           screenshot_format: Screenshot.screenshot_format,
+          capybara_screenshot_options: Screenshot.capybara_screenshot_options,
           shift_distance_limit: shift_distance_limit,
           skip_area: skip_area,
           stability_time_limit: Screenshot.stability_time_limit,
