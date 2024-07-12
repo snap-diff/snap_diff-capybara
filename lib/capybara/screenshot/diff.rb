@@ -63,7 +63,6 @@ module Capybara
       mattr_accessor(:screenshoter) { Screenshoter }
 
       AVAILABLE_DRIVERS = Utils.detect_available_drivers.freeze
-      ASSERTION = Utils.detect_test_framework_assert
 
       def self.default_options
         {
@@ -81,45 +80,9 @@ module Capybara
       end
 
       def self.included(klass)
-        klass.include TestMethods
-        klass.setup do
-          BrowserHelpers.resize_to(Screenshot.window_size) if Screenshot.window_size
-        end
+        require_relative "../../capybara_screenshot_diff/minitest"
 
-        klass.teardown do
-          if Screenshot.active? && @test_screenshots.present?
-            begin
-              track_failures(@test_screenshots)
-            ensure
-              @test_screenshots.clear
-            end
-          end
-        end
-      end
-
-      private
-
-      EMPTY_LINE = "\n\n"
-
-      def track_failures(screenshots)
-        test_screenshot_errors = screenshots.map do |caller, name, compare|
-          assert_image_not_changed(caller, name, compare)
-        end
-
-        test_screenshot_errors.compact!
-
-        unless test_screenshot_errors.empty?
-          error = ASSERTION.new(test_screenshot_errors.join(EMPTY_LINE))
-          error.set_backtrace([])
-
-          if Capybara::Screenshot::Diff.fail_on_difference
-            if is_a?(::Minitest::Runnable)
-              failures << error
-            else
-              raise error
-            end
-          end
-        end
+        klass.include CapybaraScreenshotDiff::Minitest::Assertions
       end
     end
   end

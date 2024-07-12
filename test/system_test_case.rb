@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 require "test_helper"
+require "capybara_screenshot_diff/minitest"
+
 
 require "support/setup_capybara_drivers"
 
@@ -39,6 +41,7 @@ class SystemTestCase < ActionDispatch::IntegrationTest
   end
 
   include Capybara::Screenshot::Diff
+  include CapybaraScreenshotDiff::Minitest::Assertions
 
   teardown do
     # Restore to previous values

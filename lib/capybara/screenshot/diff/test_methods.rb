@@ -108,7 +108,8 @@ module Capybara
         private
 
         def raise_error(error_msg, backtrace)
-          error = ASSERTION.new(error_msg)
+          pp Capybara::Screenshot::Diff::ASSERTION
+          error = Capybara::Screenshot::Diff::ASSERTION.new(error_msg)
           error.set_backtrace(backtrace)
           raise error
         end

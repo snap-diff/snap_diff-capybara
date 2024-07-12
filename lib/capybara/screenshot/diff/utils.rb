@@ -38,8 +38,7 @@ module Capybara
         end
 
         def self.detect_test_framework_assert
-          require "minitest"
-          ::Minitest::Assertion
+          ::Minitest::Assertion if defined?(::Minitest)
         rescue
           ::RuntimeError
         end

@@ -20,6 +20,7 @@ module Capybara
       end
 
       include Capybara::Screenshot::Diff
+      include CapybaraScreenshotDiff::Minitest::Assertions
       include Diff::TestMethodsStub
 
       teardown do
@@ -125,19 +126,20 @@ module Capybara
       end
 
       test "raising errors on teardown for non Minitest" do
-        Capybara::Screenshot::Diff.stub_const(:ASSERTION, ::RuntimeError) do
+        Capybara::Screenshot::Diff.stub_const(:ASSERTION, ::StandardError) do
           test_case = SampleNotMiniTestCase.new
           test_case._test_sample_screenshot_error
 
           expected_message =
             "Screenshot does not match for 'sample_screenshot' expected error message for non minitest"
-          assert_raises(RuntimeError, expected_message) { test_case.teardown }
-          assert(test_case.instance_variable_get(:@test_screenshots).empty?)
+          assert_raises(::StandardError, expected_message) { test_case.teardown }
+          assert_empty(test_case.instance_variable_get(:@test_screenshots))
         end
       end
 
       class SampleMiniTestCase < ActionDispatch::IntegrationTest
         include Capybara::Screenshot::Diff
+        include CapybaraScreenshotDiff::Minitest::Assertions
 
         # NOTE: we need to add `_` as prefix to skip this test from auto-run
         def _test_sample_screenshot_error
@@ -186,6 +188,7 @@ module Capybara
 
         include Capybara::Screenshot::Diff
         include Diff::TestMethodsStub
+        include CapybaraScreenshotDiff::Minitest::Assertions
 
         teardown do
           Capybara::Screenshot.screenshot_format = @orig_screenshot_format
