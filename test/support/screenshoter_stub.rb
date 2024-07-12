@@ -26,7 +26,7 @@ class Capybara::Screenshot::ScreenshoterStub < Capybara::Screenshot::Screenshote
   end
 
   def take_screenshot(screenshot_path)
-    stored_path = save_screenshot(screenshot_path)
+    stored_path = save_screenshot(screenshot_path) # rubocop:disable Lint/Debugger
 
     process_screenshot(stored_path, screenshot_path)
   end
