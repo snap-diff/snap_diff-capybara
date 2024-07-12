@@ -610,6 +610,17 @@ You can specify the format of the screenshots taken by setting the `screenshot_f
 Capybara::Screenshot.screenshot_format = "webp"
 ```
 
+### Customize Capybara#screenshot options
+
+Allow to bypass screenshot options to Capybara driver.
+
+```ruby
+# To create full page screenshots for Selenium
+Capybara::Screenshot.capybara_screenshot_options[:full_page] = true
+
+screenshot('index', median_filter_window_size: 2, capybara_screenshot_options: {full_page: false})
+```
+
 ## Development
 
 After checking out the repo, run `bin/setup` to install dependencies.
