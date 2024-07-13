@@ -29,6 +29,18 @@ module Capybara
           @test_screenshots = []
         end
 
+        def validate_screenshots!(screenshots = @test_screenshots)
+          test_screenshot_errors = screenshots.map do |caller, name, compare|
+            assert_image_not_changed(caller, name, compare)
+          end
+
+          test_screenshot_errors.compact!
+
+          test_screenshot_errors.presence
+        ensure
+          screenshots.clear
+        end
+
         def build_full_name(name)
           if @screenshot_counter
             name = format("%02i_#{name}", @screenshot_counter)
@@ -108,7 +120,6 @@ module Capybara
         private
 
         def raise_error(error_msg, backtrace)
-          pp Capybara::Screenshot::Diff::ASSERTION
           error = Capybara::Screenshot::Diff::ASSERTION.new(error_msg)
           error.set_backtrace(backtrace)
           raise error

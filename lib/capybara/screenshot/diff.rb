@@ -78,12 +78,6 @@ module Capybara
           wait: Capybara.default_max_wait_time
         }
       end
-
-      def self.included(klass)
-        require_relative "../../capybara_screenshot_diff/minitest"
-
-        klass.include CapybaraScreenshotDiff::Minitest::Assertions
-      end
     end
   end
 end

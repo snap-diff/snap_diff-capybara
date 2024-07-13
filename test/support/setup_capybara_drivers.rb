@@ -1,10 +1,9 @@
 # frozen_string_literal: true
 
-# Try to load other drivers if they are available
-
 ENV["CAPYBARA_DRIVER"] ||= "cuprite"
 
 SCREEN_SIZE = [800, 600]
+BROWSERS = {cuprite: "chrome", selenium_headless: "firefox", selenium_chrome_headless: "chrome"}
 
 if ENV["CAPYBARA_DRIVER"] == "cuprite"
   require "capybara/cuprite"

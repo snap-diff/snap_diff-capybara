@@ -3,12 +3,9 @@
 require "test_helper"
 require "capybara_screenshot_diff/minitest"
 
-
 require "support/setup_capybara_drivers"
 
-class SystemTestCase < ActionDispatch::IntegrationTest
-  BROWSERS = {cuprite: "chrome", selenium_headless: "firefox", selenium_chrome_headless: "chrome"}
-
+class SystemTestCase < ActiveSupport::TestCase
   setup do
     Capybara.current_driver = Capybara.javascript_driver
     browser = BROWSERS.fetch(Capybara.current_driver, "chrome")
@@ -89,7 +86,7 @@ class SystemTestCase < ActionDispatch::IntegrationTest
     end
   end
 
-  def validate_screenshots
+  def run_screenshots_validation
     return [] unless @test_screenshots
 
     @test_screenshots.select { |screenshot_assert| screenshot_assert.last.different? }

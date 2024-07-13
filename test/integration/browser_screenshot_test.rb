@@ -215,14 +215,14 @@ module Capybara::Screenshot
     end
 
     def assert_screenshot_error_for(screenshot_name)
-      validate_screenshots
+      run_screenshots_validation
 
       assert_equal 1, @test_screenshots&.length, "expecting to have just one difference"
       assert_equal screenshot_name, @test_screenshots[0][1], "index screenshot should have difference for changed page"
     end
 
     def assert_no_screenshot_errors
-      screenshots = validate_screenshots
+      screenshots = run_screenshots_validation
 
       error_messages = screenshots.map { |screenshot_error| screenshot_error.last.error_message }
 

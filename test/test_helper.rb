@@ -16,33 +16,17 @@ $LOAD_PATH.unshift File.expand_path("../lib", __dir__)
 require "pathname"
 TEST_IMAGES_DIR = Pathname.new(File.expand_path("images", __dir__))
 
-# NOTE: Simulate Rails Environment
-module Rails
-  def self.root
-    Pathname("../tmp").expand_path(__dir__)
-  end
+require "support/setup_rails_app"
+require "minitest/autorun"
 
-  def self.application
-    Rack::Builder.new {
-      use(Rack::Static, urls: [""], root: "test/fixtures/app", index: "index.html")
-      run ->(_env) { [200, {}, []] }
-    }.to_app
-  end
-end
+require "capybara/minitest"
+require "support/setup_capybara"
 
 require "capybara/screenshot/diff"
-require "minitest/autorun"
-require "capybara/minitest"
-require "rackup" if Rack::RELEASE >= "3"
-
-require "capybara/dsl"
-Capybara.app = Rails.application
-Capybara.default_max_wait_time = 1
-Capybara.disable_animation = true
-Capybara.server = :puma, {Silent: true}
-Capybara.threadsafe = true
+require "capybara_screenshot_diff/minitest"
 
 require "support/stub_test_methods"
+require "support/setup_capybara_drivers"
 
 class ActiveSupport::TestCase
   self.file_fixture_path = Pathname.new(File.expand_path("fixtures", __dir__))

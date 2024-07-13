@@ -16,6 +16,7 @@ gem "ruby-vips", require: false
 gem "minitest", "~> 5.20.0", require: false
 gem "minitest-stub-const", require: false
 gem "simplecov", require: false
+gem "rspec", require: false
 
 # Capybara Server
 gem "puma", require: false

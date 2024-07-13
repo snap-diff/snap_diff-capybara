@@ -43,8 +43,11 @@ Or install it yourself as:
 In your test class, include the `Capybara::Screenshot::Diff` module:
 
 ```ruby
+require 'capybara_screenshot_diff/minitest'
+
 class ApplicationSystemTestCase < ActionDispatch::SystemTestCase
   include Capybara::Screenshot::Diff
+  include CapybaraScreenshotDiff::Minitest::Assertions
   # ...
 end
 ```
@@ -52,24 +55,13 @@ end
 ### RSpec
 
 ```ruby
+require 'capybara_screenshot_diff/rspec' 
+
 describe 'Permissions admin', type: :feature, js: true do
-
-  include Capybara::Screenshot::Diff
-
   it 'works with permissions' do
     visit('/')
     screenshot 'home_page'
   end
-
-end
-```
-But it's better to include it within your *_helper.rb file so that it can used anywhere in your feature specs.
-```ruby
-# spec/feature_helper.rb
-require 'capybara/screenshot/diff'
-
-RSpec.configure do |config|
-  config.include Capybara::Screenshot::Diff
 end
 ```
 ### Cucumber
@@ -77,7 +69,7 @@ end
 Load Cucumber support by adding the following line (typically to your `features/support/env.rb` file):
 
 ```ruby
-require 'capybara/screenshot/diff/cucumber'
+require 'capybara_screenshot_diff/cucumber'
 ```
 
 And in the steps you can use:
