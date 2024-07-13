@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require "minitest"
-require "capybara/screenshot/diff"
+require "capybara_screenshot_diff"
 
 module Capybara::Screenshot::Diff
   ASSERTION = ::Minitest::Assertion unless defined?(::Capybara::Screenshot::Diff::ASSERTION)

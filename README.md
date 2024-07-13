@@ -40,13 +40,12 @@ Or install it yourself as:
 
 ### Minitest
 
-In your test class, include the `Capybara::Screenshot::Diff` module:
+In your test class, include the `CapybaraScreenshotDiff::Minitest::Assertions` module:
 
 ```ruby
 require 'capybara_screenshot_diff/minitest'
 
 class ApplicationSystemTestCase < ActionDispatch::SystemTestCase
-  include Capybara::Screenshot::Diff
   include CapybaraScreenshotDiff::Minitest::Assertions
   # ...
 end
