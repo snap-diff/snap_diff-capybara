@@ -8,6 +8,8 @@ module Capybara
   module Screenshot
     class DiffTest < ActionDispatch::IntegrationTest
       setup do
+        Capybara.current_driver = Capybara.default_driver
+
         @orig_add_driver_path = Capybara::Screenshot.add_driver_path
         Capybara::Screenshot.add_driver_path = true
 

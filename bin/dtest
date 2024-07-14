@@ -1,0 +1,14 @@
+#!/bin/bash
+
+set -eo pipefail
+
+export DOCKER_DEFAULT_PLATFORM=linux/amd64
+
+docker build . -t csd:test
+
+docker run -v ${PWD}:/app -v csd-bundle-cache:/bundle --rm -it csd:test bin/setup
+
+echo "Running tests..."
+docker run -e CAPYBARA_DRIVER=cuprite -v ${PWD}:/app -v csd-bundle-cache:/bundle --rm -it csd:test bin/rake test
+docker run -e CAPYBARA_DRIVER=selenium_chrome_headless -v ${PWD}:/app -v csd-bundle-cache:/bundle --rm -it csd:test bin/rake test
+docker run -e CAPYBARA_DRIVER=selenium_headless -v ${PWD}:/app -v csd-bundle-cache:/bundle --rm -it csd:test bin/rake test

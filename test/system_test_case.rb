@@ -8,8 +8,6 @@ require "support/setup_capybara_drivers"
 class SystemTestCase < ActiveSupport::TestCase
   setup do
     Capybara.current_driver = Capybara.javascript_driver
-    browser = BROWSERS.fetch(Capybara.current_driver, "chrome")
-
     Capybara.page.current_window.resize_to(*SCREEN_SIZE)
 
     Capybara::Screenshot.enabled = true
@@ -19,7 +17,8 @@ class SystemTestCase < ActiveSupport::TestCase
     @orig_root = Capybara::Screenshot.root
     Capybara::Screenshot.root = "."
     @orig_save_path = Capybara::Screenshot.save_path
-    Capybara::Screenshot.save_path = "test/fixtures/app/doc/screenshots/#{browser}"
+    Capybara::Screenshot.save_path = "test/fixtures/app/doc/screenshots"
+
     Capybara::Screenshot::Diff.driver = ENV.fetch("SCREENSHOT_DRIVER", "chunky_png").to_sym
 
     # TODO: Makes configurations copying and restoring much easier
@@ -27,7 +26,7 @@ class SystemTestCase < ActiveSupport::TestCase
     @orig_add_os_path = Capybara::Screenshot.add_os_path
     Capybara::Screenshot.add_os_path = true
     @orig_add_driver_path = Capybara::Screenshot.add_driver_path
-    Capybara::Screenshot.add_driver_path = false
+    Capybara::Screenshot.add_driver_path = true
     # NOTE: Only works before `include Capybara::Screenshot::Diff` line
     @orig_window_size = Capybara::Screenshot.window_size
     Capybara::Screenshot.window_size = SCREEN_SIZE
