@@ -1,18 +1,22 @@
 # frozen_string_literal: true
 
 require "minitest"
-require "capybara_screenshot_diff"
-
-module Capybara::Screenshot::Diff
-  ASSERTION = ::Minitest::Assertion unless defined?(::Capybara::Screenshot::Diff::ASSERTION)
-end
+require "capybara_screenshot_diff/dsl"
 
 module CapybaraScreenshotDiff
   module Minitest
     module Assertions
-      def self.included(klass)
-        klass.include ::Capybara::Screenshot::Diff::TestMethods
+      include ::CapybaraScreenshotDiff::DSL
 
+      def screenshot(name, skip_stack_frames: 0, **options)
+        super(name, skip_stack_frames: skip_stack_frames + 1, **options)
+      rescue CapybaraScreenshotDiff::ExpectationNotMet => e
+        raise ::Minitest::Assertion, e.message
+      end
+
+      alias_method :assert_matches_screenshot, :screenshot
+
+      def self.included(klass)
         klass.setup do
           if ::Capybara::Screenshot.window_size
             ::Capybara::Screenshot::BrowserHelpers.resize_to(::Capybara::Screenshot.window_size)
@@ -20,10 +24,9 @@ module CapybaraScreenshotDiff
         end
 
         klass.teardown do
-          if ::Capybara::Screenshot.active? && ::Capybara::Screenshot::Diff.fail_on_difference && @test_screenshots.present?
-            errors = validate_screenshots!(@test_screenshots)
-            failures << ::Minitest::Assertion.new(errors.join("\n\n")) if errors
-          end
+          errors = validate_screenshots!(@test_screenshots)
+
+          failures << ::Minitest::Assertion.new(errors.join("\n\n")) if errors && !errors.empty?
         end
       end
     end

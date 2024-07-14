@@ -1,12 +1,8 @@
 # frozen_string_literal: true
 
-require "capybara_screenshot_diff"
+require "capybara_screenshot_diff/dsl"
 
-module Capybara::Screenshot::Diff
-  ASSERTION = ::StandardError unless defined?(::Capybara::Screenshot::Diff::ASSERTION)
-end
-
-World(Capybara::Screenshot::Diff::TestMethods)
+World(::CapybaraScreenshotDiff::DSL)
 
 Before do
   Capybara::Screenshot::Diff.delayed = false

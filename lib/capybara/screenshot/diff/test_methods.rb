@@ -30,6 +30,8 @@ module Capybara
         end
 
         def validate_screenshots!(screenshots = @test_screenshots)
+          return unless ::Capybara::Screenshot.active? && ::Capybara::Screenshot::Diff.fail_on_difference
+
           test_screenshot_errors = screenshots.map do |caller, name, compare|
             assert_image_not_changed(caller, name, compare)
           end
@@ -86,7 +88,10 @@ module Capybara
 
           unless job
             if Screenshot::Diff.fail_if_new
-              raise_error("No existing screenshot found for #{screenshot_full_name}!\nTo stop seeing this error disable by Capybara::Screenshot::Diff.fail_if_new=false", caller(2))
+              raise_error(<<-ERROR.strip_heredoc, caller(2))
+                No existing screenshot found for #{screenshot_full_name}!
+                To stop seeing this error disable by `Capybara::Screenshot::Diff.fail_if_new=false`
+              ERROR
             end
 
             return false
@@ -120,7 +125,7 @@ module Capybara
         private
 
         def raise_error(error_msg, backtrace)
-          error = Capybara::Screenshot::Diff::ASSERTION.new(error_msg)
+          error = CapybaraScreenshotDiff::ExpectationNotMet.new(error_msg)
           error.set_backtrace(backtrace)
           raise error
         end

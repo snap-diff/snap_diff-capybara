@@ -22,7 +22,6 @@ require "minitest/autorun"
 require "capybara/minitest"
 require "support/setup_capybara"
 
-require "capybara/screenshot/diff"
 require "capybara_screenshot_diff/minitest"
 
 require "support/stub_test_methods"

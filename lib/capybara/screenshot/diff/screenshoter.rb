@@ -125,7 +125,7 @@ module Capybara
           break unless pending_image
 
           if (Process.clock_gettime(Process::CLOCK_MONOTONIC) - start) >= timeout
-            raise Capybara::Screenshot::Diff::ASSERTION, "Images have not been loaded after #{timeout}s: #{pending_image.inspect}"
+            raise CapybaraScreenshotDiff::ExpectationNotMet, "Images have not been loaded after #{timeout}s: #{pending_image.inspect}"
           end
 
           sleep 0.025

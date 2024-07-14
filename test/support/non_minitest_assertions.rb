@@ -1,10 +1,6 @@
 # frozen_string_literal: true
 
-require "capybara/screenshot/diff"
-
-module Capybara::Screenshot::Diff
-  ASSERTION = ::StandardError unless defined?(::Capybara::Screenshot::Diff::ASSERTION)
-end
+require "capybara_screenshot_diff"
 
 module CapybaraScreenshotDiff
   module NonMinitest

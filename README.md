@@ -46,8 +46,15 @@ In your test class, include the `CapybaraScreenshotDiff::Minitest::Assertions` m
 require 'capybara_screenshot_diff/minitest'
 
 class ApplicationSystemTestCase < ActionDispatch::SystemTestCase
+  # Make the Capybara & Capybara Screenshot Diff DSLs available in tests
+  include CapybaraScreenshotDiff::DSL
+  # Make `assert_*` methods behave like Minitest assertions
   include CapybaraScreenshotDiff::Minitest::Assertions
-  # ...
+  
+  def test_my_feature
+    visit '/'
+    assert_matches_screenshot 'index'
+  end
 end
 ```
 
@@ -59,7 +66,7 @@ require 'capybara_screenshot_diff/rspec'
 describe 'Permissions admin', type: :feature, js: true do
   it 'works with permissions' do
     visit('/')
-    screenshot 'home_page'
+    expect(page).to match_screenshot('home_page')
   end
 end
 ```

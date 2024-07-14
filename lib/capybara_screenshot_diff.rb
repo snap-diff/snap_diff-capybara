@@ -9,6 +9,10 @@ require "capybara/screenshot/diff/screenshoter"
 
 require "capybara/screenshot/diff/reporters/default"
 
+module CapybaraScreenshotDiff
+  class ExpectationNotMet < StandardError; end
+end
+
 module Capybara
   module Screenshot
     mattr_accessor :add_driver_path
@@ -47,8 +51,6 @@ module Capybara
 
     # Module to track screen shot changes
     module Diff
-      include Capybara::DSL
-
       mattr_accessor(:delayed) { true }
       mattr_accessor :area_size_limit
       mattr_accessor(:fail_if_new) { false }

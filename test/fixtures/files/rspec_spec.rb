@@ -2,9 +2,13 @@
 
 require "capybara/rspec"
 
-require "capybara/screenshot/diff"
 require "capybara_screenshot_diff/rspec"
 require "support/stub_test_methods"
+
+unless defined?(SCREEN_SIZE)
+  require "test_helper"
+  require "support/setup_capybara_drivers"
+end
 
 RSpec.describe "capybara_screenshot_diff/rspec", type: :feature do
   before do
@@ -14,6 +18,7 @@ RSpec.describe "capybara_screenshot_diff/rspec", type: :feature do
 
     browser = BROWSERS.fetch(Capybara.current_driver, "chrome")
     Capybara::Screenshot.save_path = "test/fixtures/app/doc/screenshots/#{browser}"
+    Capybara::Screenshot.add_os_path = true
     Capybara::Screenshot::Diff.driver = ENV.fetch("SCREENSHOT_DRIVER", "chunky_png").to_sym
   end
 
@@ -24,5 +29,11 @@ RSpec.describe "capybara_screenshot_diff/rspec", type: :feature do
   it "visits and compare screenshot on teardown" do
     visit "/"
     screenshot "index"
+  end
+
+  it "use custom matcher" do
+    visit "/"
+
+    expect(page).to match_screenshot("index", skip_stack_frames: 1, driver: :chunky_png)
   end
 end
