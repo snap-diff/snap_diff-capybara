@@ -2,6 +2,7 @@ module Capybara
   class Result
     def map: () -> Result
   end
+
   module Screenshot
     module BrowserHelpers
       def self.current_capybara_driver_class: () -> top
