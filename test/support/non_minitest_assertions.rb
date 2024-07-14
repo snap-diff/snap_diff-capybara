@@ -16,7 +16,7 @@ module CapybaraScreenshotDiff
 
         klass.teardown do
           if ::Capybara::Screenshot.active? && ::Capybara::Screenshot::Diff.fail_on_difference
-            errors = validate_screenshots!(@test_screenshots)
+            errors = verify_screenshots!(@test_screenshots)
             raise ::StandardError.new(errors.join("\n\n")) if errors
           end
         end

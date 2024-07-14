@@ -29,7 +29,7 @@ module Capybara
           @test_screenshots = []
         end
 
-        def validate_screenshots!(screenshots = @test_screenshots)
+        def verify_screenshots!(screenshots = @test_screenshots)
           return unless ::Capybara::Screenshot.active? && ::Capybara::Screenshot::Diff.fail_on_difference
 
           test_screenshot_errors = screenshots.map do |caller, name, compare|
@@ -125,9 +125,7 @@ module Capybara
         private
 
         def raise_error(error_msg, backtrace)
-          error = CapybaraScreenshotDiff::ExpectationNotMet.new(error_msg)
-          error.set_backtrace(backtrace)
-          raise error
+          raise CapybaraScreenshotDiff::ExpectationNotMet.new(error_msg).tap { _1.set_backtrace(backtrace) }
         end
 
         def build_screenshot_matches_job(screenshot_full_name, options)

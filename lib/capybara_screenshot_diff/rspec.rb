@@ -17,7 +17,7 @@ RSpec.configure do |config|
 
   config.after do
     if self.class.include?(::CapybaraScreenshotDiff::DSL) && ::Capybara::Screenshot.active?
-      errors = validate_screenshots!(@test_screenshots)
+      errors = verify_screenshots!(@test_screenshots)
       # TODO: Use rspec/mock approach to postpone verification
       raise ::CapybaraScreenshotDiff::ExpectationNotMet, errors.join("\n") if errors && !errors.empty?
     end
