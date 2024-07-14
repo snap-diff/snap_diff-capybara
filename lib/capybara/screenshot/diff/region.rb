@@ -7,13 +7,6 @@ class Region
     @x, @y, @width, @height = x, y, width, height
   end
 
-  def self.from_top_left_corner_coordinates(x, y, width, height)
-    return nil unless x && y && width && height
-    return nil if width < 0 || height < 0
-
-    Region.new(x, y, width, height)
-  end
-
   def self.from_edge_coordinates(left, top, right, bottom)
     return nil unless left && top && right && bottom
     return nil if right < left || bottom < top

@@ -36,12 +36,6 @@ module Capybara
               fail "Wrong adapter #{driver.inspect}. Available adapters: #{AVAILABLE_DRIVERS.inspect}"
             end
         end
-
-        def self.detect_test_framework_assert
-          ::Minitest::Assertion if defined?(::Minitest)
-        rescue
-          ::RuntimeError
-        end
       end
     end
   end
