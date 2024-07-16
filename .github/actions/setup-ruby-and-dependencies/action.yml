@@ -1,0 +1,30 @@
+---
+name: 'Setup Ruby and Cache'
+description: 'Set up Ruby environment and cache apt packages'
+inputs:
+  ruby-version:
+    description: 'Ruby version to set up'
+    required: true
+  ruby-cache-version:
+    description: 'Bundler cache version'
+    required: false
+  cache-apt-packages:
+    description: 'Whether to cache apt packages'
+    required: false
+    default: 'false'
+runs:
+  using: 'composite'
+  steps:
+    - name: Set up Ruby
+      uses: ruby/setup-ruby@v1
+      with:
+        ruby-version: ${{ inputs.ruby-version }}
+        bundler-cache: true
+        cache-version: ${{ inputs.ruby-cache-version }}
+
+    - name: Install and cache vips
+      if: ${{ inputs.cache-apt-packages == 'true' }}
+      uses: awalsh128/cache-apt-pkgs-action@latest
+      with:
+        packages: libvips libglib2.0-0 libglib2.0-dev libwebp-dev libvips42 libpng-dev
+        version: tests-v1

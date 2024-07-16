@@ -1,0 +1,19 @@
+---
+name: 'Setup Ruby and Cache'
+description: 'Set up Ruby environment and cache apt packages'
+inputs:
+  name:
+    description: 'Ruby version to set up'
+    required: true
+runs:
+  using: 'composite'
+  steps:
+    - name: Upload Screenshots
+      uses: actions/upload-artifact@v4
+      if: failure()
+      with:
+        name: ${{ inputs.name }}
+        retention-days: 1
+        path: |
+          test/fixtures/app/doc/screenshots/
+          tmp/capybara/screenshots-diffs/
