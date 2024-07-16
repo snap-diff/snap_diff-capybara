@@ -12,7 +12,7 @@ module Capybara::Screenshot
       Capybara::Screenshot.blur_active_element = nil
 
       if @test_screenshots
-        @test_screenshots.each(&method(:rollback_comparison_runtime_files))
+        @test_screenshots.each(&method(:rollback_comparison_runtime_files)) unless ENV["DEBUG"]
         # NOTE: We clear tracked different errors in order to not raise error
         @test_screenshots.clear
       end
