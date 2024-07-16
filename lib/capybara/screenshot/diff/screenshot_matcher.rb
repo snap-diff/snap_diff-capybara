@@ -44,9 +44,12 @@ module Capybara
           return if Capybara::Screenshot::Diff.fail_if_new && !base_screenshot_path.exist?
 
           capture_options = {
+            # screenshot options
             capybara_screenshot_options: driver_options[:capybara_screenshot_options],
             crop: driver_options.delete(:crop),
+            # delivery options
             screenshot_format: driver_options[:screenshot_format],
+            # stability options
             stability_time_limit: driver_options.delete(:stability_time_limit),
             wait: driver_options.delete(:wait)
           }
