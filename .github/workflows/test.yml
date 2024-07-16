@@ -18,8 +18,10 @@ env:
   BUNDLE_GEMFILE: gemfiles/rails71_gems.rb
   DEBIAN_FRONTEND: noninteractive
   FERRUM_PROCESS_TIMEOUT: 40
-  JAVA_OPTS: "-Xms4g -Xmx4g -XX:MetaspaceSize=256m -XX:MaxMetaspaceSize=512m -Xss1m -XX:+UseG1GC"
-  JRUBY_OPTS: "--dev -J-Djruby.jit.threshold=50 -J-Djruby.jit.max=5000 -J-Djruby.jit.maxsize=1000"
+  JAVA_OPTS: -Xmn2g -Xms6g -Xmx6g -XX:MetaspaceSize=256m -XX:MaxMetaspaceSize=512m -Xss1m
+    -XX:+UseG1GC -XX:+TieredCompilation -XX:TieredStopAtLevel=1 -XX:ReservedCodeCacheSize=256m
+    -XX:+UseCodeCacheFlushing
+  JRUBY_OPTS: --dev
   MALLOC_ARENA_MAX: 2
   RUBY_GC_HEAP_FREE_SLOTS: 600000
   RUBY_GC_HEAP_GROWTH_FACTOR: 1.1
@@ -109,7 +111,7 @@ jobs:
       github.event.pull_request.requested_reviewers.length > 0
     needs: [ test ]
     runs-on: ubuntu-latest
-    timeout-minutes: ${{ matrix.experimental && 12 || 8}}
+    timeout-minutes: ${{ contains(matrix.ruby-version, 'jruby') && 12 || 8 }}
     continue-on-error: ${{ matrix.experimental }}
     strategy:
       matrix:
@@ -141,8 +143,6 @@ jobs:
 
     env:
       BUNDLE_GEMFILE: gemfiles/${{ matrix.gemfile }}
-      JAVA_OPTS: "-Xms2g -Xmx4g -XX:MetaspaceSize=512m -XX:MaxMetaspaceSize=1g -XX:+UseG1GC"
-      JRUBY_OPTS: "-J-Xms2g -J-Xmx4g -J-XX:MaxMetaspaceSize=512m --dev -J-Djruby.reify.classes=true -J-Djruby.compile.mode=OFF"
 
     steps:
       - name: Checkout code
@@ -158,7 +158,7 @@ jobs:
       - name: Run tests
         uses: nick-fields/retry@v3
         with:
-          timeout_minutes: ${{ matrix.experimental && 5 || 3 }}
+          timeout_minutes: ${{ contains(matrix.ruby-version, 'jruby') && 5 || 3 }}
           max_attempts: 2
           command: bin/rake test
 
