@@ -117,7 +117,7 @@ jobs:
       github.event.pull_request.requested_reviewers.length > 0
     needs: [ test ]
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: ${{ matrix.experimental && 20 || 8}}
     continue-on-error: ${{ matrix.experimental }}
     strategy:
       matrix:
@@ -169,7 +169,7 @@ jobs:
       - name: Run tests
         uses: nick-fields/retry@v3
         with:
-          timeout_minutes: 3
+          timeout_minutes: ${{ matrix.experimental && 10 || 3 }}
           max_attempts: 2
           command: bin/rake test
 
