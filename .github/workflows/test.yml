@@ -32,33 +32,30 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
-      - uses: ruby/setup-ruby@v1
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Ruby
+        uses: ./.github/actions/setup-ruby-and-dependencies
         with:
           ruby-version: 3.3
-          bundler-cache: true
 
       - run: bin/rake test
 
   test:
     name: Functional Testing
-    runs-on: ubuntu-latest # In order to install libvips 8.9+ version
+    runs-on: ubuntu-latest
     timeout-minutes: 5
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - uses: awalsh128/cache-apt-pkgs-action@latest
-        with:
-          packages: libvips libglib2.0-0 libglib2.0-dev libwebp-dev libvips42 libpng-dev
-          version: tests-v1
-
-      - name: Set up Ruby
-        uses: ruby/setup-ruby@v1
+      - name: Setup Ruby and Cache Apt Packages
+        uses: ./.github/actions/setup-ruby-and-dependencies
         with:
           ruby-version: 3.3
-          bundler-cache: true
+          cache-apt-packages: true
 
       - name: Run Tests with coverage
         env:
@@ -67,15 +64,10 @@ jobs:
           SCREENSHOT_DRIVER: vips
         run: bin/rake test
 
-      - name: Upload Screenshots
-        if: always()
-        uses: actions/upload-artifact@v4
+      - name: Setup Ruby and Cache Apt Packages
+        uses: ./.github/actions/upload-screenshots
         with:
-          name: screenshots
-          retention-days: 1
-          path: |
-            test/fixtures/app/doc/screenshots/
-            tmp/capybara/screenshots-diffs/
+          name: base-screenshots
 
       - name: Upload Coverage
         uses: actions/upload-artifact@v4
@@ -87,22 +79,17 @@ jobs:
   test-signature:
     name: Testing Signatures
     needs: [ 'test' ]
-    runs-on: ubuntu-latest # In order to install libvips 8.9+ version
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - uses: awalsh128/cache-apt-pkgs-action@latest
-        with:
-          packages: libvips libglib2.0-0 libglib2.0-dev libwebp-dev libvips42 libpng-dev
-          version: tests-v1
-
-      - name: Set up Ruby
-        uses: ruby/setup-ruby@v1
+      - name: Setup Ruby and Cache Apt Packages
+        uses: ./.github/actions/setup-ruby-and-dependencies
         with:
           ruby-version: 3.3
-          bundler-cache: true
+          cache-apt-packages: true
 
       - name: Tests Signatures
         env:
@@ -149,22 +136,19 @@ jobs:
 
     env:
       BUNDLE_GEMFILE: gemfiles/${{ matrix.gemfile }}
+      JAVA_OPTS: "-Xms2g -Xmx4g -XX:MetaspaceSize=512m -XX:MaxMetaspaceSize=1g -XX:+UseG1GC"
+      JRUBY_OPTS: "-J-Xms2g -J-Xmx4g -J-XX:MaxMetaspaceSize=512m --dev -J-Djruby.reify.classes=true -J-Djruby.compile.mode=OFF"
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Set up Ruby
-        uses: ruby/setup-ruby@v1
+        uses: ./.github/actions/setup-ruby-and-dependencies
         with:
           ruby-version: ${{ matrix.ruby-version }}
-          bundler-cache: true
-          cache-version: ${{ matrix.ruby-version }}-${{ matrix.gemfile }}-1
-
-      - uses: awalsh128/cache-apt-pkgs-action@latest
-        with:
-          packages: libvips libglib2.0-0 libglib2.0-dev libwebp-dev libvips42 libpng-dev
-          version: tests-v1
+          ruby-cache-version: ${{ matrix.ruby-version }}-${{ matrix.gemfile }}-1
+          cache-apt-packages: true
 
       - name: Run tests
         uses: nick-fields/retry@v3
@@ -195,17 +179,11 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up Ruby
-        uses: ruby/setup-ruby@v1
+      - name: Setup Ruby and Cache Apt Packages
+        uses: ./.github/actions/setup-ruby-and-dependencies
         with:
           ruby-version: 3.3
-          bundler-cache: true
-
-      - uses: awalsh128/cache-apt-pkgs-action@latest
-        if: matrix.screenshot-driver == 'vips'
-        with:
-          packages: libvips libglib2.0-0 libglib2.0-dev libwebp-dev libvips42 libpng-dev
-          version: tests-v1
+          cache-apt-packages: ${{ matrix.screenshot-driver == 'vips' }}
 
       - name: Cache Selenium
         uses: actions/cache@v4
@@ -219,12 +197,7 @@ jobs:
           SCREENSHOT_DRIVER: ${{ matrix.screenshot-driver }}
           CAPYBARA_DRIVER: ${{ matrix.capybara-driver }}
 
-      - name: Upload Screenshots
-        uses: actions/upload-artifact@v4
-        if: failure()
+      - name: Setup Ruby and Cache Apt Packages
+        uses: ./.github/actions/upload-screenshots
         with:
           name: screenshots-${{ matrix.screenshot-driver }}-${{ matrix.capybara-driver }}
-          retention-days: 1
-          path: |
-            test/fixtures/app/doc/screenshots/
-            tmp/capybara/screenshots-diffs/
