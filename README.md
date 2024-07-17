@@ -10,6 +10,13 @@ Ever introduced a graphical change unintended?  Never want it to happen again?
 Then this gem is for you!  Use this gem to detect changes in your pages by
 taking screen shots and comparing them to the previous revision.
 
+## Features
+
+- **Screenshot Capturing**: Easily capture screenshots at any point in your tests to track the visual state of your application.
+- **Visual Change Detection**: Automatically detect changes in screenshots taken across test runs to identify unintended visual modifications.
+- **RSpec & Minitest Integration**: Utilize additional assertions and allow to run comparison after test body completed.
+
+
 ## Installation
 
 Add these lines to your application's Gemfile:
@@ -38,38 +45,61 @@ Or install it yourself as:
 
 ## Usage
 
+### Including DSL
+
+To use the screenshot capturing and change detection features in your tests, include the `CapybaraScreenshotDiff::DSL` in your test classes. It provides the `screenshot` method to capture and compare screenshots.
+
+There are different modules for different testing frameworks integrations.
+
 ### Minitest
 
-In your test class, include the `Capybara::Screenshot::Diff` module:
+For Minitest, need to require `capybara_screenshot_diff/minitest`.
+In your test class, include the `CapybaraScreenshotDiff::Minitest::Assertions` module:
 
 ```ruby
+require 'capybara_screenshot_diff/minitest'
+
 class ApplicationSystemTestCase < ActionDispatch::SystemTestCase
-  include Capybara::Screenshot::Diff
-  # ...
+  # Make the Capybara & Capybara Screenshot Diff DSLs available in tests
+  include CapybaraScreenshotDiff::DSL
+  # Make `assert_*` methods behave like Minitest assertions
+  include CapybaraScreenshotDiff::Minitest::Assertions
+  
+  def test_my_feature
+    visit '/'
+    assert_matches_screenshot 'index'
+  end
 end
 ```
 
 ### RSpec
 
+To use the screenshot capturing and change detection features in your tests,
+include the `CapybaraScreenshotDiff::DSL` in your test classes.
+It adds `match_screenshot` matcher to RSpec.
+
+> **Important**:
+> The `CapybaraScreenshotDiff::DSL` is automatically included in all feature tests by default.
+
+
 ```ruby
-describe 'Permissions admin', type: :feature, js: true do
+require 'capybara_screenshot_diff/rspec' 
 
-  include Capybara::Screenshot::Diff
-
+describe 'Permissions admin', type: :feature do
   it 'works with permissions' do
     visit('/')
-    screenshot 'home_page'
+    expect(page).to match_screenshot('home_page')
   end
-
 end
-```
-But it's better to include it within your *_helper.rb file so that it can used anywhere in your feature specs.
-```ruby
-# spec/feature_helper.rb
-require 'capybara/screenshot/diff'
 
-RSpec.configure do |config|
-  config.include Capybara::Screenshot::Diff
+
+describe 'Permissions admin', type: :non_feature do
+  include CapybaraScreenshotDiff::DSL
+  
+  it 'works with permissions' do
+    visit('/')
+    expect(page).to match_screenshot('home_page')
+  end
 end
 ```
 ### Cucumber
@@ -77,7 +107,7 @@ end
 Load Cucumber support by adding the following line (typically to your `features/support/env.rb` file):
 
 ```ruby
-require 'capybara/screenshot/diff/cucumber'
+require 'capybara_screenshot_diff/cucumber'
 ```
 
 And in the steps you can use:

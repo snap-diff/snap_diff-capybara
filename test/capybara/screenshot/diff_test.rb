@@ -2,11 +2,14 @@
 
 require "test_helper"
 require "minitest/stub_const"
+require "support/non_minitest_assertions"
 
 module Capybara
   module Screenshot
     class DiffTest < ActionDispatch::IntegrationTest
       setup do
+        Capybara.current_driver = Capybara.default_driver
+
         @orig_add_driver_path = Capybara::Screenshot.add_driver_path
         Capybara::Screenshot.add_driver_path = true
 
@@ -20,6 +23,7 @@ module Capybara
       end
 
       include Capybara::Screenshot::Diff
+      include CapybaraScreenshotDiff::Minitest::Assertions
       include Diff::TestMethodsStub
 
       teardown do
@@ -63,12 +67,10 @@ module Capybara
       end
 
       test "succeed on screenshot diff when fail_on_difference is false" do
-        Capybara::Screenshot::Diff.stub(:enabled, true) do
-          Capybara::Screenshot::Diff.stub(:fail_on_difference, false) do
-            test_case = SampleMiniTestCase.new(:_test_sample_screenshot_error)
-            test_case.run
-            assert_equal 0, test_case.failures.size
-          end
+        Capybara::Screenshot::Diff.stub(:fail_on_difference, false) do
+          test_case = SampleMiniTestCase.new(:_test_sample_screenshot_error)
+          test_case.run
+          assert_equal 0, test_case.failures.size
         end
       end
 
@@ -125,19 +127,18 @@ module Capybara
       end
 
       test "raising errors on teardown for non Minitest" do
-        Capybara::Screenshot::Diff.stub_const(:ASSERTION, ::RuntimeError) do
-          test_case = SampleNotMiniTestCase.new
-          test_case._test_sample_screenshot_error
+        test_case = SampleNotMiniTestCase.new
+        test_case._test_sample_screenshot_error
 
-          expected_message =
-            "Screenshot does not match for 'sample_screenshot' expected error message for non minitest"
-          assert_raises(RuntimeError, expected_message) { test_case.teardown }
-          assert(test_case.instance_variable_get(:@test_screenshots).empty?)
-        end
+        expected_message =
+          "Screenshot does not match for 'sample_screenshot' expected error message for non minitest"
+        assert_raises(::StandardError, expected_message) { test_case.teardown }
+        assert_empty(test_case.instance_variable_get(:@test_screenshots))
       end
 
       class SampleMiniTestCase < ActionDispatch::IntegrationTest
         include Capybara::Screenshot::Diff
+        include CapybaraScreenshotDiff::Minitest::Assertions
 
         # NOTE: we need to add `_` as prefix to skip this test from auto-run
         def _test_sample_screenshot_error
@@ -167,6 +168,7 @@ module Capybara
         end
 
         include Capybara::Screenshot::Diff
+        include CapybaraScreenshotDiff::NonMinitest::Assertions
 
         def _test_sample_screenshot_error
           comparison = ::Minitest::Mock.new
@@ -174,7 +176,6 @@ module Capybara
           comparison.expect(:base_image_path, Pathname.new("screenshot.base.png"))
           comparison.expect(:error_message, "expected error message for non minitest")
 
-          @test_screenshots = []
           @test_screenshots << ["my_test.rb:42", "sample_screenshot", comparison]
         end
       end
@@ -186,6 +187,7 @@ module Capybara
 
         include Capybara::Screenshot::Diff
         include Diff::TestMethodsStub
+        include CapybaraScreenshotDiff::Minitest::Assertions
 
         teardown do
           Capybara::Screenshot.screenshot_format = @orig_screenshot_format

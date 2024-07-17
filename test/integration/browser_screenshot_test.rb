@@ -12,7 +12,7 @@ module Capybara::Screenshot
       Capybara::Screenshot.blur_active_element = nil
 
       if @test_screenshots
-        @test_screenshots.each(&method(:rollback_comparison_runtime_files))
+        @test_screenshots.each(&method(:rollback_comparison_runtime_files)) unless ENV["DEBUG"]
         # NOTE: We clear tracked different errors in order to not raise error
         @test_screenshots.clear
       end
@@ -20,7 +20,7 @@ module Capybara::Screenshot
 
     def test_screenshot_without_changes
       visit "/"
-      screenshot "index"
+      assert_matches_screenshot "index"
     end
 
     def test_screenshot_with_changes
@@ -28,7 +28,7 @@ module Capybara::Screenshot
 
       fill_in "First Field:", with: "Some changes in the field"
 
-      assert screenshot("index")
+      assert_matches_screenshot("index")
 
       assert_screenshot_error_for("index")
     end
@@ -42,7 +42,7 @@ module Capybara::Screenshot
 
       visit "/"
       fill_in "First Field:", with: "Test Input With Hide Caret"
-      screenshot "index-hide_caret-enabled"
+      assert_matches_screenshot "index-hide_caret-enabled"
     ensure
       Capybara::Screenshot.hide_caret = nil
     end
@@ -54,7 +54,7 @@ module Capybara::Screenshot
       fill_in "First Field:", with: "Test Input Without Hide Caret"
 
       # Hide caret is flaky issue, let's give more tries to take stable screenshot
-      screenshot "index-hide_caret-disabled", wait: Capybara.default_max_wait_time * 5
+      assert_matches_screenshot "index-hide_caret-disabled", wait: Capybara.default_max_wait_time * 5
     ensure
       Capybara::Screenshot.hide_caret = nil
     end
@@ -64,7 +64,7 @@ module Capybara::Screenshot
 
       visit "/"
       fill_in "First Field:", with: "Test Input With Hide Caret"
-      screenshot "index-blur_active_element-enabled"
+      assert_matches_screenshot "index-blur_active_element-enabled"
     ensure
       Capybara::Screenshot.blur_active_element = nil
     end
@@ -74,7 +74,7 @@ module Capybara::Screenshot
 
       visit "/"
       fill_in "First Field:", with: "Test Input Without Hide Caret"
-      screenshot "index-blur_active_element-disabled"
+      assert_matches_screenshot "index-blur_active_element-disabled"
     ensure
       Capybara::Screenshot.blur_active_element = nil
     end
@@ -82,7 +82,7 @@ module Capybara::Screenshot
     def test_screenshot_selected_element
       visit "/"
 
-      screenshot "cropped_screenshot", crop: [0, 100, 100, 200]
+      assert_matches_screenshot "cropped_screenshot", crop: [0, 100, 100, 200]
     end
 
     test "skip_area accepts passing multiple coordinates as one array" do
@@ -91,7 +91,7 @@ module Capybara::Screenshot
       fill_in "First Field:", with: "Changed"
       fill_in "Second Field:", with: "Changed"
 
-      screenshot("index", skip_area: [8, 100, 218, 140, 8, 140, 218, 180])
+      assert_matches_screenshot("index", skip_area: [8, 100, 218, 140, 8, 140, 218, 180])
 
       assert_no_screenshot_errors
     end
@@ -99,7 +99,7 @@ module Capybara::Screenshot
     test "compare crops only when other part is not working" do
       visit "/index-without-img.html"
 
-      screenshot("index-cropped", crop: "form", color_distance_limit: 40)
+      assert_matches_screenshot("index-cropped", crop: "form", color_distance_limit: 40)
 
       assert_no_screenshot_errors
     end
@@ -107,7 +107,7 @@ module Capybara::Screenshot
     test "crop accepts css selector" do
       visit "/index-without-img.html"
 
-      screenshot("index-cropped", crop: "form")
+      assert_matches_screenshot("index-cropped", crop: "form")
 
       assert_no_screenshot_errors
     end
@@ -118,9 +118,9 @@ module Capybara::Screenshot
       fill_in "First Field:", with: "Changed"
       fill_in "Second Field:", with: "Changed"
 
-      screenshot("index", skip_area: "form")
-      screenshot("index_with_skip_area_as_array_of_css", skip_area: ["form"])
-      screenshot("index_with_skip_area_as_array_of_css_and_p", skip_area: [[90, 950, 180, 1000], "form"])
+      assert_matches_screenshot("index", skip_area: "form")
+      assert_matches_screenshot("index_with_skip_area_as_array_of_css", skip_area: ["form"])
+      assert_matches_screenshot("index_with_skip_area_as_array_of_css_and_p", skip_area: [[90, 950, 180, 1000], "form"])
 
       assert_no_screenshot_errors
     end
@@ -131,7 +131,7 @@ module Capybara::Screenshot
       fill_in "First Field:", with: "New Change"
       fill_in "Second Field:", with: "New Change"
 
-      screenshot("index-cropped", skip_area: "#first-field", crop: "form")
+      assert_matches_screenshot("index-cropped", skip_area: "#first-field", crop: "form")
 
       assert_not_predicate @test_screenshots, :empty?, "differences have not been found when they should have been"
       assert @test_screenshots.last.last.different?, "should provide comparison object in the error"
@@ -142,7 +142,7 @@ module Capybara::Screenshot
 
       fill_in "First Field:", with: "Test Input With Hide Caret"
 
-      screenshot("index", skip_area: "form")
+      assert_matches_screenshot("index", skip_area: "form")
 
       assert_no_screenshot_errors
     end
@@ -152,7 +152,7 @@ module Capybara::Screenshot
 
       fill_in "First Field:", with: "Test Input With Hide Caret"
 
-      screenshot("index-cropped", skip_area: "input", crop: "form")
+      assert_matches_screenshot("index-cropped", skip_area: "input", crop: "form")
 
       assert_no_screenshot_errors
     end
@@ -183,7 +183,7 @@ module Capybara::Screenshot
         # because quick_equal could produce incorrect result,
         # because of the same size screenshots
         10.times do
-          screenshot "index-with-anim", stability_time_limit: 0.33, wait: 0.5
+          assert_matches_screenshot "index-with-anim", stability_time_limit: 0.33, wait: 0.5
         end
       end
     ensure
@@ -192,9 +192,9 @@ module Capybara::Screenshot
 
     def test_await_all_images_are_loaded
       visit "/index.html"
-      assert_raises Minitest::Assertion do
+      assert_raises ::Minitest::Assertion do
         BrowserHelpers.stub(:pending_image_to_load, "http://127.0.0.1:62815/image.png") do
-          screenshot :index
+          assert_matches_screenshot :index
         end
       end
       assert_no_screenshot_errors
@@ -215,14 +215,14 @@ module Capybara::Screenshot
     end
 
     def assert_screenshot_error_for(screenshot_name)
-      validate_screenshots
+      run_screenshots_validation
 
       assert_equal 1, @test_screenshots&.length, "expecting to have just one difference"
       assert_equal screenshot_name, @test_screenshots[0][1], "index screenshot should have difference for changed page"
     end
 
     def assert_no_screenshot_errors
-      screenshots = validate_screenshots
+      screenshots = run_screenshots_validation
 
       error_messages = screenshots.map { |screenshot_error| screenshot_error.last.error_message }
 

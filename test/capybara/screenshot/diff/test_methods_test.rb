@@ -12,7 +12,7 @@ module Capybara
         test "raise error on missing screenshot when fail_if_new is true" do
           Vcs.stub(:checkout_vcs, false) do
             Capybara::Screenshot::Diff.stub(:fail_if_new, true) do
-              assert_raises ::Minitest::Assertion, match: /No existing screenshot found for/ do
+              assert_raises CapybaraScreenshotDiff::ExpectationNotMet, match: /No existing screenshot found for/ do
                 screenshot "not_existing_screenshot-name"
               end
             end

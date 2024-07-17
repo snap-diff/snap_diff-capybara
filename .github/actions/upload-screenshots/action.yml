@@ -1,0 +1,18 @@
+---
+name: 'Upload screenshots for debug'
+description: 'To reproduce the issue locally, download the screenshots from the failed test'
+inputs:
+  name:
+    description: 'Customize the name of the artifact'
+    required: true
+runs:
+  using: 'composite'
+  steps:
+    - uses: actions/upload-artifact@v4
+      if: failure()
+      with:
+        name: ${{ inputs.name }}
+        retention-days: 1
+        path: |
+          test/fixtures/app/doc/screenshots/
+          tmp/capybara/screenshots-diffs/

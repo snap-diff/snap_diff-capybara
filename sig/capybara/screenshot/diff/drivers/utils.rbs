@@ -5,8 +5,6 @@ module Capybara
         def self.detect_available_drivers: () -> Array[(:vips | :chunky_png)]
 
         def self.find_driver_class_for: [T] (Symbol driver) -> T
-
-        def self.detect_test_framework_assert: [T < Exception] () -> T
       end
     end
   end

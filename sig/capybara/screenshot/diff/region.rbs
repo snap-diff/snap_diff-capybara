@@ -11,8 +11,6 @@ class Region
 
   def initialize: (Numeric x, Numeric y, Numeric width, Numeric height) -> void
 
-  def self.from_top_left_corner_coordinates: (Numeric x, Numeric y, Numeric width, Numeric height) -> Region?
-
   def self.from_edge_coordinates: (Numeric left, Numeric `top`, Numeric right, Numeric bottom) -> Region?
 
   def empty?: -> bool

@@ -18,7 +18,14 @@ env:
   BUNDLE_GEMFILE: gemfiles/rails71_gems.rb
   DEBIAN_FRONTEND: noninteractive
   FERRUM_PROCESS_TIMEOUT: 40
+  JAVA_OPTS: -Xmn2g -Xms6g -Xmx6g -XX:MetaspaceSize=256m -XX:MaxMetaspaceSize=512m -Xss1m
+    -XX:+UseG1GC -XX:+TieredCompilation -XX:TieredStopAtLevel=1 -XX:ReservedCodeCacheSize=256m
+    -XX:+UseCodeCacheFlushing
+  JRUBY_OPTS: --dev
   MALLOC_ARENA_MAX: 2
+  RUBY_GC_HEAP_FREE_SLOTS: 600000
+  RUBY_GC_HEAP_GROWTH_FACTOR: 1.1
+  RUBY_GC_HEAP_INIT_SLOTS: 600000
   RUBY_YJIT_ENABLE: 1
 
 concurrency:
@@ -33,51 +40,39 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
-      - uses: ruby/setup-ruby@v1
+
+      - uses: ./.github/actions/setup-ruby-and-dependencies
         with:
           ruby-version: 3.3
-          bundler-cache: true
 
       - run: bin/rake test
 
   test:
     name: Functional Testing
-    runs-on: ubuntu-latest # In order to install libvips 8.9+ version
+    runs-on: ubuntu-latest
     timeout-minutes: 5
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - uses: awalsh128/cache-apt-pkgs-action@latest
-        with:
-          packages: libvips libglib2.0-0 libglib2.0-dev libwebp-dev libvips42 libpng-dev
-          version: tests-v1
-
-      - name: Set up Ruby
-        uses: ruby/setup-ruby@v1
+      - uses: ./.github/actions/setup-ruby-and-dependencies
         with:
           ruby-version: 3.3
-          bundler-cache: true
+          cache-apt-packages: true
 
-      - name: Run Tests with coverage
+      - run: bin/rake test
         env:
           COVERAGE: enabled
           DISABLE_SKIP_TESTS: 1
           SCREENSHOT_DRIVER: vips
-        run: bin/rake test
 
-      - name: Upload Screenshots
-        if: always()
-        uses: actions/upload-artifact@v4
+
+      - uses: ./.github/actions/upload-screenshots
         with:
-          name: screenshots
-          retention-days: 1
-          path: |
-            test/fixtures/app/doc/screenshots/
-            tmp/capybara/screenshots-diffs/
+          name: base-screenshots
 
-      - name: Upload Coverage
+      - name: Uploading Coverage Report
         uses: actions/upload-artifact@v4
         with:
           name: coverage
@@ -87,37 +82,30 @@ jobs:
   test-signature:
     name: Testing Signatures
     needs: [ 'test' ]
-    runs-on: ubuntu-latest # In order to install libvips 8.9+ version
+    runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - uses: awalsh128/cache-apt-pkgs-action@latest
-        with:
-          packages: libvips libglib2.0-0 libglib2.0-dev libwebp-dev libvips42 libpng-dev
-          version: tests-v1
-
-      - name: Set up Ruby
-        uses: ruby/setup-ruby@v1
+      - uses: ./.github/actions/setup-ruby-and-dependencies
         with:
           ruby-version: 3.3
-          bundler-cache: true
+          cache-apt-packages: true
 
-      - name: Tests Signatures
+      - run: bin/rake test:signatures
         env:
           SCREENSHOT_DRIVER: vips
-        run: bin/rake test:signatures
 
   matrix:
     name: Test Integration Rails & Ruby
+    # Test on master, when a review is requested or manually invoked.
     if: >
       github.ref == 'refs/heads/master' ||
       github.event_name == 'workflow_dispatch' ||
       github.event.pull_request.requested_reviewers.length > 0
     needs: [ test ]
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: ${{ contains(matrix.ruby-version, 'jruby') && 12 || 8 }}
     continue-on-error: ${{ matrix.experimental }}
     strategy:
       matrix:
@@ -151,25 +139,18 @@ jobs:
       BUNDLE_GEMFILE: gemfiles/${{ matrix.gemfile }}
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up Ruby
-        uses: ruby/setup-ruby@v1
+      - uses: ./.github/actions/setup-ruby-and-dependencies
         with:
           ruby-version: ${{ matrix.ruby-version }}
-          bundler-cache: true
-          cache-version: ${{ matrix.ruby-version }}-${{ matrix.gemfile }}-1
+          ruby-cache-version: ${{ matrix.ruby-version }}-${{ matrix.gemfile }}-1
+          cache-apt-packages: true
 
-      - uses: awalsh128/cache-apt-pkgs-action@latest
-        with:
-          packages: libvips libglib2.0-0 libglib2.0-dev libwebp-dev libvips42 libpng-dev
-          version: tests-v1
-
-      - name: Run tests
+      - name: Run tests (with 2 retries)
         uses: nick-fields/retry@v3
         with:
-          timeout_minutes: 3
+          timeout_minutes: ${{ contains(matrix.ruby-version, 'jruby') && 5 || 3 }}
           max_attempts: 2
           command: bin/rake test
 
@@ -192,20 +173,12 @@ jobs:
     timeout-minutes: 5
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up Ruby
-        uses: ruby/setup-ruby@v1
+      - uses: ./.github/actions/setup-ruby-and-dependencies
         with:
           ruby-version: 3.3
-          bundler-cache: true
-
-      - uses: awalsh128/cache-apt-pkgs-action@latest
-        if: matrix.screenshot-driver == 'vips'
-        with:
-          packages: libvips libglib2.0-0 libglib2.0-dev libwebp-dev libvips42 libpng-dev
-          version: tests-v1
+          cache-apt-packages: ${{ matrix.screenshot-driver == 'vips' }}
 
       - name: Cache Selenium
         uses: actions/cache@v4
@@ -213,18 +186,11 @@ jobs:
           path: ~/.cache/selenium
           key: ${{ runner.os }}-selenium-${{ matrix.capybara-driver }}
 
-      - name: Run tests
-        run: bin/rake test:integration
+      - run: bin/rake test:integration
         env:
           SCREENSHOT_DRIVER: ${{ matrix.screenshot-driver }}
           CAPYBARA_DRIVER: ${{ matrix.capybara-driver }}
 
-      - name: Upload Screenshots
-        uses: actions/upload-artifact@v4
-        if: failure()
+      - uses: ./.github/actions/upload-screenshots
         with:
           name: screenshots-${{ matrix.screenshot-driver }}-${{ matrix.capybara-driver }}
-          retention-days: 1
-          path: |
-            test/fixtures/app/doc/screenshots/
-            tmp/capybara/screenshots-diffs/

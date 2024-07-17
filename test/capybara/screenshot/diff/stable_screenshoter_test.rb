@@ -6,7 +6,6 @@ module Capybara
   module Screenshot
     module Diff
       class StableScreenshoterTest < ActionDispatch::IntegrationTest
-        include TestMethods
         include TestMethodsStub
 
         test "#take_stable_screenshot several iterations to take stable screenshot" do

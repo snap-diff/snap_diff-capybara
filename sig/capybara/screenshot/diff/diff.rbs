@@ -14,8 +14,6 @@ module Capybara
     module Diff
       AVAILABLE_DRIVERS: Array[(:vips | :chunky_png)]
 
-      ASSERTION: (top | RuntimeError)
-
       def self.default_options: () -> ScreenshotMatcher::input_options
 
       def self.included: (top klass) -> void

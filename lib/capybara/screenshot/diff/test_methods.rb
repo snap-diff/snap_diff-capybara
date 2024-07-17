@@ -29,6 +29,20 @@ module Capybara
           @test_screenshots = []
         end
 
+        def verify_screenshots!(screenshots = @test_screenshots)
+          return unless ::Capybara::Screenshot.active? && ::Capybara::Screenshot::Diff.fail_on_difference
+
+          test_screenshot_errors = screenshots.map do |caller, name, compare|
+            assert_image_not_changed(caller, name, compare)
+          end
+
+          test_screenshot_errors.compact!
+
+          test_screenshot_errors.presence
+        ensure
+          screenshots.clear
+        end
+
         def build_full_name(name)
           if @screenshot_counter
             name = format("%02i_#{name}", @screenshot_counter)
@@ -74,7 +88,10 @@ module Capybara
 
           unless job
             if Screenshot::Diff.fail_if_new
-              raise_error("No existing screenshot found for #{screenshot_full_name}!\nTo stop seeing this error disable by Capybara::Screenshot::Diff.fail_if_new=false", caller(2))
+              raise_error(<<-ERROR.strip_heredoc, caller(2))
+                No existing screenshot found for #{screenshot_full_name}!
+                To stop seeing this error disable by `Capybara::Screenshot::Diff.fail_if_new=false`
+              ERROR
             end
 
             return false
@@ -108,9 +125,7 @@ module Capybara
         private
 
         def raise_error(error_msg, backtrace)
-          error = ASSERTION.new(error_msg)
-          error.set_backtrace(backtrace)
-          raise error
+          raise CapybaraScreenshotDiff::ExpectationNotMet.new(error_msg).tap { _1.set_backtrace(backtrace) }
         end
 
         def build_screenshot_matches_job(screenshot_full_name, options)
