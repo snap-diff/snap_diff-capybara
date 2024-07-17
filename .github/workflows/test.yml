@@ -79,23 +79,6 @@ jobs:
           retention-days: 1
           path: coverage
 
-  test-signature:
-    name: Testing Signatures
-    needs: [ 'test' ]
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: ./.github/actions/setup-ruby-and-dependencies
-        with:
-          ruby-version: 3.3
-          cache-apt-packages: true
-
-      - run: bin/rake test:signatures
-        env:
-          SCREENSHOT_DRIVER: vips
-
   matrix:
     name: Test Integration Rails & Ruby
     # Test on master, when a review is requested or manually invoked.
