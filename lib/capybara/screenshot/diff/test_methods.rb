@@ -15,11 +15,17 @@ require_relative "region"
 
 require_relative "screenshot_matcher"
 
-# Add the `screenshot` method to ActionDispatch::IntegrationTest
+# == Capybara::Screenshot::Diff::TestMethods
+#
+# This module provides methods for capturing screenshots and verifying them against
+# baseline images to detect visual changes. It's designed to be included in test
+# classes to add visual regression testing capabilities.
+
 module Capybara
   module Screenshot
     module Diff
       module TestMethods
+
         def initialize(*)
           super
           @screenshot_counter = nil
@@ -80,6 +86,23 @@ module Capybara
           parts
         end
 
+
+        # Takes a screenshot and optionally compares it against a baseline image.
+        #
+        # === Parameters:
+        # +name+:: +String+ - The name of the screenshot. This is used to generate the filename.
+        # +skip_stack_frames+:: +Integer+ (default: 0) - The number of stack frames to skip when reporting errors. Useful for cleaner error messages.
+        # +options+:: +Hash+ - Additional options for taking the screenshot. Can include custom dimensions, selectors for specific elements, etc.
+        #
+        # === Returns:
+        # +Boolean+ - Returns +true+ if the screenshot was successfully captured and matches the baseline (if comparison is enabled). Returns +false+ if screenshot capturing is disabled or if the screenshot does not match the baseline.
+        #
+        # === Raises:
+        # CapybaraScreenshotDiff::ExpectationNotMet - If the screenshot does not match the baseline image and fail_if_new is set to +true+.
+        #
+        # === Example:
+        #   screenshot('login_page', skip_stack_frames: 1, full: true)
+        #
         def screenshot(name, skip_stack_frames: 0, **options)
           return false unless Screenshot.active?
 
@@ -97,7 +120,7 @@ module Capybara
             return false
           end
 
-          job.prepend(caller[skip_stack_frames])
+          job.prepend(caller(skip_stack_frames))
 
           if Screenshot::Diff.delayed
             schedule_match_job(job)
