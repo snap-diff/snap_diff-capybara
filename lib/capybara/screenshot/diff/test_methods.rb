@@ -25,7 +25,6 @@ module Capybara
   module Screenshot
     module Diff
       module TestMethods
-
         def initialize(*)
           super
           @screenshot_counter = nil
@@ -85,7 +84,6 @@ module Capybara
           parts << @screenshot_group if @screenshot_group.present?
           parts
         end
-
 
         # Takes a screenshot and optionally compares it against a baseline image.
         #
