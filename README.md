@@ -10,6 +10,13 @@ Ever introduced a graphical change unintended?  Never want it to happen again?
 Then this gem is for you!  Use this gem to detect changes in your pages by
 taking screen shots and comparing them to the previous revision.
 
+## Features
+
+- **Screenshot Capturing**: Easily capture screenshots at any point in your tests to track the visual state of your application.
+- **Visual Change Detection**: Automatically detect changes in screenshots taken across test runs to identify unintended visual modifications.
+- **RSpec & Minitest Integration**: Utilize additional assertions and allow to run comparison after test body completed.
+
+
 ## Installation
 
 Add these lines to your application's Gemfile:
@@ -38,8 +45,15 @@ Or install it yourself as:
 
 ## Usage
 
+### Including DSL
+
+To use the screenshot capturing and change detection features in your tests, include the `CapybaraScreenshotDiff::DSL` in your test classes. It provides the `screenshot` method to capture and compare screenshots.
+
+There are different modules for different testing frameworks integrations.
+
 ### Minitest
 
+For Minitest, need to require `capybara_screenshot_diff/minitest`.
 In your test class, include the `CapybaraScreenshotDiff::Minitest::Assertions` module:
 
 ```ruby
@@ -60,10 +74,28 @@ end
 
 ### RSpec
 
+To use the screenshot capturing and change detection features in your tests,
+include the `CapybaraScreenshotDiff::DSL` in your test classes.
+It adds `match_screenshot` matcher to RSpec.
+
+> **Important**:
+> The `CapybaraScreenshotDiff::DSL` is automatically included in all feature tests by default.
+
+
 ```ruby
 require 'capybara_screenshot_diff/rspec' 
 
-describe 'Permissions admin', type: :feature, js: true do
+describe 'Permissions admin', type: :feature do
+  it 'works with permissions' do
+    visit('/')
+    expect(page).to match_screenshot('home_page')
+  end
+end
+
+
+describe 'Permissions admin', type: :non_feature do
+  include CapybaraScreenshotDiff::DSL
+  
   it 'works with permissions' do
     visit('/')
     expect(page).to match_screenshot('home_page')
