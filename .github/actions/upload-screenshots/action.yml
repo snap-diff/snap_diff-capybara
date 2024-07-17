@@ -1,15 +1,14 @@
 ---
-name: 'Setup Ruby and Cache'
-description: 'Set up Ruby environment and cache apt packages'
+name: 'Upload screenshots for debug'
+description: 'To reproduce the issue locally, download the screenshots from the failed test'
 inputs:
   name:
-    description: 'Ruby version to set up'
+    description: 'Customize the name of the artifact'
     required: true
 runs:
   using: 'composite'
   steps:
-    - name: Upload Screenshots
-      uses: actions/upload-artifact@v4
+    - uses: actions/upload-artifact@v4
       if: failure()
       with:
         name: ${{ inputs.name }}

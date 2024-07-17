@@ -39,11 +39,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Ruby
-        uses: ./.github/actions/setup-ruby-and-dependencies
+      - uses: ./.github/actions/setup-ruby-and-dependencies
         with:
           ruby-version: 3.3
 
@@ -58,25 +56,23 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Ruby and Cache Apt Packages
-        uses: ./.github/actions/setup-ruby-and-dependencies
+      - uses: ./.github/actions/setup-ruby-and-dependencies
         with:
           ruby-version: 3.3
           cache-apt-packages: true
 
-      - name: Run Tests with coverage
+      - run: bin/rake test
         env:
           COVERAGE: enabled
           DISABLE_SKIP_TESTS: 1
           SCREENSHOT_DRIVER: vips
-        run: bin/rake test
 
-      - name: Setup Ruby and Cache Apt Packages
-        uses: ./.github/actions/upload-screenshots
+
+      - uses: ./.github/actions/upload-screenshots
         with:
           name: base-screenshots
 
-      - name: Upload Coverage
+      - name: Uploading Coverage Report
         uses: actions/upload-artifact@v4
         with:
           name: coverage
@@ -89,22 +85,20 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Ruby and Cache Apt Packages
-        uses: ./.github/actions/setup-ruby-and-dependencies
+      - uses: ./.github/actions/setup-ruby-and-dependencies
         with:
           ruby-version: 3.3
           cache-apt-packages: true
 
-      - name: Tests Signatures
+      - run: bin/rake test:signatures
         env:
           SCREENSHOT_DRIVER: vips
-        run: bin/rake test:signatures
 
   matrix:
     name: Test Integration Rails & Ruby
+    # Test on master, when a review is requested or manually invoked.
     if: >
       github.ref == 'refs/heads/master' ||
       github.event_name == 'workflow_dispatch' ||
@@ -145,17 +139,15 @@ jobs:
       BUNDLE_GEMFILE: gemfiles/${{ matrix.gemfile }}
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up Ruby
-        uses: ./.github/actions/setup-ruby-and-dependencies
+      - uses: ./.github/actions/setup-ruby-and-dependencies
         with:
           ruby-version: ${{ matrix.ruby-version }}
           ruby-cache-version: ${{ matrix.ruby-version }}-${{ matrix.gemfile }}-1
           cache-apt-packages: true
 
-      - name: Run tests
+      - name: Run tests (with 2 retries)
         uses: nick-fields/retry@v3
         with:
           timeout_minutes: ${{ contains(matrix.ruby-version, 'jruby') && 5 || 3 }}
@@ -181,11 +173,9 @@ jobs:
     timeout-minutes: 5
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Ruby and Cache Apt Packages
-        uses: ./.github/actions/setup-ruby-and-dependencies
+      - uses: ./.github/actions/setup-ruby-and-dependencies
         with:
           ruby-version: 3.3
           cache-apt-packages: ${{ matrix.screenshot-driver == 'vips' }}
@@ -196,13 +186,11 @@ jobs:
           path: ~/.cache/selenium
           key: ${{ runner.os }}-selenium-${{ matrix.capybara-driver }}
 
-      - name: Run tests
-        run: bin/rake test:integration
+      - run: bin/rake test:integration
         env:
           SCREENSHOT_DRIVER: ${{ matrix.screenshot-driver }}
           CAPYBARA_DRIVER: ${{ matrix.capybara-driver }}
 
-      - name: Setup Ruby and Cache Apt Packages
-        uses: ./.github/actions/upload-screenshots
+      - uses: ./.github/actions/upload-screenshots
         with:
           name: screenshots-${{ matrix.screenshot-driver }}-${{ matrix.capybara-driver }}
