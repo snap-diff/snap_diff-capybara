@@ -25,6 +25,10 @@ module Capybara
   module Screenshot
     module Diff
       module TestMethods
+        # @!attribute [rw] test_screenshots
+        #   @return [Array(Array(Array(String), String, ImageCompare))] An array where each element is an array containing the caller context,
+        #     the name of the screenshot, and the comparison object. This attribute stores information about each screenshot
+        #     scheduled for comparison to ensure they do not show any unintended differences.
         def initialize(*)
           super
           @screenshot_counter = nil
@@ -34,6 +38,11 @@ module Capybara
           @test_screenshots = []
         end
 
+        # Verifies that all scheduled screenshots do not show any unintended differences.
+        #
+        # @param screenshots [Array(Array(Array(String), String, ImageCompare))] The list of match screenshots jobs. Defaults to all screenshots taken during the test.
+        # @return [Array, nil] Returns an array of error messages if there are screenshot differences, otherwise nil.
+        # @note This method is typically called at the end of a test to assert all screenshots are as expected.
         def verify_screenshots!(screenshots = @test_screenshots)
           return unless ::Capybara::Screenshot.active? && ::Capybara::Screenshot::Diff.fail_on_difference
 
@@ -48,6 +57,10 @@ module Capybara
           screenshots.clear
         end
 
+        # Builds the full name for a screenshot, incorporating counters and group names for uniqueness.
+        #
+        # @param name [String] The base name for the screenshot.
+        # @return [String] The full, unique name for the screenshot.
         def build_full_name(name)
           if @screenshot_counter
             name = format("%02i_#{name}", @screenshot_counter)
@@ -57,6 +70,9 @@ module Capybara
           File.join(*group_parts.push(name.to_s))
         end
 
+        # Determines the directory path for saving screenshots.
+        #
+        # @return [String] The full path to the directory where screenshots are saved.
         def screenshot_dir
           File.join(*([Screenshot.screenshot_area] + group_parts))
         end
@@ -73,6 +89,13 @@ module Capybara
           FileUtils.rm_rf screenshot_dir
         end
 
+        # Schedules a screenshot comparison job for later execution.
+        #
+        # This method adds a job to the queue of screenshots to be matched. It's used when `Capybara::Screenshot::Diff.delayed`
+        # is set to true, allowing for batch processing of screenshot comparisons at a later point, typically at the end of a test.
+        #
+        # @param job [Array(Array(String), String, ImageCompare)] The job to be scheduled, consisting of the caller context, screenshot name, and comparison object.
+        # @return [Boolean] Always returns true, indicating the job was successfully scheduled.
         def schedule_match_job(job)
           (@test_screenshots ||= []) << job
           true
@@ -87,20 +110,13 @@ module Capybara
 
         # Takes a screenshot and optionally compares it against a baseline image.
         #
-        # === Parameters:
-        # +name+:: +String+ - The name of the screenshot. This is used to generate the filename.
-        # +skip_stack_frames+:: +Integer+ (default: 0) - The number of stack frames to skip when reporting errors. Useful for cleaner error messages.
-        # +options+:: +Hash+ - Additional options for taking the screenshot. Can include custom dimensions, selectors for specific elements, etc.
-        #
-        # === Returns:
-        # +Boolean+ - Returns +true+ if the screenshot was successfully captured and matches the baseline (if comparison is enabled). Returns +false+ if screenshot capturing is disabled or if the screenshot does not match the baseline.
-        #
-        # === Raises:
-        # CapybaraScreenshotDiff::ExpectationNotMet - If the screenshot does not match the baseline image and fail_if_new is set to +true+.
-        #
-        # === Example:
+        # @param name [String] The name of the screenshot, used to generate the filename.
+        # @param skip_stack_frames [Integer] The number of stack frames to skip when reporting errors, for cleaner error messages.
+        # @param options [Hash] Additional options for taking the screenshot, such as custom dimensions or selectors.
+        # @return [Boolean] Returns true if the screenshot was successfully captured and matches the baseline, false otherwise.
+        # @raise [CapybaraScreenshotDiff::ExpectationNotMet] If the screenshot does not match the baseline image and fail_if_new is set to true.
+        # @example Capture a full-page screenshot named 'login_page'
         #   screenshot('login_page', skip_stack_frames: 1, full: true)
-        #
         def screenshot(name, skip_stack_frames: 0, **options)
           return false unless Screenshot.active?
 
@@ -128,6 +144,13 @@ module Capybara
           end
         end
 
+        # Asserts that an image has not changed compared to its baseline.
+        #
+        # @param caller [Array] The caller context, used for error reporting.
+        # @param name [String] The name of the screenshot being verified.
+        # @param comparison [Object] The comparison object containing the result and details of the comparison.
+        # @return [String, nil] Returns an error message if the screenshot differs from the baseline, otherwise nil.
+        # @note This method is used internally to verify individual screenshots.
         def assert_image_not_changed(caller, name, comparison)
           result = comparison.different?
 
