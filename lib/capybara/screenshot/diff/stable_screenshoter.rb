@@ -8,6 +8,14 @@ module Capybara
 
         attr_reader :stability_time_limit, :wait
 
+        # Initializes a new instance of StableScreenshoter
+        #
+        # This method sets up a new screenshoter with specific capture and comparison options. It validates the presence of
+        # `:stability_time_limit` and `:wait` in capture options and ensures that `:stability_time_limit` is less than or equal to `:wait`.
+        #
+        # @param capture_options [Hash] The options for capturing screenshots, must include `:stability_time_limit` and `:wait`.
+        # @param comparison_options [Hash, nil] The options for comparing screenshots, defaults to `nil` which uses `Diff.default_options`.
+        # @raise [ArgumentError] If `:wait` or `:stability_time_limit` are not provided, or if `:stability_time_limit` is greater than `:wait`.
         def initialize(capture_options, comparison_options = nil)
           @stability_time_limit, @wait = capture_options.fetch_values(:stability_time_limit, :wait)
 
@@ -21,9 +29,15 @@ module Capybara
           @screenshoter = Diff.screenshoter.new(capture_options.except(*STABILITY_OPTIONS), driver)
         end
 
-        # Try to get screenshot from browser.
-        # On `stability_time_limit` it checks that page stop updating by comparison several screenshot attempts
-        # On reaching `wait` limit then it has been failed. On failing we annotate screenshot attempts to help to debug
+        # Takes a comparison screenshot ensuring page stability
+        #
+        # Attempts to take a stable screenshot of the page by comparing several screenshot attempts until the page stops updating
+        # or the `:wait` limit is reached. If unable to achieve a stable state within the time limit, it annotates the attempts
+        # to aid debugging.
+        #
+        # @param screenshot_path [String, Pathname] The path where the screenshot will be saved.
+        # @return [void]
+        # @raise [RuntimeError] If a stable screenshot cannot be obtained within the specified `:wait` time.
         def take_comparison_screenshot(screenshot_path)
           new_screenshot_path = take_stable_screenshot(screenshot_path)
 
