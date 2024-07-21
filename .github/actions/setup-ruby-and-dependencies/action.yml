@@ -20,7 +20,7 @@ runs:
       with:
         ruby-version: ${{ inputs.ruby-version }}
         bundler-cache: true
-        cache-version: ${{ inputs.ruby-cache-version }}
+        cache-version: ${{ inputs.ruby-cache-version }}-v1
 
     - name: Install and cache vips
       if: ${{ inputs.cache-apt-packages == 'true' }}
