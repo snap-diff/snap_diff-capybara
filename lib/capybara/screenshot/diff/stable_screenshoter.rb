@@ -55,41 +55,37 @@ module Capybara
           screenshot_path = screenshot_path.is_a?(String) ? Pathname.new(screenshot_path) : screenshot_path
           # We try to compare first attempt with checkout version, in order to not run next screenshots
           attempt_path = nil
-          screenshot_started_at = last_attempt_at = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+          deadline_at = Process.clock_gettime(Process::CLOCK_MONOTONIC) + wait
 
           # Cleanup all previous attempts for sure
           Screenshoter.cleanup_attempts_screenshots(screenshot_path)
 
           0.step do |i|
-            # Prevents redundant screenshots generations
             # FIXME: it should be wait, and wait should be replaced with stability_time_limit
             sleep(stability_time_limit) unless i == 0
-
-            elapsed_time = last_attempt_at - screenshot_started_at
-
-            prev_attempt_path = attempt_path
-            attempt_path = Screenshoter.gen_next_attempt_path(screenshot_path, i)
-
-            @screenshoter.take_screenshot(attempt_path)
-            last_attempt_at = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-
-            next unless prev_attempt_path
-            stabilization_comparator = build_comparison_for(attempt_path, prev_attempt_path)
-
-            # If previous screenshot is equal to the current, then we are good
-            return attempt_path if prev_attempt_path && does_not_require_next_attempt?(stabilization_comparator)
-
-            # If timeout then we failed to generate valid screenshot
-            return nil if timeout?(elapsed_time)
+            attempt_path, prev_attempt_path = attempt_next_screenshot(attempt_path, i, screenshot_path)
+            return attempt_path if attempt_successful?(attempt_path, prev_attempt_path)
+            return nil if timeout?(deadline_at)
           end
         end
 
         private
 
-        def does_not_require_next_attempt?(stabilization_comparator)
-          stabilization_comparator.quick_equal?
+        def attempt_successful?(attempt_path, prev_attempt_path)
+          return false unless prev_attempt_path
+          build_comparison_for(attempt_path, prev_attempt_path).quick_equal?
         rescue ArgumentError
           false
+        end
+
+        def attempt_next_screenshot(prev_attempt_path, i, screenshot_path)
+          new_attempt_path = Screenshoter.gen_next_attempt_path(screenshot_path, i)
+          @screenshoter.take_screenshot(new_attempt_path)
+          [new_attempt_path, prev_attempt_path]
+        end
+
+        def timeout?(deadline_at)
+          Process.clock_gettime(Process::CLOCK_MONOTONIC) > deadline_at
         end
 
         def build_comparison_for(attempt_path, previous_attempt_path)
@@ -117,7 +113,7 @@ module Capybara
                 FileUtils.mv(attempts_comparison.reporter.annotated_base_image_path, previous_file, force: true)
               else
                 warn "[capybara-screenshot-diff] Some attempts was stable, but mistakenly marked as not: " \
-                  "#{previous_file} and #{file_name} are equal"
+                       "#{previous_file} and #{file_name} are equal"
               end
 
               FileUtils.rm(attempts_comparison.reporter.annotated_image_path, force: true)
@@ -125,10 +121,6 @@ module Capybara
 
             previous_file = file_name
           end
-        end
-
-        def timeout?(elapsed_time)
-          elapsed_time > wait
         end
       end
     end

@@ -43,11 +43,8 @@ module Capybara
       # On `stability_time_limit` it checks that page stop updating by comparison several screenshot attempts
       # On reaching `wait` limit then it has been failed. On failing we annotate screenshot attempts to help to debug
       def take_comparison_screenshot(screenshot_path)
-        new_screenshot_path = Screenshoter.gen_next_attempt_path(screenshot_path, 0)
+        capture_screenshot_at(screenshot_path)
 
-        take_screenshot(new_screenshot_path)
-
-        FileUtils.mv(new_screenshot_path, screenshot_path, force: true)
         Screenshoter.cleanup_attempts_screenshots(screenshot_path)
       end
 
@@ -61,13 +58,8 @@ module Capybara
         blurred_input = prepare_page_for_screenshot(timeout: wait)
 
         # Take browser screenshot and save
-        tmpfile = Tempfile.new([screenshot_path.basename.to_s, PNG_EXTENSION])
-        BrowserHelpers.session.save_screenshot(tmpfile.path, **capybara_screenshot_options)
+        save_and_process_screenshot(screenshot_path)
 
-        # Load saved screenshot and pre-process it
-        process_screenshot(tmpfile.path, screenshot_path)
-      ensure
-        File.unlink(tmpfile) if tmpfile
         blurred_input&.click
       end
 
@@ -84,20 +76,10 @@ module Capybara
         driver.save_image_to(screenshot_image, screenshot_path)
       end
 
-      def reduce_retina_image_size(file_name)
-        expected_image_width = Screenshot.window_size[0]
-        saved_image = driver.from_file(file_name.to_s)
-        return if driver.width_for(saved_image) < expected_image_width * 2
-
-        resized_image = resize_if_needed(saved_image)
-
-        driver.save_image_to(resized_image, file_name)
-      end
-
       def notice_how_to_avoid_this
         unless defined?(@_csd_retina_warned)
           warn "Halving retina screenshot.  " \
-                'You should add "force-device-scale-factor=1" to your Chrome chromeOptions args.'
+                 'You should add "force-device-scale-factor=1" to your Chrome chromeOptions args.'
           @_csd_retina_warned = true
         end
       end
@@ -105,9 +87,7 @@ module Capybara
       def prepare_page_for_screenshot(timeout:)
         wait_images_loaded(timeout: timeout) if timeout
 
-        blurred_input = if Screenshot.blur_active_element
-          BrowserHelpers.blur_from_focused_element
-        end
+        blurred_input = BrowserHelpers.blur_from_focused_element if Screenshot.blur_active_element
 
         if Screenshot.hide_caret
           BrowserHelpers.hide_caret
@@ -119,12 +99,12 @@ module Capybara
       def wait_images_loaded(timeout:)
         return unless timeout
 
-        start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+        deadline_at = Process.clock_gettime(Process::CLOCK_MONOTONIC) + timeout
         loop do
           pending_image = BrowserHelpers.pending_image_to_load
           break unless pending_image
 
-          if (Process.clock_gettime(Process::CLOCK_MONOTONIC) - start) >= timeout
+          if Process.clock_gettime(Process::CLOCK_MONOTONIC) > deadline_at
             raise CapybaraScreenshotDiff::ExpectationNotMet, "Images have not been loaded after #{timeout}s: #{pending_image.inspect}"
           end
 
@@ -133,6 +113,29 @@ module Capybara
       end
 
       private
+
+      def save_and_process_screenshot(screenshot_path)
+        tmpfile = Tempfile.new([screenshot_path.basename.to_s, PNG_EXTENSION])
+        BrowserHelpers.session.save_screenshot(tmpfile.path, **capybara_screenshot_options)
+        # Load saved screenshot and pre-process it
+        process_screenshot(tmpfile.path, screenshot_path)
+      ensure
+        File.unlink(tmpfile) if tmpfile
+      end
+
+      def capture_screenshot_at(screenshot_path)
+        new_screenshot_path = Screenshoter.gen_next_attempt_path(screenshot_path, 0)
+        take_and_process_screenshot(new_screenshot_path, screenshot_path)
+      end
+
+      def take_and_process_screenshot(new_screenshot_path, screenshot_path)
+        take_screenshot(new_screenshot_path)
+        move_screenshot_to(new_screenshot_path, screenshot_path)
+      end
+
+      def move_screenshot_to(new_screenshot_path, screenshot_path)
+        FileUtils.mv(new_screenshot_path, screenshot_path, force: true)
+      end
 
       def resize_if_needed(saved_image)
         expected_image_width = Screenshot.window_size[0]
