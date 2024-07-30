@@ -3,6 +3,17 @@
 require "minitest"
 require "capybara_screenshot_diff/dsl"
 
+used_deprecated_entrypoint = caller.any? do |path|
+  path.include?("capybara-screenshot-diff.rb") || path.include?("capybara/screenshot/diff.rb")
+end
+
+if used_deprecated_entrypoint
+  warn <<~MSG
+    [DEPRECATION] The default activation of `capybara_screenshot_diff/minitest` will be removed. 
+                  Please `require "capybara_screenshot_diff/minitest"` explicitly.
+  MSG
+end
+
 module CapybaraScreenshotDiff
   module Minitest
     module Assertions
