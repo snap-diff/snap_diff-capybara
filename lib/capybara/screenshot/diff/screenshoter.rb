@@ -30,12 +30,11 @@ module Capybara
       end
 
       def self.attempts_screenshot_paths(base_file)
-        extname = Pathname.new(base_file).extname
-        Dir["#{base_file.to_s.chomp(extname)}.attempt_*#{extname}"].sort
+        CapybaraScreenshotDiff::SnapManager.attempts_screenshot_paths(base_file)
       end
 
       def self.cleanup_attempts_screenshots(base_file)
-        FileUtils.rm_rf attempts_screenshot_paths(base_file)
+        CapybaraScreenshotDiff::SnapManager.cleanup_attempts_screenshots(base_file)
       end
 
       # Try to get screenshot from browser.
@@ -48,7 +47,7 @@ module Capybara
       end
 
       def self.gen_next_attempt_path(screenshot_path, iteration)
-        screenshot_path.sub_ext(format(".attempt_%02i#{screenshot_path.extname}", iteration))
+        CapybaraScreenshotDiff::SnapManager.gen_next_attempt_path(screenshot_path, iteration)
       end
 
       PNG_EXTENSION = ".png"
@@ -133,7 +132,7 @@ module Capybara
       end
 
       def move_screenshot_to(new_screenshot_path, screenshot_path)
-        FileUtils.mv(new_screenshot_path, screenshot_path, force: true)
+        CapybaraScreenshotDiff::SnapManager.move_screenshot_to(new_screenshot_path, screenshot_path)
       end
 
       def resize_if_needed(saved_image)

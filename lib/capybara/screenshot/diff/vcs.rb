@@ -31,8 +31,8 @@ module Capybara
           end
         end
 
-        def self.checkout_vcs(screenshot_path, checkout_path)
-          if svn?
+        def self.checkout_vcs(screenshot_path, checkout_path, root = Screenshot.screenshot_area_abs)
+          if svn?(root)
             restore_svn_revision(screenshot_path, checkout_path)
           else
             restore_git_revision(screenshot_path, checkout_path)
@@ -61,8 +61,8 @@ module Capybara
           false
         end
 
-        def self.svn?
-          (Screenshot.screenshot_area_abs / ".svn").exist?
+        def self.svn?(root)
+          (root / ".svn").exist?
         end
       end
     end

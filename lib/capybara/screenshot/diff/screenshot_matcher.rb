@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require "capybara_screenshot_diff/snap_manager"
 require_relative "screenshoter"
 require_relative "stable_screenshoter"
 require_relative "browser_helpers"
@@ -10,15 +11,22 @@ module Capybara
   module Screenshot
     module Diff
       class ScreenshotMatcher
-        attr_reader :screenshot_full_name, :driver_options, :screenshot_path, :base_screenshot_path, :screenshot_format
+        attr_reader :screenshot_full_name, :driver_options, :screenshot_format
 
         def initialize(screenshot_full_name, options = {})
           @screenshot_full_name = screenshot_full_name
           @driver_options = Diff.default_options.merge(options)
 
           @screenshot_format = @driver_options[:screenshot_format]
-          @screenshot_path = Screenshot.screenshot_area_abs / Pathname.new(screenshot_full_name).sub_ext(".#{screenshot_format}")
-          @base_screenshot_path = ScreenshotMatcher.base_image_path_from(@screenshot_path)
+          @snapshot = CapybaraScreenshotDiff::SnapManager.snapshot(screenshot_full_name, @screenshot_format)
+        end
+
+        def screenshot_path
+          @snapshot.screenshot_path
+        end
+
+        def base_screenshot_path
+          @snapshot.base_screenshot_path
         end
 
         def build_screenshot_matches_job
@@ -32,11 +40,7 @@ module Capybara
           # TODO: Move this into screenshot stage, in order to re-evaluate coordinates after page updates
           # Allow nil or single or multiple areas
           driver_options[:skip_area] = area_calculator.calculate_skip_area
-
           driver_options[:driver] = Drivers.for(driver_options[:driver])
-
-          # Load base screenshot from VCS
-          create_output_directory_for(screenshot_path) unless screenshot_path.exist?
 
           checkout_base_screenshot
 
@@ -65,18 +69,10 @@ module Capybara
           [screenshot_full_name, ImageCompare.new(screenshot_path, base_screenshot_path, driver_options)]
         end
 
-        def self.base_image_path_from(screenshot_path)
-          screenshot_path.sub_ext(".base#{screenshot_path.extname}")
-        end
-
         private
 
         def checkout_base_screenshot
-          Vcs.checkout_vcs(screenshot_path, base_screenshot_path)
-        end
-
-        def create_output_directory_for(screenshot_path)
-          screenshot_path.dirname.mkpath
+          CapybaraScreenshotDiff::SnapManager.checkout_base_screenshot(screenshot_path)
         end
 
         # Try to get screenshot from browser.

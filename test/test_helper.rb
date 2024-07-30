@@ -46,10 +46,8 @@ class ActiveSupport::TestCase
   end
 
   def assert_stored_screenshot(filename)
-    screenshots = Capybara::Screenshot.screenshot_area_abs.children.map { |f| f.basename.to_s }
-
     assert_includes(
-      screenshots,
+      CapybaraScreenshotDiff::SnapManager.screenshots,
       filename,
       "Screenshot #{filename} not found in #{Capybara::Screenshot.screenshot_area_abs}"
     )
