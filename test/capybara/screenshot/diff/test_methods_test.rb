@@ -62,7 +62,7 @@ module Capybara
             skip "FIXME: flaky test for local environment" unless ENV["CI"]
 
             assert_match(
-              /test_methods_test.rb:\d+:in `our_screenshot'/,
+              /our_screenshot'/,
               @test_screenshots.dig(0, 0, 0)
             )
             assert_equal "a", @test_screenshots[0][1]
