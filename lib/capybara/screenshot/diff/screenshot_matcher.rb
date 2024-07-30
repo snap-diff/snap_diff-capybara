@@ -55,7 +55,8 @@ module Capybara
           }
 
           # Load new screenshot from Browser
-          take_comparison_screenshot(capture_options, driver_options, screenshot_path)
+          comparison_options = driver_options
+          take_comparison_screenshot(capture_options, comparison_options, screenshot_path)
 
           # Pre-computation: No need to compare without base screenshot
           return unless base_screenshot_path.exist?
@@ -81,8 +82,8 @@ module Capybara
         # Try to get screenshot from browser.
         # On `stability_time_limit` it checks that page stop updating by comparison several screenshot attempts
         # On reaching `wait` limit then it has been failed. On failing we annotate screenshot attempts to help to debug
-        def take_comparison_screenshot(capture_options, driver_options, screenshot_path)
-          screenshoter = build_screenshoter_for(capture_options, driver_options)
+        def take_comparison_screenshot(capture_options, comparison_options, screenshot_path)
+          screenshoter = build_screenshoter_for(capture_options, comparison_options)
           screenshoter.take_comparison_screenshot(screenshot_path)
         end
 

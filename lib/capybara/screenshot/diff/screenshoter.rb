@@ -6,11 +6,10 @@ require_relative "browser_helpers"
 module Capybara
   module Screenshot
     class Screenshoter
-      attr_reader :capture_options, :comparison_options, :driver
+      attr_reader :capture_options, :driver
 
       def initialize(capture_options, driver)
         @capture_options = capture_options
-        @comparison_options = comparison_options
         @driver = driver
       end
 
