@@ -72,7 +72,7 @@ module Capybara
         private
 
         def checkout_base_screenshot
-          CapybaraScreenshotDiff::SnapManager.checkout_base_screenshot(screenshot_path)
+          @snapshot.checkout_base_screenshot
         end
 
         # Try to get screenshot from browser.

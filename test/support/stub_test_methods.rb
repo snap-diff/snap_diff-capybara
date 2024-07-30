@@ -27,7 +27,7 @@ module Capybara
           ImageCompare.new(destination, CapybaraScreenshotDiff::SnapManager.base_image_path_from(destination), **options)
         end
 
-        def set_test_images(destination, original_base_image, original_new_image, ext: "png")
+        def set_test_images(destination, original_base_image, original_new_image)
           destination = Pathname.new(destination) unless destination.is_a?(Pathname)
           destination = Capybara::Screenshot.screenshot_area_abs.join(destination) unless destination.absolute?
           destination.dirname.mkpath unless destination.dirname.exist?

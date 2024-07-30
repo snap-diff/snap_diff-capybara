@@ -49,7 +49,7 @@ class ActiveSupport::TestCase
     assert_includes(
       CapybaraScreenshotDiff::SnapManager.screenshots,
       filename,
-      "Screenshot #{filename} not found in #{Capybara::Screenshot.screenshot_area_abs}"
+      "Screenshot #{filename} not found in #{CapybaraScreenshotDiff::SnapManager.instance.root}"
     )
   end
 end

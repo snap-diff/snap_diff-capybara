@@ -7,19 +7,25 @@ module CapybaraScreenshotDiff
   class SnapManager
 
     class Snap
-      attr_reader :screenshot_full_name, :screenshot_format, :screenshot_path, :base_screenshot_path
+      attr_reader :screenshot_full_name, :screenshot_format, :screenshot_path, :base_screenshot_path, :manager
 
-      def initialize(screenshot_full_name, screenshot_format)
+      def initialize(screenshot_full_name, screenshot_format, manager = SnapManager.instance)
         @screenshot_full_name = screenshot_full_name
         @screenshot_format = screenshot_format
-        @screenshot_path = SnapManager.image_path_for(screenshot_full_name, screenshot_format)
-        @base_screenshot_path = SnapManager.base_image_path_from(@screenshot_path)
+        @screenshot_path = manager.abs_path_for(Pathname.new(@screenshot_full_name).sub_ext(".#{@screenshot_format}"))
+        @base_screenshot_path = manager.abs_path_for(@screenshot_path.sub_ext(".base#{screenshot_path.extname}"))
+        @manager = manager
       end
 
       def delete!
         @screenshot_path.delete if @screenshot_path.exist?
         @base_screenshot_path.delete if @base_screenshot_path.exist?
       end
+
+      def checkout_base_screenshot
+        @manager.checkout_file(screenshot_path, base_screenshot_path)
+      end
+
     end
 
     attr_reader :root
@@ -32,22 +38,25 @@ module CapybaraScreenshotDiff
       Snap.new(screenshot_full_name, screenshot_format)
     end
 
-    def image_path_for(screenshot_full_name, screenshot_format)
-      @root / Pathname.new(screenshot_full_name).sub_ext(".#{screenshot_format}")
+    def abs_path_for(path)
+      @root / path
     end
 
-    def checkout_base_screenshot(screenshot_path)
-      create_output_directory_for(screenshot_path) unless screenshot_path.exist?
-
-      Capybara::Screenshot::Diff::Vcs.checkout_vcs(screenshot_path, base_image_path_from(screenshot_path), root)
+    def checkout_file(path, as_path)
+      create_output_directory_for(path) unless path.exist?
+      Capybara::Screenshot::Diff::Vcs.checkout_vcs(root, path, as_path)
     end
 
     def create_output_directory_for(screenshot_path)
       screenshot_path.dirname.mkpath
     end
 
-    def delete_output_directory_for
+    def clean!
+      FileUtils.rm_rf root
+    end
 
+    def self.clean!
+      instance.clean!
     end
 
     def base_image_path_from(screenshot_path)
@@ -76,46 +85,46 @@ module CapybaraScreenshotDiff
     end
 
     def self.screenshots
-      manager.screenshots
+      instance.screenshots
     end
 
     def self.snapshot(screenshot_full_name, screenshot_format = "png")
-      manager.snap_for(screenshot_full_name, screenshot_format)
+      instance.snap_for(screenshot_full_name, screenshot_format)
     end
 
     def self.image_path_for(screenshot_full_name, screenshot_format)
-      manager.image_path_for(screenshot_full_name, screenshot_format)
-    end
-
-    def self.checkout_base_screenshot(screenshot_path)
-      manager.checkout_base_screenshot(screenshot_path)
+      instance.abs_path_for(screenshot_full_name, screenshot_format)
     end
 
     def self.create_output_directory_for(screenshot_path)
-      manager.create_output_directory_for(screenshot_path)
+      instance.create_output_directory_for(screenshot_path)
     end
 
     def self.base_image_path_from(screenshot_path)
-      manager.base_image_path_from(screenshot_path)
+      instance.base_image_path_from(screenshot_path)
     end
 
     def self.cleanup_attempts_screenshots(base_file)
-      manager.cleanup_attempts_screenshots(base_file)
+      instance.cleanup_attempts_screenshots(base_file)
     end
 
     def self.attempts_screenshot_paths(base_file)
-      manager.attempts_screenshot_paths(base_file)
+      instance.attempts_screenshot_paths(base_file)
     end
 
     def self.gen_next_attempt_path(screenshot_path, iteration)
-      manager.gen_next_attempt_path(screenshot_path, iteration)
+      instance.gen_next_attempt_path(screenshot_path, iteration)
     end
 
     def self.move_screenshot_to(new_screenshot_path, screenshot_path)
-      manager.move_screenshot_to(new_screenshot_path, screenshot_path)
+      instance.move_screenshot_to(new_screenshot_path, screenshot_path)
     end
 
-    def self.manager
+    def self.root
+      instance.root
+    end
+
+    def self.instance
       Capybara::Screenshot::Diff.manager.new(Capybara::Screenshot.screenshot_area_abs)
     end
   end

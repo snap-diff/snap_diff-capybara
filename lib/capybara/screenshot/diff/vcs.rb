@@ -31,7 +31,7 @@ module Capybara
           end
         end
 
-        def self.checkout_vcs(screenshot_path, checkout_path, root = Screenshot.screenshot_area_abs)
+        def self.checkout_vcs(root, screenshot_path, checkout_path)
           if svn?(root)
             restore_svn_revision(screenshot_path, checkout_path)
           else
