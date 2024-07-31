@@ -60,7 +60,7 @@ module Capybara
 
           0.step do |i|
             # FIXME: it should be wait, and wait should be replaced with stability_time_limit
-            sleep(stability_time_limit) unless i == 0
+            sleep(stability_time_limit) unless i == 0 # test prev_attempt_path is nil
             attempt_next_screenshot(snapshot)
             return snapshot.attempt_path if attempt_successful?(snapshot)
             return nil if timeout?(deadline_at)
@@ -72,33 +72,26 @@ module Capybara
         def attempt_successful?(snapshot)
           return false unless snapshot.prev_attempt_path
 
-          build_attempts_comparison_for(snapshot).quick_equal?
+          build_last_attempts_comparison_for(snapshot).quick_equal?
         rescue ArgumentError
           false
         end
 
         def attempt_next_screenshot(snapshot)
-          new_attempt_path = snapshot.next_attempt_path!
-
-          @screenshoter.take_screenshot(new_attempt_path)
-          new_attempt_path
+          @screenshoter.take_screenshot(snapshot.next_attempt_path!)
         end
 
         def timeout?(deadline_at)
           Process.clock_gettime(Process::CLOCK_MONOTONIC) > deadline_at
         end
 
-        def build_attempts_comparison_for(snapshot)
-          build_comparison_for(snapshot.attempt_path, snapshot.prev_attempt_path)
-        end
-
-        def build_comparison_for(attempt_path, previous_attempt_path)
-          ImageCompare.new(attempt_path, previous_attempt_path, @comparison_options)
+        def build_last_attempts_comparison_for(snapshot)
+          ImageCompare.new(snapshot.attempt_path, snapshot.prev_attempt_path, @comparison_options)
         end
 
         # TODO: Move to the HistoricalReporter
         def annotate_attempts_and_fail!(snapshot)
-          screenshot_attempts = CapybaraScreenshotDiff::SnapManager.attempts_screenshot_paths(snapshot)
+          screenshot_attempts = snapshot.find_attempts_paths
 
           annotate_stabilization_images(screenshot_attempts)
 
@@ -125,6 +118,10 @@ module Capybara
 
             previous_file = file_name
           end
+        end
+
+        def build_comparison_for(attempt_path, previous_attempt_path)
+          ImageCompare.new(attempt_path, previous_attempt_path, @comparison_options)
         end
       end
     end

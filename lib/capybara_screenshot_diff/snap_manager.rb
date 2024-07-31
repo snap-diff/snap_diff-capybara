@@ -67,7 +67,7 @@ module CapybaraScreenshotDiff
         @attempts_count = 0
       end
 
-      def attempts_paths
+      def find_attempts_paths
         Dir[@manager.abs_path_for "**/#{full_name}.attempt_*.#{format}"]
       end
     end
@@ -115,7 +115,7 @@ module CapybaraScreenshotDiff
     end
 
     def cleanup_attempts_screenshots(snapshot)
-      FileUtils.rm_rf snapshot.attempts_paths
+      FileUtils.rm_rf snapshot.find_attempts_paths
     end
 
     def move_screenshot_to(new_screenshot_path, screenshot_path)
@@ -132,10 +132,6 @@ module CapybaraScreenshotDiff
 
     def self.snapshot(screenshot_full_name, screenshot_format = "png")
       instance.snap_for(screenshot_full_name, screenshot_format)
-    end
-
-    def self.attempts_screenshot_paths(snapshot)
-      snapshot.attempts_paths
     end
 
     def self.move_screenshot_to(new_screenshot_path, screenshot_path)

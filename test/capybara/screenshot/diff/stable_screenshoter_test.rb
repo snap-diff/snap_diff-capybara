@@ -63,7 +63,7 @@ module Capybara
           end
 
           mock.verify
-          assert_empty snap.attempts_paths
+          assert_empty snap.find_attempts_paths
           assert_predicate snap.path, :exist?
           assert_not_predicate snap.path.size, :zero?
         end
