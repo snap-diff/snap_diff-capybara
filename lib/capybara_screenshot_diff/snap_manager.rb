@@ -20,6 +20,7 @@ module CapybaraScreenshotDiff
       def delete!
         path.delete if path.exist?
         base_path.delete if base_path.exist?
+        cleanup_attempts
       end
 
       def checkout_base_screenshot
@@ -50,6 +51,10 @@ module CapybaraScreenshotDiff
 
       def cleanup_attempts
         @manager.cleanup_attempts_screenshots(path)
+      end
+
+      def attempts_paths
+        Dir[@manager.abs_path_for "**/#{full_name}.attempt_*.#{format}"]
       end
     end
 
@@ -82,8 +87,8 @@ module CapybaraScreenshotDiff
       instance.provision_snap_with(snap, path, version: version)
     end
 
-    def create_output_directory_for(path)
-      path.dirname.mkpath
+    def create_output_directory_for(path = nil)
+      path ? path.dirname.mkpath : root.mkpath
     end
 
     def clean!

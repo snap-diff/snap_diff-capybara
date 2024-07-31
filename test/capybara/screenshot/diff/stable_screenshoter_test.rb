@@ -8,6 +8,15 @@ module Capybara
       class StableScreenshoterTest < ActionDispatch::IntegrationTest
         include TestMethodsStub
 
+        setup do
+          @manager = CapybaraScreenshotDiff::SnapManager.new(Capybara::Screenshot.root / "stable_screenshoter_test")
+          @manager.create_output_directory_for
+        end
+
+        teardown do
+          @manager.delete!
+        end
+
         test "#take_stable_screenshot several iterations to take stable screenshot" do
           image_compare_stub = build_image_compare_stub
 
@@ -18,7 +27,8 @@ module Capybara
           mock.expect(:quick_equal?, true)
 
           ImageCompare.stub :new, mock do
-            take_stable_screenshot_with("tmp/02_a.png")
+            snap = @manager.snap_for("02_a")
+            take_stable_screenshot_with(snap.path)
           end
 
           mock.verify
@@ -43,26 +53,30 @@ module Capybara
           mock.expect(:quick_equal?, false)
           mock.expect(:quick_equal?, true)
 
-          assert_not (Capybara::Screenshot.root / "02_a.png").exist?
+          snap = @manager.snap_for("02_a")
+          assert_not_predicate snap.path, :exist?
 
           ImageCompare.stub :new, mock do
             StableScreenshoter
               .new({stability_time_limit: 0.5, wait: 1}, image_compare_stub.driver_options)
-              .take_comparison_screenshot("tmp/02_a.png")
+              .take_comparison_screenshot(snap.path, snap)
           end
 
           mock.verify
-          assert_empty Dir[Capybara::Screenshot.root / "**/02_a.attempt_*.png"]
-          assert (Capybara::Screenshot.root / "02_a.png").exist?
-          assert_not_predicate (Capybara::Screenshot.root / "02_a.png").size, :zero?
+          assert_empty snap.attempts_paths
+          assert_predicate snap.path, :exist?
+          assert_not_predicate snap.path.size, :zero?
         end
 
         test "#take_comparison_screenshot fail on missing find stable image in time and generates annotated history screenshots" do
-          screenshot_path = Pathname.new("tmp/01_a.png")
+          snap = @manager.snap_for("01_a")
+
+          screenshot_path = snap.path
 
           # Stub annotated files for generated comparison annotations
           # We need to have different from screenshot_path name because of other stubs
-          annotated_screenshot_path = Pathname.new("tmp/02_a.png")
+          pseudo_snap_for_annotations = @manager.snap_for("02_a")
+          annotated_screenshot_path = pseudo_snap_for_annotations.path
           annotated_attempts_paths = [
             [annotated_screenshot_path.sub_ext(".attempt_01.latest.png"), annotated_screenshot_path.sub_ext(".attempt_01.committed.png")],
             [annotated_screenshot_path.sub_ext(".attempt_02.latest.png"), annotated_screenshot_path.sub_ext(".attempt_02.committed.png")]
@@ -71,9 +85,9 @@ module Capybara
           FileUtils.touch(annotated_attempts_paths)
 
           mock = ::Minitest::Mock.new(build_image_compare_stub(equal: false))
-          annotated_attempts_paths.reverse_each do |(latest_path, committed_path)|
-            mock.reporter.expect(:annotated_image_path, latest_path.to_s)
-            mock.reporter.expect(:annotated_base_image_path, committed_path.to_s)
+          annotated_attempts_paths.reverse_each do |(actual_path, base_path)|
+            mock.reporter.expect(:annotated_image_path, actual_path.to_s)
+            mock.reporter.expect(:annotated_base_image_path, base_path.to_s)
           end
 
           assert_raises RuntimeError, "Could not get stable screenshot within 1s" do
@@ -98,7 +112,8 @@ module Capybara
           last_annotation = screenshot_path.sub_ext(".attempt_01.png")
           assert_equal 0, last_annotation.size, "#{last_annotation.to_path} should be override with annotated version"
         ensure
-          FileUtils.rm_rf Dir["tmp/01_a*.png"]
+          snap&.delete!
+          pseudo_snap_for_annotations&.delete!
         end
       end
     end
