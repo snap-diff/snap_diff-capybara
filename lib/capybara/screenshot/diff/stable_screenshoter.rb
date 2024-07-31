@@ -38,8 +38,8 @@ module Capybara
         # @param screenshot_path [String, Pathname] The path where the screenshot will be saved.
         # @return [void]
         # @raise [RuntimeError] If a stable screenshot cannot be obtained within the specified `:wait` time.
-        def take_comparison_screenshot(screenshot_path)
-          new_screenshot_path = take_stable_screenshot(screenshot_path)
+        def take_comparison_screenshot(screenshot_path, snapshot = nil)
+          new_screenshot_path = take_stable_screenshot(screenshot_path, snapshot)
 
           # We failed to get stable browser state! Generate difference between attempts to overview moving parts!
           unless new_screenshot_path
@@ -48,17 +48,17 @@ module Capybara
           end
 
           FileUtils.mv(new_screenshot_path, screenshot_path, force: true)
-          Screenshoter.cleanup_attempts_screenshots(screenshot_path)
+          CapybaraScreenshotDiff::SnapManager.cleanup_attempts_screenshots(screenshot_path)
         end
 
-        def take_stable_screenshot(screenshot_path)
+        def take_stable_screenshot(screenshot_path, snapshot = nil)
           screenshot_path = screenshot_path.is_a?(String) ? Pathname.new(screenshot_path) : screenshot_path
           # We try to compare first attempt with checkout version, in order to not run next screenshots
           attempt_path = nil
           deadline_at = Process.clock_gettime(Process::CLOCK_MONOTONIC) + wait
 
           # Cleanup all previous attempts for sure
-          Screenshoter.cleanup_attempts_screenshots(screenshot_path)
+          CapybaraScreenshotDiff::SnapManager.cleanup_attempts_screenshots(screenshot_path)
 
           0.step do |i|
             # FIXME: it should be wait, and wait should be replaced with stability_time_limit
@@ -79,7 +79,7 @@ module Capybara
         end
 
         def attempt_next_screenshot(prev_attempt_path, i, screenshot_path)
-          new_attempt_path = Screenshoter.gen_next_attempt_path(screenshot_path, i)
+          new_attempt_path = CapybaraScreenshotDiff::SnapManager.gen_next_attempt_path(screenshot_path, i)
           @screenshoter.take_screenshot(new_attempt_path)
           [new_attempt_path, prev_attempt_path]
         end
@@ -94,7 +94,7 @@ module Capybara
 
         # TODO: Move to the HistoricalReporter
         def annotate_attempts_and_fail!(screenshot_path)
-          screenshot_attempts = Screenshoter.attempts_screenshot_paths(screenshot_path)
+          screenshot_attempts = CapybaraScreenshotDiff::SnapManager.attempts_screenshot_paths(screenshot_path)
 
           annotate_stabilization_images(screenshot_attempts)
 

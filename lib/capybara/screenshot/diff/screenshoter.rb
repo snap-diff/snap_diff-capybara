@@ -29,25 +29,12 @@ module Capybara
         @capture_options[:capybara_screenshot_options] || {}
       end
 
-      def self.attempts_screenshot_paths(base_file)
-        CapybaraScreenshotDiff::SnapManager.attempts_screenshot_paths(base_file)
-      end
-
-      def self.cleanup_attempts_screenshots(base_file)
-        CapybaraScreenshotDiff::SnapManager.cleanup_attempts_screenshots(base_file)
-      end
-
       # Try to get screenshot from browser.
       # On `stability_time_limit` it checks that page stop updating by comparison several screenshot attempts
       # On reaching `wait` limit then it has been failed. On failing we annotate screenshot attempts to help to debug
-      def take_comparison_screenshot(screenshot_path)
-        capture_screenshot_at(screenshot_path)
-
-        Screenshoter.cleanup_attempts_screenshots(screenshot_path)
-      end
-
-      def self.gen_next_attempt_path(screenshot_path, iteration)
-        CapybaraScreenshotDiff::SnapManager.gen_next_attempt_path(screenshot_path, iteration)
+      def take_comparison_screenshot(_, snapshot)
+        capture_screenshot_at(snapshot)
+        snapshot.cleanup_attempts
       end
 
       PNG_EXTENSION = ".png"
@@ -99,6 +86,7 @@ module Capybara
 
         deadline_at = Process.clock_gettime(Process::CLOCK_MONOTONIC) + timeout
         loop do
+          Capybara.default_max_wait_time
           pending_image = BrowserHelpers.pending_image_to_load
           break unless pending_image
 
@@ -121,18 +109,9 @@ module Capybara
         File.unlink(tmpfile) if tmpfile
       end
 
-      def capture_screenshot_at(screenshot_path)
-        new_screenshot_path = Screenshoter.gen_next_attempt_path(screenshot_path, 0)
-        take_and_process_screenshot(new_screenshot_path, screenshot_path)
-      end
-
-      def take_and_process_screenshot(new_screenshot_path, screenshot_path)
-        take_screenshot(new_screenshot_path)
-        move_screenshot_to(new_screenshot_path, screenshot_path)
-      end
-
-      def move_screenshot_to(new_screenshot_path, screenshot_path)
-        CapybaraScreenshotDiff::SnapManager.move_screenshot_to(new_screenshot_path, screenshot_path)
+      def capture_screenshot_at(snapshot)
+        take_screenshot(snapshot.next_attempt_path)
+        snapshot.commit_last_attempt
       end
 
       def resize_if_needed(saved_image)

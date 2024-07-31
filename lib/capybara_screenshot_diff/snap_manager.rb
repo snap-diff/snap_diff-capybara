@@ -14,6 +14,7 @@ module CapybaraScreenshotDiff
         @path = manager.abs_path_for(Pathname.new(@full_name).sub_ext(".#{@format}"))
         @base_path = @path.sub_ext(".base.#{@format}")
         @manager = manager
+        @attempts_count = 0
       end
 
       def delete!
@@ -32,6 +33,23 @@ module CapybaraScreenshotDiff
         else
           path
         end
+      end
+
+      def attach_attempt(a_path)
+        @manager.move_screenshot_to(a_path, next_attempt_path)
+        @attempts_count += 1
+      end
+
+      def next_attempt_path
+        @manager.gen_next_attempt_path(path, @attempts_count)
+      end
+
+      def commit_last_attempt
+        @manager.move_screenshot_to(next_attempt_path, path)
+      end
+
+      def cleanup_attempts
+        @manager.cleanup_attempts_screenshots(path)
       end
     end
 
