@@ -80,7 +80,7 @@ module Capybara
         # On reaching `wait` limit then it has been failed. On failing we annotate screenshot attempts to help to debug
         def take_comparison_screenshot(capture_options, comparison_options, screenshot_path, snapshot = nil)
           screenshoter = build_screenshoter_for(capture_options, comparison_options)
-          screenshoter.take_comparison_screenshot(screenshot_path, snapshot)
+          screenshoter.take_comparison_screenshot(snapshot)
         end
 
         def build_screenshoter_for(capture_options, comparison_options = {})

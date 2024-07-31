@@ -38,17 +38,17 @@ module Capybara
         # @param screenshot_path [String, Pathname] The path where the screenshot will be saved.
         # @return [void]
         # @raise [RuntimeError] If a stable screenshot cannot be obtained within the specified `:wait` time.
-        def take_comparison_screenshot(screenshot_path, snapshot = nil)
-          new_screenshot_path = take_stable_screenshot(screenshot_path, snapshot)
+        def take_comparison_screenshot(snapshot)
+          new_screenshot_path = take_stable_screenshot(snapshot.path, snapshot)
 
           # We failed to get stable browser state! Generate difference between attempts to overview moving parts!
           unless new_screenshot_path
             # FIXME(uwe): Change to store the failure and only report if the test succeeds functionally.
-            annotate_attempts_and_fail!(screenshot_path)
+            annotate_attempts_and_fail!(snapshot.path)
           end
 
-          FileUtils.mv(new_screenshot_path, screenshot_path, force: true)
-          CapybaraScreenshotDiff::SnapManager.cleanup_attempts_screenshots(screenshot_path)
+          FileUtils.mv(new_screenshot_path, snapshot.path, force: true)
+          snapshot.cleanup_attempts
         end
 
         def take_stable_screenshot(screenshot_path, snapshot = nil)

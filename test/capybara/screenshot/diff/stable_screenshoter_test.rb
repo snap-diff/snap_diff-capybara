@@ -59,7 +59,7 @@ module Capybara
           ImageCompare.stub :new, mock do
             StableScreenshoter
               .new({stability_time_limit: 0.5, wait: 1}, image_compare_stub.driver_options)
-              .take_comparison_screenshot(snap.path, snap)
+              .take_comparison_screenshot(snap)
           end
 
           mock.verify
@@ -95,7 +95,7 @@ module Capybara
               # Wait time is less then stability time, which will generate problem
               StableScreenshoter
                 .new({stability_time_limit: 0.5, wait: 1}, build_image_compare_stub(equal: false).driver_options)
-                .take_comparison_screenshot(screenshot_path.to_s, snap)
+                .take_comparison_screenshot(snap)
             end
           end
 

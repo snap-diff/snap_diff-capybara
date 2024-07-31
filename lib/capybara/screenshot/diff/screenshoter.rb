@@ -32,7 +32,7 @@ module Capybara
       # Try to get screenshot from browser.
       # On `stability_time_limit` it checks that page stop updating by comparison several screenshot attempts
       # On reaching `wait` limit then it has been failed. On failing we annotate screenshot attempts to help to debug
-      def take_comparison_screenshot(_, snapshot)
+      def take_comparison_screenshot(snapshot)
         capture_screenshot_at(snapshot)
         snapshot.cleanup_attempts
       end
