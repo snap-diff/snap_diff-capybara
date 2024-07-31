@@ -6,7 +6,6 @@ module Capybara
   module Screenshot
     module Diff
       module Vcs
-
         def self.checkout_vcs(root, screenshot_path, checkout_path)
           if svn?(root)
             restore_svn_revision(screenshot_path, checkout_path)
@@ -67,7 +66,6 @@ module Capybara
 
           false
         end
-
       end
     end
   end
