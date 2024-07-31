@@ -26,7 +26,7 @@ module Capybara
     module Diff
       module TestMethods
         # @!attribute [rw] test_screenshots
-        #   @return [Array(Array(Array(String), String, ImageCompare))] An array where each element is an array containing the caller context,
+        #   @return [Array(Array(Array(String), String, ImageCompare | Minitest::Mock))] An array where each element is an array containing the caller context,
         #     the name of the screenshot, and the comparison object. This attribute stores information about each screenshot
         #     scheduled for comparison to ensure they do not show any unintended differences.
         def initialize(*)
@@ -146,7 +146,7 @@ module Capybara
 
         # Asserts that an image has not changed compared to its baseline.
         #
-        # @param caller [Array] The caller context, used for error reporting.
+        # @param caller [Array(String)] The caller context, used for error reporting.
         # @param name [String] The name of the screenshot being verified.
         # @param comparison [Object] The comparison object containing the result and details of the comparison.
         # @return [String, nil] Returns an error message if the screenshot differs from the baseline, otherwise nil.
@@ -163,7 +163,7 @@ module Capybara
 
           return unless result
 
-          "Screenshot does not match for '#{name}' #{comparison.error_message}\n#{caller}"
+          "Screenshot does not match for '#{name}' #{comparison.error_message}\n#{caller.join(", ")}"
         end
 
         private

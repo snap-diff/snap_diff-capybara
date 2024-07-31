@@ -22,11 +22,11 @@ module Capybara
         end
 
         def screenshot_path
-          @snapshot.screenshot_path
+          @snapshot.path
         end
 
         def base_screenshot_path
-          @snapshot.base_screenshot_path
+          @snapshot.base_path
         end
 
         def build_screenshot_matches_job

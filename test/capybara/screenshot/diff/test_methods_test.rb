@@ -20,7 +20,7 @@ module Capybara
         end
 
         def test_assert_image_not_changed
-          message = assert_image_not_changed("my_test.rb:42", "name", make_comparison(:a, :c))
+          message = assert_image_not_changed(["my_test.rb:42"], "name", make_comparison(:a, :c))
           value = (RUBY_VERSION >= "2.4") ? 187.4 : 188
           assert_equal <<-MSG.strip_heredoc.chomp, message
             Screenshot does not match for 'name' ({"area_size":629,"region":[11,3,48,20],"max_color_distance":#{value}})
@@ -33,7 +33,7 @@ module Capybara
 
         def test_assert_image_not_changed_with_shift_distance_limit
           message = assert_image_not_changed(
-            "my_test.rb:42",
+            ["my_test.rb:42"],
             "name",
             make_comparison(:a, :c, shift_distance_limit: 1, driver: :chunky_png)
           )
@@ -55,7 +55,7 @@ module Capybara
         def test_skip_stack_frames
           Vcs.stub(:checkout_vcs, true) do
             assert_predicate @test_screenshots, :blank?
-            make_comparison(:a, :c, destination: Rails.root / "doc/screenshots/a.png")
+            make_comparison(:a, :c, destination: "a.png")
 
             our_screenshot("a", 1)
             assert_equal 1, @test_screenshots.size
@@ -85,7 +85,7 @@ module Capybara
           screenshot(:c)
 
           snap = CapybaraScreenshotDiff::SnapManager.snapshot("c")
-          assert_predicate snap.screenshot_path, :exist?
+          assert_predicate snap.path, :exist?
         end
 
         def test_cleanup_base_image_for_no_change

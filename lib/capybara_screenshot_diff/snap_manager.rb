@@ -7,23 +7,23 @@ module CapybaraScreenshotDiff
   class SnapManager
 
     class Snap
-      attr_reader :screenshot_full_name, :screenshot_format, :screenshot_path, :base_screenshot_path, :manager
+      attr_reader :screenshot_full_name, :screenshot_format, :path, :base_path, :manager
 
-      def initialize(screenshot_full_name, screenshot_format, manager = SnapManager.instance)
+      def initialize(screenshot_full_name, screenshot_format, manager: SnapManager.instance)
         @screenshot_full_name = screenshot_full_name
         @screenshot_format = screenshot_format
-        @screenshot_path = manager.abs_path_for(Pathname.new(@screenshot_full_name).sub_ext(".#{@screenshot_format}"))
-        @base_screenshot_path = manager.abs_path_for(@screenshot_path.sub_ext(".base#{screenshot_path.extname}"))
+        @path = manager.abs_path_for(Pathname.new(@screenshot_full_name).sub_ext(".#{@screenshot_format}"))
+        @base_path = @path.sub_ext(".base.#{@screenshot_format}")
         @manager = manager
       end
 
       def delete!
-        @screenshot_path.delete if @screenshot_path.exist?
-        @base_screenshot_path.delete if @base_screenshot_path.exist?
+        path.delete if path.exist?
+        base_path.delete if base_path.exist?
       end
 
       def checkout_base_screenshot
-        @manager.checkout_file(screenshot_path, base_screenshot_path)
+        @manager.checkout_file(path, base_path)
       end
 
     end
@@ -34,8 +34,8 @@ module CapybaraScreenshotDiff
       @root = root
     end
 
-    def snap_for(screenshot_full_name, screenshot_format)
-      Snap.new(screenshot_full_name, screenshot_format)
+    def snap_for(screenshot_full_name, screenshot_format = "png")
+      Snap.new(screenshot_full_name, screenshot_format, manager: self)
     end
 
     def abs_path_for(path)
@@ -43,12 +43,12 @@ module CapybaraScreenshotDiff
     end
 
     def checkout_file(path, as_path)
-      create_output_directory_for(path) unless path.exist?
+      create_output_directory_for(as_path) unless as_path.exist?
       Capybara::Screenshot::Diff::Vcs.checkout_vcs(root, path, as_path)
     end
 
-    def create_output_directory_for(screenshot_path)
-      screenshot_path.dirname.mkpath
+    def create_output_directory_for(path)
+      path.dirname.mkpath
     end
 
     def clean!
@@ -57,10 +57,6 @@ module CapybaraScreenshotDiff
 
     def self.clean!
       instance.clean!
-    end
-
-    def base_image_path_from(screenshot_path)
-      screenshot_path.sub_ext(".base#{screenshot_path.extname}")
     end
 
     def cleanup_attempts_screenshots(base_file)
@@ -90,18 +86,6 @@ module CapybaraScreenshotDiff
 
     def self.snapshot(screenshot_full_name, screenshot_format = "png")
       instance.snap_for(screenshot_full_name, screenshot_format)
-    end
-
-    def self.image_path_for(screenshot_full_name, screenshot_format)
-      instance.abs_path_for(screenshot_full_name, screenshot_format)
-    end
-
-    def self.create_output_directory_for(screenshot_path)
-      instance.create_output_directory_for(screenshot_path)
-    end
-
-    def self.base_image_path_from(screenshot_path)
-      instance.base_image_path_from(screenshot_path)
     end
 
     def self.cleanup_attempts_screenshots(base_file)

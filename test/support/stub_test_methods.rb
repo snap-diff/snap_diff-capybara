@@ -10,6 +10,7 @@ module Capybara
 
         included do
           setup do
+            @manager = CapybaraScreenshotDiff::SnapManager.new(Rails.root / "doc/screenshots")
             Diff.screenshoter = ScreenshoterStub
           end
 
@@ -19,25 +20,21 @@ module Capybara
         end
 
         # Prepare comparison images and build ImageCompare for them
-        def make_comparison(fixture_base_image, fixture_new_image, destination: nil, **options)
-          destination ||= Rails.root / "doc/screenshots/screenshot.png"
+        def make_comparison(fixture_base_image, fixture_new_image, destination: "screenshot", **options)
+          snap = @manager.snap_for(destination)
 
-          set_test_images(destination, fixture_base_image, fixture_new_image)
+          set_test_images(snap, fixture_base_image, fixture_new_image)
 
-          ImageCompare.new(destination, CapybaraScreenshotDiff::SnapManager.base_image_path_from(destination), **options)
+          ImageCompare.new(snap.path, snap.base_path, **options)
         end
 
-        def set_test_images(destination, original_base_image, original_new_image)
-          destination = Pathname.new(destination) unless destination.is_a?(Pathname)
-          destination = Capybara::Screenshot.screenshot_area_abs.join(destination) unless destination.absolute?
-          destination.dirname.mkpath unless destination.dirname.exist?
+        def set_test_images(snap, original_base_image, original_new_image, ext: "png")
+          destination = snap.path
+          snap.manager.create_output_directory_for(destination)
 
           ext = destination.extname[1..] if destination.extname.present?
-          FileUtils.cp(TEST_IMAGES_DIR / "#{original_new_image}.#{ext}", destination)
-          FileUtils.cp(
-            TEST_IMAGES_DIR / "#{original_base_image}.#{ext}",
-            CapybaraScreenshotDiff::SnapManager.base_image_path_from(destination)
-          )
+          FileUtils.cp(TEST_IMAGES_DIR / "#{original_new_image}.#{ext}", snap.path)
+          FileUtils.cp(TEST_IMAGES_DIR / "#{original_base_image}.#{ext}", snap.base_path)
         end
 
         ImageCompareStub = Struct.new(
