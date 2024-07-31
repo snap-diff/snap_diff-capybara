@@ -65,7 +65,6 @@ module Capybara
       mattr_accessor(:screenshoter) { Screenshoter }
       mattr_accessor(:manager) { CapybaraScreenshotDiff::SnapManager }
 
-
       AVAILABLE_DRIVERS = Utils.detect_available_drivers.freeze
 
       def self.default_options

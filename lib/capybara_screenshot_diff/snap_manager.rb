@@ -5,7 +5,6 @@ require "active_support/core_ext/module/attribute_accessors"
 
 module CapybaraScreenshotDiff
   class SnapManager
-
     class Snap
       attr_reader :screenshot_full_name, :screenshot_format, :path, :base_path, :manager
 
@@ -25,7 +24,6 @@ module CapybaraScreenshotDiff
       def checkout_base_screenshot
         @manager.checkout_file(path, base_path)
       end
-
     end
 
     attr_reader :root
