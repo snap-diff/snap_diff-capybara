@@ -6,6 +6,19 @@ module Capybara
   module Screenshot
     module Diff
       module Vcs
+
+        def self.checkout_vcs(root, screenshot_path, checkout_path)
+          if svn?(root)
+            restore_svn_revision(screenshot_path, checkout_path)
+          else
+            restore_git_revision(screenshot_path, checkout_path)
+          end
+        end
+
+        def self.svn?(root)
+          (root / ".svn").exist?
+        end
+
         SILENCE_ERRORS = Os::ON_WINDOWS ? "2>nul" : "2>/dev/null"
 
         def self.restore_git_revision(screenshot_path, checkout_path)
@@ -31,14 +44,6 @@ module Capybara
           end
         end
 
-        def self.checkout_vcs(root, screenshot_path, checkout_path)
-          if svn?(root)
-            restore_svn_revision(screenshot_path, checkout_path)
-          else
-            restore_git_revision(screenshot_path, checkout_path)
-          end
-        end
-
         def self.restore_svn_revision(screenshot_path, checkout_path)
           committed_file_name = screenshot_path + "../.svn/text-base/" + "#{screenshot_path.basename}.svn-base"
           if committed_file_name.exist?
@@ -61,9 +66,6 @@ module Capybara
           false
         end
 
-        def self.svn?(root)
-          (root / ".svn").exist?
-        end
       end
     end
   end
