@@ -108,7 +108,6 @@ module Capybara
         end
 
         test "the different images should not be quick equal and different" do
-          skip
           images = all_fixtures_images_names
 
           AVAILABLE_DRIVERS.each do |driver|
