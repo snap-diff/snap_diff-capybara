@@ -14,7 +14,7 @@ module Capybara
         end
 
         teardown do
-          @manager.delete!
+          @manager.clean!
         end
 
         test "#take_stable_screenshot several iterations to take stable screenshot" do
@@ -95,7 +95,7 @@ module Capybara
               # Wait time is less then stability time, which will generate problem
               StableScreenshoter
                 .new({stability_time_limit: 0.5, wait: 1}, build_image_compare_stub(equal: false).driver_options)
-                .take_comparison_screenshot(screenshot_path.to_s)
+                .take_comparison_screenshot(screenshot_path.to_s, snap)
             end
           end
 

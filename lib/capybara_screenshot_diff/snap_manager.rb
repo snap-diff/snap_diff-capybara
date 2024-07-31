@@ -91,6 +91,7 @@ module CapybaraScreenshotDiff
       path ? path.dirname.mkpath : root.mkpath
     end
 
+    # TODO: rename to delete!
     def clean!
       FileUtils.rm_rf root
     end
