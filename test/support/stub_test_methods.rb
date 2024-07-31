@@ -15,6 +15,7 @@ module Capybara
           end
 
           teardown do
+            @manager.clean!
             Diff.screenshoter = Screenshoter
           end
         end
@@ -29,12 +30,8 @@ module Capybara
         end
 
         def set_test_images(snap, original_base_image, original_new_image, ext: "png")
-          destination = snap.path
-          snap.manager.create_output_directory_for(destination)
-
-          ext = destination.extname[1..] if destination.extname.present?
-          FileUtils.cp(TEST_IMAGES_DIR / "#{original_new_image}.#{ext}", snap.path)
-          FileUtils.cp(TEST_IMAGES_DIR / "#{original_base_image}.#{ext}", snap.base_path)
+          @manager.provision_snap_with(snap, fixture_image_path_from(original_new_image, snap.format), version: :actual)
+          @manager.provision_snap_with(snap, fixture_image_path_from(original_base_image, snap.format), version: :base)
         end
 
         ImageCompareStub = Struct.new(

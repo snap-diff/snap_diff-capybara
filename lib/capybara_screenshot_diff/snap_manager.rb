@@ -6,13 +6,13 @@ require "active_support/core_ext/module/attribute_accessors"
 module CapybaraScreenshotDiff
   class SnapManager
     class Snap
-      attr_reader :screenshot_full_name, :screenshot_format, :path, :base_path, :manager
+      attr_reader :full_name, :format, :path, :base_path, :manager
 
-      def initialize(screenshot_full_name, screenshot_format, manager: SnapManager.instance)
-        @screenshot_full_name = screenshot_full_name
-        @screenshot_format = screenshot_format
-        @path = manager.abs_path_for(Pathname.new(@screenshot_full_name).sub_ext(".#{@screenshot_format}"))
-        @base_path = @path.sub_ext(".base.#{@screenshot_format}")
+      def initialize(full_name, format, manager: SnapManager.instance)
+        @full_name = full_name
+        @format = format
+        @path = manager.abs_path_for(Pathname.new(@full_name).sub_ext(".#{@format}"))
+        @base_path = @path.sub_ext(".base.#{@format}")
         @manager = manager
       end
 
@@ -24,25 +24,44 @@ module CapybaraScreenshotDiff
       def checkout_base_screenshot
         @manager.checkout_file(path, base_path)
       end
+
+      def path_for(version = :actual)
+        case version
+        when :base
+          base_path
+        else
+          path
+        end
+      end
     end
 
     attr_reader :root
 
     def initialize(root)
-      @root = root
+      @root = Pathname.new(root)
     end
 
     def snap_for(screenshot_full_name, screenshot_format = "png")
       Snap.new(screenshot_full_name, screenshot_format, manager: self)
     end
 
-    def abs_path_for(path)
-      @root / path
+    def abs_path_for(relative_path)
+      @root / relative_path
     end
 
     def checkout_file(path, as_path)
       create_output_directory_for(as_path) unless as_path.exist?
       Capybara::Screenshot::Diff::Vcs.checkout_vcs(root, path, as_path)
+    end
+
+    def provision_snap_with(snap, path, version: :actual)
+      managed_path = snap.path_for(version)
+      create_output_directory_for(managed_path) unless managed_path.exist?
+      FileUtils.cp(path, managed_path)
+    end
+
+    def self.provision_snap_with(snap, path, version: :actual)
+      instance.provision_snap_with(snap, path, version: version)
     end
 
     def create_output_directory_for(path)
