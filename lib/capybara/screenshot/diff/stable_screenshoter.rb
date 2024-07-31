@@ -39,15 +39,18 @@ module Capybara
         # @return [void]
         # @raise [RuntimeError] If a stable screenshot cannot be obtained within the specified `:wait` time.
         def take_comparison_screenshot(snapshot)
-          new_screenshot_path = take_stable_screenshot(snapshot)
+          result = take_stable_screenshot(snapshot)
 
           # We failed to get stable browser state! Generate difference between attempts to overview moving parts!
-          unless new_screenshot_path
+          unless result
             # FIXME(uwe): Change to store the failure and only report if the test succeeds functionally.
             annotate_attempts_and_fail!(snapshot)
           end
 
-          snapshot.attach(new_screenshot_path, version: :actual)
+          # store success attempt as actual screenshot
+          snapshot.commit_last_attempt
+
+          # cleanup all previous attempts
           snapshot.cleanup_attempts
         end
 
@@ -61,9 +64,11 @@ module Capybara
           0.step do |i|
             # FIXME: it should be wait, and wait should be replaced with stability_time_limit
             sleep(stability_time_limit) unless i == 0 # test prev_attempt_path is nil
+
             attempt_next_screenshot(snapshot)
-            return snapshot.attempt_path if attempt_successful?(snapshot)
-            return nil if timeout?(deadline_at)
+
+            return true if attempt_successful?(snapshot)
+            return false if timeout?(deadline_at)
           end
         end
 
