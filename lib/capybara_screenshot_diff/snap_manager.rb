@@ -6,7 +6,7 @@ require "active_support/core_ext/module/attribute_accessors"
 module CapybaraScreenshotDiff
   class SnapManager
     class Snap
-      attr_reader :full_name, :format, :path, :base_path, :manager
+      attr_reader :full_name, :format, :path, :base_path, :manager, :prev_attempt_path, :attempts_count
 
       def initialize(full_name, format, manager: SnapManager.instance)
         @full_name = full_name
@@ -37,20 +37,34 @@ module CapybaraScreenshotDiff
       end
 
       def attach_attempt(a_path)
-        @manager.move_screenshot_to(a_path, next_attempt_path)
+        @manager.move_screenshot_to(a_path, attempt_path)
         @attempts_count += 1
       end
 
-      def next_attempt_path
-        @manager.gen_next_attempt_path(path, @attempts_count)
+      def attach(a_path, version: :actual)
+        @manager.move_screenshot_to(a_path, path_for(version))
+      end
+
+      def attempt_path
+        @_attempt_path ||= path.sub_ext(sprintf(".attempt_%02i.#{format}", @attempts_count))
+      end
+
+      def next_attempt_path!
+        @prev_attempt_path = @_attempt_path
+        @_attempt_path = nil
+
+        attempt_path
+      ensure
+        @attempts_count += 1
       end
 
       def commit_last_attempt
-        @manager.move_screenshot_to(next_attempt_path, path)
+        @manager.move_screenshot_to(attempt_path, path)
       end
 
       def cleanup_attempts
-        @manager.cleanup_attempts_screenshots(path)
+        @manager.cleanup_attempts_screenshots(self)
+        @attempts_count = 0
       end
 
       def attempts_paths
@@ -100,17 +114,8 @@ module CapybaraScreenshotDiff
       instance.clean!
     end
 
-    def cleanup_attempts_screenshots(base_file)
-      FileUtils.rm_rf attempts_screenshot_paths(base_file)
-    end
-
-    def attempts_screenshot_paths(base_file)
-      extname = Pathname.new(base_file).extname
-      Dir["#{base_file.to_s.chomp(extname)}.attempt_*#{extname}"].sort
-    end
-
-    def gen_next_attempt_path(screenshot_path, iteration)
-      screenshot_path.sub_ext(format(".attempt_%02i#{screenshot_path.extname}", iteration))
+    def cleanup_attempts_screenshots(snapshot)
+      FileUtils.rm_rf snapshot.attempts_paths
     end
 
     def move_screenshot_to(new_screenshot_path, screenshot_path)
@@ -129,16 +134,8 @@ module CapybaraScreenshotDiff
       instance.snap_for(screenshot_full_name, screenshot_format)
     end
 
-    def self.cleanup_attempts_screenshots(base_file)
-      instance.cleanup_attempts_screenshots(base_file)
-    end
-
-    def self.attempts_screenshot_paths(base_file)
-      instance.attempts_screenshot_paths(base_file)
-    end
-
-    def self.gen_next_attempt_path(screenshot_path, iteration)
-      instance.gen_next_attempt_path(screenshot_path, iteration)
+    def self.attempts_screenshot_paths(snapshot)
+      snapshot.attempts_paths
     end
 
     def self.move_screenshot_to(new_screenshot_path, screenshot_path)

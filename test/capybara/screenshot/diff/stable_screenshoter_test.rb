@@ -28,7 +28,7 @@ module Capybara
 
           ImageCompare.stub :new, mock do
             snap = @manager.snap_for("02_a")
-            take_stable_screenshot_with(snap.path)
+            take_stable_screenshot_with(snap)
           end
 
           mock.verify
@@ -36,13 +36,13 @@ module Capybara
 
         test "#take_stable_screenshot without wait raises any error" do
           assert_raises ArgumentError, "wait should be provided" do
-            take_stable_screenshot_with("tmp/02_a.png", wait: nil)
+            take_stable_screenshot_with(@manager.snap_for("02_a"), wait: nil)
           end
         end
 
         test "#take_stable_screenshot without stability_time_limit raises any error" do
           assert_raises ArgumentError, "stability_time_limit should be provided" do
-            take_stable_screenshot_with("tmp/02_a.png", stability_time_limit: nil)
+            take_stable_screenshot_with(@manager.snap_for("02_a"), stability_time_limit: nil)
           end
         end
 

@@ -110,7 +110,7 @@ module Capybara
       end
 
       def capture_screenshot_at(snapshot)
-        take_screenshot(snapshot.next_attempt_path)
+        take_screenshot(snapshot.attempt_path)
         snapshot.commit_last_attempt
       end
 

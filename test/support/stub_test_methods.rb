@@ -49,9 +49,9 @@ module Capybara
           )
         end
 
-        def take_stable_screenshot_with(screenshot_path, stability_time_limit: 0.01, wait: 10)
+        def take_stable_screenshot_with(snap, stability_time_limit: 0.01, wait: 10)
           screenshoter = StableScreenshoter.new({stability_time_limit: stability_time_limit, wait: wait})
-          screenshoter.take_stable_screenshot(screenshot_path)
+          screenshoter.take_stable_screenshot(snap)
         end
       end
     end

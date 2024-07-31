@@ -35,57 +35,61 @@ module Capybara
         # or the `:wait` limit is reached. If unable to achieve a stable state within the time limit, it annotates the attempts
         # to aid debugging.
         #
-        # @param screenshot_path [String, Pathname] The path where the screenshot will be saved.
+        # @param snapshot Snap The snapshot details to take a stable screenshot of.
         # @return [void]
         # @raise [RuntimeError] If a stable screenshot cannot be obtained within the specified `:wait` time.
         def take_comparison_screenshot(snapshot)
-          new_screenshot_path = take_stable_screenshot(snapshot.path, snapshot)
+          new_screenshot_path = take_stable_screenshot(snapshot)
 
           # We failed to get stable browser state! Generate difference between attempts to overview moving parts!
           unless new_screenshot_path
             # FIXME(uwe): Change to store the failure and only report if the test succeeds functionally.
-            annotate_attempts_and_fail!(snapshot.path)
+            annotate_attempts_and_fail!(snapshot)
           end
 
-          FileUtils.mv(new_screenshot_path, snapshot.path, force: true)
+          snapshot.attach(new_screenshot_path, version: :actual)
           snapshot.cleanup_attempts
         end
 
-        def take_stable_screenshot(screenshot_path, snapshot = nil)
-          screenshot_path = screenshot_path.is_a?(String) ? Pathname.new(screenshot_path) : screenshot_path
+        def take_stable_screenshot(snapshot)
           # We try to compare first attempt with checkout version, in order to not run next screenshots
-          attempt_path = nil
           deadline_at = Process.clock_gettime(Process::CLOCK_MONOTONIC) + wait
 
           # Cleanup all previous attempts for sure
-          CapybaraScreenshotDiff::SnapManager.cleanup_attempts_screenshots(screenshot_path)
+          snapshot.cleanup_attempts
 
           0.step do |i|
             # FIXME: it should be wait, and wait should be replaced with stability_time_limit
             sleep(stability_time_limit) unless i == 0
-            attempt_path, prev_attempt_path = attempt_next_screenshot(attempt_path, i, screenshot_path)
-            return attempt_path if attempt_successful?(attempt_path, prev_attempt_path)
+            attempt_next_screenshot(snapshot)
+            return snapshot.attempt_path if attempt_successful?(snapshot)
             return nil if timeout?(deadline_at)
           end
         end
 
         private
 
-        def attempt_successful?(attempt_path, prev_attempt_path)
-          return false unless prev_attempt_path
-          build_comparison_for(attempt_path, prev_attempt_path).quick_equal?
+        def attempt_successful?(snapshot)
+          return false unless snapshot.prev_attempt_path
+
+          build_attempts_comparison_for(snapshot).quick_equal?
         rescue ArgumentError
           false
         end
 
-        def attempt_next_screenshot(prev_attempt_path, i, screenshot_path)
-          new_attempt_path = CapybaraScreenshotDiff::SnapManager.gen_next_attempt_path(screenshot_path, i)
+        def attempt_next_screenshot(snapshot)
+          new_attempt_path = snapshot.next_attempt_path!
+
           @screenshoter.take_screenshot(new_attempt_path)
-          [new_attempt_path, prev_attempt_path]
+          new_attempt_path
         end
 
         def timeout?(deadline_at)
           Process.clock_gettime(Process::CLOCK_MONOTONIC) > deadline_at
+        end
+
+        def build_attempts_comparison_for(snapshot)
+          build_comparison_for(snapshot.attempt_path, snapshot.prev_attempt_path)
         end
 
         def build_comparison_for(attempt_path, previous_attempt_path)
@@ -93,8 +97,8 @@ module Capybara
         end
 
         # TODO: Move to the HistoricalReporter
-        def annotate_attempts_and_fail!(screenshot_path)
-          screenshot_attempts = CapybaraScreenshotDiff::SnapManager.attempts_screenshot_paths(screenshot_path)
+        def annotate_attempts_and_fail!(snapshot)
+          screenshot_attempts = CapybaraScreenshotDiff::SnapManager.attempts_screenshot_paths(snapshot)
 
           annotate_stabilization_images(screenshot_attempts)
 
