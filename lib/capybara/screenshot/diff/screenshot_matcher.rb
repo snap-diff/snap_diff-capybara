@@ -69,10 +69,6 @@ module Capybara
           ]
         end
 
-        def checkout_base_screenshot
-          @snapshot.checkout_base_screenshot
-        end
-
         # Try to get screenshot from browser.
         # On `stability_time_limit` it checks that page stop updating by comparison several screenshot attempts
         # On reaching `wait` limit then it has been failed. On failing we annotate screenshot attempts to help to debug

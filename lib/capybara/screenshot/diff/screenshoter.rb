@@ -21,10 +21,6 @@ module Capybara
         @capture_options[:wait]
       end
 
-      def screenshot_format
-        @capture_options[:screenshot_format] || "png"
-      end
-
       def capybara_screenshot_options
         @capture_options[:capybara_screenshot_options] || {}
       end
