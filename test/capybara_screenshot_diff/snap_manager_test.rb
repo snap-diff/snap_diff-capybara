@@ -9,11 +9,11 @@ module CapybaraScreenshotDiff
     end
 
     teardown do
-      @manager.clean!
+      @manager.cleanup!
     end
 
     test "#provision_snap_with copies the file to the snap path" do
-      snap = @manager.snap_for("test_image")
+      snap = @manager.snapshot("test_image")
       path = fixture_image_path_from("a")
 
       @manager.provision_snap_with(snap, path)
@@ -23,7 +23,7 @@ module CapybaraScreenshotDiff
     end
 
     test "#provision_snap_with populate the base version of the snapshot" do
-      snap = @manager.snap_for("test_image")
+      snap = @manager.snapshot("test_image")
       path = fixture_image_path_from("a")
 
       @manager.provision_snap_with(snap, path, version: :base)

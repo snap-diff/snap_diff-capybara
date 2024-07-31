@@ -15,14 +15,14 @@ module Capybara
           end
 
           teardown do
-            @manager.clean!
+            @manager.cleanup!
             Diff.screenshoter = Screenshoter
           end
         end
 
         # Prepare comparison images and build ImageCompare for them
         def make_comparison(fixture_base_image, fixture_new_image, destination: "screenshot", **options)
-          snap = @manager.snap_for(destination)
+          snap = @manager.snapshot(destination)
 
           set_test_images(snap, fixture_base_image, fixture_new_image)
 

@@ -14,7 +14,7 @@ module Capybara
         end
 
         teardown do
-          @manager.clean!
+          @manager.cleanup!
         end
 
         test "#take_stable_screenshot several iterations to take stable screenshot" do
@@ -27,7 +27,7 @@ module Capybara
           mock.expect(:quick_equal?, true)
 
           ImageCompare.stub :new, mock do
-            snap = @manager.snap_for("02_a")
+            snap = @manager.snapshot("02_a")
             take_stable_screenshot_with(snap)
           end
 
@@ -36,13 +36,13 @@ module Capybara
 
         test "#take_stable_screenshot without wait raises any error" do
           assert_raises ArgumentError, "wait should be provided" do
-            take_stable_screenshot_with(@manager.snap_for("02_a"), wait: nil)
+            take_stable_screenshot_with(@manager.snapshot("02_a"), wait: nil)
           end
         end
 
         test "#take_stable_screenshot without stability_time_limit raises any error" do
           assert_raises ArgumentError, "stability_time_limit should be provided" do
-            take_stable_screenshot_with(@manager.snap_for("02_a"), stability_time_limit: nil)
+            take_stable_screenshot_with(@manager.snapshot("02_a"), stability_time_limit: nil)
           end
         end
 
@@ -53,7 +53,7 @@ module Capybara
           mock.expect(:quick_equal?, false)
           mock.expect(:quick_equal?, true)
 
-          snap = @manager.snap_for("02_a")
+          snap = @manager.snapshot("02_a")
           assert_not_predicate snap.path, :exist?
 
           ImageCompare.stub :new, mock do
@@ -69,13 +69,13 @@ module Capybara
         end
 
         test "#take_comparison_screenshot fail on missing find stable image in time and generates annotated history screenshots" do
-          snap = @manager.snap_for("01_a")
+          snap = @manager.snapshot("01_a")
 
           screenshot_path = snap.path
 
           # Stub annotated files for generated comparison annotations
           # We need to have different from screenshot_path name because of other stubs
-          pseudo_snap_for_annotations = @manager.snap_for("02_a")
+          pseudo_snap_for_annotations = @manager.snapshot("02_a")
           annotated_screenshot_path = pseudo_snap_for_annotations.path
           annotated_attempts_paths = [
             [annotated_screenshot_path.sub_ext(".attempt_01.latest.png"), annotated_screenshot_path.sub_ext(".attempt_01.committed.png")],

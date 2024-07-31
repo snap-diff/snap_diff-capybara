@@ -6,7 +6,7 @@ require "active_support/core_ext/module/attribute_accessors"
 module CapybaraScreenshotDiff
   class SnapManager
     class Snap
-      attr_reader :full_name, :format, :path, :base_path, :manager, :prev_attempt_path, :attempts_count
+      attr_reader :full_name, :format, :path, :base_path, :manager, :attempt_path, :prev_attempt_path, :attempts_count
 
       def initialize(full_name, format, manager: SnapManager.instance)
         @full_name = full_name
@@ -36,34 +36,19 @@ module CapybaraScreenshotDiff
         end
       end
 
-      def attach_attempt(a_path)
-        @manager.move_screenshot_to(a_path, attempt_path)
-        @attempts_count += 1
-      end
-
-      def attach(a_path, version: :actual)
-        @manager.move_screenshot_to(a_path, path_for(version))
-      end
-
-      def attempt_path
-        @_attempt_path ||= path.sub_ext(sprintf(".attempt_%02i.#{format}", @attempts_count))
-      end
-
       def next_attempt_path!
-        @prev_attempt_path = @_attempt_path
-        @_attempt_path = nil
-
-        attempt_path
+        @prev_attempt_path = @attempt_path
+        @attempt_path = path.sub_ext(sprintf(".attempt_%02i.#{format}", @attempts_count))
       ensure
         @attempts_count += 1
       end
 
       def commit_last_attempt
-        @manager.move_screenshot_to(attempt_path, path)
+        @manager.move(attempt_path, path)
       end
 
       def cleanup_attempts
-        @manager.cleanup_attempts_screenshots(self)
+        @manager.cleanup_attempts!(self)
         @attempts_count = 0
       end
 
@@ -78,8 +63,12 @@ module CapybaraScreenshotDiff
       @root = Pathname.new(root)
     end
 
-    def snap_for(screenshot_full_name, screenshot_format = "png")
+    def snapshot(screenshot_full_name, screenshot_format = "png")
       Snap.new(screenshot_full_name, screenshot_format, manager: self)
+    end
+
+    def self.snapshot(screenshot_full_name, screenshot_format = "png")
+      instance.snapshot(screenshot_full_name, screenshot_format)
     end
 
     def abs_path_for(relative_path)
@@ -97,28 +86,20 @@ module CapybaraScreenshotDiff
       FileUtils.cp(path, managed_path)
     end
 
-    def self.provision_snap_with(snap, path, version: :actual)
-      instance.provision_snap_with(snap, path, version: version)
-    end
-
     def create_output_directory_for(path = nil)
       path ? path.dirname.mkpath : root.mkpath
     end
 
     # TODO: rename to delete!
-    def clean!
-      FileUtils.rm_rf root
+    def cleanup!
+      FileUtils.rm_rf root, secure: true
     end
 
-    def self.clean!
-      instance.clean!
+    def cleanup_attempts!(snapshot)
+      FileUtils.rm_rf snapshot.find_attempts_paths, secure: true
     end
 
-    def cleanup_attempts_screenshots(snapshot)
-      FileUtils.rm_rf snapshot.find_attempts_paths
-    end
-
-    def move_screenshot_to(new_screenshot_path, screenshot_path)
+    def move(new_screenshot_path, screenshot_path)
       FileUtils.mv(new_screenshot_path, screenshot_path, force: true)
     end
 
@@ -128,14 +109,6 @@ module CapybaraScreenshotDiff
 
     def self.screenshots
       instance.screenshots
-    end
-
-    def self.snapshot(screenshot_full_name, screenshot_format = "png")
-      instance.snap_for(screenshot_full_name, screenshot_format)
-    end
-
-    def self.move_screenshot_to(new_screenshot_path, screenshot_path)
-      instance.move_screenshot_to(new_screenshot_path, screenshot_path)
     end
 
     def self.root
