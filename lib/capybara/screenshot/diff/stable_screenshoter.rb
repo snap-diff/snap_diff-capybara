@@ -16,14 +16,14 @@ module Capybara
         # @param capture_options [Hash] The options for capturing screenshots, must include `:stability_time_limit` and `:wait`.
         # @param comparison_options [Hash, nil] The options for comparing screenshots, defaults to `nil` which uses `Diff.default_options`.
         # @raise [ArgumentError] If `:wait` or `:stability_time_limit` are not provided, or if `:stability_time_limit` is greater than `:wait`.
-        def initialize(capture_options, comparison_options = nil)
-          @stability_time_limit, @wait = capture_options.fetch_values(:stability_time_limit, :wait)
+        def initialize(capture_options, comparison_options = {})
+          @stability_time_limit, @wait = capture_options.fetch_values(*STABILITY_OPTIONS)
 
           raise ArgumentError, "wait should be provided for stable screenshots" unless wait
           raise ArgumentError, "stability_time_limit should be provided for stable screenshots" unless stability_time_limit
           raise ArgumentError, "stability_time_limit (#{stability_time_limit}) should be less or equal than wait (#{wait}) for stable screenshots" unless stability_time_limit <= wait
 
-          @comparison_options = comparison_options || Diff.default_options
+          @comparison_options = comparison_options
 
           driver = Diff::Drivers.for(@comparison_options)
           @screenshoter = Diff.screenshoter.new(capture_options.except(*STABILITY_OPTIONS), driver)
