@@ -14,6 +14,7 @@ end
 
 RSpec.configure do |config|
   config.include ::CapybaraScreenshotDiff::DSL, type: :feature
+  config.include ::CapybaraScreenshotDiff::DSL, type: :system
 
   config.after do
     if self.class.include?(::CapybaraScreenshotDiff::DSL) && ::Capybara::Screenshot.active?

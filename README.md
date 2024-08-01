@@ -79,7 +79,7 @@ include the `CapybaraScreenshotDiff::DSL` in your test classes.
 It adds `match_screenshot` matcher to RSpec.
 
 > **Important**:
-> The `CapybaraScreenshotDiff::DSL` is automatically included in all feature tests by default.
+> The `CapybaraScreenshotDiff::DSL` is automatically included in all feature and system tests by default.
 
 
 ```ruby
