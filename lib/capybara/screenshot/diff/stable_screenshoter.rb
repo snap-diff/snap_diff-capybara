@@ -96,37 +96,11 @@ module Capybara
 
         # TODO: Move to the HistoricalReporter
         def annotate_attempts_and_fail!(snapshot)
-          screenshot_attempts = snapshot.find_attempts_paths
-
-          annotate_stabilization_images(screenshot_attempts)
+          require "capybara_screenshot_diff/attempts_reporter"
+          attempts_reporter = CapybaraScreenshotDiff::AttemptsReporter.new(snapshot, @comparison_options, {wait: wait, stability_time_limit: stability_time_limit})
 
           # TODO: Move fail to the queue after tests passed
-          fail("Could not get stable screenshot within #{wait}s:\n#{screenshot_attempts.join("\n")}")
-        end
-
-        # TODO: Add tests that we annotate all files except first one
-        def annotate_stabilization_images(attempts_screenshot_paths)
-          previous_file = nil
-          attempts_screenshot_paths.reverse_each do |file_name|
-            if previous_file && File.exist?(previous_file)
-              attempts_comparison = build_comparison_for(file_name, previous_file)
-
-              if attempts_comparison.different?
-                FileUtils.mv(attempts_comparison.reporter.annotated_base_image_path, previous_file, force: true)
-              else
-                warn "[capybara-screenshot-diff] Some attempts was stable, but mistakenly marked as not: " \
-                       "#{previous_file} and #{file_name} are equal"
-              end
-
-              FileUtils.rm(attempts_comparison.reporter.annotated_image_path, force: true)
-            end
-
-            previous_file = file_name
-          end
-        end
-
-        def build_comparison_for(attempt_path, previous_attempt_path)
-          ImageCompare.new(attempt_path, previous_attempt_path, @comparison_options)
+          fail(attempts_reporter.generate)
         end
       end
     end

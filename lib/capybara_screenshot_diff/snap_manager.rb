@@ -7,7 +7,6 @@ require "capybara_screenshot_diff/snap"
 
 module CapybaraScreenshotDiff
   class SnapManager
-
     attr_reader :root
 
     def initialize(root)
