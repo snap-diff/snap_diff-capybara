@@ -187,7 +187,7 @@ module Capybara::Screenshot
         end
       end
     ensure
-      FileUtils.rm_rf(Capybara::Screenshot.screenshot_area_abs / "index-with-anim.png")
+      CapybaraScreenshotDiff::SnapManager.snapshot("index-with-anim").delete!
     end
 
     def test_await_all_images_are_loaded

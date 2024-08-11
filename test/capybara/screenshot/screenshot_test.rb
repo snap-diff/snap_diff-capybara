@@ -6,7 +6,7 @@ require "minitest/mock"
 module Capybara
   class ScreenshotTest < ActionDispatch::IntegrationTest
     def test_screenshot_area_abs_is_absolute
-      assert Capybara::Screenshot.screenshot_area_abs.absolute?
+      assert CapybaraScreenshotDiff::SnapManager.root.absolute?
     end
 
     def test_root_is_a_pathname

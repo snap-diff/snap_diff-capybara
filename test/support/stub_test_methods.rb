@@ -10,34 +10,28 @@ module Capybara
 
         included do
           setup do
+            @manager = CapybaraScreenshotDiff::SnapManager.new(Rails.root / "doc/screenshots")
             Diff.screenshoter = ScreenshoterStub
           end
 
           teardown do
+            @manager.cleanup!
             Diff.screenshoter = Screenshoter
           end
         end
 
         # Prepare comparison images and build ImageCompare for them
-        def make_comparison(fixture_base_image, fixture_new_image, destination: nil, **options)
-          destination ||= Rails.root / "doc/screenshots/screenshot.png"
+        def make_comparison(fixture_base_image, fixture_new_image, destination: "screenshot", **options)
+          snap = @manager.snapshot(destination)
 
-          set_test_images(destination, fixture_base_image, fixture_new_image)
+          set_test_images(snap, fixture_base_image, fixture_new_image)
 
-          ImageCompare.new(destination, ScreenshotMatcher.base_image_path_from(destination), **options)
+          ImageCompare.new(snap.path, snap.base_path, **options)
         end
 
-        def set_test_images(destination, original_base_image, original_new_image, ext: "png")
-          destination = Pathname.new(destination) unless destination.is_a?(Pathname)
-          destination = Capybara::Screenshot.screenshot_area_abs.join(destination) unless destination.absolute?
-          destination.dirname.mkpath unless destination.dirname.exist?
-
-          ext = destination.extname[1..] if destination.extname.present?
-          FileUtils.cp(TEST_IMAGES_DIR / "#{original_new_image}.#{ext}", destination)
-          FileUtils.cp(
-            TEST_IMAGES_DIR / "#{original_base_image}.#{ext}",
-            ScreenshotMatcher.base_image_path_from(destination)
-          )
+        def set_test_images(snap, original_base_image, original_new_image, ext: "png")
+          @manager.provision_snap_with(snap, fixture_image_path_from(original_new_image, snap.format), version: :actual)
+          @manager.provision_snap_with(snap, fixture_image_path_from(original_base_image, snap.format), version: :base)
         end
 
         ImageCompareStub = Struct.new(
@@ -55,9 +49,9 @@ module Capybara
           )
         end
 
-        def take_stable_screenshot_with(screenshot_path, stability_time_limit: 0.01, wait: 10)
+        def take_stable_screenshot_with(snap, stability_time_limit: 0.01, wait: 10)
           screenshoter = StableScreenshoter.new({stability_time_limit: stability_time_limit, wait: wait})
-          screenshoter.take_stable_screenshot(screenshot_path)
+          screenshoter.take_stable_screenshot(snap)
         end
       end
     end

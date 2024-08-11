@@ -111,28 +111,25 @@ module Capybara
           images = all_fixtures_images_names
 
           AVAILABLE_DRIVERS.each do |driver|
-            Dir.chdir File.expand_path("../../../images", __dir__) do
-              images.each do |image|
-                other_images = images - [image]
-                other_images.each do |different_image|
-                  comparison = make_comparison(image, different_image, **driver)
-                  assert_not(
-                    comparison.quick_equal?,
-                    "compare #{image} with #{different_image} with #{driver} driver should not be quick_equal"
-                  )
-                  assert(
-                    comparison.different?,
-                    "compare #{image} with #{different_image} with #{driver} driver should be different"
-                  )
-                end
+            images.each do |image|
+              other_images = images - [image]
+              other_images.each do |different_image|
+                comparison = make_comparison(image, different_image, **driver)
+                assert_not(
+                  comparison.quick_equal?,
+                  "compare #{image.inspect} with #{different_image.inspect} using #{driver} driver should not be quick_equal"
+                )
+                assert(
+                  comparison.different?,
+                  "compare #{image.inspect} with #{different_image.inspect} using #{driver} driver should be different"
+                )
               end
             end
           end
         end
 
         def all_fixtures_images_names
-          fixtures_images = Dir[File.expand_path("../../../images/*.png", __dir__)]
-          fixtures_images.map { |f| File.basename(f).chomp(".png") }
+          %w[a a_cropped b c d portrait portrait_b]
         end
       end
     end

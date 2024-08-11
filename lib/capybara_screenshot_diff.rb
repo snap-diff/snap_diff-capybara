@@ -4,9 +4,9 @@ require "capybara/dsl"
 require "capybara/screenshot/diff/version"
 require "capybara/screenshot/diff/utils"
 require "capybara/screenshot/diff/image_compare"
+require "capybara_screenshot_diff/snap_manager"
 require "capybara/screenshot/diff/test_methods"
 require "capybara/screenshot/diff/screenshoter"
-
 require "capybara/screenshot/diff/reporters/default"
 
 module CapybaraScreenshotDiff
@@ -63,6 +63,7 @@ module Capybara
       mattr_accessor :tolerance
 
       mattr_accessor(:screenshoter) { Screenshoter }
+      mattr_accessor(:manager) { CapybaraScreenshotDiff::SnapManager }
 
       AVAILABLE_DRIVERS = Utils.detect_available_drivers.freeze
 

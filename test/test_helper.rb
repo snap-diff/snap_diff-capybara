@@ -40,18 +40,20 @@ class ActiveSupport::TestCase
     end
   end
 
+  def fixture_image_path_from(original_new_image, ext = "png")
+    TEST_IMAGES_DIR / "#{original_new_image}.#{ext}"
+  end
+
   def assert_same_images(expected_image_name, image_path)
     expected_image_path = file_fixture("files/comparisons/#{expected_image_name}")
     assert_predicate(Capybara::Screenshot::Diff::ImageCompare.new(image_path, expected_image_path), :quick_equal?)
   end
 
   def assert_stored_screenshot(filename)
-    screenshots = Capybara::Screenshot.screenshot_area_abs.children.map { |f| f.basename.to_s }
-
     assert_includes(
-      screenshots,
+      CapybaraScreenshotDiff::SnapManager.screenshots,
       filename,
-      "Screenshot #{filename} not found in #{Capybara::Screenshot.screenshot_area_abs}"
+      "Screenshot #{filename} not found in #{CapybaraScreenshotDiff::SnapManager.instance.root}"
     )
   end
 end

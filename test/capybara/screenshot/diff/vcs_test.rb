@@ -9,7 +9,7 @@ module Capybara
         include Vcs
 
         setup do
-          @base_screenshot = Tempfile.new(%w[vcs_base_screenshot attempt.0.png], Rails.root)
+          @base_screenshot = Tempfile.new(%w[vcs_base_screenshot. .attempt.0.png], Screenshot.root)
         end
 
         teardown do
@@ -20,17 +20,12 @@ module Capybara
         end
 
         test "checkout of original screenshot" do
-          prev_root = Capybara::Screenshot.root
-          Capybara::Screenshot.root = "."
-
-          screenshot_path = Capybara::Screenshot.root / "test/images/a.png"
+          screenshot_path = Screenshot.root / "../test/images/a.png"
           base_screenshot_path = Pathname.new(@base_screenshot.path)
-          assert Vcs.restore_git_revision(screenshot_path, base_screenshot_path)
+          assert Vcs.restore_git_revision(screenshot_path, base_screenshot_path, root: Screenshot.root)
 
           assert base_screenshot_path.exist?
           assert_equal screenshot_path.size, base_screenshot_path.size
-        ensure
-          Capybara::Screenshot.root = prev_root
         end
       end
     end
