@@ -45,6 +45,10 @@ module CapybaraScreenshotDiff
       FileUtils.rm_rf root, secure: true
     end
 
+    def self.cleanup!
+      instance.cleanup!
+    end
+
     def cleanup_attempts!(snapshot)
       FileUtils.rm_rf snapshot.find_attempts_paths, secure: true
     end

@@ -27,8 +27,7 @@ module Capybara
       include Diff::TestMethodsStub
 
       teardown do
-        # TODO: need to find a way to clean up the snapshots
-        # CapybaraScreenshotDiff::SnapManager.clean!
+        CapybaraScreenshotDiff::SnapManager.cleanup!
 
         Capybara::Screenshot.add_driver_path = @orig_add_driver_path
         Capybara::Screenshot.add_os_path = @orig_add_os_path
