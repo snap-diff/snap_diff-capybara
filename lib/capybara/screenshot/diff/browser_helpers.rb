@@ -30,13 +30,23 @@ module Capybara
 
       IMAGE_WAIT_SCRIPT = <<~JS
         function pending_image() {
-          var images = document.images;
+          function isInViewport(element) {
+            const rect = element.getBoundingClientRect();
+            return (
+              rect.top >= 0 &&
+              rect.left >= 0 &&
+              rect.bottom <= (window.innerHeight || document.documentElement.clientHeight) &&
+              rect.right <= (window.innerWidth || document.documentElement.clientWidth)
+            );
+          }
+
+          const images = document.images
           for (var i = 0; i < images.length; i++) {
-            if (!images[i].complete) {
-                return images[i].src;
+            if (!images[i].complete && ("lazy" !== images[i].loading || isInViewport(images[i]))) {
+                return images[i].src
             }
           }
-          return false;
+          return false
         }(window)
       JS
 
