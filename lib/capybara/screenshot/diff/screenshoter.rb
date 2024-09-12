@@ -82,7 +82,6 @@ module Capybara
 
         deadline_at = Process.clock_gettime(Process::CLOCK_MONOTONIC) + timeout
         loop do
-          Capybara.default_max_wait_time
           pending_image = BrowserHelpers.pending_image_to_load
           break unless pending_image
 
