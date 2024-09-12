@@ -1,6 +1,5 @@
 # frozen_string_literal: true
 
-require "chunky_png"
 require "capybara/screenshot/diff/difference"
 
 module Capybara
