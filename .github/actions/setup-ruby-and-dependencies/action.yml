@@ -28,3 +28,5 @@ runs:
       with:
         packages: libvips libglib2.0-0 libglib2.0-dev libwebp-dev libvips42 libpng-dev
         version: tests-v1
+
+    - run: apt-get -qq update apt-get install libvips
