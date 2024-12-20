@@ -125,7 +125,7 @@ module Capybara
 
           unless job
             if Screenshot::Diff.fail_if_new
-              raise_error(<<-ERROR.strip_heredoc, caller(2))
+              _raise_error(<<-ERROR.strip_heredoc, caller(2))
                 No existing screenshot found for #{screenshot_full_name}!
                 To stop seeing this error disable by `Capybara::Screenshot::Diff.fail_if_new=false`
               ERROR
@@ -140,7 +140,7 @@ module Capybara
             schedule_match_job(job)
           else
             error_msg = assert_image_not_changed(*job)
-            raise_error(error_msg, caller(2)) if error_msg
+            _raise_error(error_msg, caller(2)) if error_msg
           end
         end
 
@@ -168,7 +168,7 @@ module Capybara
 
         private
 
-        def raise_error(error_msg, backtrace)
+        def _raise_error(error_msg, backtrace)
           raise CapybaraScreenshotDiff::ExpectationNotMet.new(error_msg).tap { _1.set_backtrace(backtrace) }
         end
 
