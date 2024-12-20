@@ -36,4 +36,8 @@ RSpec.describe "capybara_screenshot_diff/rspec", type: :feature do
 
     expect(page).to match_screenshot("index", skip_stack_frames: 1, driver: :chunky_png)
   end
+
+  it "does not conflicts with rspec methods" do
+    expect { raise StandardError }.to raise_error(StandardError)
+  end
 end
