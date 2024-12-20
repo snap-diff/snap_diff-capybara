@@ -22,9 +22,16 @@ runs:
         bundler-cache: true
         cache-version: ${{ inputs.ruby-cache-version }}-v1
 
+    - run: sudo apt-get -qq update
+      shell: bash
+
     - name: Install and cache vips
       if: ${{ inputs.cache-apt-packages == 'true' }}
       uses: awalsh128/cache-apt-pkgs-action@latest
       with:
         packages: libvips libglib2.0-0 libglib2.0-dev libwebp-dev libvips42 libpng-dev
-        version: tests-v1
+        version: tests-v2
+
+    # fallback if cache version is outdated
+    - run: sudo apt-get -qq install libvips
+      shell: bash

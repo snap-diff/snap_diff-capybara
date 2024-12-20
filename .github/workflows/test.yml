@@ -69,6 +69,7 @@ jobs:
 
 
       - uses: ./.github/actions/upload-screenshots
+        if: failure()
         with:
           name: base-screenshots
 

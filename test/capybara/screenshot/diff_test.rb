@@ -63,7 +63,7 @@ module Capybara
 
       test "screenshot" do
         screenshot_group "screenshot"
-        screenshot "a"
+        assert_matches_screenshot "a"
       end
 
       test "succeed on screenshot diff when fail_on_difference is false" do
