@@ -9,7 +9,6 @@ runs:
   using: 'composite'
   steps:
     - uses: actions/upload-artifact@v4
-      if: failure()
       with:
         name: ${{ inputs.name }}
         retention-days: 1
