@@ -46,8 +46,8 @@ jobs:
 
       - run: bin/rake test
 
-  test:
-    name: Functional Testing
+  functional-test:
+    name: Functional Test
     runs-on: ubuntu-latest
     timeout-minutes: 5
 
@@ -80,13 +80,13 @@ jobs:
           path: coverage
 
   matrix:
-    name: Test Rails & Ruby
+    name: Test Ruby & Rails
     # Test on master, when a review is requested or manually invoked.
     if: >
       github.ref == 'refs/heads/master' ||
       github.event_name == 'workflow_dispatch' ||
       github.event.pull_request.requested_reviewers.length > 0
-    needs: [ test ]
+    needs: [ functional-test ]
     runs-on: ubuntu-latest
     timeout-minutes: ${{ contains(matrix.ruby-version, 'jruby') && 12 || 8 }}
     continue-on-error: ${{ matrix.experimental }}
@@ -137,12 +137,12 @@ jobs:
       github.event.inputs ||
       github.event_name == 'workflow_dispatch' ||
       github.event.pull_request.requested_reviewers.length > 0
-    needs: [ 'test' ]
+    needs: [ 'functional-test' ]
 
     strategy:
       matrix:
-        screenshot-driver: [ vips, chunky_png ]
         capybara-driver: [ selenium_headless, selenium_chrome_headless, cuprite ]
+        screenshot-driver: [ vips, chunky_png ]
 
     runs-on: ubuntu-latest
 
@@ -164,9 +164,10 @@ jobs:
 
       - run: bin/rake test:integration
         env:
-          SCREENSHOT_DRIVER: ${{ matrix.screenshot-driver }}
           CAPYBARA_DRIVER: ${{ matrix.capybara-driver }}
+          SCREENSHOT_DRIVER: ${{ matrix.screenshot-driver }}
 
       - uses: ./.github/actions/upload-screenshots
+        if: failure()
         with:
-          name: screenshots-${{ matrix.screenshot-driver }}-${{ matrix.capybara-driver }}
+          name: screenshots-${{ matrix.capybara-driver }}-${{ matrix.screenshot-driver }}
