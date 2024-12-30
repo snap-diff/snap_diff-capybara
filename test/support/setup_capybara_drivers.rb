@@ -89,3 +89,4 @@ end
 
 Capybara.save_path = Pathname.new("tmp/capybara").expand_path
 Capybara.javascript_driver = ENV.fetch("CAPYBARA_DRIVER", :cuprite).to_sym
+Capybara.disable_animation = true
