@@ -178,7 +178,7 @@ module Capybara::Screenshot
 
       visit "/index-with-anim.html"
 
-      assert_raises RuntimeError, "Could not get stable screenshot within 1s:" do
+      assert_raises Minitest::UnexpectedError, "Could not get stable screenshot within 0.5s:" do
         # We need to run several times,
         # because quick_equal could produce incorrect result,
         # because of the same size screenshots
