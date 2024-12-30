@@ -125,8 +125,8 @@ jobs:
       - name: Run tests (with 2 retries)
         uses: nick-fields/retry@v3
         with:
-          timeout_minutes: ${{ contains(matrix.ruby-version, 'jruby') && 5 || 3 }}
-          max_attempts: 2
+          timeout_minutes: ${{ contains(matrix.ruby-version, 'jruby') && 3 || 3 }}
+          max_attempts: 3
           command: bin/rake test
 
   matrix-screenshot-driver:
