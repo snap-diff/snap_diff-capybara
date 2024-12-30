@@ -15,7 +15,7 @@ on:
   workflow_dispatch:
 
 env:
-  BUNDLE_GEMFILE: gemfiles/rails71_gems.rb
+  BUNDLE_GEMFILE: gemfiles/rails72_gems.rb
   DEBIAN_FRONTEND: noninteractive
   FERRUM_PROCESS_TIMEOUT: 40
   JAVA_OPTS: -Xmn2g -Xms6g -Xmx6g -XX:MetaspaceSize=256m -XX:MaxMetaspaceSize=512m -Xss1m
@@ -42,7 +42,7 @@ jobs:
 
       - uses: ./.github/actions/setup-ruby-and-dependencies
         with:
-          ruby-version: 3.3
+          ruby-version: 3.4
 
       - run: bin/rake test
 
@@ -57,7 +57,7 @@ jobs:
 
       - uses: ./.github/actions/setup-ruby-and-dependencies
         with:
-          ruby-version: 3.3
+          ruby-version: 3.4
           cache-apt-packages: true
 
       - run: bin/rake test
@@ -100,18 +100,15 @@ jobs:
         experimental: [ false ]
         exclude:
           # We already tested last version
-          - ruby-version: 3.3
-            gemfile: rails71_gems.rb
+          - ruby-version: 3.4
+            gemfile: rails72_gems.rb
             experimental: false
         include:
-          - ruby-version: 3.3
-            gemfile: edge_gems.rb
-            experimental: true
           - ruby-version: 3.4
             gemfile: edge_gems.rb
             experimental: true
           - ruby-version: jruby-head
-            gemfile: rails71_gems.rb
+            gemfile: rails72_gems.rb
             experimental: true
 
     env:
@@ -156,7 +153,7 @@ jobs:
 
       - uses: ./.github/actions/setup-ruby-and-dependencies
         with:
-          ruby-version: 3.3
+          ruby-version: 3.4
           cache-apt-packages: ${{ matrix.screenshot-driver == 'vips' }}
 
       - name: Cache Selenium
