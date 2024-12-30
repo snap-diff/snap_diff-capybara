@@ -130,7 +130,7 @@ jobs:
           command: bin/rake test
 
   matrix-screenshot-driver:
-    name: Test Capybara & Image Drivers
+    name: Test Drivers
     if: >
       github.ref == 'refs/heads/master' ||
       github.event.inputs ||
@@ -167,6 +167,6 @@ jobs:
           SCREENSHOT_DRIVER: ${{ matrix.screenshot-driver }}
 
       - uses: ./.github/actions/upload-screenshots
-        if: failure()
+        if: always()
         with:
           name: screenshots-${{ matrix.capybara-driver }}-${{ matrix.screenshot-driver }}

@@ -1,15 +1,14 @@
 # frozen_string_literal: true
 
-require "system_test_case"
-
 # NOTE: For this test we need only chrome browser,
 #       because we can spot problem by counting running chrome driver processes
-require "action_pack/version"
 unless ENV["CAPYBARA_DRIVER"].include?("selenium_chrome")
-  warn "Regression only for `driven_by :selenium_chrome` construction."
   return
 end
+warn "Regression test for `driven_by :selenium_chrome` construction."
 
+require "system_test_case"
+require "action_pack/version"
 require "objspace"
 
 module Capybara
