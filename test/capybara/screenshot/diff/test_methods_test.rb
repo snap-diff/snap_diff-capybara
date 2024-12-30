@@ -49,7 +49,7 @@ module Capybara
 
         def test_screenshot_support_drivers_options
           skip "vips is disabled" unless defined?(Capybara::Screenshot::Diff::Drivers::VipsDriverTest)
-          screenshot("a", driver: :vips)
+          assert_not screenshot("a", driver: :vips)
         end
 
         def test_skip_stack_frames
@@ -76,7 +76,7 @@ module Capybara
         end
 
         def test_skip_area_and_stability_time_limit
-          screenshot(:a, skip_area: [0, 0, 1, 1], stability_time_limit: 0.01)
+          assert_not screenshot(:a, skip_area: [0, 0, 1, 1], stability_time_limit: 0.01)
         end
 
         def test_creates_new_screenshot

@@ -21,7 +21,7 @@ module Capybara
           end
         end
 
-        mock.verify
+        assert mock.verify
       end
 
       test "#take_screenshot with custom screenshot options" do
@@ -39,13 +39,13 @@ module Capybara
           end
         end
 
-        mock.verify
+        assert mock.verify
       end
 
       test "#prepare_page_for_screenshot without wait does not raise any error" do
         screenshoter = Screenshoter.new({wait: nil}, ::Minitest::Mock.new)
 
-        screenshoter.prepare_page_for_screenshot(timeout: nil) # does not raise an error
+        assert_nil screenshoter.prepare_page_for_screenshot(timeout: nil) # does not raise an error
       end
     end
   end

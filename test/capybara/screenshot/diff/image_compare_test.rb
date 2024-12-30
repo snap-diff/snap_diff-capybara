@@ -60,7 +60,7 @@ module Capybara
         end
 
         test "could pass use tolerance for chunky_png driver" do
-          ImageCompare.new("images/b.png", "images/b.base.png", driver: :chunky_png, tolerance: 0.02)
+          assert ImageCompare.new("images/b.png", "images/b.base.png", driver: :chunky_png, tolerance: 0.02)
         end
 
         test "it can be instantiated with dimensions" do

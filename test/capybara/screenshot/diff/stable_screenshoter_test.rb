@@ -31,7 +31,7 @@ module Capybara
             take_stable_screenshot_with(snap)
           end
 
-          mock.verify
+          assert mock.verify
         end
 
         test "#take_stable_screenshot without wait raises any error" do

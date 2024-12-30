@@ -150,6 +150,7 @@ module Capybara
           @test_screenshots = []
           @test_screenshots << [["my_test.rb:42"], "sample_screenshot", mock]
           mock.expect(:clear_screenshots, @test_screenshots)
+          assert true
         end
       end
 
