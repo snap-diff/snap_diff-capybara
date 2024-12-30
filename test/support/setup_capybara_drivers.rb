@@ -2,7 +2,12 @@
 
 ENV["CAPYBARA_DRIVER"] ||= "cuprite"
 
-SCREEN_SIZE = [800, 600]
+SCREEN_SIZE =
+  if ENV["CAPYBARA_DRIVER"] == 'selenium_chrome_headless' && Os.name == 'linux'
+    [800, 687] # Add extra space for address field etc.
+  else
+    [800, 600]
+  end
 BROWSERS = {cuprite: "chrome", selenium_headless: "firefox", selenium_chrome_headless: "chrome"}
 
 CHROME_ARGS = {
