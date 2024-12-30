@@ -57,20 +57,18 @@ module Capybara
             assert_predicate @test_screenshots, :blank?
             make_comparison(:a, :c, destination: "a.png")
 
-            our_screenshot("a", 1)
+            our_screenshot("a", 0)
             assert_equal 1, @test_screenshots.size
-            skip "FIXME: flaky test for local environment" unless ENV["CI"]
-
             assert_match(
               /our_screenshot'/,
               @test_screenshots.dig(0, 0, 0)
             )
             assert_equal "a", @test_screenshots[0][1]
 
-            our_screenshot("a", 2)
+            our_screenshot("a", 1)
             assert_equal 2, @test_screenshots.size
             assert_match(
-              /test_methods_test.rb:.*?test_skip_stack_frames/,
+              %r{/test_methods_test.rb:.*?test_skip_stack_frames},
               @test_screenshots.dig(1, 0, 0)
             )
             assert_equal "a", @test_screenshots[1][1]

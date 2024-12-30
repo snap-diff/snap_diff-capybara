@@ -19,8 +19,8 @@ module CapybaraScreenshotDiff
     module Assertions
       include ::CapybaraScreenshotDiff::DSL
 
-      def screenshot(*, **)
-        super
+      def screenshot(*, skip_stack_frames: 0, **)
+        super(*, skip_stack_frames: skip_stack_frames + 1, **)
       rescue CapybaraScreenshotDiff::ExpectationNotMet => e
         raise ::Minitest::Assertion, e.message
       end
@@ -37,7 +37,11 @@ module CapybaraScreenshotDiff
         klass.teardown do
           errors = verify_screenshots!(@test_screenshots)
 
-          failures << ::Minitest::Assertion.new(errors.join("\n\n")) if errors && !errors.empty?
+          if errors.present?
+            assertion = ::Minitest::Assertion.new(errors.join("\n\n"))
+            assertion.set_backtrace []
+            failures << assertion
+          end
         end
       end
     end

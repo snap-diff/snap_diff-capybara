@@ -123,9 +123,10 @@ module Capybara
           screenshot_full_name = build_full_name(name)
           job = build_screenshot_matches_job(screenshot_full_name, options)
 
+          caller = caller(skip_stack_frames + 1).reject { |l| l =~ /gems\/(activesupport|minitest|railties)/ }
           unless job
             if Screenshot::Diff.fail_if_new
-              _raise_error(<<-ERROR.strip_heredoc, caller(2))
+              _raise_error(<<-ERROR.strip_heredoc, caller)
                 No existing screenshot found for #{screenshot_full_name}!
                 To stop seeing this error disable by `Capybara::Screenshot::Diff.fail_if_new=false`
               ERROR
@@ -134,7 +135,7 @@ module Capybara
             return false
           end
 
-          job.prepend(caller(skip_stack_frames))
+          job.prepend(caller)
 
           if Screenshot::Diff.delayed
             schedule_match_job(job)
@@ -163,7 +164,7 @@ module Capybara
 
           return unless result
 
-          "Screenshot does not match for '#{name}' #{comparison.error_message}\n#{caller.join(", ")}"
+          "Screenshot does not match for '#{name}' #{comparison.error_message}\n#{caller.join("\n")}"
         end
 
         private
