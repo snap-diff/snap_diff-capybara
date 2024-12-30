@@ -80,7 +80,7 @@ jobs:
           path: coverage
 
   matrix:
-    name: Test Integration Rails & Ruby
+    name: Test Rails & Ruby
     # Test on master, when a review is requested or manually invoked.
     if: >
       github.ref == 'refs/heads/master' ||
@@ -131,7 +131,7 @@ jobs:
           command: bin/rake test
 
   matrix-screenshot-driver:
-    name: Test Integration Capybara & Image Drivers
+    name: Test Capybara & Image Drivers
     if: >
       github.ref == 'refs/heads/master' ||
       github.event.inputs ||

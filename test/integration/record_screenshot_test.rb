@@ -26,6 +26,6 @@ class RecordScreenshotTest < SystemTestCase
   def test_record_index_with_stability
     visit "/"
 
-    screenshot "index", stability_time_limit: 0.1, wait: 1
+    screenshot "index", stability_time_limit: 0.1, wait: RUBY_ENGINE == 'jruby' ? 10 : 1
   end
 end
