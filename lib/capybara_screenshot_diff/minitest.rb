@@ -20,9 +20,9 @@ module CapybaraScreenshotDiff
       include ::CapybaraScreenshotDiff::DSL
 
       def screenshot(*args, skip_stack_frames: 0, **opts)
-        super(*args, skip_stack_frames: skip_stack_frames + 1, **opts)
-      rescue CapybaraScreenshotDiff::ExpectationNotMet => e
-        raise ::Minitest::Assertion, e.message
+        assert_nothing_raised do
+          super(*args, skip_stack_frames: skip_stack_frames + 1, **opts)
+        end
       end
 
       alias_method :assert_matches_screenshot, :screenshot
