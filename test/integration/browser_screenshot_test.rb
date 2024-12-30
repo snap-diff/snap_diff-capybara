@@ -34,7 +34,7 @@ module Capybara::Screenshot
     end
 
     def test_window_size_should_resize_browser_window_in_setup
-      assert_equal [800, 600], window_size
+      assert_equal SCREEN_SIZE, window_size
     end
 
     def test_screenshot_with_hide_caret_enabled
