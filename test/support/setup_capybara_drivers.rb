@@ -3,7 +3,7 @@
 ENV["CAPYBARA_DRIVER"] ||= "cuprite"
 
 SCREEN_SIZE =
-  if ENV["CAPYBARA_DRIVER"] == 'selenium_chrome_headless' && Os.name == 'linux'
+  if ENV["CAPYBARA_DRIVER"] == 'selenium_chrome_headless' && Capybara::Screenshot::Os.name == 'linux'
     [800, 687] # Add extra space for address field etc.
   else
     [800, 600]
