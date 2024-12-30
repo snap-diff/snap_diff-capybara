@@ -3,6 +3,11 @@
 require "system_test_case"
 
 class RecordScreenshotTest < SystemTestCase
+  setup do
+    screenshot_section class_name.underscore.sub(/(_feature|_system)?_test$/, '') unless @screenshot_section
+    screenshot_group name[5..] unless @screenshot_group
+  end
+
   def test_record_index
     visit "/"
 
