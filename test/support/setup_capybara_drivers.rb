@@ -2,12 +2,7 @@
 
 ENV["CAPYBARA_DRIVER"] ||= "cuprite"
 
-SCREEN_SIZE =
-  if ENV["CAPYBARA_DRIVER"] == 'selenium_chrome_headless' && Capybara::Screenshot::Os.name == 'linux'
-    [800, 687] # Add extra space for address field etc.
-  else
-    [800, 600]
-  end
+SCREEN_SIZE = [800, 600]
 BROWSERS = {cuprite: "chrome", selenium_headless: "firefox", selenium_chrome_headless: "chrome"}
 
 CHROME_ARGS = {
@@ -91,3 +86,4 @@ end
 
 Capybara.save_path = Pathname.new("tmp/capybara").expand_path
 Capybara.javascript_driver = ENV.fetch("CAPYBARA_DRIVER", :cuprite).to_sym
+Capybara::Screenshot.window_size = SCREEN_SIZE
