@@ -12,7 +12,7 @@ Gem::Specification.new do |spec|
   spec.summary = "Track your GUI changes with diff assertions"
   spec.description = "Save screen shots and track changes with graphical diff"
   spec.homepage = "https://github.com/donv/capybara-screenshot-diff"
-  spec.required_ruby_version = ">= 3.0.0"
+  spec.required_ruby_version = ">= 3.2"
   spec.license = "MIT"
   spec.metadata["allowed_push_host"] = "https://rubygems.org/"
   spec.files = `git ls-files -z`.split("\x0").reject do |f|

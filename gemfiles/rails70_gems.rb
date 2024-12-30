@@ -6,3 +6,4 @@ eval File.read(gems), binding, gems
 gem "actionpack", "~> 7.0", "< 7.1"
 gem "capybara", ">= 3.26"
 gem 'mutex_m'
+gem 'drb'
