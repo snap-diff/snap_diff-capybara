@@ -99,7 +99,7 @@ module Capybara::Screenshot
     test "compare crops only when other part is not working" do
       visit "/index-without-img.html"
 
-      assert_matches_screenshot("index-cropped", crop: "form", color_distance_limit: 40)
+      assert_matches_screenshot("index-without-img-cropped", crop: "form", color_distance_limit: 40)
 
       assert_no_screenshot_errors
     end
@@ -107,7 +107,7 @@ module Capybara::Screenshot
     test "crop accepts css selector" do
       visit "/index-without-img.html"
 
-      assert_matches_screenshot("index-cropped", crop: "form")
+      assert_matches_screenshot("index-without-img-cropped", crop: "form")
 
       assert_no_screenshot_errors
     end
@@ -152,7 +152,7 @@ module Capybara::Screenshot
 
       fill_in "First Field:", with: "Test Input With Hide Caret"
 
-      assert_matches_screenshot("index-cropped", skip_area: "input", crop: "form")
+      assert_matches_screenshot("index-without-img-cropped", skip_area: "input", crop: "form")
 
       assert_no_screenshot_errors
     end
