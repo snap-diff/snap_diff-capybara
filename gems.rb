@@ -14,7 +14,7 @@ gem "ruby-vips", require: false
 
 group :test do
   gem "capybara", ">= 3.26"
-  gem 'mutex_m' # Needed for RubyMine debugging.  Try removing it.
+  gem "mutex_m" # Needed for RubyMine debugging.  Try removing it.
   gem "minitest", require: false
   gem "minitest-stub-const", require: false
   gem "simplecov", require: false

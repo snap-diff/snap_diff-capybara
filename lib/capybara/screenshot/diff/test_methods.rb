@@ -158,13 +158,13 @@ module Capybara
           # Cleanup after comparisons
           if !result && comparison.base_image_path.exist?
             FileUtils.mv(comparison.base_image_path, comparison.image_path, force: true)
-          else
+          elsif !comparison.dimensions_changed?
             FileUtils.rm_rf(comparison.base_image_path)
           end
 
           return unless result
 
-          "Screenshot does not match for '#{name}' #{comparison.error_message}\n#{caller.join("\n")}"
+          "Screenshot does not match for '#{name}': #{comparison.error_message}\n#{caller.join("\n")}"
         end
 
         private

@@ -23,7 +23,7 @@ module Capybara
           message = assert_image_not_changed(["my_test.rb:42"], "name", make_comparison(:a, :c))
           value = (RUBY_VERSION >= "2.4") ? 187.4 : 188
           assert_equal <<-MSG.strip_heredoc.chomp, message
-            Screenshot does not match for 'name' ({"area_size":629,"region":[11,3,48,20],"max_color_distance":#{value}})
+            Screenshot does not match for 'name': ({"area_size":629,"region":[11,3,48,20],"max_color_distance":#{value}})
             #{Rails.root}/doc/screenshots/screenshot.png
             #{Rails.root}/doc/screenshots/screenshot.base.diff.png
             #{Rails.root}/doc/screenshots/screenshot.diff.png
@@ -39,7 +39,7 @@ module Capybara
           )
           value = (RUBY_VERSION >= "2.4") ? 5.0 : 5
           assert_equal <<-MSG.strip_heredoc.chomp, message
-            Screenshot does not match for 'name' ({"area_size":629,"region":[11,3,48,20],"max_color_distance":#{value},"max_shift_distance":15})
+            Screenshot does not match for 'name': ({"area_size":629,"region":[11,3,48,20],"max_color_distance":#{value},"max_shift_distance":15})
             #{Rails.root}/doc/screenshots/screenshot.png
             #{Rails.root}/doc/screenshots/screenshot.base.diff.png
             #{Rails.root}/doc/screenshots/screenshot.diff.png

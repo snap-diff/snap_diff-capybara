@@ -59,6 +59,10 @@ module Capybara
           processed.difference.different?
         end
 
+        def dimensions_changed?
+          difference.failed_by&.[](:different_dimensions)
+        end
+
         def reporter
           @reporter ||= begin
             current_difference = difference || build_no_difference(nil)

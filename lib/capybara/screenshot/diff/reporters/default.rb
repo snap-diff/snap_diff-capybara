@@ -39,7 +39,7 @@ module Capybara::Screenshot::Diff
           .map { |image| driver.dimension(image).join("x") }
           .join(" => ")
 
-        "Screenshot dimension has been changed for #{image_path.to_path}: #{change_msg}"
+        "Dimensions have changed: #{change_msg}\n#{base_image_path.to_path}\n#{image_path.to_path}"
       end
 
       def annotate_and_save_images
@@ -99,6 +99,10 @@ module Capybara::Screenshot::Diff
 
       def new_image
         difference.comparison.new_image
+      end
+
+      def base_image_path
+        comparison.base_image_path
       end
 
       def image_path

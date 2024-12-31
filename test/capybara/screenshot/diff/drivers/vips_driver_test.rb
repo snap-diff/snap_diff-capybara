@@ -118,7 +118,7 @@ module Capybara
           test "size a vs a_cropped" do
             comp = make_comparison(:a, :a_cropped)
             assert comp.different?
-            assert_includes comp.error_message, "Screenshot dimension has been changed for "
+            assert_includes comp.error_message, "Dimensions have changed: "
             assert_includes comp.error_message, "80x60"
           end
 
