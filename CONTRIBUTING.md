@@ -19,6 +19,11 @@ and make sure the tests are green.
 
 ## Releasing
 
-New versions are released to RubyGems.
+To release a new version, update the version number in
+[lib/capybara/screenshot/diff/version.rb](lib/capybara/screenshot/diff/version.rb),
+and then run
 
-    rake release
+    bundle exec rake release
+
+which will create a git tag for the version, push git commits and tags, and
+push the `.gem` file to [rubygems.org](https://rubygems.org).
