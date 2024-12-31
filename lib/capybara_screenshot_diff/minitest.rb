@@ -21,7 +21,7 @@ module CapybaraScreenshotDiff
 
       def screenshot(*args, skip_stack_frames: 0, **opts)
         assert_nothing_raised do
-          super(*args, skip_stack_frames: skip_stack_frames + 1, **opts)
+          super(*args, skip_stack_frames: skip_stack_frames + 3, **opts)
         end
       end
 
