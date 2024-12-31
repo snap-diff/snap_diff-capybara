@@ -103,6 +103,10 @@ jobs:
           - ruby-version: 3.4
             gemfile: rails80_gems.rb
             experimental: false
+          # JRuby 9.x is Ruby 3.1 compatible, and Rails 8 requires Ruby 3.2.
+          - ruby-version: jruby
+            gemfile: rails80_gems.rb
+            experimental: false
         include:
           - ruby-version: 3.4
             gemfile: edge_gems.rb
