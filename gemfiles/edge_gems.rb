@@ -6,5 +6,3 @@ eval File.read(gems), binding, gems
 git "https://github.com/rails/rails.git" do
   gem "actionpack"
 end
-
-gem "capybara", ">= 3.26"

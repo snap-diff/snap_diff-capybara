@@ -15,7 +15,7 @@ on:
   workflow_dispatch:
 
 env:
-  BUNDLE_GEMFILE: gemfiles/rails72_gems.rb
+  BUNDLE_GEMFILE: gemfiles/rails80_gems.rb
   DEBIAN_FRONTEND: noninteractive
   FERRUM_PROCESS_TIMEOUT: 40
   JAVA_OPTS: -Xmn2g -Xms6g -Xmx6g -XX:MetaspaceSize=256m -XX:MaxMetaspaceSize=512m -Xss1m
@@ -96,18 +96,19 @@ jobs:
           - rails70_gems.rb
           - rails71_gems.rb
           - rails72_gems.rb
+          - rails80_gems.rb
         experimental: [ false ]
         exclude:
           # We already tested last version
           - ruby-version: 3.4
-            gemfile: rails72_gems.rb
+            gemfile: rails80_gems.rb
             experimental: false
         include:
           - ruby-version: 3.4
             gemfile: edge_gems.rb
             experimental: true
           - ruby-version: jruby-head
-            gemfile: rails72_gems.rb
+            gemfile: rails80_gems.rb
             experimental: true
 
     env:
