@@ -1,7 +1,7 @@
 Contributing
 ============
 
-Bug reports and pull requests are welcome on GitHub at https://github.com/donv/capybara-screenshot-diff.
+Bug reports and pull requests are welcome on GitHub at https://github.com/snap-diff/snap_diff-capybara.
 This project is intended to be a safe, welcoming space for collaboration, and contributors are expected
 to adhere to the [Contributor Covenant](http://contributor-covenant.org) code of conduct.
 
@@ -27,3 +27,6 @@ and then run
 
 which will create a git tag for the version, push git commits and tags, and
 push the `.gem` file to [rubygems.org](https://rubygems.org).
+
+Then go to https://github.com/snap-diff/snap_diff-capybara/releases and create
+a new release for the new tag.
