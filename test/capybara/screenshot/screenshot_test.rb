@@ -18,7 +18,7 @@ module Capybara
     def test_root_could_be_assigned_relative_path
       @orig_root = Capybara::Screenshot.root
 
-      Capybara::Screenshot.root = "."
+      Capybara::Screenshot.root = "./tmp"
       assert_kind_of Pathname, Capybara::Screenshot.root
       assert Capybara::Screenshot.root.absolute?
     ensure

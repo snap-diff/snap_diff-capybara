@@ -10,7 +10,11 @@ require "capybara/screenshot/diff/screenshoter"
 require "capybara/screenshot/diff/reporters/default"
 
 module CapybaraScreenshotDiff
-  class ExpectationNotMet < StandardError; end
+  class CapybaraScreenshotDiffError < StandardError; end
+
+  class ExpectationNotMet < CapybaraScreenshotDiffError; end
+
+  class UnstableImage < CapybaraScreenshotDiffError; end
 end
 
 module Capybara
@@ -49,7 +53,7 @@ module Capybara
       end
     end
 
-    # Module to track screen shot changes
+    # Module to track screenshot changes
     module Diff
       mattr_accessor(:delayed) { true }
       mattr_accessor :area_size_limit

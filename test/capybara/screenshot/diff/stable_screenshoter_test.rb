@@ -90,7 +90,7 @@ module Capybara
             mock.reporter.expect(:annotated_base_image_path, base_path.to_s)
           end
 
-          assert_raises RuntimeError, "Could not get stable screenshot within 1s" do
+          assert_raises CapybaraScreenshotDiff::UnstableImage, "Could not get stable screenshot within 1s" do
             ImageCompare.stub :new, mock do
               # Wait time is less then stability time, which will generate problem
               StableScreenshoter

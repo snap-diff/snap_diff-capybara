@@ -74,7 +74,7 @@ class Region
   end
 
   def cover?(x, y)
-    left <= x && x <= right && top <= y && y <= bottom
+    x.between?(left, right) && y.between?(top, bottom)
   end
 
   def empty?

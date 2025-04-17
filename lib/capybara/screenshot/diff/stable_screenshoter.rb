@@ -100,7 +100,7 @@ module Capybara
           attempts_reporter = CapybaraScreenshotDiff::AttemptsReporter.new(snapshot, @comparison_options, {wait: wait, stability_time_limit: stability_time_limit})
 
           # TODO: Move fail to the queue after tests passed
-          fail(attempts_reporter.generate)
+          raise CapybaraScreenshotDiff::UnstableImage, attempts_reporter.generate
         end
       end
     end

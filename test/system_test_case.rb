@@ -15,9 +15,9 @@ class SystemTestCase < ActiveSupport::TestCase
 
     # TODO: Reset original settings to previous values
     @orig_root = Capybara::Screenshot.root
-    Capybara::Screenshot.root = "."
+    Capybara::Screenshot.root = Rails.root / "../test/fixtures/app"
     @orig_save_path = Capybara::Screenshot.save_path
-    Capybara::Screenshot.save_path = "test/fixtures/app/doc/screenshots"
+    Capybara::Screenshot.save_path = "./doc/screenshots"
 
     Capybara::Screenshot::Diff.driver = ENV.fetch("SCREENSHOT_DRIVER", "chunky_png").to_sym
 
@@ -57,7 +57,10 @@ class SystemTestCase < ActiveSupport::TestCase
 
   private
 
-  def rollback_comparison_runtime_files((_, _, comparison))
+  def rollback_comparison_runtime_files(screenshot_assert)
+    comparison = screenshot_assert.is_a?(CapybaraScreenshotDiff::ScreenshotAssertion) ? screenshot_assert.compare : screenshot_assert[2]
+    return unless comparison
+
     save_annotations_for_debug(comparison)
 
     screenshot_path = comparison.image_path
@@ -83,11 +86,5 @@ class SystemTestCase < ActiveSupport::TestCase
     if comparison.reporter.annotated_image_path.exist?
       FileUtils.mv(comparison.reporter.annotated_image_path, debug_diffs_save_path, force: true)
     end
-  end
-
-  def run_screenshots_validation
-    return [] unless @test_screenshots
-
-    @test_screenshots.select { |screenshot_assert| screenshot_assert.last.different? }
   end
 end

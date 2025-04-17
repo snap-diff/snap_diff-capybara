@@ -20,29 +20,29 @@ module CapybaraScreenshotDiff
       include ::CapybaraScreenshotDiff::DSL
 
       def screenshot(*args, skip_stack_frames: 0, **opts)
-        assert_nothing_raised do
-          super(*args, skip_stack_frames: skip_stack_frames + 3, **opts)
-        end
+        self.assertions += 1
+
+        super(*args, skip_stack_frames: skip_stack_frames + 3, **opts)
+      rescue ::CapybaraScreenshotDiff::ExpectationNotMet => e
+        raise ::Minitest::Assertion, e.message
       end
 
       alias_method :assert_matches_screenshot, :screenshot
 
-      def self.included(klass)
-        klass.setup do
-          if ::Capybara::Screenshot.window_size
-            ::Capybara::Screenshot::BrowserHelpers.resize_to(::Capybara::Screenshot.window_size)
-          end
-        end
+      def setup
+        super
+        ::Capybara::Screenshot::BrowserHelpers.resize_window_if_needed
+      end
 
-        klass.teardown do
-          errors = verify_screenshots!(@test_screenshots)
-
-          if errors.present?
-            assertion = ::Minitest::Assertion.new(errors.join("\n\n"))
-            assertion.set_backtrace []
-            failures << assertion
-          end
-        end
+      def before_teardown
+        super
+        CapybaraScreenshotDiff.verify
+      rescue CapybaraScreenshotDiff::ExpectationNotMet => e
+        assertion = ::Minitest::Assertion.new(e)
+        assertion.set_backtrace []
+        failures << assertion
+      ensure
+        CapybaraScreenshotDiff.reset
       end
     end
   end

@@ -6,19 +6,16 @@ module CapybaraScreenshotDiff
   module NonMinitest
     module Assertions
       def self.included(klass)
-        klass.include ::Capybara::Screenshot::Diff::TestMethods
+        klass.include Capybara::Screenshot::Diff::TestMethods
 
         klass.setup do
-          if ::Capybara::Screenshot.active? && ::Capybara::Screenshot.window_size
-            ::Capybara::Screenshot::BrowserHelpers.resize_to(::Capybara::Screenshot.window_size)
-          end
+          Capybara::Screenshot::BrowserHelpers.resize_window_if_needed
         end
 
         klass.teardown do
-          if ::Capybara::Screenshot.active? && ::Capybara::Screenshot::Diff.fail_on_difference
-            errors = verify_screenshots!(@test_screenshots)
-            raise ::StandardError.new(errors.join("\n\n")) if errors
-          end
+          CapybaraScreenshotDiff.verify
+        ensure
+          CapybaraScreenshotDiff.reset
         end
       end
     end
