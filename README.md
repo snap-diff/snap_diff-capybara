@@ -580,8 +580,8 @@ If need to setup explicitly Vips driver, there are several ways to do this:
 * Globally: `Capybara::Screenshot::Diff.driver = :vips`
 * Per screenshot option: `screenshot 'index', driver: :vips`
 
-With enabled VIPS there are new alternatives to process differences, which easier to find and support.
-For example, `shift_distance_limit` is very heavy operation. Instead better to use `median_filter_window_size`.
+With enabled VIPS there are new alternatives to process differences, which are easier to find and support.
+For example, `shift_distance_limit` is a very heavy operation. Instead, use `median_filter_window_size`.
 
 #### Tolerance level (vips only)
 
