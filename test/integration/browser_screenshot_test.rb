@@ -234,11 +234,11 @@ module Capybara::Screenshot
     def assert_no_screenshot_errors
       screenshots = CapybaraScreenshotDiff.failed_assertions
 
-      error_messages = screenshots.map { |screenshot_error| screenshot_error.last.error_message }
+      error_messages = screenshots.map { |assertion| assertion.compare.error_message }
 
       assert(
         screenshots.empty?,
-        "expecting not to have any difference. But got next: #{error_messages.join("; ")}"
+        "expecting not to have any difference. But got next:\n#{error_messages.join(";\n")}"
       )
     end
   end
