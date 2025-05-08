@@ -5,6 +5,12 @@ require_relative "region"
 module Capybara
   module Screenshot
     module BrowserHelpers
+      def self.resize_window_if_needed
+        if ::Capybara::Screenshot.respond_to?(:window_size) && ::Capybara::Screenshot.window_size
+          resize_to(::Capybara::Screenshot.window_size)
+        end
+      end
+
       def self.resize_to(window_size)
         if session.driver.respond_to?(:resize)
           session.driver.resize(*window_size)

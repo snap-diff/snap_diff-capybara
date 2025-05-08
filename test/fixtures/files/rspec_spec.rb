@@ -16,7 +16,8 @@ RSpec.describe "capybara_screenshot_diff/rspec", type: :feature do
     Capybara.page.current_window.resize_to(*SCREEN_SIZE)
     Capybara::Screenshot.window_size = SCREEN_SIZE
 
-    Capybara::Screenshot.save_path = "test/fixtures/app/doc/screenshots"
+    Capybara::Screenshot.save_path = "doc/screenshots"
+    Capybara::Screenshot.root = Rails.root / "../test/fixtures/app"
     Capybara::Screenshot.add_os_path = true
     Capybara::Screenshot.add_driver_path = true
     Capybara::Screenshot::Diff.driver = ENV.fetch("SCREENSHOT_DRIVER", "chunky_png").to_sym

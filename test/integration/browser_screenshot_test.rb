@@ -10,12 +10,17 @@ module Capybara::Screenshot
 
     teardown do
       Capybara::Screenshot.blur_active_element = nil
+    end
 
-      if @test_screenshots
-        @test_screenshots.each(&method(:rollback_comparison_runtime_files)) unless ENV["DEBUG"]
+    def before_teardown
+      if CapybaraScreenshotDiff.assertions_present?
+        # NOTE: We rollback new screenshots in order to remain their original state
+        #       and only for debug mode we keep them
+        CapybaraScreenshotDiff.assertions.each(&method(:rollback_comparison_runtime_files)) unless ENV["DEBUG"]
         # NOTE: We clear tracked different errors in order to not raise error
-        @test_screenshots.clear
+        CapybaraScreenshotDiff.reset
       end
+      super
     end
 
     def test_screenshot_without_changes
@@ -133,8 +138,11 @@ module Capybara::Screenshot
 
       assert_matches_screenshot("index-cropped", skip_area: "#first-field", crop: "form")
 
-      assert_not_predicate @test_screenshots, :empty?, "differences have not been found when they should have been"
-      assert @test_screenshots.last.last.different?, "should provide comparison object in the error"
+      assert_not_predicate(
+        CapybaraScreenshotDiff.failed_assertions,
+        :empty?,
+        "differences have not been found when they should have been"
+      )
     end
 
     test "skip_area by css selectors" do
@@ -178,7 +186,7 @@ module Capybara::Screenshot
 
       visit "/index-with-anim.html"
 
-      assert_raises Minitest::UnexpectedError, "Could not get stable screenshot within 0.5s:" do
+      assert_raises CapybaraScreenshotDiff::UnstableImage, "Could not get stable screenshot within 0.5s:" do
         # We need to run several times,
         # because quick_equal could produce incorrect result,
         # because of the same size screenshots
@@ -215,14 +223,14 @@ module Capybara::Screenshot
     end
 
     def assert_screenshot_error_for(screenshot_name)
-      run_screenshots_validation
+      assertions = CapybaraScreenshotDiff.failed_assertions
 
-      assert_equal 1, @test_screenshots&.length, "expecting to have just one difference"
-      assert_equal screenshot_name, @test_screenshots[0][1], "index screenshot should have difference for changed page"
+      assert_equal 1, assertions&.length, "expecting to have just one difference"
+      assert_equal screenshot_name, assertions[0].name, "index screenshot should have difference for changed page"
     end
 
     def assert_no_screenshot_errors
-      screenshots = run_screenshots_validation
+      screenshots = CapybaraScreenshotDiff.failed_assertions
 
       error_messages = screenshots.map { |screenshot_error| screenshot_error.last.error_message }
 

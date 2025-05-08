@@ -35,26 +35,6 @@ module Capybara
           @screenshot_group = nil
           @screenshot_section = nil
           @test_screenshot_errors = nil
-          @test_screenshots = []
-        end
-
-        # Verifies that all scheduled screenshots do not show any unintended differences.
-        #
-        # @param screenshots [Array(Array(Array(String), String, ImageCompare))] The list of match screenshots jobs. Defaults to all screenshots taken during the test.
-        # @return [Array, nil] Returns an array of error messages if there are screenshot differences, otherwise nil.
-        # @note This method is typically called at the end of a test to assert all screenshots are as expected.
-        def verify_screenshots!(screenshots = @test_screenshots)
-          return unless ::Capybara::Screenshot.active? && ::Capybara::Screenshot::Diff.fail_on_difference
-
-          test_screenshot_errors = screenshots.map do |caller, name, compare|
-            assert_image_not_changed(caller, name, compare)
-          end
-
-          test_screenshot_errors.compact!
-
-          test_screenshot_errors.presence
-        ensure
-          screenshots.clear
         end
 
         # Builds the full name for a screenshot, incorporating counters and group names for uniqueness.
@@ -83,8 +63,9 @@ module Capybara
 
         def screenshot_group(name)
           @screenshot_group = name.to_s
-          @screenshot_counter = @screenshot_group.present? ? 0 : nil
-          return unless Screenshot.active? && name.present?
+          @screenshot_counter = (@screenshot_group.nil? || @screenshot_group.empty?) ? nil : 0
+          name_present = !(name.nil? || name.empty?)
+          return unless Screenshot.active? && name_present
 
           FileUtils.rm_rf screenshot_dir
         end
@@ -97,14 +78,14 @@ module Capybara
         # @param job [Array(Array(String), String, ImageCompare)] The job to be scheduled, consisting of the caller context, screenshot name, and comparison object.
         # @return [Boolean] Always returns true, indicating the job was successfully scheduled.
         def schedule_match_job(job)
-          (@test_screenshots ||= []) << job
+          CapybaraScreenshotDiff.add_assertion(job)
           true
         end
 
         def group_parts
           parts = []
-          parts << @screenshot_section if @screenshot_section.present?
-          parts << @screenshot_group if @screenshot_group.present?
+          parts << @screenshot_section unless @screenshot_section.nil? || @screenshot_section.empty?
+          parts << @screenshot_group unless @screenshot_group.nil? || @screenshot_group.empty?
           parts
         end
 
@@ -120,13 +101,18 @@ module Capybara
         def screenshot(name, skip_stack_frames: 0, **options)
           return false unless Screenshot.active?
 
+          # setup
           screenshot_full_name = build_full_name(name)
-          job = build_screenshot_matches_job(screenshot_full_name, options)
 
-          caller = caller(skip_stack_frames + 1).reject { |l| l =~ /gems\/(activesupport|minitest|railties)/ }
-          unless job
+          # exercise
+          match_changes_job = build_screenshot_matches_job(screenshot_full_name, options)
+
+          # verify
+          backtrace = caller(skip_stack_frames + 1).reject { |l| l =~ /gems\/(activesupport|minitest|railties)/ }
+
+          unless match_changes_job
             if Screenshot::Diff.fail_if_new
-              _raise_error(<<-ERROR.strip_heredoc, caller)
+              _raise_error(<<-ERROR.strip_heredoc, backtrace)
                 No existing screenshot found for #{screenshot_full_name}!
                 To stop seeing this error disable by `Capybara::Screenshot::Diff.fail_if_new=false`
               ERROR
@@ -135,39 +121,26 @@ module Capybara
             return false
           end
 
-          job.prepend(caller)
+          match_changes_job.prepend(backtrace)
 
           if Screenshot::Diff.delayed
-            schedule_match_job(job)
+            schedule_match_job(match_changes_job)
           else
-            error_msg = assert_image_not_changed(*job)
-            _raise_error(error_msg, caller(2)) if error_msg
+            invoke_match_job(match_changes_job)
           end
-        end
-
-        # Asserts that an image has not changed compared to its baseline.
-        #
-        # @param caller [Array(String)] The caller context, used for error reporting.
-        # @param name [String] The name of the screenshot being verified.
-        # @param comparison [Object] The comparison object containing the result and details of the comparison.
-        # @return [String, nil] Returns an error message if the screenshot differs from the baseline, otherwise nil.
-        # @note This method is used internally to verify individual screenshots.
-        def assert_image_not_changed(caller, name, comparison)
-          result = comparison.different?
-
-          # Cleanup after comparisons
-          if !result && comparison.base_image_path.exist?
-            FileUtils.mv(comparison.base_image_path, comparison.image_path, force: true)
-          elsif !comparison.dimensions_changed?
-            FileUtils.rm_rf(comparison.base_image_path)
-          end
-
-          return unless result
-
-          "Screenshot does not match for '#{name}': #{comparison.error_message}\n#{caller.join("\n")}"
         end
 
         private
+
+        def invoke_match_job(job)
+          error_msg = CapybaraScreenshotDiff::ScreenshotAssertion.from(job).validate
+
+          if error_msg
+            _raise_error(error_msg, job[0])
+          end
+
+          true
+        end
 
         def _raise_error(error_msg, backtrace)
           raise CapybaraScreenshotDiff::ExpectationNotMet.new(error_msg).tap { _1.set_backtrace(backtrace) }

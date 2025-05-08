@@ -28,6 +28,7 @@ module Capybara
 
       teardown do
         CapybaraScreenshotDiff::SnapManager.cleanup!
+        CapybaraScreenshotDiff.reset
 
         Capybara::Screenshot.add_driver_path = @orig_add_driver_path
         Capybara::Screenshot.add_os_path = @orig_add_os_path
@@ -87,6 +88,7 @@ module Capybara
 
       def test_screenshot_with_stability_time_limit
         Capybara::Screenshot.stability_time_limit = 0.001
+
         screenshot "a"
       ensure
         Capybara::Screenshot.stability_time_limit = nil
@@ -109,11 +111,8 @@ module Capybara
 
       test "detect available diff drivers on the loading" do
         # NOTE for tests we are loading both drivers, so we expect that all of them are available
-        expected_drivers = if defined?(Vips)
-          %i[vips chunky_png]
-        else
-          %i[chunky_png]
-        end
+        expected_drivers = defined?(Vips) ? %i[vips chunky_png] : %i[chunky_png]
+
         assert_equal expected_drivers, Capybara::Screenshot::Diff::AVAILABLE_DRIVERS
       end
 
@@ -132,8 +131,8 @@ module Capybara
 
         expected_message =
           "Screenshot does not match for 'sample_screenshot' expected error message for non minitest"
-        assert_raises(::StandardError, expected_message) { test_case.teardown }
-        assert_empty(test_case.instance_variable_get(:@test_screenshots))
+        assert_raises(CapybaraScreenshotDiff::ExpectationNotMet, expected_message) { test_case.teardown }
+        assert_empty(CapybaraScreenshotDiff.assertions)
       end
 
       class SampleMiniTestCase < ActionDispatch::IntegrationTest
@@ -148,9 +147,9 @@ module Capybara
           mock.expect(:base_image_path, Pathname.new("screenshot.base.png"))
           mock.expect(:error_message, "expected error message")
 
-          @test_screenshots = []
-          @test_screenshots << [["my_test.rb:42"], "sample_screenshot", mock]
-          mock.expect(:clear_screenshots, @test_screenshots)
+          assertion = CapybaraScreenshotDiff::ScreenshotAssertion.from([["my_test.rb:42"], "sample_screenshot", mock])
+          schedule_match_job(assertion)
+
           assert true
         end
       end
@@ -166,7 +165,9 @@ module Capybara
 
         def teardown
           instance_eval(&@@teardown_callback) if @@teardown_callback
+        ensure
           @@teardown_callback = nil
+          CapybaraScreenshotDiff.reset
         end
 
         include Capybara::Screenshot::Diff
@@ -175,10 +176,12 @@ module Capybara
         def _test_sample_screenshot_error
           comparison = ::Minitest::Mock.new
           comparison.expect(:different?, true)
+          comparison.expect(:dimensions_changed?, false)
           comparison.expect(:base_image_path, Pathname.new("screenshot.base.png"))
           comparison.expect(:error_message, "expected error message for non minitest")
 
-          @test_screenshots << [["my_test.rb:42"], "sample_screenshot", comparison]
+          assertion = CapybaraScreenshotDiff::ScreenshotAssertion.from([["my_test.rb:42"], "sample_screenshot", comparison])
+          schedule_match_job(assertion)
         end
       end
 

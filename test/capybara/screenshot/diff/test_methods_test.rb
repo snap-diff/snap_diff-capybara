@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "test_helper"
+require "capybara_screenshot_diff/screenshot_assertion"
 
 module Capybara
   module Screenshot
@@ -52,26 +53,36 @@ module Capybara
           assert_not screenshot("a", driver: :vips)
         end
 
+        def assert_no_screenshot_jobs_scheduled
+          assert_not_predicate CapybaraScreenshotDiff.registry, :assertions_present?
+        end
+
         def test_skip_stack_frames
           Vcs.stub(:checkout_vcs, true) do
-            assert_predicate @test_screenshots, :blank?
+            assert_no_screenshot_jobs_scheduled
             make_comparison(:a, :c, destination: "a.png")
 
             our_screenshot("a", 0)
-            assert_equal 1, @test_screenshots.size
-            assert_match(
-              /our_screenshot'/,
-              @test_screenshots.dig(0, 0, 0)
-            )
-            assert_equal "a", @test_screenshots[0][1]
+            assert_equal 1, CapybaraScreenshotDiff.assertions.size
+            assert_match(/our_screenshot'/, CapybaraScreenshotDiff.assertions[0].caller.first)
+            assert_equal "a", CapybaraScreenshotDiff.assertions[0].name
 
             our_screenshot("a", 1)
-            assert_equal 2, @test_screenshots.size
+            assert_equal 2, CapybaraScreenshotDiff.assertions.size
             assert_match(
               %r{/test_methods_test.rb:.*?test_skip_stack_frames},
-              @test_screenshots.dig(1, 0, 0)
+              CapybaraScreenshotDiff.assertions[1].caller.first
             )
-            assert_equal "a", @test_screenshots[1][1]
+            assert_equal "a", CapybaraScreenshotDiff.assertions[1].name
+          end
+        end
+
+        def test_inline_screenshot_assertion_validation
+          Vcs.stub(:checkout_vcs, true) do
+            Capybara::Screenshot::Diff.stub(:delayed, false) do
+              make_comparison(:a, :b, destination: "a.png")
+              screenshot("a")
+            end
           end
         end
 
@@ -102,6 +113,10 @@ module Capybara
 
         def our_screenshot(name, skip_stack_frames)
           screenshot(name, skip_stack_frames: skip_stack_frames)
+        end
+
+        def assert_image_not_changed(*)
+          CapybaraScreenshotDiff::ScreenshotAssertion.assert_image_not_changed(*)
         end
       end
     end

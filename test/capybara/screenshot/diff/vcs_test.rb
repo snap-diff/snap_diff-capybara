@@ -21,6 +21,7 @@ module Capybara
 
         test "checkout of original screenshot" do
           screenshot_path = Screenshot.root / "../test/images/a.png"
+
           base_screenshot_path = Pathname.new(@base_screenshot.path)
           assert Vcs.restore_git_revision(screenshot_path, base_screenshot_path, root: Screenshot.root)
 

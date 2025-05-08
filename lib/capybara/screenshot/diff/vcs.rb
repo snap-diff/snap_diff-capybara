@@ -53,7 +53,7 @@ module Capybara
           end
 
           svn_info = `svn info #{screenshot_path} #{SILENCE_ERRORS}`
-          if svn_info.present?
+          unless svn_info.empty?
             wc_root = svn_info.slice(/(?<=Working Copy Root Path: ).*$/)
             checksum = svn_info.slice(/(?<=Checksum: ).*$/)
 

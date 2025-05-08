@@ -10,13 +10,14 @@ module Capybara
 
         included do
           setup do
-            @manager = CapybaraScreenshotDiff::SnapManager.new(Rails.root / "doc/screenshots")
+            @manager = CapybaraScreenshotDiff::SnapManager.new(Capybara::Screenshot.root / "doc/screenshots")
             Diff.screenshoter = ScreenshoterStub
           end
 
           teardown do
             @manager.cleanup!
             Diff.screenshoter = Screenshoter
+            CapybaraScreenshotDiff.reset
           end
         end
 
