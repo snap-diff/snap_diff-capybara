@@ -26,6 +26,13 @@ gem 'capybara-screenshot-diff'
 gem 'oily_png', platform: :ruby
 ```
 
+Minitest users will want to do the following to avoid a deprecation warning:
+
+```ruby
+gem 'capybara-screenshot-diff', require: false
+gem 'oily_png', platform: :ruby
+```
+
 And then execute:
 
     $ bundle
@@ -64,7 +71,7 @@ class ApplicationSystemTestCase < ActionDispatch::SystemTestCase
   include CapybaraScreenshotDiff::DSL
   # Make `assert_*` methods behave like Minitest assertions
   include CapybaraScreenshotDiff::Minitest::Assertions
-  
+
   def test_my_feature
     visit '/'
     assert_matches_screenshot 'index'
@@ -83,7 +90,7 @@ It adds `match_screenshot` matcher to RSpec.
 
 
 ```ruby
-require 'capybara_screenshot_diff/rspec' 
+require 'capybara_screenshot_diff/rspec'
 
 describe 'Permissions admin', type: :feature do
   it 'works with permissions' do
@@ -95,7 +102,7 @@ end
 
 describe 'Permissions admin', type: :non_feature do
   include CapybaraScreenshotDiff::DSL
-  
+
   it 'works with permissions' do
     visit('/')
     expect(page).to match_screenshot('home_page')
@@ -573,8 +580,8 @@ If need to setup explicitly Vips driver, there are several ways to do this:
 * Globally: `Capybara::Screenshot::Diff.driver = :vips`
 * Per screenshot option: `screenshot 'index', driver: :vips`
 
-With enabled VIPS there are new alternatives to process differences, which easier to find and support.
-For example, `shift_distance_limit` is very heavy operation. Instead better to use `median_filter_window_size`. 
+With enabled VIPS there are new alternatives to process differences, which are easier to find and support.
+For example, `shift_distance_limit` is a very heavy operation. Instead, use `median_filter_window_size`.
 
 #### Tolerance level (vips only)
 
