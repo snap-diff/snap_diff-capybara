@@ -99,7 +99,7 @@ module CapybaraScreenshotDiff
     end
 
     def failed_assertions
-      assertions.select { |screenshot_assert| screenshot_assert.compare&.different? }
+      assertions.filter { |screenshot_assert| screenshot_assert.compare&.different? }
     end
 
     def reset

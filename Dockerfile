@@ -3,11 +3,11 @@
 #   $ docker build . -t csd
 #   $ docker run -v $(pwd):/app -ti csd rake test
 
-FROM --platform=linux/amd64 jetthoughts/cimg-ruby:3.3-chrome
+FROM --platform=linux/amd64 jetthoughts/cimg-ruby:3.4-chrome
 
 # Install dependencies and clean up in one layer to reduce image size
-RUN sudo apt-get update && \
-    DEBIAN_FRONTEND=noninteractive sudo apt-get install -y \
+RUN sudo apt-get update -qq && \
+    DEBIAN_FRONTEND=noninteractive sudo apt-get install -qq \
       automake \
       build-essential \
       curl \
@@ -40,8 +40,12 @@ RUN sudo apt-get update && \
     sudo rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 WORKDIR /app
+COPY gems.rb gemfiles capybara-screenshot-diff.gemspec /app/
+COPY lib/capybara/screenshot/diff/version.rb /app/lib/capybara/screenshot/diff/
 
 # Set the location for Bundler to store gems
-RUN sudo mkdir /bundle && sudo chmod a+w+r /bundle
 ENV BUNDLE_PATH=/bundle
+
+RUN sudo mkdir /bundle && \
+    sudo chmod a+w+r /bundle
 
