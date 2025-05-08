@@ -47,5 +47,7 @@ COPY lib/capybara/screenshot/diff/version.rb /app/lib/capybara/screenshot/diff/
 ENV BUNDLE_PATH=/bundle
 
 RUN sudo mkdir /bundle && \
-    sudo chmod a+w+r /bundle
+    sudo chmod a+w+r /bundle \
+    sudo mkdir -p /tmp/.X11-unix && \
+    sudo chmod 1777 /tmp/.X11-unix
 
