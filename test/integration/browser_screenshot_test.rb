@@ -16,7 +16,9 @@ module Capybara::Screenshot
       if CapybaraScreenshotDiff.assertions_present?
         # NOTE: We rollback new screenshots in order to remain their original state
         #       and only for debug mode we keep them
-        CapybaraScreenshotDiff.assertions.each(&method(:rollback_comparison_runtime_files)) unless ENV["DEBUG"]
+        unless ENV["DEBUG"] && !ENV["DISABLE_ROLLBACK_COMPARISON_RUNTIME_FILES"]
+          CapybaraScreenshotDiff.assertions.each(&method(:rollback_comparison_runtime_files))
+        end
         # NOTE: We clear tracked different errors in order to not raise error
         CapybaraScreenshotDiff.reset
       end
