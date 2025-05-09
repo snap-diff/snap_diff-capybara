@@ -1,0 +1,12 @@
+.github/
+.ruby-lsp/
+coverage/
+tmp/
+
+# Ignore report files
+*.attempt_*.png
+*.diff.png
+*.base.png
+*.attempt_*.webp
+*.diff.webp
+*.base.webp

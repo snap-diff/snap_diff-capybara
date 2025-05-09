@@ -3,6 +3,9 @@
 require "rack"
 require "rackup" if Rack::RELEASE >= "3"
 
+require "logger" # for Rails 7.0
+require "action_controller"
+
 # NOTE: Simulate Rails Environment
 module Rails
   def self.root

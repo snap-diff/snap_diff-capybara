@@ -5,16 +5,20 @@ require "capybara/screenshot/diff/version"
 require "capybara/screenshot/diff/utils"
 require "capybara/screenshot/diff/image_compare"
 require "capybara_screenshot_diff/snap_manager"
-require "capybara/screenshot/diff/test_methods"
+require "capybara/screenshot/diff/screenshot_namer_dsl"
 require "capybara/screenshot/diff/screenshoter"
 require "capybara/screenshot/diff/reporters/default"
 
+require "capybara_screenshot_diff/error_with_filtered_backtrace"
+
 module CapybaraScreenshotDiff
-  class CapybaraScreenshotDiffError < StandardError; end
+  class CapybaraScreenshotDiffError < ErrorWithFilteredBacktrace; end
 
   class ExpectationNotMet < CapybaraScreenshotDiffError; end
 
   class UnstableImage < CapybaraScreenshotDiffError; end
+
+  class WindowSizeMismatchError < ErrorWithFilteredBacktrace; end
 end
 
 module Capybara

@@ -30,6 +30,10 @@ module Capybara
           def dimension(image)
             [width_for(image), height_for(image)]
           end
+
+          def supports?(feature)
+            respond_to?(feature)
+          end
         end
       end
     end

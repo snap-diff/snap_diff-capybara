@@ -49,7 +49,7 @@ module CapybaraScreenshotDiff
     end
 
     def find_attempts_paths
-      Dir[@manager.abs_path_for "**/#{full_name}.attempt_*.#{format}"]
+      Dir[@manager.abs_path_for("**/#{full_name}.attempt_[0-9][0-9].#{format}")]
     end
   end
 end

@@ -15,8 +15,8 @@ module Capybara
   module Screenshot
     module Diff
       class TestMethodsSystemTest < ActionDispatch::SystemTestCase
-        include TestMethods
-        include TestMethodsStub
+        include CapybaraScreenshotDiff::DSL
+        include CapybaraScreenshotDiff::DSLStub
 
         driven_by :selenium, using: :headless_chrome
 

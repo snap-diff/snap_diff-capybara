@@ -9,7 +9,7 @@ module Capybara
     module Diff
       module Drivers
         class ChunkyPNGDriverTest < ActionDispatch::IntegrationTest
-          include TestMethodsStub
+          include CapybaraScreenshotDiff::DSLStub
 
           teardown do
             FileUtils.rm Dir["#{Rails.root}/screenshot*.png"]
@@ -146,7 +146,8 @@ module Capybara
           private
 
           def make_comparison(old_img, new_img, options = {})
-            super(old_img, new_img, **options.merge(driver: :chunky_png))
+            snap = create_snapshot_for(old_img, new_img)
+            ImageCompare.new(snap.path, snap.base_path, **options)
           end
 
           def sample_region

@@ -35,3 +35,6 @@ runs:
     # fallback if cache version is outdated
     - run: sudo apt-get -qq install libvips
       shell: bash
+
+    - run: sudo sed -i 's/true/false/g' /etc/fonts/conf.d/10-yes-antialias.conf
+      shell: bash

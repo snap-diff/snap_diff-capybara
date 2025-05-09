@@ -1,14 +1,37 @@
 #!/bin/bash
 
-set -eo pipefail
+set -o pipefail
 
 export DOCKER_DEFAULT_PLATFORM=linux/amd64
 
+# Define allowed environment variables to pass to Docker
+ALLOWED_ENV_VARS=(
+  "CI" "DEBUG" "TEST_ENV" "RAILS_ENV" "RACK_ENV" "COVERAGE" "DISABLE_ROLLBACK_COMPARISON_RUNTIME_FILES"
+  "RECORD_SCREENSHOTS" "TEST" "TESTOPTS" "SCREENSHOT_DRIVER"
+)
+
+# Build the Docker env args string
+DOCKER_ENV_ARGS=""
+for var in "${ALLOWED_ENV_VARS[@]}"; do
+  if [[ -n "${!var}" ]]; then
+    DOCKER_ENV_ARGS="$DOCKER_ENV_ARGS -e $var=${!var}"
+  fi
+done
+
+# Build the Docker image
 docker build . -t csd:test
 
-docker run -v ${PWD}:/app -v csd-bundle-cache:/bundle --rm -it csd:test bin/setup
+# Run setup
+(docker run $DOCKER_ENV_ARGS -v ${PWD}:/app -v csd-bundle-cache:/bundle --rm -it csd:test bin/setup) || exit 1
 
+# Run tests with different drivers
 echo "Running tests..."
-docker run -e CAPYBARA_DRIVER=cuprite -v ${PWD}:/app -v csd-bundle-cache:/bundle --rm -it csd:test bin/rake test
-docker run -e CAPYBARA_DRIVER=selenium_chrome_headless -v ${PWD}:/app -v csd-bundle-cache:/bundle --rm -it csd:test bin/rake test
-docker run -e CAPYBARA_DRIVER=selenium_headless -v ${PWD}:/app -v csd-bundle-cache:/bundle --rm -it csd:test bin/rake test
+DRIVERS=("cuprite" "selenium_chrome_headless" "selenium_headless")
+for driver in "${DRIVERS[@]}"; do
+  echo "Running tests with $driver driver..."
+  docker run $DOCKER_ENV_ARGS -e CAPYBARA_DRIVER="$driver" \
+    -v ${PWD}:/app -v csd-bundle-cache:/bundle --rm -it csd:test \
+    bin/rake test "$@"
+
+  CAPYBARA_DRIVER="$driver" bin/rake test "$@"
+done

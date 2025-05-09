@@ -6,7 +6,7 @@ module Capybara
   module Screenshot
     module Diff
       class StableScreenshoterTest < ActionDispatch::IntegrationTest
-        include TestMethodsStub
+        include CapybaraScreenshotDiff::DSLStub
 
         setup do
           @manager = CapybaraScreenshotDiff::SnapManager.new(Capybara::Screenshot.root / "stable_screenshoter_test")
@@ -57,7 +57,7 @@ module Capybara
           assert_not_predicate snap.path, :exist?
 
           ImageCompare.stub :new, mock do
-            StableScreenshoter
+            Capybara::Screenshot::Diff::StableScreenshoter
               .new({stability_time_limit: 0.5, wait: 1}, image_compare_stub.driver_options)
               .take_comparison_screenshot(snap)
           end
@@ -93,7 +93,7 @@ module Capybara
           assert_raises CapybaraScreenshotDiff::UnstableImage, "Could not get stable screenshot within 1s" do
             ImageCompare.stub :new, mock do
               # Wait time is less then stability time, which will generate problem
-              StableScreenshoter
+              Capybara::Screenshot::Diff::StableScreenshoter
                 .new({stability_time_limit: 0.5, wait: 1}, build_image_compare_stub(equal: false).driver_options)
                 .take_comparison_screenshot(snap)
             end
