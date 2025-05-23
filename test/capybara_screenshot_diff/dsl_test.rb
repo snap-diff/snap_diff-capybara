@@ -58,7 +58,7 @@ module CapybaraScreenshotDiff
       assert_not_predicate CapybaraScreenshotDiff.registry, :assertions_present?
     end
 
-    def test_skip_stack_frames
+    def test_skip_stack_frames_with_zero_skip
       Capybara::Screenshot::Diff::Vcs.stub(:checkout_vcs, true) do
         assert_no_screenshot_jobs_scheduled
 
@@ -68,14 +68,22 @@ module CapybaraScreenshotDiff
         assert_equal 1, CapybaraScreenshotDiff.assertions.size
         assert_match(/our_screenshot'/, CapybaraScreenshotDiff.assertions[0].caller.first)
         assert_equal snap.full_name, CapybaraScreenshotDiff.assertions[0].name
+      end
+    end
+
+    def test_skip_stack_frames_with_one_skip
+      Capybara::Screenshot::Diff::Vcs.stub(:checkout_vcs, true) do
+        assert_no_screenshot_jobs_scheduled
+
+        snap = create_snapshot_for(:a, :c)
 
         our_screenshot(snap.full_name, 1)
-        assert_equal 2, CapybaraScreenshotDiff.assertions.size
+        assert_equal 1, CapybaraScreenshotDiff.assertions.size
         assert_match(
-          %r{/dsl_test.rb:.*?test_skip_stack_frames},
-          CapybaraScreenshotDiff.assertions[1].caller.first
+          %r{/dsl_test.rb:.*?test_skip_stack_frames_with_one_skip},
+          CapybaraScreenshotDiff.assertions[0].caller.first
         )
-        assert_equal snap.full_name, CapybaraScreenshotDiff.assertions[1].name
+        assert_equal snap.full_name, CapybaraScreenshotDiff.assertions[0].name
       end
     end
 
