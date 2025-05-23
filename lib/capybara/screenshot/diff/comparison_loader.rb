@@ -21,11 +21,11 @@ module Capybara
         # @return [Comparison] the comparison object
         def call(base_path, new_path, options = {})
           # Load the raw images
-          images = @driver.load_images(base_path, new_path)
+          base_img, new_img = @driver.load_images(base_path, new_path)
 
           # Create a preliminary comparison with raw images
           # This is used for enhanced preprocessing that needs context
-          Comparison.new(images[1], images[0], options, @driver, new_path, base_path)
+          Comparison.new(new_img, base_img, options, @driver, new_path, base_path)
         end
       end
     end
