@@ -14,19 +14,28 @@ module Capybara
     module Diff
       LOADED_DRIVERS = {}
 
-      # Compare two images and determine if they are equal, different, or within some comparison
-      # range considering color values and difference area size.
+      # Handles comparison of two images with a focus on performance and accuracy.
       #
-      # This class implements a layered optimization strategy for image comparison:
-      # 1. Early file-based checks:
-      #    - First checks if both images exist
-      #    - Then checks file sizes (identical size is necessary but not sufficient for equality)
-      #    - For same-sized files, performs a byte-by-byte comparison for exact matching
-      # 2. Only if needed, loads and preprocesses images for comparison
-      # 3. Delegates detailed analysis to DifferenceFinder
+      # This class implements a multi-layered optimization strategy for image comparison:
       #
-      # This approach significantly improves performance by avoiding expensive image
-      # processing operations when simpler file-based checks can determine the result.
+      # 1. Early File-based Checks (Fastest):
+      #    - Verifies both images exist (raises ArgumentError if not)
+      #    - Compares file sizes (different sizes → different images)
+      #    - Performs byte-by-byte comparison for identical files (exact match)
+      #
+      # 2. Quick Comparison (Fast):
+      #    - Compares image dimensions (different dimensions → different images)
+      #    - Performs pixel-by-pixel comparison if dimensions match
+      #
+      # 3. Detailed Analysis (Slower):
+      #    - Only performed if quick comparison finds differences
+      #    - Handles anti-aliasing, color tolerance, and shift detection
+      #    - Respects skip_area and other comparison parameters
+      #
+      # This layered approach ensures optimal performance by:
+      # - Using the fastest possible method for early rejection
+      # - Only performing expensive operations when absolutely necessary
+      # - Maintaining high accuracy for complex comparisons
       class ImageCompare
         attr_reader :driver, :driver_options
         attr_reader :image_path, :base_image_path
@@ -42,8 +51,16 @@ module Capybara
           @driver = Drivers.for(@driver_options)
         end
 
-        # Compare the two image files and return `true` or `false` as quickly as possible.
-        # Return falsely if the old file does not exist or the image dimensions do not match.
+        # Performs a quick comparison of two image files.
+        #
+        # This method is optimized for speed and will return as soon as a difference is found.
+        # It's used for fast rejection before performing more expensive comparisons.
+        #
+        # @return [Boolean]
+        #   - `true` if images are exactly identical (byte-for-byte match)
+        #   - `false` if images are different or if a quick difference is detected
+        #
+        # @note This method will raise ArgumentError if either image file is missing.
         def quick_equal?
           ensure_files_exist!
 
@@ -64,8 +81,17 @@ module Capybara
           raise ArgumentError, "There is no new screenshot located at #{@image_path}" unless @image_path.exist?
         end
 
-        # Compare the two image referenced by this object, and return `true` if they are different,
-        # and `false` if they are the same.
+        # Determines if the images are different according to the comparison rules.
+        #
+        # This method performs a full comparison if not already done, including any
+        # configured tolerances for color differences and shift distances.
+        #
+        # @return [Boolean]
+        #   - `true` if the images are different beyond configured tolerances
+        #   - `false` if the images are considered identical
+        #
+        # @see #processed
+        # @see DifferenceFinder
         def different?
           processed.difference.different?
         end
@@ -124,11 +150,21 @@ module Capybara
           Reporters::Default.new(current_difference)
         end
 
-        # Load and preprocess images for comparison
-        # @param base_path [String,Pathname] Path to the base image
-        # @param new_path [String,Pathname] Path to the new image
-        # @param options [Hash] Options for the comparison
-        # @return [Comparison] the comparison object
+        # Loads and preprocesses images for detailed comparison.
+        #
+        # This method is responsible for:
+        # 1. Loading both images using the configured driver
+        # 2. Applying any necessary preprocessing (cropping, normalization)
+        # 3. Creating a Comparison object that holds the image data
+        #
+        # @param base_path [String,Pathname] Path to the baseline/reference image
+        # @param new_path [String,Pathname] Path to the new/candidate image
+        # @param options [Hash] Comparison options including:
+        #   - :crop [Array<Integer>] Optional crop area [x, y, width, height]
+        #   - :skip_area [Array<Array>] Areas to exclude from comparison
+        #   - :tolerance [Numeric] Color tolerance threshold
+        # @return [Comparison] Prepared comparison object ready for analysis
+        # @raise [ArgumentError] If image files are invalid or unreadable
         def load_comparison(base_path, new_path, options)
           comparison = comparison_loader.call(base_path, new_path, options)
           image_preprocessor.process_comparison(comparison)

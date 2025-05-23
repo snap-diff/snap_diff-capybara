@@ -8,22 +8,40 @@ require "capybara/screenshot/diff/screenshot_namer_dsl"
 require "capybara_screenshot_diff/screenshot_assertion"
 
 module CapybaraScreenshotDiff
-  # DSL for taking screenshots and making assertions
-  # Provides methods for screenshot naming, organization, and validation
+  # DSL for taking screenshots and making assertions in Capybara tests.
+  # This module provides methods for taking screenshots, comparing them against baselines,
+  # and managing the comparison process with various configuration options.
+  #
+  # The DSL is designed to be included in your test context (e.g., RSpec, Minitest)
+  # to provide screenshot comparison capabilities.
   module DSL
     include Capybara::DSL
     include Capybara::Screenshot::Diff::ScreenshotNamerDSL
 
     # Takes a screenshot and optionally compares it against a baseline image.
     #
-    # @param name [String] The name of the screenshot, used to generate the filename.
+    # The method follows a layered optimization strategy for comparison:
+    # 1. First checks if screenshot functionality is active
+    # 2. Builds a full screenshot name using the current context
+    # 3. Creates a screenshot assertion object
+    # 4. Either validates immediately or defers validation based on options
+    #
+    # @param name [String] The base name of the screenshot, used to generate the filename.
     # @param skip_stack_frames [Integer] The number of stack frames to skip when reporting errors.
     # @param options [Hash] Additional options for taking the screenshot and comparison.
-    # @option options [Boolean] :delayed Whether to validate the screenshot immediately or delay.
-    # @option options [String, Array<Integer>] :crop Area to crop the screenshot to.
-    # @option options [Array] :skip_area Areas to ignore during comparison.
+    # @option options [Boolean] :delayed (Capybara::Screenshot::Diff.delayed)
+    #   Whether to validate the screenshot immediately or delay validation.
+    # @option options [Array<Integer>] :crop [x, y, width, height] Area to crop the screenshot to.
+    # @option options [Array<Array<Integer>>] :skip_area Array of [x, y, width, height] areas to ignore.
+    # @option options [Numeric] :tolerance (0.001 for :vips driver) Color tolerance for comparison.
+    # @option options [Numeric] :color_distance_limit Maximum allowed color distance between pixels.
+    # @option options [Numeric] :shift_distance_limit Maximum allowed shift distance for pixels.
+    # @option options [Numeric] :area_size_limit Maximum allowed difference area size in pixels.
+    # @option options [Symbol] :driver (:auto) The image processing driver to use (:auto, :chunky_png, :vips).
     # @return [Boolean] True if the screenshot was successfully captured and processed.
-    # @raise [CapybaraScreenshotDiff::ExpectationNotMet] If comparison fails and immediate validation.
+    # @raise [CapybaraScreenshotDiff::ExpectationNotMet] If comparison fails and immediate validation is enabled.
+    # @raise [CapybaraScreenshotDiff::UnstableImage] If the image comparison is unstable.
+    # @raise [CapybaraScreenshotDiff::WindowSizeMismatchError] If the window size doesn't match expectations.
     def screenshot(name, skip_stack_frames: 0, **options)
       return false unless Capybara::Screenshot.active?
 
@@ -47,17 +65,23 @@ module CapybaraScreenshotDiff
       true
     end
 
-    # Creates an alias for backward compatibility
+    # Alias for backward compatibility with older test suites.
+    # @see #screenshot
     alias_method :assert_matches_screenshot, :screenshot
 
     private
 
-    # Builds a screenshot assertion object that can be validated immediately or later
+    # Builds a screenshot assertion object that can be validated immediately or later.
     #
-    # @param name [String] The full name of the screenshot
-    # @param options [Hash] Options for screenshot taking and comparison
-    # @param skip_stack_frames [Integer] Stack frames to skip for error reporting
-    # @return [ScreenshotAssertion, nil] The assertion object or nil if it's not required
+    # This method constructs a screenshot assertion that encapsulates the comparison logic.
+    # The actual comparison is deferred until {ScreenshotAssertion#validate!} is called.
+    #
+    # @param name [String] The full name of the screenshot, including any section/group context.
+    # @param options [Hash] Options for screenshot taking and comparison.
+    #   See {#screenshot} for available options.
+    # @param skip_stack_frames [Integer] Number of stack frames to skip for error reporting.
+    # @return [ScreenshotAssertion, nil] The assertion object or nil if no assertion is needed.
+    # @see ScreenshotAssertion
     def build_screenshot_assertion(name, options, skip_stack_frames: 0)
       Capybara::Screenshot::Diff::ScreenshotMatcher
         .new(name, options)

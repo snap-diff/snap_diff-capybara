@@ -6,38 +6,58 @@ require "capybara/screenshot/diff/difference"
 module Capybara
   module Screenshot
     module Diff
-      # Responsible for finding differences between images
+      # Analyzes image differences with configurable tolerance levels.
       #
-      # This class follows the Single Responsibility Principle by focusing solely on analyzing
-      # image comparisons to identify differences. It's part of a layered comparison approach:
+      # This class implements the core comparison logic for detecting visual differences
+      # between images while accounting for various tolerances and optimizations.
       #
-      # 1. Image existence and basic file checks happen in ImageCompare (early returns)
-      # 2. DifferenceFinder performs the actual comparison analysis when needed:
-      #    - First checks dimensions (quick, fails early if different)
-      #    - Then checks pixel equality (moderate cost)
-      #    - Finally performs detailed region analysis (most expensive)
+      # The comparison process follows these steps:
+      # 1. Dimension Check (Fastest)
+      #    - Compares image dimensions first for quick rejection
+      #    - Different dimensions always indicate a difference
       #
-      # By separating these concerns, we can optimize performance by avoiding unnecessary
-      # processing steps when simpler checks determine the result.
+      # 2. Pixel Equality Check (Fast)
+      #    - Performs bitwise comparison if dimensions match
+      #    - Returns immediately if images are exactly identical
+      #
+      # 3. Tolerant Comparison (Slower)
+      #    - Only runs if quick checks don't determine equality
+      #    - Respects configured tolerances for color and shift differences
+      #    - Can ignore specific regions (skip_area)
+      #    - Considers anti-aliasing and sub-pixel rendering differences
+      #
+      # The class is designed to be stateless and thread-safe, with all configuration
+      # passed in through the constructor.
       class DifferenceFinder
         TOLERABLE_OPTIONS = [:tolerance, :color_distance_limit, :shift_distance_limit, :area_size_limit].freeze
 
         attr_reader :driver, :options
 
-        # Initialize a new DifferenceFinder
+        # Creates a new DifferenceFinder instance.
         #
-        # @param driver [Drivers::Base] The image driver to use
-        # @param options [Hash] Options for controlling the comparison
+        # @param driver [Drivers::Base] The image processing driver to use.
+        #   Must implement the driver interface expected by DifferenceFinder.
+        # @param options [Hash] Configuration options for the comparison:
+        #   @option options [Numeric] :tolerance (0.001) Color tolerance threshold (0.0-1.0).
+        #   @option options [Numeric] :color_distance_limit Maximum allowed color distance.
+        #   @option options [Numeric] :shift_distance_limit Maximum allowed shift distance.
+        #   @option options [Numeric] :area_size_limit Maximum allowed difference area size.
+        #   @option options [Array<Array>] :skip_area Regions to exclude from comparison.
         def initialize(driver, options)
           @driver = driver
           @options = options
         end
 
-        # Finds a difference in a comparison
+        # Analyzes the comparison and determines if images are different.
         #
-        # @param comparison [Comparison] The comparison object to analyze
-        # @param quick_mode [Boolean] If true, performs a quick equality check and returns early
-        # @return [Array, Difference] Either [is_equal, difference] or a Difference object depending on mode
+        # @param comparison [Comparison] The comparison object containing images to analyze.
+        # @param quick_mode [Boolean] When true, performs minimal checks and returns early.
+        #   In quick mode, returns [is_equal, difference] where:
+        #   - is_equal is true if images are considered equal
+        #   - difference is a Difference object or nil
+        #   When false, returns a Difference object directly.
+        # @return [Array, Difference] Result format depends on quick_mode parameter.
+        # @raise [ArgumentError] If the comparison object is invalid.
         def call(comparison, quick_mode: true)
           # Process the comparison and return result
 
