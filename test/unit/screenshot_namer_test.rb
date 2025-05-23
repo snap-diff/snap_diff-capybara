@@ -77,7 +77,7 @@ module CapybaraScreenshotDiff
       assert_equal expected_path, @screenshot_namer.full_name_with_path("image_a")
     end
 
-    test "#full_name_with_path with nil screenshot_area" do
+    test "#full_name_with_path handles nil screenshot_area" do
       namer_no_area = @screenshot_namer
       namer_no_area.section = "s"
       namer_no_area.group = "g"
@@ -105,14 +105,14 @@ module CapybaraScreenshotDiff
       assert_equal expected_path, @screenshot_namer.full_name_with_path("new_image")
     end
 
-    test "#full_name_with_path with active group for duplicated name adds counter" do
+    test "#full_name_with_path adds counter for duplicated names with active group" do
       @screenshot_namer.group = "user_flow"
       assert_equal "user_flow/00_step1", @screenshot_namer.full_name("step1")
       assert_equal "user_flow/01_step1", @screenshot_namer.full_name("step1")
       assert_equal "user_flow/02_step1", @screenshot_namer.full_name("step1")
     end
 
-    test "#full_name_with_path without active group for duplicated name ignores" do
+    test "#full_name_with_path ignores duplicate names without active group" do
       @screenshot_namer.group = nil
       assert_equal "step1", @screenshot_namer.full_name("step1")
       assert_equal "step1", @screenshot_namer.full_name("step1")
@@ -148,7 +148,7 @@ module CapybaraScreenshotDiff
       assert_not Dir.exist?(dir_path)
     end
 
-    test "#clear_current_group_directory is safe when directory doesn't exist" do
+    test "#clear_current_group_directory handles non-existent directories" do
       @screenshot_namer.group = "nonexistent"
       assert_nothing_raised { @screenshot_namer.clear_current_group_directory }
     end

@@ -13,6 +13,7 @@ class Capybara::Screenshot::ScreenshoterStub < Capybara::Screenshot::Screenshote
     source_image.slice!(/^\d\d_/)
     source_image.slice!(/_\d+(?=\.)/)
 
+    FileUtils.mkdir_p(path.dirname)
     FileUtils.cp(File.expand_path(source_image, TEST_IMAGES_DIR), path)
 
     path

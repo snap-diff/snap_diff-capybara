@@ -8,7 +8,7 @@ require "capybara/screenshot/diff/drivers/chunky_png_driver"
 
 module Capybara::Screenshot::Diff
   class Drivers::FindRegionBenchmark
-    TEST_IMAGES_DIR = Pathname.new(File.expand_path("../../test/images", __dir__))
+    TEST_IMAGES_DIR = Pathname.new(File.expand_path("../../test/fixtures/images", __dir__))
     APP_SCREENSHOTS_DIR = Pathname.new(
       File.expand_path("../../test/fixtures/app/doc/screenshots/chrome/macos/", __dir__)
     )

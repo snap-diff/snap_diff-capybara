@@ -5,7 +5,7 @@ require "minitest/mock"
 
 module Capybara
   module Screenshot
-    class ScreenshoterTest < ActionDispatch::IntegrationTest
+    class ScreenshoterTest < ActiveSupport::TestCase
       include CapybaraScreenshotDiff::DSL
       include CapybaraScreenshotDiff::DSLStub
 

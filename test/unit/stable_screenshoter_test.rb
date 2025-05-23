@@ -5,7 +5,7 @@ require "test_helper"
 module Capybara
   module Screenshot
     module Diff
-      class StableScreenshoterTest < ActionDispatch::IntegrationTest
+      class StableScreenshoterTest < ActiveSupport::TestCase
         include CapybaraScreenshotDiff::DSLStub
 
         setup do
@@ -17,7 +17,7 @@ module Capybara
           @manager.cleanup!
         end
 
-        test "#take_stable_screenshot several iterations to take stable screenshot" do
+        test "#take_stable_screenshot retries until images are stable across iterations" do
           image_compare_stub = build_image_compare_stub
 
           mock = ::Minitest::Mock.new(image_compare_stub)
@@ -34,19 +34,19 @@ module Capybara
           assert mock.verify
         end
 
-        test "#take_stable_screenshot without wait raises any error" do
+        test "#take_stable_screenshot raises ArgumentError when wait parameter is nil" do
           assert_raises ArgumentError, "wait should be provided" do
             take_stable_screenshot_with(@manager.snapshot("02_a"), wait: nil)
           end
         end
 
-        test "#take_stable_screenshot without stability_time_limit raises any error" do
+        test "#take_stable_screenshot raises ArgumentError when stability_time_limit is nil" do
           assert_raises ArgumentError, "stability_time_limit should be provided" do
             take_stable_screenshot_with(@manager.snapshot("02_a"), stability_time_limit: nil)
           end
         end
 
-        test "#take_comparison_screenshot deletes runtime files on completion" do
+        test "#take_comparison_screenshot cleans up temporary files after successful comparison" do
           image_compare_stub = build_image_compare_stub
 
           mock = ::Minitest::Mock.new(image_compare_stub)
@@ -68,7 +68,7 @@ module Capybara
           assert_not_predicate snap.path.size, :zero?
         end
 
-        test "#take_comparison_screenshot fail on missing find stable image in time and generates annotated history screenshots" do
+        test "#take_comparison_screenshot raises UnstableImage when stability timeout is reached" do
           snap = @manager.snapshot("01_a")
 
           screenshot_path = snap.path

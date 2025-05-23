@@ -13,7 +13,7 @@ module Capybara
   module Screenshot
     module Diff
       module Drivers
-        class VipsDriverTest < ActionDispatch::IntegrationTest
+        class VipsDriverTest < ActiveSupport::TestCase
           include CapybaraScreenshotDiff::DSLStub
 
           setup do
@@ -30,22 +30,22 @@ module Capybara
             Vips.cache_set_max(1000)
           end
 
-          test "#different? for equal is negative" do
+          test "#different? returns false when comparing identical images" do
             comp = make_comparison(:a, :a)
             assert_not comp.different?
           end
 
-          test "#quick_equal? for equal is positive" do
+          test "#quick_equal? returns true when comparing identical images" do
             comp = make_comparison(:a, :a)
 
             assert comp.quick_equal?
           end
 
-          test "it can be instantiated" do
+          test "can be instantiated with default constructor" do
             assert VipsDriver.new
           end
 
-          test "when different does not clean runtime files" do
+          test "#different? preserves runtime files when images are different" do
             comp = make_comparison(:a, :c)
             assert comp.different?
             assert_includes comp.error_message, "[11.0,3.0,49.0,21.0]"
@@ -54,7 +54,7 @@ module Capybara
             assert File.exist?(comp.reporter.annotated_image_path)
           end
 
-          test "when equal clean runtime files" do
+          test "#different? cleans up runtime files when images are identical" do
             comp = make_comparison(:c, :c)
             assert_not comp.different?
 
@@ -65,64 +65,64 @@ module Capybara
             assert_not File.exist?(comp.reporter.annotated_image_path)
           end
 
-          test "compare of 1 pixel wide diff" do
+          test "#different? detects single-pixel wide differences between images" do
             comp = make_comparison(:a, :d)
             assert comp.different?
             assert_includes comp.error_message, "[9.0,6.0,10.0,14.0]"
           end
 
-          test "compare with color_distance_limit above difference" do
+          test "#different? respects color_distance_limit when within allowed threshold" do
             comp = make_comparison(:a, :b, color_distance_limit: 255)
             assert_not comp.different?
           end
 
-          test "compare with color_distance_limit below difference" do
+          test "#different? enforces color_distance_limit when beyond allowed threshold" do
             comp = make_comparison(:a, :b, color_distance_limit: 3)
             assert comp.different?
           end
 
-          test "compare with tolerance level more then area of the difference" do
+          test "#different? returns equal when tolerance is greater than difference area" do
             comp = make_comparison(:a, :b, tolerance: 0.01)
             assert comp.quick_equal?
             assert_not comp.different?
             assert_not comp.error_message
           end
 
-          test "compare with tolerance level less then area of the difference" do
+          test "#different? detects difference when tolerance is less than difference area" do
             comp = make_comparison(:a, :b, tolerance: 0.000001)
             assert_not comp.quick_equal?
             assert comp.different?
           end
 
-          test "compare with median_filter_window_size when images have 1px line difference" do
+          test "#different? handles single-pixel line differences with median filter" do
             comp = make_comparison(:a, :d, median_filter_window_size: 3, color_distance_limit: 8)
             assert comp.quick_equal?
             assert_not comp.different?
           end
 
-          test "quick_equal" do
+          test "#quick_equal? returns false when images are different" do
             comp = make_comparison(:a, :b)
             assert_not comp.quick_equal?
           end
 
-          test "quick_equal with color distance limit below current level" do
+          test "#quick_equal? respects color_distance_limit when below difference threshold" do
             comp = make_comparison(:a, :b, color_distance_limit: 2)
             assert_not comp.quick_equal?
           end
 
-          test "quick_equal with color distance limit above current level" do
+          test "#quick_equal? respects color_distance_limit when above difference threshold" do
             comp = make_comparison(:a, :b, color_distance_limit: 200)
             assert comp.quick_equal?
           end
 
-          test "size a vs a_cropped" do
+          test "#different? detects dimension changes between images" do
             comp = make_comparison(:a, :a_cropped)
             assert comp.different?
             assert_includes comp.error_message, "Dimensions have changed: "
             assert_includes comp.error_message, "80x60"
           end
 
-          test "quick_equal compare skips difference if skip_area covers it" do
+          test "#quick_equal? skips differences covered by skip_area configuration" do
             comp = make_comparison(
               :a,
               :d,
@@ -135,7 +135,7 @@ module Capybara
             assert_not comp.different?
           end
 
-          test "quick_equal compare skips difference if skip_area does not cover it" do
+          test "#quick_equal? detects differences not covered by skip_area" do
             comp = make_comparison(
               :a,
               :d,
@@ -150,7 +150,7 @@ module Capybara
 
           # Test Interface Contracts
 
-          test "from_file loads image from path" do
+          test "#from_file successfully loads an image from the specified path" do
             assert VipsDriver.new.from_file(TEST_IMAGES_DIR / "a.png")
           end
 
@@ -167,7 +167,7 @@ module Capybara
         end
 
         class VipsUtilTest < ActiveSupport::TestCase
-          test "segment difference without min color difference" do
+          test "VipsUtil.difference_region_by detects difference regions without color threshold" do
             old_image = Vips::Image.new_from_file("#{TEST_IMAGES_DIR}/a.png")
             new_image = Vips::Image.new_from_file("#{TEST_IMAGES_DIR}/b.png")
 
@@ -180,7 +180,7 @@ module Capybara
             assert_equal [20.0, 15.0, 30.0, 25.0], [left, top, right, bottom]
           end
 
-          test "segment difference with min color difference" do
+          test "VipsUtil.difference_region_by respects color_distance threshold" do
             old_image = Vips::Image.new_from_file("#{TEST_IMAGES_DIR}/a.png")
             new_image = Vips::Image.new_from_file("#{TEST_IMAGES_DIR}/b.png")
 
@@ -189,7 +189,7 @@ module Capybara
             assert_equal [26.0, 18.0, 27.0, 19.0], [left, top, right, bottom]
           end
 
-          test "segment difference" do
+          test "VipsUtil.difference_region_by returns correct region coordinates" do
             old_image = Vips::Image.new_from_file(TEST_IMAGES_DIR.join("a.png").to_path)
             new_image = Vips::Image.new_from_file(TEST_IMAGES_DIR.join("b.png").to_path)
 
@@ -198,7 +198,7 @@ module Capybara
             assert_equal [20.0, 15.0, 30.0, 25.0], [left, top, right, bottom]
           end
 
-          test "area of the difference" do
+          test "VipsUtil.difference_area calculates correct area of difference" do
             old_image = Vips::Image.new_from_file("#{TEST_IMAGES_DIR}/a.png")
             new_image = Vips::Image.new_from_file("#{TEST_IMAGES_DIR}/d.png").bandjoin(255)
 

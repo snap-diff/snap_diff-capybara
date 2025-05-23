@@ -14,7 +14,7 @@ end
 $LOAD_PATH.unshift File.expand_path("../lib", __dir__)
 
 require "pathname"
-TEST_IMAGES_DIR = Pathname.new(File.expand_path("images", __dir__))
+TEST_IMAGES_DIR = Pathname.new(File.expand_path("fixtures/images", __dir__))
 
 require "support/setup_rails_app"
 require "minitest/autorun"
@@ -26,8 +26,17 @@ require "capybara_screenshot_diff/minitest"
 
 require "support/stub_test_methods"
 require "support/setup_capybara_drivers"
+require "support/test_helpers"
+
+Capybara::Screenshot.root = Rails.root
+Capybara::Screenshot.save_path = "./doc/screenshots"
 
 class ActiveSupport::TestCase
+  include TestHelpers::Assertions
+  include TestHelpers::DriverSetup
+  include TestHelpers::TestData
+
+  # Set up fixtures and test helpers
   self.file_fixture_path = Pathname.new(File.expand_path("fixtures", __dir__))
 
   teardown do
@@ -40,16 +49,18 @@ class ActiveSupport::TestCase
 
   def optional_test
     unless ENV["DISABLE_SKIP_TESTS"]
-      skip "This is optional test! To enable need to provide DISABLE_SKIP_TESTS=1"
+      skip "This is optional test! To enable provide DISABLE_SKIP_TESTS=1"
     end
   end
 
+  private
+
   def fixture_image_path_from(original_new_image, ext = "png")
-    TEST_IMAGES_DIR / "#{original_new_image}.#{ext}"
+    file_fixture("images/#{original_new_image}.#{ext}")
   end
 
   def assert_same_images(expected_image_name, image_path)
-    expected_image_path = file_fixture("files/comparisons/#{expected_image_name}")
+    expected_image_path = file_fixture("comparisons/#{expected_image_name}")
     assert_predicate(Capybara::Screenshot::Diff::ImageCompare.new(image_path, expected_image_path), :quick_equal?)
   end
 
