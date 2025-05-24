@@ -11,10 +11,13 @@ module CapybaraScreenshotDiff
 
     def initialize(root)
       @root = Pathname.new(root)
+      @snapshots = Set.new
     end
 
     def snapshot(screenshot_full_name, screenshot_format = "png")
-      Snap.new(screenshot_full_name, screenshot_format, manager: self)
+      Snap.new(screenshot_full_name, screenshot_format, manager: self).tap do |snapshot|
+        @snapshots << snapshot
+      end
     end
 
     def self.snapshot(screenshot_full_name, screenshot_format = "png")
@@ -42,7 +45,10 @@ module CapybaraScreenshotDiff
 
     # TODO: rename to delete!
     def cleanup!
-      FileUtils.rm_rf root, secure: true
+      snapshots.each do |snapshot|
+        cleanup_attempts!(snapshot)
+        snapshot.delete!
+      end
     end
 
     def self.cleanup!
@@ -60,6 +66,8 @@ module CapybaraScreenshotDiff
     def screenshots
       root.children.map { |f| f.basename.to_s }
     end
+
+    attr_reader :snapshots
 
     def self.screenshots
       instance.screenshots

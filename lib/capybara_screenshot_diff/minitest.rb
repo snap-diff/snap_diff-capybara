@@ -22,7 +22,7 @@ module CapybaraScreenshotDiff
       def screenshot(*args, skip_stack_frames: 0, **opts)
         self.assertions += 1
 
-        super(*args, skip_stack_frames: skip_stack_frames + 3, **opts)
+        super(*args, skip_stack_frames: skip_stack_frames + 1, **opts)
       rescue ::CapybaraScreenshotDiff::ExpectationNotMet => e
         raise ::Minitest::Assertion, e.message
       end
@@ -39,7 +39,7 @@ module CapybaraScreenshotDiff
         CapybaraScreenshotDiff.verify
       rescue CapybaraScreenshotDiff::ExpectationNotMet => e
         assertion = ::Minitest::Assertion.new(e)
-        assertion.set_backtrace []
+        assertion.set_backtrace(e.backtrace)
         failures << assertion
       ensure
         CapybaraScreenshotDiff.reset

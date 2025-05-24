@@ -31,7 +31,11 @@ class ActiveSupport::TestCase
   self.file_fixture_path = Pathname.new(File.expand_path("fixtures", __dir__))
 
   teardown do
-    FileUtils.rm_rf Dir[Capybara::Screenshot.root / "*"]
+    CapybaraScreenshotDiff::SnapManager.cleanup! unless persist_comparisons?
+  end
+
+  def persist_comparisons?
+    ENV["DEBUG"] || ENV["DISABLE_ROLLBACK_COMPARISON_RUNTIME_FILES"] || ENV["RECORD_SCREENSHOTS"]
   end
 
   def optional_test

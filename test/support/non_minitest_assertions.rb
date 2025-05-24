@@ -6,7 +6,7 @@ module CapybaraScreenshotDiff
   module NonMinitest
     module Assertions
       def self.included(klass)
-        klass.include Capybara::Screenshot::Diff::TestMethods
+        klass.include CapybaraScreenshotDiff::DSL
 
         klass.setup do
           Capybara::Screenshot::BrowserHelpers.resize_window_if_needed

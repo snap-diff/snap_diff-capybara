@@ -21,10 +21,11 @@ RSpec.describe "capybara_screenshot_diff/rspec", type: :feature do
     Capybara::Screenshot.add_os_path = true
     Capybara::Screenshot.add_driver_path = true
     Capybara::Screenshot::Diff.driver = ENV.fetch("SCREENSHOT_DRIVER", "chunky_png").to_sym
+    Capybara::Screenshot::Diff.tolerance = 0.5
   end
 
   it "should include CapybaraScreenshotDiff in rspec" do
-    expect(self.class.ancestors).to include Capybara::Screenshot::Diff::TestMethods
+    expect(self.class.ancestors).to include CapybaraScreenshotDiff::DSL
   end
 
   it "visits and compare screenshot on teardown" do

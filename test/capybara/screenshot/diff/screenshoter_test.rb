@@ -6,8 +6,8 @@ require "minitest/mock"
 module Capybara
   module Screenshot
     class ScreenshoterTest < ActionDispatch::IntegrationTest
-      include Diff::TestMethods
-      include Diff::TestMethodsStub
+      include CapybaraScreenshotDiff::DSL
+      include CapybaraScreenshotDiff::DSLStub
 
       test "#take_screenshot without wait skips image loading" do
         screenshoter = Screenshoter.new({wait: nil}, ::Minitest::Mock.new)

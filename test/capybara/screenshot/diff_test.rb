@@ -24,10 +24,10 @@ module Capybara
 
       include Capybara::Screenshot::Diff
       include CapybaraScreenshotDiff::Minitest::Assertions
-      include Diff::TestMethodsStub
+      include CapybaraScreenshotDiff::DSLStub
 
       teardown do
-        CapybaraScreenshotDiff::SnapManager.cleanup!
+        CapybaraScreenshotDiff::SnapManager.cleanup! unless persist_comparisons?
         CapybaraScreenshotDiff.reset
 
         Capybara::Screenshot.add_driver_path = @orig_add_driver_path
@@ -41,24 +41,27 @@ module Capybara
       end
 
       def test_screenshot_groups_are_replaced
-        assert_nil @screenshot_group
+        assert_nil screenshot_namer.group
         screenshot_group "a"
-        assert_equal "a", @screenshot_group
+        assert_equal "a", screenshot_namer.group
         screenshot_group "b"
-        assert_equal "b", @screenshot_group
+        assert_equal "b", screenshot_namer.group
       end
 
       def test_screenshot_section_is_prepended
-        assert_nil @screenshot_section
-        assert_nil @screenshot_group
+        assert_nil screenshot_namer.section
+        assert_nil screenshot_namer.group
+
         screenshot_section "a"
-        assert_equal "a", @screenshot_section
+        assert_equal "a", screenshot_namer.section
         assert_match %r{doc/screenshots/(macos|linux)/rack_test/a}, screenshot_dir
+
         screenshot_group "b"
-        assert_equal "b", @screenshot_group
+        assert_equal "b", screenshot_namer.group
         assert_match %r{doc/screenshots/(macos|linux)/rack_test/a/b}, screenshot_dir
+
         screenshot_group "c"
-        assert_equal "c", @screenshot_group
+        assert_equal "c", screenshot_namer.group
         assert_match %r{doc/screenshots/(macos|linux)/rack_test/a/c}, screenshot_dir
       end
 
@@ -78,9 +81,11 @@ module Capybara
       def test_screenshot_with_alternate_save_path
         default_path = Capybara::Screenshot.save_path
         Capybara::Screenshot.save_path = "foo/bar"
+
         screenshot_section "a"
         screenshot_group "b"
         screenshot "a"
+
         assert_match %r{foo/bar/(macos|linux)/rack_test/a/b}, screenshot_dir
       ensure
         Capybara::Screenshot.save_path = default_path
@@ -99,7 +104,7 @@ module Capybara
         screenshot_group "b"
         assert_equal "b/00_a", build_full_name("a")
         screenshot_section "c"
-        assert_equal "c/b/01_a", build_full_name("a")
+        assert_equal "c/b/00_a", build_full_name("a")
         screenshot_group nil
         assert_equal "c/a", build_full_name("a")
       end
@@ -143,12 +148,13 @@ module Capybara
         def _test_sample_screenshot_error
           mock = ::Minitest::Mock.new
           mock.expect(:different?, true)
+          mock.expect(:different?, true)
           mock.expect(:dimensions_changed?, false)
           mock.expect(:base_image_path, Pathname.new("screenshot.base.png"))
           mock.expect(:error_message, "expected error message")
 
           assertion = CapybaraScreenshotDiff::ScreenshotAssertion.from([["my_test.rb:42"], "sample_screenshot", mock])
-          schedule_match_job(assertion)
+          CapybaraScreenshotDiff.add_assertion(assertion)
 
           assert true
         end
@@ -175,13 +181,14 @@ module Capybara
 
         def _test_sample_screenshot_error
           comparison = ::Minitest::Mock.new
-          comparison.expect(:different?, true)
+          comparison.expect(:different?, true) # to find backtrace
+          comparison.expect(:different?, true) # to find messages
           comparison.expect(:dimensions_changed?, false)
           comparison.expect(:base_image_path, Pathname.new("screenshot.base.png"))
           comparison.expect(:error_message, "expected error message for non minitest")
 
           assertion = CapybaraScreenshotDiff::ScreenshotAssertion.from([["my_test.rb:42"], "sample_screenshot", comparison])
-          schedule_match_job(assertion)
+          CapybaraScreenshotDiff.add_assertion(assertion)
         end
       end
 
@@ -191,7 +198,7 @@ module Capybara
         end
 
         include Capybara::Screenshot::Diff
-        include Diff::TestMethodsStub
+        include CapybaraScreenshotDiff::DSLStub
         include CapybaraScreenshotDiff::Minitest::Assertions
 
         teardown do
@@ -221,6 +228,18 @@ module Capybara
             assert_stored_screenshot("a.png")
           end
         end
+      end
+
+      def screenshot_dir
+        screenshot_namer.current_group_directory
+      end
+
+      def screenshot_namer
+        CapybaraScreenshotDiff.screenshot_namer
+      end
+
+      def build_full_name(name)
+        CapybaraScreenshotDiff.screenshot_namer.full_name(name)
       end
     end
   end

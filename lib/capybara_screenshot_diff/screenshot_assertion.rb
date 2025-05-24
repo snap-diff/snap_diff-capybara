@@ -30,6 +30,14 @@ module CapybaraScreenshotDiff
       self.class.assert_image_not_changed(caller, name, compare)
     end
 
+    def validate!
+      error_msg = validate
+
+      if error_msg
+        raise CapybaraScreenshotDiff::ExpectationNotMet.new(error_msg, caller)
+      end
+    end
+
     # Verifies that all scheduled screenshots do not show any unintended differences.
     #
     # @param screenshots [Array(Array(Array(String), String, ImageCompare))] The list of match screenshots jobs. Defaults to all screenshots taken during the test.
@@ -73,10 +81,11 @@ module CapybaraScreenshotDiff
   end
 
   class AssertionRegistry
-    attr_reader :assertions
+    attr_reader :assertions, :screenshot_namer
 
     def initialize
       @assertions = []
+      @screenshot_namer = CapybaraScreenshotDiff::ScreenshotNamer.new
     end
 
     def add_assertion(assertion)
@@ -93,9 +102,15 @@ module CapybaraScreenshotDiff
     end
 
     def verify(screenshots = CapybaraScreenshotDiff.assertions)
+      return unless ::Capybara::Screenshot.active? && ::Capybara::Screenshot::Diff.fail_on_difference
+
+      failed_assertions = CapybaraScreenshotDiff.registry.failed_assertions
+      failed_screenshot = failed_assertions.first
       result = ScreenshotAssertion.verify_screenshots!(screenshots)
 
-      raise CapybaraScreenshotDiff::ExpectationNotMet, result.join("\n\n") if result
+      if result
+        raise CapybaraScreenshotDiff::ExpectationNotMet.new(result.join("\n\n"), failed_screenshot.caller)
+      end
     end
 
     def failed_assertions
@@ -104,6 +119,7 @@ module CapybaraScreenshotDiff
 
     def reset
       @assertions.clear
+      @screenshot_namer = CapybaraScreenshotDiff::ScreenshotNamer.new
     end
   end
 end
@@ -122,6 +138,7 @@ module CapybaraScreenshotDiff
     def_delegator :registry, :assertions_present?
     def_delegator :registry, :failed_assertions
     def_delegator :registry, :reset
+    def_delegator :registry, :screenshot_namer
     def_delegator :registry, :verify
   end
 end

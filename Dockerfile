@@ -3,11 +3,15 @@
 #   $ docker build . -t csd
 #   $ docker run -v $(pwd):/app -ti csd rake test
 
-FROM --platform=linux/amd64 jetthoughts/cimg-ruby:3.4-chrome
+FROM jetthoughts/cimg-ruby:3.4-chrome
 
-# Install dependencies and clean up in one layer to reduce image size
-RUN sudo apt-get update -qq && \
-    DEBIAN_FRONTEND=noninteractive sudo apt-get install -qq \
+ENV DEBIAN_FRONTEND=noninteractive \
+ BUNDLE_PATH=/bundle
+
+RUN --mount=type=cache,target=/var/cache/apt \
+    sudo sed -i 's|http://security.ubuntu.com/ubuntu|http://archive.ubuntu.com/ubuntu|g' /etc/apt/sources.list && \
+    sudo apt-get update -qq && \
+    sudo apt-get install -qq --fix-missing \
       automake \
       build-essential \
       curl \
@@ -34,20 +38,12 @@ RUN sudo apt-get update -qq && \
       libwebp-dev \
       libxml2-dev \
       swig && \
-    sudo apt-get autoremove -y && \
-    sudo apt-get autoclean && \
-    sudo apt-get clean && \
-    sudo rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+    sudo apt-get autoclean
+
+RUN sudo sed -i 's/true/false/g' /etc/fonts/conf.d/10-antialias.conf
+
+
+RUN sudo mkdir -p /bundle /tmp/.X11-unix && \
+    sudo chmod 1777 /bundle /tmp/.X11-unix
 
 WORKDIR /app
-COPY gems.rb gemfiles capybara-screenshot-diff.gemspec /app/
-COPY lib/capybara/screenshot/diff/version.rb /app/lib/capybara/screenshot/diff/
-
-# Set the location for Bundler to store gems
-ENV BUNDLE_PATH=/bundle
-
-RUN sudo mkdir /bundle && \
-    sudo chmod a+w+r /bundle \
-    sudo mkdir -p /tmp/.X11-unix && \
-    sudo chmod 1777 /tmp/.X11-unix
-

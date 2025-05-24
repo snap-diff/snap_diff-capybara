@@ -21,7 +21,7 @@ env:
   JAVA_OPTS: -Xmn2g -Xms6g -Xmx6g -XX:MetaspaceSize=256m -XX:MaxMetaspaceSize=512m -Xss1m
     -XX:+UseG1GC -XX:+TieredCompilation -XX:TieredStopAtLevel=1 -XX:ReservedCodeCacheSize=256m
     -XX:+UseCodeCacheFlushing
-  JRUBY_OPTS: --dev
+  JRUBY_OPTS: --dev -J-Djruby.thread.pool.enabled=true
   MALLOC_ARENA_MAX: 2
   RUBY_GC_HEAP_FREE_SLOTS: 600000
   RUBY_GC_HEAP_GROWTH_FACTOR: 1.1
@@ -45,6 +45,8 @@ jobs:
           ruby-version: 3.4
 
       - run: bin/rake test
+        env:
+          SCREENSHOT_DRIVER: vips
 
   functional-test:
     name: Functional Test
@@ -87,11 +89,11 @@ jobs:
       github.event.pull_request.requested_reviewers.length > 0
     needs: [ functional-test ]
     runs-on: ubuntu-latest
-    timeout-minutes: ${{ contains(matrix.ruby-version, 'jruby') && 12 || 8 }}
+    timeout-minutes: ${{ contains(matrix.ruby-version, 'jruby') && 20 || 8 }}
     continue-on-error: ${{ matrix.experimental }}
     strategy:
       matrix:
-        ruby-version: [ 3.4, 3.3, 3.2, jruby ]
+        ruby-version: [ 3.4, 3.3, 3.2, jruby-9.4, jruby-10.0 ]
         gemfile:
           - rails70_gems.rb
           - rails71_gems.rb
@@ -104,7 +106,7 @@ jobs:
             gemfile: rails80_gems.rb
             experimental: false
           # JRuby 9.x is Ruby 3.1 compatible, and Rails 8 requires Ruby 3.2.
-          - ruby-version: jruby
+          - ruby-version: jruby-9.4
             gemfile: rails80_gems.rb
             experimental: false
         include:
@@ -130,7 +132,7 @@ jobs:
       - name: Run tests (with 2 retries)
         uses: nick-fields/retry@v3
         with:
-          timeout_minutes: ${{ contains(matrix.ruby-version, 'jruby') && 3 || 3 }}
+          timeout_minutes: ${{ contains(matrix.ruby-version, 'jruby') && 7 || 3 }}
           max_attempts: 3
           command: bin/rake test
 

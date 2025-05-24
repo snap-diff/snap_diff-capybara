@@ -14,7 +14,7 @@ module Capybara
     module Diff
       module Drivers
         class VipsDriverTest < ActionDispatch::IntegrationTest
-          include TestMethodsStub
+          include CapybaraScreenshotDiff::DSLStub
 
           setup do
             @new_screenshot_result = Tempfile.new(%w[screenshot .png], Rails.root)

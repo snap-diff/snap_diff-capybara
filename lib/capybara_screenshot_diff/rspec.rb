@@ -27,7 +27,7 @@ RSpec.configure do |config|
       begin
         CapybaraScreenshotDiff.verify
       rescue CapybaraScreenshotDiff::ExpectationNotMet => e
-        raise RSpec::Expectations::ExpectationNotMetError, e.message
+        raise RSpec::Expectations::ExpectationNotMetError.new(e.message).tap { |ex| ex.set_backtrace(e.backtrace) }
       ensure
         CapybaraScreenshotDiff.reset
       end
