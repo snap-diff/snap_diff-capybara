@@ -5,7 +5,7 @@ require "test_helper"
 module Capybara
   module Screenshot
     module Diff
-      class VcsTest < ActionDispatch::IntegrationTest
+      class VcsTest < ActiveSupport::TestCase
         include Vcs
 
         setup do
@@ -19,8 +19,8 @@ module Capybara
           end
         end
 
-        test "checkout of original screenshot" do
-          screenshot_path = Screenshot.root / "../test/images/a.png"
+        test "#restore_git_revision checks out and verifies the original screenshot" do
+          screenshot_path = file_fixture("images/a.png")
 
           base_screenshot_path = Pathname.new(@base_screenshot.path)
           assert Vcs.restore_git_revision(screenshot_path, base_screenshot_path, root: Screenshot.root)

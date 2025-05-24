@@ -6,7 +6,7 @@ require "support/non_minitest_assertions"
 
 module Capybara
   module Screenshot
-    class DiffTest < ActionDispatch::IntegrationTest
+    class DiffTest < ActiveSupport::TestCase
       setup do
         Capybara.current_driver = Capybara.default_driver
 
@@ -36,11 +36,11 @@ module Capybara
         Capybara::Screenshot.window_size = @orig_window_size
       end
 
-      def test_that_it_has_a_version_number
+      test "has a version number" do
         refute_nil ::Capybara::Screenshot::Diff::VERSION
       end
 
-      def test_screenshot_groups_are_replaced
+      test "updates screenshot group name" do
         assert_nil screenshot_namer.group
         screenshot_group "a"
         assert_equal "a", screenshot_namer.group
@@ -48,7 +48,7 @@ module Capybara
         assert_equal "b", screenshot_namer.group
       end
 
-      def test_screenshot_section_is_prepended
+      test "screenshot_section prepends section to path" do
         assert_nil screenshot_namer.section
         assert_nil screenshot_namer.group
 
@@ -65,12 +65,12 @@ module Capybara
         assert_match %r{doc/screenshots/(macos|linux)/rack_test/a/c}, screenshot_dir
       end
 
-      test "screenshot" do
+      test "stores screenshot with given name" do
         screenshot_group "screenshot"
         assert_matches_screenshot "a"
       end
 
-      test "succeed on screenshot diff when fail_on_difference is false" do
+      test "does not fail when fail_on_difference is false and screenshots differ" do
         Capybara::Screenshot::Diff.stub(:fail_on_difference, false) do
           test_case = SampleMiniTestCase.new(:_test_sample_screenshot_error)
           test_case.run
@@ -78,28 +78,30 @@ module Capybara
         end
       end
 
-      def test_screenshot_with_alternate_save_path
+      test "writes screenshot to alternate save path" do
         default_path = Capybara::Screenshot.save_path
         Capybara::Screenshot.save_path = "foo/bar"
 
         screenshot_section "a"
         screenshot_group "b"
-        screenshot "a"
+        screenshot "a", delayed: false
 
         assert_match %r{foo/bar/(macos|linux)/rack_test/a/b}, screenshot_dir
       ensure
+        FileUtils.remove_entry Capybara::Screenshot.screenshot_area_abs
         Capybara::Screenshot.save_path = default_path
       end
 
-      def test_screenshot_with_stability_time_limit
+      test "does not error when using stability_time_limit" do
+        default_stability_time_limit = Capybara::Screenshot.stability_time_limit
         Capybara::Screenshot.stability_time_limit = 0.001
 
         screenshot "a"
       ensure
-        Capybara::Screenshot.stability_time_limit = nil
+        Capybara::Screenshot.stability_time_limit = default_stability_time_limit
       end
 
-      test "build_full_name" do
+      test "builds full name from string" do
         assert_equal "a", build_full_name("a")
         screenshot_group "b"
         assert_equal "b/00_a", build_full_name("a")
@@ -109,19 +111,19 @@ module Capybara
         assert_equal "c/a", build_full_name("a")
       end
 
-      test "build_full_name allows symbol" do
+      test "builds full name from symbol" do
         screenshot_group :b
         assert_equal "b/00_a", build_full_name(:a)
       end
 
-      test "detect available diff drivers on the loading" do
+      test "detects available diff drivers" do
         # NOTE for tests we are loading both drivers, so we expect that all of them are available
         expected_drivers = defined?(Vips) ? %i[vips chunky_png] : %i[chunky_png]
 
         assert_equal expected_drivers, Capybara::Screenshot::Diff::AVAILABLE_DRIVERS
       end
 
-      test "aggregates failures instead of raising errors on teardown for Minitest" do
+      test "aggregates failures on teardown for Minitest" do
         test_case = SampleMiniTestCase.new(:_test_sample_screenshot_error)
 
         test_case.run
@@ -130,7 +132,7 @@ module Capybara
         assert_includes test_case.failures.first.message, "expected error message"
       end
 
-      test "raising errors on teardown for non Minitest" do
+      test "raises error on teardown for non-Minitest" do
         test_case = SampleNotMiniTestCase.new
         test_case._test_sample_screenshot_error
 
@@ -140,7 +142,7 @@ module Capybara
         assert_empty(CapybaraScreenshotDiff.assertions)
       end
 
-      class SampleMiniTestCase < ActionDispatch::IntegrationTest
+      class SampleMiniTestCase < ActiveSupport::TestCase
         include Capybara::Screenshot::Diff
         include CapybaraScreenshotDiff::Minitest::Assertions
 
@@ -192,7 +194,7 @@ module Capybara
         end
       end
 
-      class ScreenshotFormatTest < ActionDispatch::IntegrationTest
+      class ScreenshotFormatTest < ActiveSupport::TestCase
         setup do
           @orig_screenshot_format = Capybara::Screenshot.screenshot_format
         end
@@ -205,7 +207,7 @@ module Capybara
           Capybara::Screenshot.screenshot_format = @orig_screenshot_format
         end
 
-        test "use default screenshot format" do
+        test "stores screenshot using default format extension" do
           skip "VIPS not present. Skipping VIPS driver tests." unless defined?(Vips)
           snap = CapybaraScreenshotDiff::SnapManager.snapshot("a", "webp")
 
@@ -218,7 +220,7 @@ module Capybara
           end
         end
 
-        test "override default screenshot format" do
+        test "stores screenshot using overridden format extension" do
           snap = CapybaraScreenshotDiff::SnapManager.snapshot("a", "png")
           set_test_images(snap, :a, :a)
 

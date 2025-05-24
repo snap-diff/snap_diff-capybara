@@ -16,6 +16,7 @@ class SystemTestCase < ActiveSupport::TestCase
     # TODO: Reset original settings to previous values
     @orig_root = Capybara::Screenshot.root
     Capybara::Screenshot.root = Rails.root / "../test/fixtures/app"
+
     @orig_save_path = Capybara::Screenshot.save_path
     Capybara::Screenshot.save_path = "./doc/screenshots"
 

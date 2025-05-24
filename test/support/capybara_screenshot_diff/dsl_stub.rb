@@ -1,18 +1,20 @@
+require "active_support/concern"
+
 module CapybaraScreenshotDiff
   module DSLStub
     extend ActiveSupport::Concern
 
-    included do
-      setup do
-        @manager = CapybaraScreenshotDiff::SnapManager.new(Capybara::Screenshot.root / "doc/screenshots")
-        Capybara::Screenshot::Diff.screenshoter = Capybara::Screenshot::ScreenshoterStub
-      end
+    def setup
+      super
+      @manager = CapybaraScreenshotDiff::SnapManager.new(Capybara::Screenshot.root / "doc/screenshots")
+      Capybara::Screenshot::Diff.screenshoter = Capybara::Screenshot::ScreenshoterStub
+    end
 
-      teardown do
-        @manager.cleanup!
-        Capybara::Screenshot::Diff.screenshoter = Capybara::Screenshot::Screenshoter
-        CapybaraScreenshotDiff.reset
-      end
+    def teardown
+      @manager.cleanup!
+      Capybara::Screenshot::Diff.screenshoter = Capybara::Screenshot::Screenshoter
+      CapybaraScreenshotDiff.reset
+      super
     end
 
     # Prepare comparison images and build ImageCompare for them
