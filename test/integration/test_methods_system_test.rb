@@ -15,6 +15,8 @@ module Capybara
   module Screenshot
     module Diff
       class TestMethodsSystemTest < ActionDispatch::SystemTestCase
+        self.test_order = :random
+
         include CapybaraScreenshotDiff::DSL
         include CapybaraScreenshotDiff::DSLStub
 

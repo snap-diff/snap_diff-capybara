@@ -8,9 +8,7 @@ require "action_controller"
 
 # NOTE: Simulate Rails Environment
 module Rails
-  def self.root
-    Pathname("../../tmp").expand_path(__dir__)
-  end
+  mattr_accessor(:root) { Pathname("../../tmp").expand_path(__dir__) }
 
   def self.application
     Rack::Builder.new {

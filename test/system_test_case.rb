@@ -6,6 +6,10 @@ require "capybara_screenshot_diff/minitest"
 require "support/setup_capybara_drivers"
 
 class SystemTestCase < ActiveSupport::TestCase
+  self.test_order = :random
+  # TODO: Handle race conditions in system tests by introducing git steps
+  parallelize(workers: 0) # Disable parallelization for system tests to prevent race conditions
+
   setup do
     Capybara.current_driver = Capybara.javascript_driver
     Capybara.page.current_window.resize_to(*SCREEN_SIZE)

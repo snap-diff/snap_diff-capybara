@@ -39,6 +39,14 @@ class ActiveSupport::TestCase
   # Set up fixtures and test helpers
   self.file_fixture_path = Pathname.new(File.expand_path("fixtures", __dir__))
 
+  parallelize
+
+  parallelize_setup do |i|
+    Rails.root = Pathname.new(File.expand_path("../tmp", __dir__)) / i.to_s
+    Capybara::Screenshot.root = Rails.root
+    FileUtils.mkdir_p(Capybara::Screenshot.root)
+  end
+
   teardown do
     CapybaraScreenshotDiff::SnapManager.cleanup! unless persist_comparisons?
   end
