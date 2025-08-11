@@ -38,7 +38,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: ./.github/actions/setup-ruby-and-dependencies
         with:
@@ -55,7 +55,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - uses: ./.github/actions/setup-ruby-and-dependencies
         with:
@@ -121,7 +121,7 @@ jobs:
       BUNDLE_GEMFILE: gemfiles/${{ matrix.gemfile }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: ./.github/actions/setup-ruby-and-dependencies
         with:
@@ -155,7 +155,7 @@ jobs:
     timeout-minutes: 5
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: ./.github/actions/setup-ruby-and-dependencies
         with:
