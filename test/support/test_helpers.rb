@@ -4,6 +4,7 @@ require "support/test_doubles"
 
 module TestHelpers
   include Capybara::Screenshot::Diff::TestDoubles
+
   # Common assertions for image comparison tests
   module Assertions
     # Asserts that a dimension check was called a specific number of times

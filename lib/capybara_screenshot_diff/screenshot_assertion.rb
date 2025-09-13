@@ -18,9 +18,9 @@ module CapybaraScreenshotDiff
       return screenshot_job if screenshot_job.is_a?(ScreenshotAssertion)
 
       caller, name, compare = screenshot_job
-      ScreenshotAssertion.new(name).tap do |it|
-        it.caller = caller
-        it.compare = compare
+      ScreenshotAssertion.new(name).tap do |assertion|
+        assertion.caller = caller
+        assertion.compare = compare
       end
     end
 
