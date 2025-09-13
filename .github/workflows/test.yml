@@ -109,6 +109,9 @@ jobs:
           - ruby-version: jruby-9.4
             gemfile: rails80_gems.rb
             experimental: false
+          - ruby-version: jruby-9.4
+            gemfile: rails81_gems.rb
+            experimental: false
         include:
           - ruby-version: 3.5.0-preview1
             gemfile: rails81_gems.rb
