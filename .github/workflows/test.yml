@@ -95,10 +95,10 @@ jobs:
       matrix:
         ruby-version: [ 3.4, 3.3, 3.2, jruby-9.4, jruby-10.0 ]
         gemfile:
-          - rails70_gems.rb
           - rails71_gems.rb
           - rails72_gems.rb
           - rails80_gems.rb
+          - rails81_gems.rb
         experimental: [ false ]
         exclude:
           # We already tested last version
@@ -111,7 +111,10 @@ jobs:
             experimental: false
         include:
           - ruby-version: 3.5.0-preview1
-            gemfile: edge_gems
+            gemfile: rails81_gems.rb
+            experimental: true
+          - ruby-version: 3.5.0-preview1
+            gemfile: edge_gems.rb
             experimental: true
           - ruby-version: 3.4
             gemfile: edge_gems.rb
