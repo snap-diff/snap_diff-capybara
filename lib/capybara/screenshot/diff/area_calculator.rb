@@ -48,7 +48,7 @@ module Capybara
         def build_regions_for(coordinates)
           coordinates
             .map { |entry| Region.from_edge_coordinates(*entry) }
-            .tap { |it| it.compact! }
+            .tap { |region| region.compact! }
         end
       end
     end
