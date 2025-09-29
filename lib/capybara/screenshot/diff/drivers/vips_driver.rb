@@ -23,7 +23,8 @@ module Capybara
 
             diff_mask = VipsUtil.difference_mask(base_image, new_image, options[:color_distance_limit])
             region = VipsUtil.difference_region_by(diff_mask)
-            region = nil if region && same_as?(region, base_image)
+            # TODO: schedule research when we got this case for VIPs
+            # region = nil if region && same_as?(region, base_image)
 
             result = Difference.new(region, {}, comparison)
 
