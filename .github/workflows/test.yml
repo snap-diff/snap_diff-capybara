@@ -172,7 +172,7 @@ jobs:
           cache-apt-packages: ${{ matrix.screenshot-driver == 'vips' }}
 
       - name: Cache Selenium
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.cache/selenium
           key: ${{ runner.os }}-selenium-${{ matrix.capybara-driver }}
