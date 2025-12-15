@@ -74,7 +74,7 @@ jobs:
           name: base-screenshots
 
       - name: Uploading Coverage Report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: coverage
           retention-days: 1
