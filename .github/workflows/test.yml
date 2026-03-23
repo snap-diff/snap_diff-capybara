@@ -139,7 +139,7 @@ jobs:
           cache-apt-packages: true
 
       - name: Run tests (with 2 retries)
-        uses: nick-fields/retry@v3
+        uses: nick-fields/retry@v4
         with:
           timeout_minutes: ${{ contains(matrix.ruby-version, 'jruby') && 7 || 3 }}
           max_attempts: 3
