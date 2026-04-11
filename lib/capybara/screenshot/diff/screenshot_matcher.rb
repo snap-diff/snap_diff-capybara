@@ -89,11 +89,10 @@ module Capybara
         end
 
         def create_screenshot_assertion(skip_stack_frames, comparison_options)
-          CapybaraScreenshotDiff::ScreenshotAssertion.from([
-            caller(skip_stack_frames + 1),
-            screenshot_full_name,
-            ImageCompare.new(@snapshot.path, @snapshot.base_path, comparison_options)
-          ])
+          assertion = CapybaraScreenshotDiff::ScreenshotAssertion.new(screenshot_full_name)
+          assertion.caller = caller(skip_stack_frames + 1)
+          assertion.compare = ImageCompare.new(@snapshot.path, @snapshot.base_path, comparison_options)
+          assertion
         end
 
         def extract_capture_and_comparison_options!(driver_options = {})

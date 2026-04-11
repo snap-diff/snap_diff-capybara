@@ -7,21 +7,9 @@ module CapybaraScreenshotDiff
     attr_reader :name, :args
     attr_accessor :compare, :caller
 
-    def initialize(name, **args, &block)
+    def initialize(name, **args)
       @name = name
       @args = args
-
-      yield(self) if block_given?
-    end
-
-    def self.from(screenshot_job)
-      return screenshot_job if screenshot_job.is_a?(ScreenshotAssertion)
-
-      caller, name, compare = screenshot_job
-      ScreenshotAssertion.new(name).tap do |assertion|
-        assertion.caller = caller
-        assertion.compare = compare
-      end
     end
 
     def validate
@@ -89,8 +77,7 @@ module CapybaraScreenshotDiff
     end
 
     def add_assertion(assertion)
-      assertion = ScreenshotAssertion.from(assertion)
-      return unless assertion.compare
+      return unless assertion&.compare
 
       @assertions.push(assertion)
 

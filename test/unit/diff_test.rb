@@ -155,7 +155,9 @@ module Capybara
           mock.expect(:base_image_path, Pathname.new("screenshot.base.png"))
           mock.expect(:error_message, "expected error message")
 
-          assertion = CapybaraScreenshotDiff::ScreenshotAssertion.from([["my_test.rb:42"], "sample_screenshot", mock])
+          assertion = CapybaraScreenshotDiff::ScreenshotAssertion.new("sample_screenshot")
+          assertion.caller = ["my_test.rb:42"]
+          assertion.compare = mock
           CapybaraScreenshotDiff.add_assertion(assertion)
 
           assert true
@@ -189,7 +191,9 @@ module Capybara
           comparison.expect(:base_image_path, Pathname.new("screenshot.base.png"))
           comparison.expect(:error_message, "expected error message for non minitest")
 
-          assertion = CapybaraScreenshotDiff::ScreenshotAssertion.from([["my_test.rb:42"], "sample_screenshot", comparison])
+          assertion = CapybaraScreenshotDiff::ScreenshotAssertion.new("sample_screenshot")
+          assertion.caller = ["my_test.rb:42"]
+          assertion.compare = comparison
           CapybaraScreenshotDiff.add_assertion(assertion)
         end
       end
