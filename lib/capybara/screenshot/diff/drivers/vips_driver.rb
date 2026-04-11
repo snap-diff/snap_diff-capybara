@@ -88,10 +88,6 @@ module Capybara
             result
           end
 
-          def dimension(image)
-            [width_for(image), height_for(image)]
-          end
-
           def draw_rectangles(images, region, rgba, offset: 0)
             images.map do |image|
               image.draw_rect(rgba, region.left - offset, region.top - offset, region.width + (offset * 2), region.height + (offset * 2))
