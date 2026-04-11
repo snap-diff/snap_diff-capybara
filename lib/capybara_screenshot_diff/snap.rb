@@ -16,7 +16,7 @@ module CapybaraScreenshotDiff
     def delete!
       path.delete if path.exist?
       base_path.delete if base_path.exist?
-      cleanup_attempts
+      cleanup_attempts!
     end
 
     def checkout_base_screenshot
@@ -43,7 +43,7 @@ module CapybaraScreenshotDiff
       @manager.move(attempt_path, path)
     end
 
-    def cleanup_attempts
+    def cleanup_attempts!
       @manager.cleanup_attempts!(self)
       @attempts_count = 0
     end
