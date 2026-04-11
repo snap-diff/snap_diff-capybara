@@ -254,10 +254,10 @@ module Capybara
                   if (x - shift_distance) >= 0 # left
                     ([0, top_row + 1].max..[y + shift_distance, new_img.height - 2].min)
                       .each do |dy|
-                      if color_matches(new_img, org_color, x - shift_distance, dy, color_distance_limit)
-                        return shift_distance
+                        if color_matches(new_img, org_color, x - shift_distance, dy, color_distance_limit)
+                          return shift_distance
+                        end
                       end
-                    end
                   else
                     bounds_breached += 1
                   end
@@ -273,10 +273,10 @@ module Capybara
                   if (x + shift_distance) < new_img.width # right
                     ([0, top_row + 1].max..[y + shift_distance, new_img.height - 2].min)
                       .each do |dy|
-                      if color_matches(new_img, org_color, x + shift_distance, dy, color_distance_limit)
-                        return shift_distance
+                        if color_matches(new_img, org_color, x + shift_distance, dy, color_distance_limit)
+                          return shift_distance
+                        end
                       end
-                    end
                   else
                     bounds_breached += 1
                   end
