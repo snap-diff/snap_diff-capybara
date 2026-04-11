@@ -63,7 +63,7 @@ module Capybara
         end
 
         def region_area_size
-          region&.size || 0
+          @region_area_size ||= region&.size || 0
         end
 
         def ratio
