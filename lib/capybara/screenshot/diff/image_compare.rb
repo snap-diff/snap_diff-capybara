@@ -47,7 +47,7 @@ module Capybara
 
           ensure_files_exist!
 
-          @driver_options = options.dup
+          @driver_options = options
           @driver = Drivers.for(@driver_options)
         end
 
@@ -62,8 +62,6 @@ module Capybara
         #
         # @note This method will raise ArgumentError if either image file is missing.
         def quick_equal?
-          ensure_files_exist!
-
           # Quick file size check - if sizes are equal, perform a simple file comparison
           if base_image_path.size == image_path.size
             # If we have identical files (same size and content), we can return true immediately
