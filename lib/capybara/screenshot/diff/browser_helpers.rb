@@ -85,7 +85,7 @@ module Capybara
       JS
 
       def self.all_visible_regions_for(selector)
-        BrowserHelpers.session.all(selector, visible: true).map(&method(:region_for))
+        BrowserHelpers.session.all(selector, visible: true).map { |el| region_for(el) }
       end
 
       def self.region_for(element)
