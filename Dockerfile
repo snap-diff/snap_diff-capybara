@@ -6,16 +6,18 @@
 FROM jetthoughts/cimg-ruby:4.0-chrome
 
 ENV DEBIAN_FRONTEND=noninteractive \
- BUNDLE_PATH=/bundle
+    BUNDLE_PATH=/bundle \
+    LIGHTPANDA_DISABLE_TELEMETRY=true
 
-RUN --mount=type=cache,target=/var/cache/apt \
+# Install system dependencies with cached apt
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
     sudo sed -i 's|http://security.ubuntu.com/ubuntu|http://archive.ubuntu.com/ubuntu|g' /etc/apt/sources.list && \
     sudo apt-get update -qq && \
-    sudo apt-get install -qq --fix-missing \
+    sudo apt-get install -y --no-install-recommends \
       automake \
       build-essential \
       curl \
-      fftw3-dev \
       gettext \
       gobject-introspection \
       gtk-doc-tools \
@@ -38,12 +40,24 @@ RUN --mount=type=cache,target=/var/cache/apt \
       libwebp-dev \
       libxml2-dev \
       swig && \
-    sudo apt-get autoclean
+    sudo rm -rf /var/lib/apt/lists/*
 
-RUN sudo sed -i 's/true/false/g' /etc/fonts/conf.d/10-antialias.conf
+# Install Lightpanda browser (experimental CDP-compatible headless browser)
+RUN sudo curl -L -o /usr/local/bin/lightpanda \
+      https://github.com/lightpanda-io/browser/releases/download/nightly/lightpanda-x86_64-linux && \
+    sudo chmod a+x /usr/local/bin/lightpanda
 
-
+# Setup directories and fix font config if file exists
 RUN sudo mkdir -p /bundle /tmp/.X11-unix && \
-    sudo chmod 1777 /bundle /tmp/.X11-unix
+    sudo chmod 1777 /bundle /tmp/.X11-unix && \
+    (sudo test -f /etc/fonts/conf.d/10-yes-antialias.conf && sudo sed -i 's/true/false/g' /etc/fonts/conf.d/10-yes-antialias.conf || echo "Font config file not found, skipping")
 
 WORKDIR /app
+
+# Copy entire project (needed for git dependencies in gems.rb)
+COPY --chown=circleci:circleci . .
+
+# Install gems with cached bundle
+RUN --mount=type=cache,target=/bundle \
+    bundle config set without 'tools' && \
+    bundle install
