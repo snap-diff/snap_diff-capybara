@@ -6,7 +6,8 @@ require_relative "stable_screenshoter"
 require_relative "browser_helpers"
 require_relative "vcs"
 require_relative "area_calculator"
-require_relative "screenshot_coordinator"
+require_relative "screenshoter"
+require_relative "stable_screenshoter"
 
 module Capybara
   module Screenshot
@@ -81,7 +82,12 @@ module Capybara
         end
 
         def capture_screenshot(capture_options, comparison_options)
-          Capybara::Screenshot::Diff::ScreenshotCoordinator.capture(@snapshot, capture_options, comparison_options)
+          screenshoter = if capture_options[:stability_time_limit]
+            StableScreenshoter.new(capture_options, comparison_options)
+          else
+            Diff.screenshoter.new(capture_options, comparison_options[:driver])
+          end
+          screenshoter.take_comparison_screenshot(@snapshot)
         end
 
         def create_screenshot_assertion(skip_stack_frames, comparison_options)
