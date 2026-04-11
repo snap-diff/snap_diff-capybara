@@ -217,22 +217,24 @@ module Capybara
 
             def color_distance_at(new_img, old_img, x, y, shift_distance_limit:)
               org_color = old_img[x, y]
-              if shift_distance_limit
-                start_x = [0, x - shift_distance_limit].max
-                end_x = [x + shift_distance_limit, new_img.width - 1].min
-                xs = (start_x..end_x).to_a
-                start_y = [0, y - shift_distance_limit].max
-                end_y = [y + shift_distance_limit, new_img.height - 1].min
-                ys = (start_y..end_y).to_a
-                new_pixels = xs.product(ys)
-
-                distances = new_pixels.map do |dx, dy|
-                  ChunkyPNG::Color.euclidean_distance_rgba(org_color, new_img[dx, dy])
-                end
-                distances.min
-              else
-                ChunkyPNG::Color.euclidean_distance_rgba(org_color, new_img[x, y])
+              unless shift_distance_limit
+                return ChunkyPNG::Color.euclidean_distance_rgba(org_color, new_img[x, y])
               end
+
+              start_x = [0, x - shift_distance_limit].max
+              end_x = [x + shift_distance_limit, new_img.width - 1].min
+              start_y = [0, y - shift_distance_limit].max
+              end_y = [y + shift_distance_limit, new_img.height - 1].min
+
+              min_distance = Float::INFINITY
+              (start_y..end_y).each do |dy|
+                (start_x..end_x).each do |dx|
+                  distance = ChunkyPNG::Color.euclidean_distance_rgba(org_color, new_img[dx, dy])
+                  return 0 if distance == 0
+                  min_distance = distance if distance < min_distance
+                end
+              end
+              min_distance
             end
 
             def shift_distance_at(new_img, old_img, x, y, color_distance_limit:)
