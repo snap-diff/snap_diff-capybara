@@ -40,13 +40,19 @@ class ActiveSupport::TestCase
   self.file_fixture_path = Pathname.new(File.expand_path("fixtures", __dir__))
 
   setup do
-    # Tests create new screenshots — don't fail on missing baselines
     @_orig_fail_if_new = Capybara::Screenshot::Diff.fail_if_new
+    @_orig_blur = Capybara::Screenshot.blur_active_element
+    @_orig_hide_caret = Capybara::Screenshot.hide_caret
+
     Capybara::Screenshot::Diff.fail_if_new = false
+    Capybara::Screenshot.blur_active_element = false
+    Capybara::Screenshot.hide_caret = false
   end
 
   teardown do
     Capybara::Screenshot::Diff.fail_if_new = @_orig_fail_if_new
+    Capybara::Screenshot.blur_active_element = @_orig_blur
+    Capybara::Screenshot.hide_caret = @_orig_hide_caret
     CapybaraScreenshotDiff::SnapManager.cleanup! unless persist_comparisons?
   end
 
