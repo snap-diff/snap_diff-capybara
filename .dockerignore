@@ -2,6 +2,15 @@
 .ruby-lsp/
 coverage/
 tmp/
+.git/
+.idea/
+.claude/
+.bundle/
+vendor/
+.specs/
+*.gem
+*.rbc
+*.log
 
 # Ignore report files
 *.attempt_*.png
@@ -10,3 +19,7 @@ tmp/
 *.attempt_*.webp
 *.diff.webp
 *.base.webp
+
+# OS files
+.DS_Store
+Thumbs.db
