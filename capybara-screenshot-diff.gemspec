@@ -12,7 +12,7 @@ Gem::Specification.new do |spec|
   spec.summary = "Track your GUI changes with diff assertions"
   spec.description = "Save screen shots and track changes with graphical diff"
   spec.homepage = "https://github.com/donv/capybara-screenshot-diff"
-  spec.required_ruby_version = ">= 3.1"
+  spec.required_ruby_version = ">= 3.2"
   spec.license = "MIT"
   spec.metadata["allowed_push_host"] = "https://rubygems.org/"
   spec.files = `git ls-files -z`.split("\x0").reject do |f|
@@ -23,7 +23,7 @@ Gem::Specification.new do |spec|
   spec.executables = spec.files.grep(%r{^exe/}) { |f| File.basename(f) }
   spec.require_paths = ["lib"]
 
-  spec.add_development_dependency "actionpack", ">= 7.0", "< 9"
-  spec.add_development_dependency "activesupport", ">= 7.0", "< 9"
+  spec.add_development_dependency "actionpack", ">= 7.1", "< 9"
+  spec.add_development_dependency "activesupport", ">= 7.1", "< 9"
   spec.add_runtime_dependency "capybara", ">= 2", "< 4"
 end
