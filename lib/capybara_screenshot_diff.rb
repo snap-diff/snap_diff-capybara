@@ -64,7 +64,7 @@ module Capybara
     module Diff
       mattr_accessor(:delayed) { true }
       mattr_accessor :area_size_limit
-      mattr_accessor(:fail_if_new) { false }
+      mattr_accessor(:fail_if_new) { ENV["CI"].present? }
       mattr_accessor(:fail_on_difference) { true }
       mattr_accessor :color_distance_limit
       mattr_accessor(:enabled) { true }
