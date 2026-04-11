@@ -168,12 +168,9 @@ module Capybara
           image_preprocessor.process_comparison(comparison)
         end
 
-        def build_null_difference(failed_by = nil, comparison = nil)
-          Difference.build_null(comparison || build_null_comparison, base_image_path, image_path, failed_by)
-        end
-
-        def build_null_comparison
-          Comparison.new(nil, nil, driver_options, driver, image_path, base_image_path).freeze
+        def build_null_difference(failed_by = nil)
+          comparison = Comparison.new(nil, nil, driver_options, driver, image_path, base_image_path).freeze
+          Difference.build_null(comparison, base_image_path, image_path, failed_by)
         end
 
         # Check if both images exist
