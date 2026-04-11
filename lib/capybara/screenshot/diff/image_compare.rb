@@ -4,7 +4,6 @@ require "pathname"
 require "fileutils"
 
 require "capybara/screenshot/diff/comparison"
-require "capybara/screenshot/diff/comparison_loader"
 require "capybara/screenshot/diff/image_preprocessor"
 require "capybara/screenshot/diff/difference_finder"
 require "capybara/screenshot/diff/reporters/default"
@@ -118,8 +117,9 @@ module Capybara
           @difference_finder ||= DifferenceFinder.new(driver, driver_options)
         end
 
-        def comparison_loader
-          @comparison_loader ||= ComparisonLoader.new(driver)
+        def load_images_and_build_comparison(base_path, new_path, options)
+          base_img, new_img = driver.load_images(base_path, new_path)
+          Comparison.new(new_img, base_img, options, driver, new_path, base_path)
         end
 
         def image_preprocessor
@@ -164,7 +164,7 @@ module Capybara
         # @return [Comparison] Prepared comparison object ready for analysis
         # @raise [ArgumentError] If image files are invalid or unreadable
         def load_comparison(base_path, new_path, options)
-          comparison = comparison_loader.call(base_path, new_path, options)
+          comparison = load_images_and_build_comparison(base_path, new_path, options)
           image_preprocessor.process_comparison(comparison)
         end
 
