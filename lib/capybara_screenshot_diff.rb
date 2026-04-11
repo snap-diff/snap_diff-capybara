@@ -12,6 +12,9 @@ require "capybara/screenshot/diff/reporters/default"
 require "capybara_screenshot_diff/error_with_filtered_backtrace"
 
 module CapybaraScreenshotDiff
+  RED_RGBA = [255, 0, 0, 255].freeze
+  ORANGE_RGBA = [255, 192, 0, 255].freeze
+
   class CapybaraScreenshotDiffError < ErrorWithFilteredBacktrace; end
 
   class ExpectationNotMet < CapybaraScreenshotDiffError; end

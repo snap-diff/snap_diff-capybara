@@ -23,7 +23,9 @@
 *.diff.webp
 *.base.webp
 .ruby-version
+.ai/
 .specs/
+.emdash.json
 CLAUDE.md
 AGENTS.md
 GEMINI.md
