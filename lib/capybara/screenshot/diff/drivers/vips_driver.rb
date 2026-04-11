@@ -15,8 +15,6 @@ module Capybara
       # Compare two images and determine if they are equal, different, or within some comparison
       # range considering color values and difference area size.
       module Drivers
-        DEFAULT_HIGHLIGHT_COLOR = [255, 0, 0, 255].freeze
-
         class VipsDriver < BaseDriver
           def find_difference_region(comparison)
             new_image, base_image, options = comparison.new_image, comparison.base_image, comparison.options
@@ -24,7 +22,7 @@ module Capybara
             diff_mask = VipsUtil.difference_mask(base_image, new_image, options[:color_distance_limit])
             region = VipsUtil.difference_region_by(diff_mask)
             # TODO: schedule research when we got this case for VIPs
-            # region = nil if region && same_as?(region, base_image)
+            # region = nil if region && region_covers_entire_image?(region, base_image)
 
             result = Difference.new(region, {}, comparison)
 
@@ -108,13 +106,13 @@ module Capybara
             base_image.composite2(new_image, :over)
           end
 
-          def highlight_mask(diff_mask, merged_image, color: DEFAULT_HIGHLIGHT_COLOR)
+          def highlight_mask(diff_mask, merged_image, color: CapybaraScreenshotDiff::RED_RGBA)
             diff_mask.ifthenelse(color, merged_image * 0.75)
           end
 
           private
 
-          def same_as?(region, base_image)
+          def region_covers_entire_image?(region, base_image)
             region.x.zero? &&
               region.y.zero? &&
               region.height == height_for(base_image) &&
