@@ -76,6 +76,13 @@ module CapybaraScreenshotDiff
     # @see #screenshot
     alias_method :assert_matches_screenshot, :screenshot
 
+    # Asserts the current page has no visual changes from the baseline.
+    # Override in your base test class to add project-specific behavior
+    # (e.g., waiting for Turbo, default skip areas).
+    def assert_no_screenshot_changes(name, skip_stack_frames: 0, **opts)
+      screenshot(name, skip_stack_frames: skip_stack_frames + 1, **opts)
+    end
+
     private
 
     # Builds a screenshot assertion object that can be validated immediately or later.
