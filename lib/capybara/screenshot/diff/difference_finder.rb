@@ -64,13 +64,13 @@ module Capybara
 
           # Handle dimension differences
           unless driver.same_dimension?(comparison)
-            result = build_null_difference(comparison, comparison.base_image_path, comparison.new_image_path, {different_dimensions: true})
+            result = Difference.build_null(comparison, comparison.base_image_path, comparison.new_image_path, {different_dimensions: true})
             return quick_mode ? [false, result] : result
           end
 
           # Handle identical pixels
           if driver.same_pixels?(comparison)
-            result = build_null_difference(comparison, comparison.base_image_path, comparison.new_image_path)
+            result = Difference.build_null(comparison, comparison.base_image_path, comparison.new_image_path)
             return quick_mode ? [true, result] : result
           end
 
@@ -92,10 +92,6 @@ module Capybara
           @without_tolerable_options
         end
 
-        # Build a no-difference result that represents identical images
-        def build_null_difference(comparison, base_path, new_path, failed_by = nil)
-          Difference.build_null(comparison, base_path, new_path, failed_by)
-        end
       end
     end
   end
