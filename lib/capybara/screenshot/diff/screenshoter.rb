@@ -30,7 +30,7 @@ module Capybara
       # On reaching `wait` limit then it has been failed. On failing we annotate screenshot attempts to help to debug
       def take_comparison_screenshot(snapshot)
         capture_screenshot_at(snapshot)
-        snapshot.cleanup_attempts
+        snapshot.cleanup_attempts!
       end
 
       PNG_EXTENSION = ".png"

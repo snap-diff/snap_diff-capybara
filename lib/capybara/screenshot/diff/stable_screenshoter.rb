@@ -51,7 +51,7 @@ module Capybara
           snapshot.commit_last_attempt
 
           # cleanup all previous attempts
-          snapshot.cleanup_attempts
+          snapshot.cleanup_attempts!
         end
 
         def take_stable_screenshot(snapshot)
@@ -59,7 +59,7 @@ module Capybara
           deadline_at = Process.clock_gettime(Process::CLOCK_MONOTONIC) + wait
 
           # Cleanup all previous attempts for sure
-          snapshot.cleanup_attempts
+          snapshot.cleanup_attempts!
 
           0.step do |i|
             # FIXME: it should be wait, and wait should be replaced with stability_time_limit
