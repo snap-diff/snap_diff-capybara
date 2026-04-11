@@ -688,16 +688,6 @@ RECORD_SCREENSHOTS=1 bin/dtest
 
 This skips screenshot comparisons and saves new baselines instead. Without this step, tests will fail because your local browser renders pixels differently from the previously committed baselines.
 
-#### Experimental: Lightpanda browser
-
-[Lightpanda](https://github.com/lightpanda-io/browser) is included as an experimental CDP-based headless browser. It can be enabled for the `cuprite` driver:
-
-```bash
-ENABLE_LIGHTPANDA=1 bin/dtest
-```
-
-**Note:** Lightpanda's CDP support does not yet cover viewport resizing or full execution context management, so screenshot comparison tests may fail. This is gated behind the env var until Lightpanda matures.
-
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md)

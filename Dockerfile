@@ -6,8 +6,7 @@
 FROM jetthoughts/cimg-ruby:4.0-chrome
 
 ENV DEBIAN_FRONTEND=noninteractive \
-    BUNDLE_PATH=/bundle \
-    LIGHTPANDA_DISABLE_TELEMETRY=true
+    BUNDLE_PATH=/bundle
 
 # Install system dependencies with cached apt
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
@@ -41,11 +40,6 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
       libxml2-dev \
       swig && \
     sudo rm -rf /var/lib/apt/lists/*
-
-# Install Lightpanda browser (experimental CDP-compatible headless browser)
-RUN sudo curl -L -o /usr/local/bin/lightpanda \
-      https://github.com/lightpanda-io/browser/releases/download/nightly/lightpanda-x86_64-linux && \
-    sudo chmod a+x /usr/local/bin/lightpanda
 
 # Setup directories and fix font config if file exists
 RUN sudo mkdir -p /bundle /tmp/.X11-unix && \

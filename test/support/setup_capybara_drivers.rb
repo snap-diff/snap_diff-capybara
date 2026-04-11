@@ -69,14 +69,9 @@ if ENV["CAPYBARA_DRIVER"] == "cuprite"
     process_timeout: ENV["CI"] ? 40 : 5,
     screen_size: SCREEN_SIZE,
     timeout: ENV["CI"] ? 40 : 5,
-    window_size: SCREEN_SIZE
+    window_size: SCREEN_SIZE,
+    browser_options: CHROME_ARGS
   }
-
-  if ENV["LIGHTPANDA_URL"]
-    cuprite_options[:url] = ENV["LIGHTPANDA_URL"]
-  else
-    cuprite_options[:browser_options] = CHROME_ARGS
-  end
 
   Capybara.register_driver(:cuprite) do |app|
     Capybara::Cuprite::Driver.new(app, **cuprite_options)
