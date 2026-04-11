@@ -6,8 +6,6 @@ require_relative "stable_screenshoter"
 require_relative "browser_helpers"
 require_relative "vcs"
 require_relative "area_calculator"
-require_relative "screenshoter"
-require_relative "stable_screenshoter"
 
 module Capybara
   module Screenshot
