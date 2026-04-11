@@ -8,13 +8,15 @@ module Capybara
       class StableScreenshoterTest < ActiveSupport::TestCase
         include CapybaraScreenshotDiff::DSLStub
 
-        setup do
+        def setup
+          super
           @manager = CapybaraScreenshotDiff::SnapManager.new(Capybara::Screenshot.root / "stable_screenshoter_test")
           @manager.create_output_directory_for
         end
 
-        teardown do
+        def teardown
           @manager.cleanup!
+          super
         end
 
         test "#take_stable_screenshot retries until images are stable across iterations" do
