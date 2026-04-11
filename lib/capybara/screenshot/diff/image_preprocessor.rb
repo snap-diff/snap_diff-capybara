@@ -28,10 +28,6 @@ module Capybara
           comparison
         end
 
-        def call(images)
-          images.map { |image| process_image(image, nil) }
-        end
-
         private
 
         def process_image(image, path)

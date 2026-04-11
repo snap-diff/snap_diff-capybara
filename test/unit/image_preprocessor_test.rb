@@ -13,27 +13,28 @@ module Capybara
 
         def setup
           super
-          @test_images = [:base_image, :new_image]
           @driver = create_test_driver
         end
 
-        test "#call returns original images when no preprocessing options are provided" do
+        test "#process_comparison returns comparison unchanged when no preprocessing options are provided" do
           preprocessor = ImagePreprocessor.new(@driver, {})
+          comparison = Comparison.new(:new_image, :base_image, {}, @driver)
 
-          result = preprocessor.call(@test_images)
+          result = preprocessor.process_comparison(comparison)
 
-          assert_equal @test_images, result
+          assert_equal comparison, result
           assert_empty @driver.add_black_box_calls
           assert_empty @driver.filter_calls
         end
 
-        test "#call applies black box to skip areas when skip_area option is provided" do
+        test "#process_comparison applies black box to skip areas when skip_area option is provided" do
           skip_area = [{x: 10, y: 20, width: 30, height: 40}]
           preprocessor = ImagePreprocessor.new(@driver, skip_area: skip_area)
+          comparison = Comparison.new(:new_image, :base_image, {}, @driver)
 
-          result = preprocessor.call(@test_images)
+          result = preprocessor.process_comparison(comparison)
 
-          assert_equal %w[processed_base_image processed_new_image], result
+          assert_equal comparison, result
           assert_equal 2, @driver.add_black_box_calls.size
 
           first_call = @driver.add_black_box_calls[0]
@@ -45,17 +46,18 @@ module Capybara
           assert_equal :new_image, second_call[:image]
         end
 
-        test "#call applies median filter when VipsDriver is available and median_filter_window_size is specified" do
+        test "#process_comparison applies median filter when VipsDriver is available and median_filter_window_size is specified" do
           skip "VIPS not present. Skipping VIPS driver tests." unless defined?(Vips)
 
           @driver = create_test_driver(is_vips: true)
           window_size = 3
           options = {median_filter_window_size: window_size}
           preprocessor = ImagePreprocessor.new(@driver, options)
+          comparison = Comparison.new(:new_image, :base_image, {}, @driver)
 
-          result = preprocessor.call(@test_images)
+          result = preprocessor.process_comparison(comparison)
 
-          assert_equal ["filtered_base_image", "filtered_new_image"], result
+          assert_equal comparison, result
           assert_equal 2, @driver.filter_calls.size
 
           first_call = @driver.filter_calls[0]
@@ -67,7 +69,7 @@ module Capybara
           assert_equal :new_image, second_call[:image]
         end
 
-        test "call warns and skips median filter when VipsDriver is not available" do
+        test "process_comparison warns and skips median filter when VipsDriver is not available" do
           window_size = 3
           options = {
             median_filter_window_size: window_size,
@@ -76,11 +78,13 @@ module Capybara
 
           expected_warning = /Median filter has been skipped for.*because it is not supported/
 
+          comparison = Comparison.new(:new_image, :base_image, {}, @driver)
+
           warning_output = capture_io do
             preprocessor = ImagePreprocessor.new(@driver, options)
-            result = preprocessor.call(@test_images)
+            result = preprocessor.process_comparison(comparison)
 
-            assert_equal @test_images, result
+            assert_equal comparison, result
             assert_empty @driver.filter_calls
           end
 
