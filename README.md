@@ -126,6 +126,35 @@ Then('I should not see any visual difference') do
 end
 ```
 
+### Quick Setup
+
+Configure all settings in one place using the `configure` helper:
+
+```ruby
+# In test_helper.rb or rails_helper.rb
+Capybara::Screenshot::Diff.configure do |screenshot, diff|
+  screenshot.window_size = [1280, 1024]
+  screenshot.stability_time_limit = 1
+  screenshot.blur_active_element = true
+  screenshot.hide_caret = true
+  diff.driver = :vips
+  diff.tolerance = 0.0005
+  diff.color_distance_limit = 15
+end
+```
+
+**Note:** `fail_if_new` defaults to `true` in CI environments (when `ENV['CI']` is set). New screenshots are allowed locally but rejected in CI — no configuration needed.
+
+**Note:** Setting `Capybara::Screenshot.enabled = false` is sufficient to disable all screenshots. There is no need to define no-op modules or monkey-patch the gem.
+
+### Recommended tolerance values
+
+| Use Case | VIPS `tolerance` | ChunkyPNG `color_distance_limit` | `stability_time_limit` |
+|----------|-----------------|--------------------------------|----------------------|
+| Animated/complex pages | 0.01 | 30 | 2s |
+| Standard Rails apps | 0.0005 | 15 | 1s |
+| Pixel-perfect design tests | 0.0001 | 5 | 1s |
+
 ### Taking screenshots
 
 Add `screenshot '<my_feature>'` to your tests.  The screenshot will be saved in
