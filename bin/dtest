@@ -7,7 +7,7 @@ export DOCKER_DEFAULT_PLATFORM=linux/amd64
 # Define allowed environment variables to pass to Docker
 ALLOWED_ENV_VARS=(
   "CI" "DEBUG" "TEST_ENV" "RAILS_ENV" "RACK_ENV" "COVERAGE" "DISABLE_ROLLBACK_COMPARISON_RUNTIME_FILES"
-  "RECORD_SCREENSHOTS" "TEST" "TESTOPTS" "SCREENSHOT_DRIVER"
+  "RECORD_SCREENSHOTS" "TEST" "TESTOPTS" "SCREENSHOT_DRIVER" "ENABLE_LIGHTPANDA"
 )
 
 # Build the Docker env args string
@@ -19,19 +19,25 @@ for var in "${ALLOWED_ENV_VARS[@]}"; do
 done
 
 # Build the Docker image
-docker build . -t csd:test
+docker build . -t csd:test || exit 1
 
 # Run setup
-(docker run $DOCKER_ENV_ARGS -v ${PWD}:/app -v csd-bundle-cache:/bundle --rm -it csd:test bin/setup) || exit 1
+(docker run $DOCKER_ENV_ARGS -v ${PWD}:/app -v csd-bundle-cache:/bundle --rm csd:test bin/setup) || exit 1
 
 # Run tests with different drivers
 echo "Running tests..."
 DRIVERS=("cuprite" "selenium_chrome_headless" "selenium_headless")
 for driver in "${DRIVERS[@]}"; do
   echo "Running tests with $driver driver..."
-  docker run $DOCKER_ENV_ARGS -e CAPYBARA_DRIVER="$driver" \
-    -v ${PWD}:/app -v csd-bundle-cache:/bundle --rm -it csd:test \
-    bin/rake test "$@"
-
-  CAPYBARA_DRIVER="$driver" bin/rake test "$@"
+  if [[ "$driver" == "cuprite" && -n "$ENABLE_LIGHTPANDA" ]]; then
+    docker run $DOCKER_ENV_ARGS \
+      -e CAPYBARA_DRIVER="$driver" \
+      -e LIGHTPANDA_URL="ws://127.0.0.1:9222" \
+      -v ${PWD}:/app -v csd-bundle-cache:/bundle --rm -t csd:test \
+      bash -c 'lightpanda serve --host 127.0.0.1 --port 9222 & sleep 1 && bin/rake test "$@"' _ "$@" || exit 1
+  else
+    docker run $DOCKER_ENV_ARGS -e CAPYBARA_DRIVER="$driver" \
+      -v ${PWD}:/app -v csd-bundle-cache:/bundle --rm -t csd:test \
+      bin/rake test "$@" || exit 1
+  fi
 done
