@@ -46,7 +46,7 @@ module Capybara
 
           ensure_files_exist!
 
-          @driver_options = options
+          @driver_options = options.freeze
           @driver = Drivers.for(@driver_options)
         end
 
@@ -184,7 +184,7 @@ module Capybara
         # Check if files are identical by content
         def files_identical?(file1, file2)
           FileUtils.compare_file(file1, file2)
-        rescue SystemCallError
+        rescue SystemCallError, IOError
           false
         end
       end
