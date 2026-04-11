@@ -101,7 +101,7 @@ module Capybara
         # Load saved screenshot and pre-process it
         process_screenshot(tmpfile.path, screenshot_path)
       ensure
-        File.unlink(tmpfile) if tmpfile
+        tmpfile&.close!
       end
 
       def capture_screenshot_at(snapshot)
