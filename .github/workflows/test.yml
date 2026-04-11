@@ -42,7 +42,7 @@ jobs:
 
       - uses: ./.github/actions/setup-ruby-and-dependencies
         with:
-          ruby-version: '4.0'
+          ruby-version: "4.0"
 
       - run: bin/rake test
         env:
@@ -59,7 +59,7 @@ jobs:
 
       - uses: ./.github/actions/setup-ruby-and-dependencies
         with:
-          ruby-version: '4.0'
+          ruby-version: "4.0"
           cache-apt-packages: true
 
       - run: bin/rake test
@@ -93,7 +93,7 @@ jobs:
     continue-on-error: ${{ matrix.experimental }}
     strategy:
       matrix:
-        ruby-version: [ '4.0', 3.4, 3.3, 3.2, jruby-10.0 ]
+        ruby-version: [ "4.0", "3.4", "3.3", "jruby-10.0" ]
         gemfile:
           - rails71_gems.rb
           - rails72_gems.rb
@@ -102,11 +102,11 @@ jobs:
         experimental: [ false ]
         exclude:
           # We already tested last version in the functional-test job
-          - ruby-version: '4.0'
+          - ruby-version: "4.0"
             gemfile: rails81_gems.rb
             experimental: false
         include:
-          - ruby-version: '4.0'
+          - ruby-version: "4.0"
             gemfile: edge_gems.rb
             experimental: true
           - ruby-version: jruby-head
@@ -155,7 +155,7 @@ jobs:
 
       - uses: ./.github/actions/setup-ruby-and-dependencies
         with:
-          ruby-version: '4.0'
+          ruby-version: "4.0"
           cache-apt-packages: ${{ matrix.screenshot-driver == 'vips' }}
 
       - name: Cache Selenium
