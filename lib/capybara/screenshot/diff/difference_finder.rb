@@ -91,7 +91,6 @@ module Capybara
         def without_tolerable_options?
           @without_tolerable_options
         end
-
       end
     end
   end
