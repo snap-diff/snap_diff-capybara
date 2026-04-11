@@ -166,8 +166,8 @@ module Capybara
           end
         end
 
-        class VipsUtilTest < ActiveSupport::TestCase
-          test "VipsUtil.difference_region_by detects difference regions without color threshold" do
+        class VipsDriverClassMethodsTest < ActiveSupport::TestCase
+          test "VipsDriver.difference_region_by detects difference regions without color threshold" do
             old_image = Vips::Image.new_from_file("#{TEST_IMAGES_DIR}/a.png")
             new_image = Vips::Image.new_from_file("#{TEST_IMAGES_DIR}/b.png")
 
@@ -180,7 +180,7 @@ module Capybara
             assert_equal [20.0, 15.0, 30.0, 25.0], [left, top, right, bottom]
           end
 
-          test "VipsUtil.difference_region_by respects color_distance threshold" do
+          test "VipsDriver.difference_region_by respects color_distance threshold" do
             old_image = Vips::Image.new_from_file("#{TEST_IMAGES_DIR}/a.png")
             new_image = Vips::Image.new_from_file("#{TEST_IMAGES_DIR}/b.png")
 
@@ -189,7 +189,7 @@ module Capybara
             assert_equal [26.0, 18.0, 27.0, 19.0], [left, top, right, bottom]
           end
 
-          test "VipsUtil.difference_region_by returns correct region coordinates" do
+          test "VipsDriver.difference_region_by returns correct region coordinates" do
             old_image = Vips::Image.new_from_file(TEST_IMAGES_DIR.join("a.png").to_path)
             new_image = Vips::Image.new_from_file(TEST_IMAGES_DIR.join("b.png").to_path)
 
@@ -198,18 +198,18 @@ module Capybara
             assert_equal [20.0, 15.0, 30.0, 25.0], [left, top, right, bottom]
           end
 
-          test "VipsUtil.difference_area calculates correct area of difference" do
+          test "VipsDriver.difference_area calculates correct area of difference" do
             old_image = Vips::Image.new_from_file("#{TEST_IMAGES_DIR}/a.png")
             new_image = Vips::Image.new_from_file("#{TEST_IMAGES_DIR}/d.png").bandjoin(255)
 
-            assert_equal 8, VipsDriver::VipsUtil.difference_area(old_image, new_image, color_distance: 10)
+            assert_equal 8, VipsDriver.difference_area(old_image, new_image, color_distance: 10)
           end
 
           private
 
           def difference(old_image, new_image, color_distance: nil)
-            diff_mask = VipsDriver::VipsUtil.difference_mask(new_image, old_image, color_distance)
-            VipsDriver::VipsUtil.difference_region_by(diff_mask).to_edge_coordinates
+            diff_mask = VipsDriver.difference_mask(new_image, old_image, color_distance)
+            VipsDriver.difference_region_by(diff_mask).to_edge_coordinates
           end
         end
       end

@@ -19,8 +19,8 @@ module Capybara
           def find_difference_region(comparison)
             new_image, base_image, options = comparison.new_image, comparison.base_image, comparison.options
 
-            diff_mask = VipsUtil.difference_mask(base_image, new_image, options[:color_distance_limit])
-            region = VipsUtil.difference_region_by(diff_mask)
+            diff_mask = self.class.difference_mask(base_image, new_image, options[:color_distance_limit])
+            region = self.class.difference_region_by(diff_mask)
             # TODO: schedule research when we got this case for VIPs
             # region = nil if region && region_covers_entire_image?(region, base_image)
 
@@ -55,7 +55,7 @@ module Capybara
           end
 
           def difference_level(diff_mask, old_img, _region = nil)
-            VipsUtil.difference_area_size_by(diff_mask).to_f / image_area_size(old_img)
+            self.class.difference_area_size_by(diff_mask).to_f / image_area_size(old_img)
           end
 
           MAX_FILENAME_LENGTH = 200
@@ -115,24 +115,23 @@ module Capybara
               region.width == width_for(base_image)
           end
 
-          class VipsUtil
-            def self.difference_area(old_image, new_image, color_distance: 0)
-              difference_mask = difference_mask(new_image, old_image, color_distance)
-              difference_area_size_by(difference_mask)
+          class << self
+            def difference_area(old_image, new_image, color_distance: 0)
+              mask = difference_mask(new_image, old_image, color_distance)
+              difference_area_size_by(mask)
             end
 
-            def self.difference_area_size_by(difference_mask)
+            def difference_area_size_by(difference_mask)
               diff_mask = difference_mask == 0
               diff_mask.hist_find.to_a[0][0].max
             end
 
-            def self.difference_mask(base_image, new_image, color_distance = nil)
+            def difference_mask(base_image, new_image, color_distance = nil)
               result = (new_image - base_image).abs
-
               color_distance ? result > color_distance : result
             end
 
-            def self.difference_region_by(diff_mask)
+            def difference_region_by(diff_mask)
               columns, rows = diff_mask.bandor.project
 
               left = columns.profile[1].min
