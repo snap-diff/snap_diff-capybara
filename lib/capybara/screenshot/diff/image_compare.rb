@@ -183,10 +183,8 @@ module Capybara
 
         # Check if files are identical by content
         def files_identical?(file1, file2)
-          # Compare file contents
-          FileUtils.identical?(file1, file2)
-        rescue
-          # If there's any error reading the files, they're not identical
+          FileUtils.compare_file(file1, file2)
+        rescue SystemCallError
           false
         end
       end
