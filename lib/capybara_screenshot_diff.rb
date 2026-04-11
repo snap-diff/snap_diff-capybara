@@ -78,6 +78,18 @@ module Capybara
 
       AVAILABLE_DRIVERS = Utils.detect_available_drivers.freeze
 
+      # Configure screenshot and diff settings in one block.
+      #
+      #   Capybara::Screenshot::Diff.configure do |screenshot, diff|
+      #     screenshot.window_size = [1280, 1024]
+      #     screenshot.stability_time_limit = 1
+      #     diff.driver = :vips
+      #     diff.tolerance = 0.0005
+      #   end
+      def self.configure
+        yield Screenshot, self
+      end
+
       def self.default_options
         {
           area_size_limit: area_size_limit,
