@@ -15,7 +15,7 @@ on:
   workflow_dispatch:
 
 env:
-  BUNDLE_GEMFILE: gemfiles/rails80_gems.rb
+  BUNDLE_GEMFILE: gemfiles/rails81_gems.rb
   DEBIAN_FRONTEND: noninteractive
   FERRUM_PROCESS_TIMEOUT: 40
   JAVA_OPTS: -Xmn2g -Xms6g -Xmx6g -XX:MetaspaceSize=256m -XX:MaxMetaspaceSize=512m -Xss1m
@@ -42,7 +42,7 @@ jobs:
 
       - uses: ./.github/actions/setup-ruby-and-dependencies
         with:
-          ruby-version: 3.4
+          ruby-version: '4.0'
 
       - run: bin/rake test
         env:
@@ -59,7 +59,7 @@ jobs:
 
       - uses: ./.github/actions/setup-ruby-and-dependencies
         with:
-          ruby-version: 3.4
+          ruby-version: '4.0'
           cache-apt-packages: true
 
       - run: bin/rake test
@@ -93,7 +93,7 @@ jobs:
     continue-on-error: ${{ matrix.experimental }}
     strategy:
       matrix:
-        ruby-version: [ 3.4, 3.3, 3.2, jruby-9.4, jruby-10.0 ]
+        ruby-version: [ '4.0', 3.4, 3.3, 3.2, jruby-10.0 ]
         gemfile:
           - rails71_gems.rb
           - rails72_gems.rb
@@ -101,29 +101,16 @@ jobs:
           - rails81_gems.rb
         experimental: [ false ]
         exclude:
-          # We already tested last version
-          - ruby-version: 3.4
-            gemfile: rails80_gems.rb
-            experimental: false
-          # JRuby 9.x is Ruby 3.1 compatible, and Rails 8 requires Ruby 3.2.
-          - ruby-version: jruby-9.4
-            gemfile: rails80_gems.rb
-            experimental: false
-          - ruby-version: jruby-9.4
+          # We already tested last version in the functional-test job
+          - ruby-version: '4.0'
             gemfile: rails81_gems.rb
             experimental: false
         include:
-          - ruby-version: 3.5.0-preview1
-            gemfile: rails81_gems.rb
-            experimental: true
-          - ruby-version: 3.5.0-preview1
-            gemfile: edge_gems.rb
-            experimental: true
-          - ruby-version: 3.4
+          - ruby-version: '4.0'
             gemfile: edge_gems.rb
             experimental: true
           - ruby-version: jruby-head
-            gemfile: rails80_gems.rb
+            gemfile: rails81_gems.rb
             experimental: true
 
     env:
@@ -168,7 +155,7 @@ jobs:
 
       - uses: ./.github/actions/setup-ruby-and-dependencies
         with:
-          ruby-version: 3.4
+          ruby-version: '4.0'
           cache-apt-packages: ${{ matrix.screenshot-driver == 'vips' }}
 
       - name: Cache Selenium

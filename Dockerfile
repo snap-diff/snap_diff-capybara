@@ -3,7 +3,7 @@
 #   $ docker build . -t csd
 #   $ docker run -v $(pwd):/app -ti csd rake test
 
-FROM jetthoughts/cimg-ruby:3.4-chrome
+FROM jetthoughts/cimg-ruby:4.0-chrome
 
 ENV DEBIAN_FRONTEND=noninteractive \
  BUNDLE_PATH=/bundle
