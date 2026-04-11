@@ -51,7 +51,7 @@ module Capybara
         end
 
         def skip_area
-          options[:skip_area]
+          comparison.skip_area
         end
 
         def area_size_limit
