@@ -25,8 +25,7 @@ module Capybara
 
           @comparison_options = comparison_options
 
-          driver = Diff::Drivers.for(@comparison_options)
-          @screenshoter = Diff.screenshoter.new(capture_options.except(:stability_time_limit), driver)
+          @screenshoter = Diff.screenshoter.new(capture_options.except(:stability_time_limit), @comparison_options)
         end
 
         # Takes a comparison screenshot ensuring page stability

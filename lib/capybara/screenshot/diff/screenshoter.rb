@@ -8,9 +8,9 @@ module Capybara
     class Screenshoter
       attr_reader :capture_options, :driver
 
-      def initialize(capture_options, driver)
+      def initialize(capture_options, comparison_options = {})
         @capture_options = capture_options
-        @driver = driver
+        @driver = Diff::Drivers.for(comparison_options)
       end
 
       def crop

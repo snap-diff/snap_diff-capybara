@@ -83,7 +83,7 @@ module Capybara
           screenshoter = if capture_options[:stability_time_limit]
             StableScreenshoter.new(capture_options, comparison_options)
           else
-            Diff.screenshoter.new(capture_options, comparison_options[:driver])
+            Diff.screenshoter.new(capture_options, comparison_options)
           end
           screenshoter.take_comparison_screenshot(@snapshot)
         end
