@@ -22,3 +22,9 @@
 *.attempt_*.webp
 *.diff.webp
 *.base.webp
+.ruby-version
+.specs/
+CLAUDE.md
+AGENTS.md
+GEMINI.md
+QWEN.md
