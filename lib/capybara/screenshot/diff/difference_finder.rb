@@ -46,6 +46,7 @@ module Capybara
         def initialize(driver, options)
           @driver = driver
           @options = options
+          @without_tolerable_options = (options.keys & TOLERABLE_OPTIONS).empty?
         end
 
         # Analyzes the comparison and determines if images are different.
@@ -88,7 +89,7 @@ module Capybara
         private
 
         def without_tolerable_options?
-          (options.keys & TOLERABLE_OPTIONS).empty?
+          @without_tolerable_options
         end
 
         # Build a no-difference result that represents identical images
