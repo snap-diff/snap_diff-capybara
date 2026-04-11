@@ -61,14 +61,13 @@ module Capybara
           # Cleanup all previous attempts for sure
           snapshot.cleanup_attempts!
 
-          0.step do |i|
-            # FIXME: it should be wait, and wait should be replaced with stability_time_limit
-            sleep(stability_time_limit) unless i == 0 # test prev_attempt_path is nil
-
+          loop do
             attempt_next_screenshot(snapshot)
 
             return true if attempt_successful?(snapshot)
             return false if timeout?(deadline_at)
+
+            sleep(stability_time_limit)
           end
         end
 
