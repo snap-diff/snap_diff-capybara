@@ -100,6 +100,21 @@ module CapybaraScreenshotDiff
       end
     end
 
+    test "#assert_no_screenshot_changes reports caller from test method" do
+      Capybara::Screenshot::Diff::Vcs.stub(:checkout_vcs, true) do
+        assert_no_screenshot_jobs_scheduled
+
+        snap = create_snapshot_for(:a, :c)
+
+        assert_no_screenshot_changes(snap.full_name)
+        assert_equal 1, CapybaraScreenshotDiff.assertions.size
+        assert_match(
+          %r{/dsl_test.rb},
+          CapybaraScreenshotDiff.assertions[0].caller.first
+        )
+      end
+    end
+
     test "#screenshot with delayed: false raises error when images differ" do
       Capybara::Screenshot::Diff::Vcs.stub(:checkout_vcs, true) do
         Capybara::Screenshot::Diff.stub(:delayed, false) do
