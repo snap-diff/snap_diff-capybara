@@ -5,7 +5,6 @@ require "capybara/screenshot/diff/version"
 require "capybara/screenshot/diff/utils"
 require "capybara/screenshot/diff/image_compare"
 require "capybara_screenshot_diff/snap_manager"
-require "capybara/screenshot/diff/screenshot_namer_dsl"
 require "capybara/screenshot/diff/screenshoter"
 require "capybara/screenshot/diff/reporters/default"
 

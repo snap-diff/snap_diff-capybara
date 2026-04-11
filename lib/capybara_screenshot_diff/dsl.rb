@@ -4,7 +4,7 @@ require "capybara_screenshot_diff"
 require "capybara/screenshot/diff/drivers"
 require "capybara/screenshot/diff/image_compare"
 require "capybara/screenshot/diff/screenshot_matcher"
-require "capybara/screenshot/diff/screenshot_namer_dsl"
+require "capybara_screenshot_diff/screenshot_namer"
 require "capybara_screenshot_diff/screenshot_assertion"
 
 module CapybaraScreenshotDiff
@@ -16,7 +16,14 @@ module CapybaraScreenshotDiff
   # to provide screenshot comparison capabilities.
   module DSL
     include Capybara::DSL
-    include Capybara::Screenshot::Diff::ScreenshotNamerDSL
+
+    def screenshot_section(name)
+      screenshot_namer.section = name
+    end
+
+    def screenshot_group(name)
+      screenshot_namer.group = name
+    end
 
     # Takes a screenshot and optionally compares it against a baseline image.
     #
@@ -86,6 +93,10 @@ module CapybaraScreenshotDiff
       Capybara::Screenshot::Diff::ScreenshotMatcher
         .new(name, options)
         .build_screenshot_assertion(skip_stack_frames: skip_stack_frames + 1)
+    end
+
+    def screenshot_namer
+      CapybaraScreenshotDiff.screenshot_namer
     end
   end
 end
