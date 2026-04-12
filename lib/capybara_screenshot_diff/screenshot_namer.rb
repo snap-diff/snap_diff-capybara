@@ -72,13 +72,6 @@ module CapybaraScreenshotDiff
       File.join(*([screenshot_area] + directory_parts))
     end
 
-    # Clears the directory for the current screenshot group.
-    # This is typically used when starting a new group to remove old screenshots.
-    def clear_current_group_directory
-      dir_to_clear = current_group_directory
-      FileUtils.rm_rf(dir_to_clear) if Dir.exist?(dir_to_clear)
-    end
-
     private
 
     def reset_group_counter

@@ -112,13 +112,6 @@ module Capybara
 
           private
 
-          def region_covers_entire_image?(region, base_image)
-            region.x.zero? &&
-              region.y.zero? &&
-              region.height == height_for(base_image) &&
-              region.width == width_for(base_image)
-          end
-
           class << self
             def difference_area(old_image, new_image, color_distance: 0)
               mask = difference_mask(new_image, old_image, color_distance)

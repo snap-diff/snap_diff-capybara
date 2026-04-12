@@ -138,21 +138,6 @@ module CapybaraScreenshotDiff
       assert_equal ["s1", "g1"], @screenshot_namer.directory_parts
     end
 
-    test "#clear_current_group_directory removes group directory" do
-      @screenshot_namer.group = "to_clear"
-      dir_path = @screenshot_namer.current_group_directory
-      FileUtils.mkdir_p(dir_path)
-      assert Dir.exist?(dir_path)
-
-      @screenshot_namer.clear_current_group_directory
-      assert_not Dir.exist?(dir_path)
-    end
-
-    test "#clear_current_group_directory handles non-existent directories" do
-      @screenshot_namer.group = "nonexistent"
-      assert_nothing_raised { @screenshot_namer.clear_current_group_directory }
-    end
-
     test "#current_group_directory constructs full directory path" do
       @screenshot_namer.section = "section1"
       @screenshot_namer.group = "group1"
