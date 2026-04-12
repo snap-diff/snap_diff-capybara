@@ -74,7 +74,8 @@ module Capybara
           if Capybara::Screenshot::Diff.fail_if_new && !@snapshot.base_path.exist?
             raise CapybaraScreenshotDiff::ExpectationNotMet.new(<<~ERROR.chomp, caller)
               No existing screenshot found for #{@snapshot.base_path}!
-              To stop seeing this error disable by `Capybara::Screenshot::Diff.fail_if_new=false`
+              To record baselines: RECORD_SCREENSHOTS=1 bundle exec rake test
+              To allow new screenshots: Capybara::Screenshot::Diff.fail_if_new = false
             ERROR
           end
         end
