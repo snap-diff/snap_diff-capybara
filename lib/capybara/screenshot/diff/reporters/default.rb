@@ -8,7 +8,8 @@ module Capybara::Screenshot::Diff
       def initialize(difference)
         @difference = difference
 
-        screenshot_format = difference.comparison.options[:screenshot_format] || comparison.new_image_path.extname.delete_prefix(".").presence || "png"
+        ext = comparison.new_image_path.extname.delete_prefix(".")
+        screenshot_format = difference.comparison.options[:screenshot_format] || (ext unless ext.empty?) || "png"
         @annotated_image_path = comparison.new_image_path.sub_ext(".diff.#{screenshot_format}")
         @annotated_base_image_path = comparison.base_image_path.sub_ext(".diff.#{screenshot_format}")
         @heatmap_diff_path = comparison.new_image_path.sub_ext(".heatmap.diff.#{screenshot_format}")
