@@ -1,125 +1,463 @@
 <!DOCTYPE html>
-<html class="h-full bg-white">
+<html lang="en">
 <head>
-    <meta charset="UTF-8"/>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>Screenshot Diff Report — <%= failed %> failures</title>
-    <script src="https://cdn.tailwindcss.com?plugins=forms,typography,aspect-ratio"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3/dist/cdn.min.js"></script>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>SnapDiff Report — <%= failed %> failures</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:         #0f111a;
+      --bg2:        #181a27;
+      --bg3:        #1e2035;
+      --bg4:        #282a40;
+      --border:     #2d2f45;
+      --text:       #e8eaed;
+      --text2:      #9aa0b4;
+      --text3:      #8b90a8;
+      --accent:     #7c6cf0;
+      --accent-dim: #5b4dc7;
+      --accent-bg:  rgba(124,108,240,.12);
+      --red:        #f87171;
+      --red-dim:    rgba(248,113,113,.15);
+      --green:      #4ade80;
+      --green-dim:  rgba(74,222,128,.15);
+      --orange:     #fb923c;
+      --surface:    #13151f;
+      --radius:     8px;
+      --radius-sm:  5px;
+      --sidebar-w:  260px;
+      --bar-h:      44px;
+      --zoom-h:     36px;
+      --font:       -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      --font-mono:  'SF Mono', 'Cascadia Code', 'Fira Code', monospace;
+    }
+    body { font-family: var(--font); background: var(--bg); color: var(--text); height: 100dvh; display: flex; flex-direction: column; overflow: hidden; -webkit-font-smoothing: antialiased; }
+
+    /* ── Top bar ─────────────────────────────────────────────────────── */
+    #topbar { height: var(--bar-h); background: var(--bg2); border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 .75rem; flex-shrink: 0; gap: .5rem; z-index: 20; }
+    .logo { display: flex; align-items: center; gap: .4rem; font-size: .75rem; font-weight: 700; color: var(--text); white-space: nowrap; }
+    .logo svg { flex-shrink: 0; }
+    .sep { width: 1px; height: 18px; background: var(--border); flex-shrink: 0; }
+    .nav-group { display: flex; align-items: center; gap: .2rem; }
+    .nav-btn { width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; background: none; border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text2); cursor: pointer; transition: all .12s; }
+    .nav-btn:hover { background: var(--bg4); color: var(--text); }
+    .nav-counter { font-size: .6875rem; font-family: var(--font-mono); color: var(--text2); padding: 0 .25rem; }
+    #topbar-title { font-size: .75rem; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+    .diff-badge { font-size: .625rem; font-family: var(--font-mono); font-weight: 600; padding: .1rem .375rem; border-radius: 10px; white-space: nowrap; flex-shrink: 0; }
+    .diff-badge-fail { background: var(--red-dim); color: var(--red); }
+    .diff-badge-pass { background: var(--green-dim); color: var(--green); }
+    .spacer { flex: 1; }
+    .stats { display: flex; gap: .3rem; align-items: center; flex-shrink: 0; }
+    .stat-pill { font-size: .625rem; font-family: var(--font-mono); font-weight: 500; padding: .125rem .4rem; border-radius: 10px; display: flex; align-items: center; gap: .2rem; }
+    .stat-pill .dot { width: 5px; height: 5px; border-radius: 50%; }
+    .stat-fail { background: var(--red-dim); color: var(--red); }
+    .stat-fail .dot { background: var(--red); }
+    .stat-pass { background: var(--green-dim); color: var(--green); }
+    .stat-pass .dot { background: var(--green); }
+    .stat-total { background: var(--bg4); color: var(--text2); }
+    .stat-total .dot { background: var(--text3); }
+
+    /* ── Layout ──────────────────────────────────────────────────────── */
+    #layout { display: flex; flex: 1; overflow: hidden; }
+
+    /* ── Sidebar ─────────────────────────────────────────────────────── */
+    #sidebar { width: var(--sidebar-w); flex-shrink: 0; background: var(--bg2); border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; }
+    #search-wrap { padding: .4rem .5rem; position: relative; }
+    .search-icon { position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: var(--text3); pointer-events: none; }
+    #search { width: 100%; padding: .375rem .5rem .375rem 2.125rem; font-size: .6875rem; font-family: var(--font); background: var(--bg3); color: var(--text); border: 1px solid transparent; border-radius: var(--radius); outline: none; transition: border-color .15s; }
+    #search:focus { border-color: var(--accent); background: var(--bg); }
+    #search::placeholder { color: var(--text3); }
+    #sidebar-list { flex: 1; overflow-y: auto; padding: .375rem; display: flex; flex-direction: column; gap: .375rem; }
+    .thumb-btn { width: 100%; text-align: left; background: transparent; border: 2px solid transparent; border-radius: var(--radius); padding: .3rem; cursor: pointer; transition: border-color .1s, background .1s; }
+    .thumb-btn:hover { background: var(--bg3); border-color: var(--border); }
+    .thumb-btn.active { border-color: var(--accent); background: var(--accent-bg); }
+    .thumb-btn.active .thumb-name { color: var(--text); }
+    .thumb-img-wrap { aspect-ratio: 16/10; background: var(--surface); border-radius: 4px; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+    .thumb-img-wrap img { width: 100%; height: 100%; object-fit: contain; display: block; }
+    .thumb-footer { display: flex; align-items: center; justify-content: space-between; margin-top: .25rem; gap: .2rem; }
+    .thumb-name { font-size: .625rem; font-weight: 500; color: var(--text2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0; }
+    .thumb-badge { font-size: .5rem; font-family: var(--font-mono); font-weight: 600; padding: .0625rem .25rem; border-radius: 8px; flex-shrink: 0; }
+    .thumb-badge-fail { background: var(--red-dim); color: var(--red); }
+    .thumb-badge-pass { background: var(--green-dim); color: var(--green); }
+
+    /* ── Main ────────────────────────────────────────────────────────── */
+    #main { flex: 1; overflow: hidden; display: flex; flex-direction: column; background: var(--bg); }
+
+    /* ── Toolbar ─────────────────────────────────────────────────────── */
+    #toolbar { display: flex; align-items: center; padding: .375rem .75rem; gap: .5rem; background: var(--bg2); flex-shrink: 0; }
+    .toolbar-label { font-size: .625rem; font-weight: 500; text-transform: uppercase; letter-spacing: .06em; color: var(--text3); white-space: nowrap; }
+    .btn-group { display: flex; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+    .tbtn { padding: .3rem .5rem; font-size: .625rem; font-family: var(--font); font-weight: 500; background: transparent; color: var(--text3); border: none; border-right: 1px solid var(--border); cursor: pointer; transition: all .1s; white-space: nowrap; display: flex; align-items: center; gap: .25rem; }
+    .tbtn:last-child { border-right: none; }
+    .tbtn:hover { background: var(--bg3); color: var(--text2); }
+    .tbtn.active { background: var(--accent); color: #fff; }
+    .tbtn svg { width: 13px; height: 13px; opacity: .8; }
+    .tbtn.active svg { opacity: 1; }
+    /* Annotation toggle */
+    .toggle-btn { padding: .3rem .625rem; font-size: .625rem; font-family: var(--font); font-weight: 500; background: var(--bg); color: var(--text3); border: 1px solid var(--border); border-radius: var(--radius); cursor: pointer; transition: all .1s; display: flex; align-items: center; gap: .3rem; white-space: nowrap; }
+    .toggle-btn:hover { color: var(--text2); border-color: var(--text3); }
+    .toggle-btn.active { background: var(--red-dim); color: var(--red); border-color: var(--red); }
+    .toggle-pip { width: 7px; height: 7px; border-radius: 50%; background: var(--text3); transition: background .1s; }
+    .toggle-btn.active .toggle-pip { background: var(--red); }
+
+    /* ── View area ───────────────────────────────────────────────────── */
+    #view-area { flex: 1; overflow: hidden; padding: .5rem; }
+    #view-inner { width: 100%; height: 100%; }
+
+    /* Both (side-by-side) */
+    .view-both { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; width: 100%; height: 100%; }
+    .img-panel { display: flex; flex-direction: column; min-height: 0; }
+    .img-label { font-size: .5625rem; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; color: var(--text3); margin-bottom: .25rem; display: flex; align-items: center; gap: .25rem; }
+    .dot-base { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); }
+    .dot-new { width: 5px; height: 5px; border-radius: 50%; background: var(--orange); }
+    .dot-heat { width: 5px; height: 5px; border-radius: 50%; background: #f59e0b; }
+    /* img-box: scrollable container for per-image zoom+pan */
+    .img-box { background: var(--surface); border-radius: var(--radius); overflow: hidden; flex: 1; position: relative; }
+    .img-box.pannable { overflow: auto; cursor: move; }
+    .img-box.dragging { cursor: move; }
+    .img-box img { display: block; object-fit: contain; transform-origin: 0 0; }
+    /* At 100% zoom, image fills the box */
+    .img-box[data-zoom="100"] img { width: 100%; height: 100%; }
+
+    /* Single image */
+    .view-single { width: 100%; height: 100%; display: flex; flex-direction: column; }
+    .view-single .img-box { flex: 1; }
+
+    /* ── Zoom bar ────────────────────────────────────────────────────── */
+    #zoom-bar { height: var(--zoom-h); background: var(--bg2); border-top: 1px solid var(--border); display: flex; align-items: center; justify-content: center; gap: .5rem; flex-shrink: 0; padding: 0 .75rem; }
+    .zoom-btn { width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; background: none; border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text2); cursor: pointer; transition: all .1s; }
+    .zoom-btn:hover { background: var(--bg4); color: var(--text); }
+    .zoom-label { font-size: .625rem; font-family: var(--font-mono); color: var(--text2); min-width: 3rem; text-align: center; }
+    .zoom-fit { font-size: .625rem; font-family: var(--font); font-weight: 500; background: none; border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text2); padding: .2rem .5rem; cursor: pointer; transition: all .1s; }
+    .zoom-fit:hover { background: var(--bg4); color: var(--text); }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+    @media (max-width: 768px) {
+      #layout { flex-direction: column; }
+      #sidebar { width: 100%; max-height: 110px; flex-direction: row; }
+      #search-wrap { display: none; }
+      #sidebar-list { flex-direction: row; overflow-x: auto; overflow-y: hidden; }
+      .thumb-btn { width: auto; min-width: 120px; flex-shrink: 0; }
+      .view-both { grid-template-columns: 1fr; }
+    }
+  </style>
 </head>
+<body>
 
-<body class="h-full overflow-hidden">
-<div x-data>
-    <div class="flex h-screen">
-        <div class="flex min-w-0 flex-1 flex-col overflow-hidden">
+<header id="topbar">
+  <div class="logo">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/><path d="M3 12h18"/></svg>
+    SnapDiff
+  </div>
+  <div class="sep"></div>
+  <div class="nav-group">
+    <button class="nav-btn" id="nav-prev" aria-label="Previous"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 18l-6-6 6-6"/></svg></button>
+    <span class="nav-counter" id="nav-counter">1/<%= failed %></span>
+    <button class="nav-btn" id="nav-next" aria-label="Next"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg></button>
+  </div>
+  <span id="topbar-title"></span>
+  <span id="topbar-badge" class="diff-badge diff-badge-fail"></span>
+  <div class="spacer"></div>
+  <div class="stats">
+    <span class="stat-pill stat-fail"><span class="dot"></span><%= failed %> failed</span>
+    <span class="stat-pill stat-pass"><span class="dot"></span><%= passed %> passed</span>
+    <span class="stat-pill stat-total"><span class="dot"></span><%= total %> total</span>
+  </div>
+</header>
 
-            <!-- Summary Bar -->
-            <div class="bg-gray-50 border-b px-6 py-3 flex items-center justify-between">
-                <h1 class="text-lg font-semibold text-gray-900">Screenshot Diff Report</h1>
-                <div class="flex gap-4 text-sm">
-                    <span class="text-gray-600">Total: <strong><%= total %></strong></span>
-                    <span class="text-red-600">Failed: <strong><%= failed %></strong></span>
-                    <span class="text-green-600">Passed: <strong><%= passed %></strong></span>
-                    <span class="text-gray-500">(<%= success_rate %>%)</span>
-                </div>
-            </div>
-
-            <div class="relative z-0 flex flex-1 overflow-hidden">
-
-                <!-- Main Content -->
-                <main class="relative z-0 flex-1 overflow-y-auto focus:outline-none sm:order-last p-6">
-                    <div x-data="{items: $store.screenshots.items}">
-                        <template x-for="(item, id) in items">
-                            <article x-show="item.selected">
-                                <h2 class="text-lg font-medium text-gray-900 mb-4" x-text="item.name"></h2>
-
-                                <div class="mb-4">
-                                    <button @click="$store.diff.toggle()"
-                                            :class="$store.diff.on ? 'bg-red-100 text-red-700' : 'bg-white text-gray-700'"
-                                            type="button"
-                                            class="inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50">
-                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5">
-                                            <path d="M16.5 6a3 3 0 0 0-3-3H6a3 3 0 0 0-3 3v7.5a3 3 0 0 0 3 3v-6A4.5 4.5 0 0 1 10.5 6h6Z"/>
-                                            <path d="M18 7.5a3 3 0 0 1 3 3V18a3 3 0 0 1-3 3h-7.5a3 3 0 0 1-3-3v-7.5a3 3 0 0 1 3-3H18Z"/>
-                                        </svg>
-                                        <span x-text="$store.diff.on ? 'Showing Diff' : 'Show Diff'"></span>
-                                    </button>
-                                </div>
-
-                                <div class="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <p class="text-sm font-medium text-gray-500 mb-2">Baseline</p>
-                                        <div class="bg-black rounded-lg border overflow-hidden">
-                                            <img class="w-full" :alt="'Baseline: ' + item.name" :src="item.original">
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <p class="text-sm font-medium text-gray-500 mb-2" x-text="$store.diff.on ? 'Diff' : 'Current'"></p>
-                                        <div class="bg-black rounded-lg border overflow-hidden">
-                                            <img class="w-full" :alt="'Current: ' + item.name" :src="$store.screenshots.comparison(id)">
-                                        </div>
-                                    </div>
-                                </div>
-                            </article>
-                        </template>
-                    </div>
-                </main>
-
-                <!-- Sidebar -->
-                <aside class="hidden w-72 border-r border-gray-200 sm:order-first sm:flex sm:flex-col">
-                    <div class="p-3">
-                        <input type="text"
-                               x-model="$store.screenshots.search"
-                               placeholder="Search screenshots..."
-                               class="w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-                    </div>
-                    <nav class="flex-1 overflow-y-auto p-3" x-data="{items: $store.screenshots.items}">
-                        <template x-for="(item, id) in items">
-                            <div class="mb-2" x-show="item.name.toLowerCase().includes(($store.screenshots.search || '').toLowerCase())">
-                                <button @click="$store.screenshots.select(id)"
-                                        class="w-full text-left rounded-lg border-2 p-1 transition-colors"
-                                        :class="item.selected ? 'border-indigo-500 shadow-md' : 'border-transparent hover:border-gray-300'">
-                                    <div class="aspect-w-5 aspect-h-3 overflow-hidden rounded bg-black">
-                                        <img class="object-contain" :alt="item.name" :src="item.diff || item.new">
-                                    </div>
-                                    <p class="mt-1 truncate text-xs text-gray-600" x-text="item.name"></p>
-                                </button>
-                            </div>
-                        </template>
-                    </nav>
-                </aside>
-            </div>
-        </div>
+<div id="layout">
+  <aside id="sidebar">
+    <div id="search-wrap">
+      <svg class="search-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+      <input id="search" type="search" placeholder="Filter…" autocomplete="off"/>
     </div>
+    <nav id="sidebar-list"></nav>
+  </aside>
+
+  <main id="main">
+    <div id="toolbar">
+      <span class="toolbar-label">View</span>
+      <div class="btn-group" id="view-btns">
+        <button class="tbtn active" data-view="both" title="Both (1)">
+          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="1" y="1" width="5" height="12" rx="1"/><rect x="8" y="1" width="5" height="12" rx="1"/></svg>
+        </button>
+        <button class="tbtn" data-view="base" title="Base only (2)">
+          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="2" y="2" width="10" height="10" rx="1"/><path d="M5 7h4" stroke-width="1.5"/></svg>
+        </button>
+        <button class="tbtn" data-view="new" title="New only (3)">
+          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="2" y="2" width="10" height="10" rx="1"/><path d="M5 7h4M7 5v4" stroke-width="1.5"/></svg>
+        </button>
+        <button class="tbtn" data-view="heatmap" title="Heatmap (4)">
+          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="1" y="1" width="12" height="12" rx="1"/><circle cx="7" cy="7" r="3" fill="currentColor" opacity=".3"/><circle cx="7" cy="7" r="1.5" fill="currentColor" opacity=".6"/></svg>
+        </button>
+      </div>
+      <div class="sep"></div>
+      <button class="toggle-btn" id="annotate-toggle" title="Show annotated versions (A)">
+        <span class="toggle-pip"></span> Annotated
+      </button>
+    </div>
+
+    <div id="view-area">
+      <div id="view-inner"></div>
+    </div>
+
+    <div id="zoom-bar">
+      <button class="zoom-btn" id="zoom-out" title="Zoom out (-)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M8 11h6"/></svg></button>
+      <span class="zoom-label" id="zoom-label">100%</span>
+      <button class="zoom-btn" id="zoom-in" title="Zoom in (+)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M11 8v6M8 11h6"/></svg></button>
+      <button class="zoom-fit" id="zoom-fit">Fit to width</button>
+    </div>
+  </main>
 </div>
 
 <script>
-  document.addEventListener('alpine:init', () => {
-    Alpine.store('diff', {
-      on: false,
-      toggle() { this.on = !this.on }
-    })
+(function() {
+  'use strict';
+  var DATA = <%= failures.to_json.gsub("</", "<\\/") %>;
+  var state = { current: 0, view: 'both', annotated: false, zoom: 100, search: '' };
+  var $ = function(id) { return document.getElementById(id); };
 
-    Alpine.store('screenshots', {
-      current: 0,
-      search: '',
-      items: <%= failed_screenshots.to_json.gsub("</", "<\\/") %>,
+  var searchEl = $('search'), sidebarList = $('sidebar-list');
+  var topTitle = $('topbar-title'), topBadge = $('topbar-badge'), navCounter = $('nav-counter');
+  var viewInner = $('view-inner'), viewArea = $('view-area');
+  var viewBtns = document.querySelectorAll('#view-btns .tbtn');
+  var annotateBtn = $('annotate-toggle');
 
-      select(id) {
-        if (this.items.length === 0) return
-        if (this.items[this.current]) this.items[this.current].selected = false
-        this.current = id
-        this.items[id].selected = true
-      },
+  /* ── Filtered list ────────────────────────────────────────────────── */
+  var filtered = [];
+  function rebuildFiltered() {
+    var q = state.search.toLowerCase();
+    filtered = [];
+    DATA.forEach(function(item, i) { if (!q || item.name.toLowerCase().indexOf(q) !== -1) filtered.push(i); });
+    if (filtered.length && filtered.indexOf(state.current) === -1) state.current = filtered[0];
+  }
 
-      comparison(id) {
-        return Alpine.store('diff').on ? this.items[id].diff : this.items[id].new
+  /* ── Sidebar ──────────────────────────────────────────────────────── */
+  function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+  function buildSidebar() {
+    sidebarList.innerHTML = '';
+    filtered.forEach(function(idx) {
+      var item = DATA[idx];
+      var btn = document.createElement('button');
+      btn.className = 'thumb-btn' + (idx === state.current ? ' active' : '');
+      btn.title = item.name;
+      btn.dataset.idx = idx;
+      /* Thumbnail: annotated mode → heatmap; normal → new image (no annotation) */
+      var thumb = state.annotated ? (item.heatmap || item.new || item.original || '') : (item.new || item.original || '');
+      var hasDiff = item.diff || item.heatmap;
+      var badgeText = hasDiff
+        ? (item.diff_level != null ? item.diff_level + '%' : 'changed')
+        : 'pass';
+      btn.innerHTML =
+        '<div class="thumb-img-wrap"><img src="' + esc(thumb) + '" alt="" loading="lazy"/></div>' +
+        '<div class="thumb-footer">' +
+          '<div class="thumb-name">' + esc(item.name) + '</div>' +
+          '<span class="thumb-badge ' + (hasDiff ? 'thumb-badge-fail' : 'thumb-badge-pass') + '">' + badgeText + '</span>' +
+        '</div>';
+      btn.addEventListener('click', function() { selectItem(+this.dataset.idx); });
+      sidebarList.appendChild(btn);
+    });
+  }
+
+  /* ── Selection ────────────────────────────────────────────────────── */
+  function selectItem(idx) {
+    if (!filtered.length) return;
+    if (filtered.indexOf(idx) === -1) idx = filtered[Math.max(0, Math.min(idx, filtered.length - 1))];
+    state.current = idx;
+    render();
+    buildSidebar();
+    var a = sidebarList.querySelector('.thumb-btn.active');
+    if (a) a.scrollIntoView({ block: 'nearest' });
+  }
+  function selectNext() { var p = filtered.indexOf(state.current); if (p < filtered.length - 1) selectItem(filtered[p + 1]); }
+  function selectPrev() { var p = filtered.indexOf(state.current); if (p > 0) selectItem(filtered[p - 1]); }
+
+  /* ── Render ───────────────────────────────────────────────────────── */
+  function render() {
+    var item = DATA[state.current];
+    if (!item) return;
+
+    topTitle.textContent = item.name;
+    var pos = filtered.indexOf(state.current);
+    navCounter.textContent = (pos + 1) + '/' + filtered.length;
+    var hasDiff = item.diff || item.heatmap;
+    if (hasDiff && item.diff_level != null) {
+      topBadge.textContent = item.diff_level + '% diff';
+    } else {
+      topBadge.textContent = hasDiff ? 'changed' : 'pass';
+    }
+    topBadge.className = 'diff-badge ' + (hasDiff ? 'diff-badge-fail' : 'diff-badge-pass');
+
+    /* Resolve image sources based on view + annotated toggle */
+    var ann = state.annotated;
+    var baseImg = ann ? (item.base_diff || item.original || '') : (item.original || '');
+    var newImg  = ann ? (item.diff || item.new || '')          : (item.new || '');
+    var heatImg = item.heatmap || '';
+
+    var baseLbl = ann ? 'Annotated Base' : 'Baseline';
+    var newLbl  = ann ? 'Annotated New'  : 'Current';
+
+    var html = '';
+    switch (state.view) {
+      case 'both':
+        html = '<div class="view-both">' +
+          '<div class="img-panel"><div class="img-label"><span class="dot-base"></span> ' + baseLbl + '</div><div class="img-box"><img src="' + esc(baseImg) + '" alt="Base"/></div></div>' +
+          '<div class="img-panel"><div class="img-label"><span class="dot-new"></span> ' + newLbl + '</div><div class="img-box"><img src="' + esc(newImg) + '" alt="New"/></div></div>' +
+        '</div>';
+        break;
+      case 'base':
+        html = '<div class="view-single"><div class="img-label"><span class="dot-base"></span> ' + baseLbl + '</div><div class="img-box"><img src="' + esc(baseImg) + '" alt="Base"/></div></div>';
+        break;
+      case 'new':
+        html = '<div class="view-single"><div class="img-label"><span class="dot-new"></span> ' + newLbl + '</div><div class="img-box"><img src="' + esc(newImg) + '" alt="New"/></div></div>';
+        break;
+      case 'heatmap':
+        html = '<div class="view-single"><div class="img-label"><span class="dot-heat"></span> Heatmap</div><div class="img-box"><img src="' + esc(heatImg) + '" alt="Heatmap"/></div></div>';
+        break;
+    }
+    viewInner.innerHTML = html;
+    applyZoom();
+    initPan();
+
+    /* Update button states */
+    viewBtns.forEach(function(b) { b.classList.toggle('active', b.dataset.view === state.view); });
+    annotateBtn.classList.toggle('active', state.annotated);
+  }
+
+  /* ── View switching ───────────────────────────────────────────────── */
+  viewBtns.forEach(function(btn) {
+    btn.addEventListener('click', function() { state.view = this.dataset.view; render(); buildSidebar(); });
+  });
+  function toggleAnnotated() { state.annotated = !state.annotated; render(); buildSidebar(); }
+  annotateBtn.addEventListener('click', toggleAnnotated);
+
+  /* Click on image toggles annotated mode (ignore drags) */
+  var clickStart = null;
+  viewArea.addEventListener('mousedown', function(e) { clickStart = { x: e.clientX, y: e.clientY }; });
+  viewArea.addEventListener('click', function(e) {
+    if (!clickStart) return;
+    var dx = Math.abs(e.clientX - clickStart.x), dy = Math.abs(e.clientY - clickStart.y);
+    clickStart = null;
+    if (dx > 3 || dy > 3) return; /* was a drag, not a click */
+    if (e.target.closest('.img-box')) toggleAnnotated();
+  });
+
+  /* ── Per-image zoom ────────────────────────────────────────────────── */
+  function applyZoom() {
+    var boxes = viewInner.querySelectorAll('.img-box');
+    var s = state.zoom / 100;
+    boxes.forEach(function(box) {
+      var img = box.querySelector('img');
+      if (!img) return;
+      if (state.zoom === 100) {
+        img.style.width = '100%';
+        img.style.height = '100%';
+        img.style.objectFit = 'contain';
+        box.classList.remove('pannable');
+      } else {
+        img.style.width = (s * 100) + '%';
+        img.style.height = 'auto';
+        img.style.objectFit = '';
+        box.classList.add('pannable');
       }
-    })
+    });
+    $('zoom-label').textContent = state.zoom + '%';
+  }
 
-    const store = Alpine.store('screenshots')
-    if (store.items.length > 0) store.select(0)
-  })
+  /* ── Synchronized drag-to-pan across all img-boxes ───────────────── */
+  var syncing = false;
+  var dragBox = null, dragStartX, dragStartY, dragScrollL, dragScrollT;
+
+  function syncScroll(source) {
+    if (syncing) return;
+    syncing = true;
+    viewInner.querySelectorAll('.img-box').forEach(function(box) {
+      if (box !== source) { box.scrollLeft = source.scrollLeft; box.scrollTop = source.scrollTop; }
+    });
+    syncing = false;
+  }
+
+  /* Document-level listeners registered once (avoid accumulation on re-render) */
+  document.addEventListener('mousemove', function(e) {
+    if (!dragBox) return;
+    dragBox.scrollLeft = dragScrollL - (e.clientX - dragStartX);
+    dragBox.scrollTop  = dragScrollT - (e.clientY - dragStartY);
+  });
+  document.addEventListener('mouseup', function() {
+    if (dragBox) { dragBox.classList.remove('dragging'); dragBox = null; }
+  });
+
+  function initPan() {
+    viewInner.querySelectorAll('.img-box').forEach(function(box) {
+      box.addEventListener('scroll', function() { syncScroll(box); });
+      box.addEventListener('mousedown', function(e) {
+        if (state.zoom <= 100) return;
+        dragBox = box; box.classList.add('dragging');
+        dragStartX = e.clientX; dragStartY = e.clientY;
+        dragScrollL = box.scrollLeft; dragScrollT = box.scrollTop;
+        e.preventDefault();
+      });
+    });
+  }
+
+  function zoomTo(v) { state.zoom = Math.max(25, Math.min(500, v)); applyZoom(); }
+
+  $('zoom-in').addEventListener('click', function() { zoomTo(state.zoom + 50); });
+  $('zoom-out').addEventListener('click', function() { zoomTo(state.zoom - 50); });
+  $('zoom-fit').addEventListener('click', function() { zoomTo(100); });
+
+  /* Ctrl/Cmd/Alt + scroll wheel to zoom (smooth, small steps) */
+  viewArea.addEventListener('wheel', function(e) {
+    if (!(e.ctrlKey || e.metaKey || e.altKey)) return;
+    e.preventDefault();
+    /* Use 5% steps for smooth zoom; clamp deltaY to avoid trackpad acceleration */
+    var step = 3;
+    var direction = e.deltaY < 0 ? 1 : -1;
+    zoomTo(state.zoom + direction * step);
+  }, { passive: false });
+
+  /* ── Nav ───────────────────────────────────────────────────────────── */
+  $('nav-prev').addEventListener('click', selectPrev);
+  $('nav-next').addEventListener('click', selectNext);
+
+  /* ── Search ────────────────────────────────────────────────────────── */
+  searchEl.addEventListener('input', function() { state.search = this.value; rebuildFiltered(); buildSidebar(); if (filtered.length) render(); });
+
+  /* ── Keyboard ──────────────────────────────────────────────────────── */
+  document.addEventListener('keydown', function(e) {
+    if (e.target.tagName === 'INPUT') { if (e.key === 'Escape') searchEl.blur(); return; }
+    switch (e.key) {
+      case 'ArrowRight': case 'ArrowDown': e.preventDefault(); selectNext(); break;
+      case 'ArrowLeft':  case 'ArrowUp':   e.preventDefault(); selectPrev(); break;
+      case '1': state.view = 'both'; render(); buildSidebar(); break;
+      case '2': state.view = 'base'; render(); buildSidebar(); break;
+      case '3': state.view = 'new'; render(); buildSidebar(); break;
+      case '4': state.view = 'heatmap'; render(); buildSidebar(); break;
+      case 'a': case 'A': state.annotated = !state.annotated; render(); buildSidebar(); break;
+      case '/': e.preventDefault(); searchEl.focus(); break;
+      case '+': case '=': zoomTo(state.zoom + 25); break;
+      case '-': zoomTo(state.zoom - 25); break;
+      case '0': zoomTo(100); break;
+    }
+  });
+
+  /* ── Init ──────────────────────────────────────────────────────────── */
+  if (!DATA.length) {
+    sidebarList.innerHTML = '<div class="empty-state"><div class="empty-text">No failures</div></div>';
+    topTitle.textContent = 'All clear';
+    topBadge.style.display = 'none';
+  } else {
+    rebuildFiltered();
+    buildSidebar();
+    render();
+  }
+}());
 </script>
 </body>
 </html>

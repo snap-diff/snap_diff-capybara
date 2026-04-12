@@ -29,6 +29,11 @@ task :coverage do
   Rake::Task["test"].invoke
 end
 
+desc "Generate sample HTML report for manual testing"
+task "report:sample" do
+  ruby "scripts/generate_sample_report.rb"
+end
+
 task "clobber" do
   puts "Cleanup tmp/*.png"
   FileUtils.rm_rf(Dir["./tmp/*"])

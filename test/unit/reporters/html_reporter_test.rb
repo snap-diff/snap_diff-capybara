@@ -6,6 +6,8 @@ require "capybara_screenshot_diff/reporters/html"
 module CapybaraScreenshotDiff
   module Reporters
     class HTMLReporterTest < ActiveSupport::TestCase
+      include CapybaraScreenshotDiff::DSLStub
+
       setup do
         @output_dir = Pathname.new(Dir.mktmpdir)
         @output_path = @output_dir / "report.html"
@@ -15,18 +17,18 @@ module CapybaraScreenshotDiff
         FileUtils.remove_entry(@output_dir)
       end
 
-      test "#format with no assertions writes nothing" do
+      test "#record with no assertions writes nothing" do
         reporter = HTML.new(output_path: @output_path)
         reporter.record([])
 
         assert_not @output_path.exist?
       end
 
-      test "#format with passing assertions writes nothing" do
+      test "#record with passing assertions writes nothing" do
         reporter = HTML.new(output_path: @output_path)
 
-        assertion = build_passing_assertion("index")
-        reporter.record([assertion])
+        reporter.record([build_passing_assertion("index")])
+        reporter.finalize
 
         assert_not @output_path.exist?
       end
@@ -54,9 +56,9 @@ module CapybaraScreenshotDiff
         reporter.finalize
 
         html = @output_path.read
-        assert_match(/Total.*<strong>3<\/strong>/, html)
-        assert_match(/Failed.*<strong>2<\/strong>/, html)
-        assert_match(/Passed.*<strong>1<\/strong>/, html)
+        assert_includes html, "2 failed"
+        assert_includes html, "1 passed"
+        assert_includes html, "3 total"
       end
 
       test "#record tolerates broken assertions without crashing" do
@@ -79,20 +81,17 @@ module CapybaraScreenshotDiff
       private
 
       def build_passing_assertion(name)
-        difference_stub = Struct.new(:different?).new(false)
-        compare_stub = Struct.new(:difference, :different?).new(difference_stub, false)
-        ScreenshotAssertion.new(name).tap { |a| a.compare = compare_stub }
+        compare = make_comparison(:a, :a, destination: "pass_#{name}")
+        compare.processed
+
+        ScreenshotAssertion.new(name).tap { |a| a.compare = compare }
       end
 
       def build_failing_assertion(name)
-        reporter_stub = Struct.new(:annotated_image_path, :annotated_base_image_path, :heatmap_diff_path)
-          .new(@output_dir / "#{name}.diff.png", @output_dir / "#{name}.base.diff.png", @output_dir / "#{name}.heatmap.diff.png")
+        compare = make_comparison(:a, :b, destination: "fail_#{name}")
+        compare.processed
 
-        difference_stub = Struct.new(:different?).new(true)
-        compare_stub = Struct.new(:difference, :different?, :base_image_path, :image_path, :reporter)
-          .new(difference_stub, true, @output_dir / "#{name}.base.png", @output_dir / "#{name}.png", reporter_stub)
-
-        ScreenshotAssertion.new(name).tap { |a| a.compare = compare_stub }
+        ScreenshotAssertion.new(name).tap { |a| a.compare = compare }
       end
     end
   end
