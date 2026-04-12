@@ -887,6 +887,13 @@ screenshot "dashboard", skip_area: [".timestamp", "#ad-banner"]
 Check that `Capybara::Screenshot.enabled` is not `false`. With `delayed: true` (default),
 comparisons run in `before_teardown`, not inline — errors appear after the test body.
 
+**Debug mode**
+Set `DEBUG=1` to keep comparison runtime files (`.diff.png`, `.heatmap.diff.png`) and
+enable verbose diagnostic messages from the reporter:
+```bash
+DEBUG=1 bundle exec rake test
+```
+
 ## Development
 
 After checking out the repo, run `bin/setup` to install dependencies.
