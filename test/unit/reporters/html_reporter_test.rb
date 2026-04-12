@@ -195,7 +195,7 @@ module CapybaraScreenshotDiff
         summary = reporter.summary
         assert_includes summary, "1 screenshot"
         assert_includes summary, "no failures"
-        refute_includes summary, "report"
+        refute_includes summary, @output_path.to_s
       end
 
       test "#summary when no screenshots recorded" do
