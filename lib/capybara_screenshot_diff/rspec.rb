@@ -42,5 +42,6 @@ RSpec.configure do |config|
     end
   end
 
+  CapybaraScreenshotDiff.external_at_exit = true
   config.after(:suite) { CapybaraScreenshotDiff.finalize_reporters! }
 end

@@ -136,7 +136,10 @@ unless CapybaraScreenshotDiff.reporters.any?(CapybaraScreenshotDiff::Reporters::
   CapybaraScreenshotDiff.reporters << CapybaraScreenshotDiff::Reporters::HTML.new(embed_images: !!ENV["CI"])
 end
 
-# Always register at_exit as safety net.
-# Framework adapters (Minitest, RSpec, Cucumber) also call finalize_reporters!
-# via native hooks for correct ordering. The @finalized guard prevents double work.
-at_exit { CapybaraScreenshotDiff.finalize_reporters! }
+# Register at_exit as fallback for frameworks without explicit adapters.
+# Framework adapters (Minitest, RSpec, Cucumber) set external_at_exit = true
+# and call finalize_reporters! via native hooks for correct ordering.
+at_exit do
+  next if CapybaraScreenshotDiff.external_at_exit?
+  CapybaraScreenshotDiff.finalize_reporters!
+end

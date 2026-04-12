@@ -130,6 +130,8 @@ module CapybaraScreenshotDiff
     end
 
     attr_reader :reporters_mutex
+    attr_accessor :external_at_exit
+    alias_method :external_at_exit?, :external_at_exit
 
     def finalize_reporters!
       reporters_mutex.synchronize { reporters.dup }.each do |reporter|
