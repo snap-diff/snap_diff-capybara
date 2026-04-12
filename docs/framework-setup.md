@@ -74,4 +74,14 @@ Then('I should not see any visual difference') do
 end
 ```
 
+## Custom Test Frameworks
+
+Minitest, RSpec, and Cucumber are supported out of the box. For other frameworks, call `finalize_reporters!` in your framework's "after suite" hook:
+
+```ruby
+CapybaraScreenshotDiff.finalize_reporters!
+```
+
+This generates the HTML report and prints the summary. Without this call, the gem falls back to `at_exit` which may not fire at the right time depending on your framework's boot order.
+
 [← Back to README](../README.md)

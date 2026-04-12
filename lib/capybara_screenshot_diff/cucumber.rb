@@ -9,5 +9,4 @@ Before do
   Capybara::Screenshot::BrowserHelpers.resize_window_if_needed
 end
 
-CapybaraScreenshotDiff.external_at_exit = true
 AfterAll { CapybaraScreenshotDiff.finalize_reporters! }

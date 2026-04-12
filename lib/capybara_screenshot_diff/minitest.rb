@@ -48,7 +48,4 @@ module CapybaraScreenshotDiff
   end
 end
 
-if ::Minitest.respond_to?(:after_run)
-  CapybaraScreenshotDiff.external_at_exit = true
-  ::Minitest.after_run { CapybaraScreenshotDiff.finalize_reporters! }
-end
+::Minitest.after_run { CapybaraScreenshotDiff.finalize_reporters! } if ::Minitest.respond_to?(:after_run)

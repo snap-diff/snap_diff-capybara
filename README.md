@@ -194,17 +194,6 @@ Comparisons add ~50ms per image with VIPS. Without `ruby-vips`, ChunkyPNG is use
 `DEBUG=1 bundle exec rake test` keeps `.diff.png` files for inspection.
 </details>
 
-## Custom Test Frameworks
-
-Minitest, RSpec, and Cucumber are supported out of the box. For other frameworks, call `finalize_reporters!` after all tests complete:
-
-```ruby
-# In your framework's "after suite" hook:
-CapybaraScreenshotDiff.finalize_reporters!
-```
-
-This generates the HTML report and prints the summary. Without this call, the gem falls back to `at_exit` which may fire before your tests finish.
-
 ## Installation
 
 **Requirements:** Ruby 3.2+. Rails 7.1+ for Rails integration; non-Rails projects supported via `CapybaraScreenshotDiff.serve()`. For the `:vips` driver: [libvips 8.9+](https://libvips.github.io/libvips/install.html). On macOS: `brew install vips`. On Ubuntu: `apt-get install libvips-dev`.
