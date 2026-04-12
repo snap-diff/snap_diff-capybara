@@ -29,9 +29,10 @@ task :coverage do
   Rake::Task["test"].invoke
 end
 
-desc "Generate sample HTML report for manual testing"
-task "report:sample" do
-  ruby "scripts/generate_sample_report.rb"
+desc "Generate sample HTML report. Use bin/rake 'report:sample[embed]' for base64 images"
+task "report:sample", [:embed] do |_t, args|
+  embed_arg = args[:embed] ? "--embed" : ""
+  ruby "scripts/generate_sample_report.rb #{embed_arg}"
 end
 
 task "clobber" do

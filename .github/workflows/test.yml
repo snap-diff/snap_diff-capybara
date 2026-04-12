@@ -5,12 +5,21 @@ name: Test
 on:
   push:
     branches: [ master ]
-  pull_request:
-    type: [ opened, synchronize, reopened, review_requested ]
     paths:
       - '**.gemfile'
       - '**.rb'
       - '.github/workflows/**'
+      - '.github/actions/**'
+      - 'Gemfile*'
+      - '!bin/**'
+  pull_request:
+    types: [ opened, synchronize, reopened, review_requested ]
+    paths:
+      - '**.gemfile'
+      - '**.rb'
+      - '.github/workflows/**'
+      - '.github/actions/**'
+      - 'Gemfile*'
       - '!bin/**'
   workflow_dispatch:
 
@@ -52,6 +61,9 @@ jobs:
     name: Functional Test
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: write
 
     steps:
       - name: Checkout code
@@ -70,8 +82,45 @@ jobs:
 
       - uses: ./.github/actions/upload-screenshots
         if: failure()
+        id: upload-screenshots
         with:
           name: base-screenshots
+
+      - name: Find existing report comment
+        if: always() && github.event_name == 'pull_request'
+        uses: peter-evans/find-comment@v3
+        id: find-comment
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          comment-author: 'github-actions[bot]'
+          body-includes: 'Screenshot diffs'
+
+      - name: Comment PR with report link
+        if: failure() && github.event_name == 'pull_request'
+        uses: peter-evans/create-or-update-comment@v5
+        with:
+          comment-id: ${{ steps.find-comment.outputs.comment-id }}
+          issue-number: ${{ github.event.pull_request.number }}
+          edit-mode: replace
+          body: |
+            ### Screenshot diffs detected
+
+            | Artifact | Link |
+            |----------|------|
+            | HTML report (inline preview) | ${{ steps.upload-screenshots.outputs.report-url || 'N/A' }} |
+            | Full report with images | ${{ steps.upload-screenshots.outputs.report-full-url || 'N/A' }} |
+            | [All artifacts](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}#artifacts) | Browse all |
+
+      - name: Update comment on success
+        if: success() && github.event_name == 'pull_request' && steps.find-comment.outputs.comment-id != ''
+        uses: peter-evans/create-or-update-comment@v5
+        with:
+          comment-id: ${{ steps.find-comment.outputs.comment-id }}
+          edit-mode: replace
+          body: |
+            ### Screenshot diffs resolved
+
+            All screenshots match their baselines. Previous diffs have been fixed.
 
       - name: Uploading Coverage Report
         uses: actions/upload-artifact@v7
@@ -170,6 +219,26 @@ jobs:
           SCREENSHOT_DRIVER: ${{ matrix.screenshot-driver }}
 
       - uses: ./.github/actions/upload-screenshots
-        if: always()
+        if: failure()
         with:
           name: screenshots-${{ matrix.capybara-driver }}-${{ matrix.screenshot-driver }}
+
+  test-report-upload:
+    name: Test Report Upload
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: ./.github/actions/setup-ruby-and-dependencies
+        with:
+          ruby-version: "4.0"
+          cache-apt-packages: true
+
+      - name: Generate sample report
+        run: bin/rake 'report:sample[embed]'
+
+      - uses: ./.github/actions/upload-screenshots
+        with:
+          name: test-report

@@ -1,23 +1,72 @@
 ---
-name: 'Upload screenshots for debug'
-description: 'To reproduce the issue locally, download the screenshots from the failed test'
+name: 'Upload SnapDiff screenshots'
+description: 'Upload screenshot diffs and HTML report as CI artifacts'
 inputs:
   name:
-    description: 'Customize the name of the artifact'
+    description: 'Artifact name prefix'
     required: true
+  report-path:
+    description: 'Path to the HTML report directory'
+    default: 'tmp/snap_diff'
+  retention-days:
+    description: 'Number of days to retain artifacts'
+    default: '2'
+outputs:
+  report-url:
+    description: 'Direct URL to the inline HTML report artifact'
+    value: ${{ steps.upload-report.outputs.artifact-url }}
+  report-full-url:
+    description: 'Direct URL to the full report artifact (with images)'
+    value: ${{ steps.upload-report-full.outputs.artifact-url }}
 runs:
   using: 'composite'
   steps:
-    - uses: actions/upload-artifact@v6
+    - name: Upload screenshot diffs
+      uses: actions/upload-artifact@v7
       with:
         name: ${{ inputs.name }}-diffs
-        retention-days: 1
-        path: |
-          test/fixtures/app/doc/screenshots/
+        retention-days: ${{ inputs.retention-days }}
+        path: test/fixtures/app/doc/screenshots/
+        if-no-files-found: ignore
 
-    - uses: actions/upload-artifact@v6
+    - name: Upload Capybara failure screenshots
+      uses: actions/upload-artifact@v7
       with:
         name: ${{ inputs.name }}-capybara-fails
-        retention-days: 1
-        path: |
-          tmp/capybara/screenshots-diffs/
+        retention-days: ${{ inputs.retention-days }}
+        path: tmp/capybara/screenshots-diffs/
+        if-no-files-found: ignore
+
+    - name: Check for HTML report
+      id: check-report
+      shell: bash
+      run: |
+        if [ -f "${{ inputs.report-path }}/index.html" ]; then
+          echo "exists=true" >> "$GITHUB_OUTPUT"
+        else
+          echo "exists=false" >> "$GITHUB_OUTPUT"
+        fi
+
+    - name: Prepare HTML report for inline preview
+      if: steps.check-report.outputs.exists == 'true'
+      shell: bash
+      run: cp "${{ inputs.report-path }}/index.html" "${{ inputs.report-path }}/${{ inputs.name }}-snap_diff-report.html"
+
+    - name: Upload HTML report (inline preview)
+      id: upload-report
+      if: steps.check-report.outputs.exists == 'true'
+      uses: actions/upload-artifact@v7
+      with:
+        name: ${{ inputs.name }}-snap_diff-report
+        retention-days: ${{ inputs.retention-days }}
+        path: ${{ inputs.report-path }}/${{ inputs.name }}-snap_diff-report.html
+        archive: false
+
+    - name: Upload HTML report with images (full download)
+      id: upload-report-full
+      if: steps.check-report.outputs.exists == 'true'
+      uses: actions/upload-artifact@v7
+      with:
+        name: ${{ inputs.name }}-report-full
+        retention-days: ${{ inputs.retention-days }}
+        path: ${{ inputs.report-path }}/
