@@ -1,0 +1,13 @@
+#!/bin/bash
+set -e
+
+echo "Running linter..."
+if ! bin/standardrb; then
+  echo "Lint errors found. Auto-fixing..."
+  bin/standardrb -a
+  echo "Lint errors were auto-fixed. Please review and re-commit."
+  exit 1
+fi
+
+echo "Running unit tests..."
+bin/rake test:unit
