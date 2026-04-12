@@ -136,6 +136,7 @@ unless CapybaraScreenshotDiff.reporters.any?(CapybaraScreenshotDiff::Reporters::
   CapybaraScreenshotDiff.reporters << CapybaraScreenshotDiff::Reporters::HTML.new(embed_images: !!ENV["CI"])
 end
 
-# Fallback for frameworks without explicit integration (e.g., Cucumber).
-# Minitest and RSpec adapters call finalize_reporters! via their native hooks.
+# Always register at_exit as safety net.
+# Framework adapters (Minitest, RSpec, Cucumber) also call finalize_reporters!
+# via native hooks for correct ordering. The @finalized guard prevents double work.
 at_exit { CapybaraScreenshotDiff.finalize_reporters! }
