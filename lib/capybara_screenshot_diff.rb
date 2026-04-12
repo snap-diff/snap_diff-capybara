@@ -71,6 +71,7 @@ module Capybara
       mattr_accessor :skip_area
       mattr_accessor(:driver) { :auto }
       mattr_accessor :tolerance
+      mattr_accessor :perceptual_threshold
 
       mattr_accessor(:screenshoter) { Screenshoter }
       mattr_accessor(:manager) { CapybaraScreenshotDiff::SnapManager }
@@ -96,6 +97,7 @@ module Capybara
           driver: driver,
           screenshot_format: Screenshot.screenshot_format,
           capybara_screenshot_options: Screenshot.capybara_screenshot_options,
+          perceptual_threshold: perceptual_threshold,
           shift_distance_limit: shift_distance_limit,
           skip_area: skip_area,
           stability_time_limit: Screenshot.stability_time_limit,
