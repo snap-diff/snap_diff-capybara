@@ -155,6 +155,37 @@ end
 | Standard Rails apps | 0.0005 | 15 | 1s |
 | Pixel-perfect design tests | 0.0001 | 5 | 1s |
 
+### Perceptual color comparison (VIPS only)
+
+By default, color differences are measured using raw RGB channel distance. This can produce
+false positives from anti-aliasing and sub-pixel font rendering — the same page rendered on
+different OS versions or browsers will have slightly different pixel values at text edges.
+
+The `perceptual_threshold` option uses the CIE dE00 formula instead, which measures color
+difference the way human eyes perceive it. Anti-aliasing artifacts typically score below 2.0
+on the dE00 scale and are automatically ignored.
+
+```ruby
+# Per-screenshot: ignore anti-aliasing, catch real visual changes
+screenshot 'dashboard', perceptual_threshold: 2.0
+
+# Global: apply to all screenshots
+Capybara::Screenshot::Diff.perceptual_threshold = 2.0
+
+# dE00 scale reference:
+#   < 1.0  — not perceptible by human eyes
+#   1-2    — perceptible through close observation (anti-aliasing, font hinting)
+#   2-10   — perceptible at a glance (color shifts, layout changes)
+#   > 10   — clearly different colors
+```
+
+Use `perceptual_threshold` when you see false positives from font rendering differences across
+CI environments, or when `color_distance_limit` with raw RGB requires frequent tuning.
+
+**Note:** `perceptual_threshold` and `color_distance_limit` are independent options on different
+scales. `perceptual_threshold` uses dE00 (0-100+), `color_distance_limit` uses Euclidean RGB
+distance (0-441). Set one or the other, not both.
+
 ### Taking screenshots
 
 Add `screenshot '<my_feature>'` to your tests.  The screenshot will be saved in

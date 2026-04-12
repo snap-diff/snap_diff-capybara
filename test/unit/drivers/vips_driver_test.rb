@@ -148,6 +148,16 @@ module Capybara
             assert comp.different?
           end
 
+          test "#different? uses perceptual_threshold when set" do
+            comp = make_comparison(:a, :b, perceptual_threshold: 2.0)
+            assert comp.different?
+          end
+
+          test "#different? with perceptual_threshold returns equal for identical images" do
+            comp = make_comparison(:a, :a, perceptual_threshold: 2.0)
+            assert_not comp.different?
+          end
+
           # Test Interface Contracts
 
           test "#from_file successfully loads an image from the specified path" do
@@ -203,6 +213,56 @@ module Capybara
             new_image = Vips::Image.new_from_file("#{TEST_IMAGES_DIR}/d.png").bandjoin(255)
 
             assert_equal 8, VipsDriver.difference_area(old_image, new_image, color_distance: 10)
+          end
+
+          test "VipsDriver.perceptual_difference_mask returns nil region for identical images" do
+            old_image = Vips::Image.new_from_file("#{TEST_IMAGES_DIR}/a.png")
+            same_image = Vips::Image.new_from_file("#{TEST_IMAGES_DIR}/a.png")
+
+            diff_mask = VipsDriver.perceptual_difference_mask(old_image, same_image)
+            region = VipsDriver.difference_region_by(diff_mask)
+
+            assert_nil region
+          end
+
+          test "VipsDriver.perceptual_difference_mask detects differences between images" do
+            old_image = Vips::Image.new_from_file("#{TEST_IMAGES_DIR}/a.png")
+            new_image = Vips::Image.new_from_file("#{TEST_IMAGES_DIR}/b.png")
+
+            diff_mask = VipsDriver.perceptual_difference_mask(old_image, new_image, 2.0)
+            region = VipsDriver.difference_region_by(diff_mask)
+
+            assert_not_nil region
+          end
+
+          test "VipsDriver.perceptual_difference_mask detects alpha channel differences" do
+            old_image = Vips::Image.new_from_file("#{TEST_IMAGES_DIR}/a.png")
+            # Make a copy with different alpha
+            transparent = old_image.extract_band(0, n: 3).bandjoin(128)
+
+            diff_mask = VipsDriver.perceptual_difference_mask(old_image, transparent)
+            region = VipsDriver.difference_region_by(diff_mask)
+
+            assert_not_nil region, "Should detect alpha channel difference"
+          end
+
+          test "VipsDriver.perceptual_difference_mask respects threshold" do
+            old_image = Vips::Image.new_from_file("#{TEST_IMAGES_DIR}/a.png")
+            new_image = Vips::Image.new_from_file("#{TEST_IMAGES_DIR}/b.png")
+
+            # High threshold — fewer differences detected
+            high_mask = VipsDriver.perceptual_difference_mask(old_image, new_image, 50.0)
+            high_region = VipsDriver.difference_region_by(high_mask)
+
+            # Low threshold — more differences detected
+            low_mask = VipsDriver.perceptual_difference_mask(old_image, new_image, 2.0)
+            low_region = VipsDriver.difference_region_by(low_mask)
+
+            assert_not_nil low_region
+            # High threshold region should be smaller or nil compared to low threshold
+            if high_region
+              assert high_region.size <= low_region.size
+            end
           end
 
           private

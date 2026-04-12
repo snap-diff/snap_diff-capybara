@@ -19,7 +19,11 @@ module Capybara
           def find_difference_region(comparison)
             new_image, base_image, options = comparison.new_image, comparison.base_image, comparison.options
 
-            diff_mask = self.class.difference_mask(base_image, new_image, options[:color_distance_limit])
+            diff_mask = if options[:perceptual_threshold]
+              self.class.perceptual_difference_mask(base_image, new_image, options[:perceptual_threshold])
+            else
+              self.class.difference_mask(base_image, new_image, options[:color_distance_limit])
+            end
             region = self.class.difference_region_by(diff_mask)
             # TODO: schedule research when we got this case for VIPs
             # region = nil if region && region_covers_entire_image?(region, base_image)
@@ -129,6 +133,28 @@ module Capybara
             def difference_mask(base_image, new_image, color_distance = nil)
               result = (new_image - base_image).abs
               color_distance ? result > color_distance : result
+            end
+
+            def perceptual_difference_mask(base_image, new_image, threshold = 2.0)
+              color_diff = perceptual_color_diff(base_image, new_image) > threshold
+              alpha_diff = alpha_channel_diff(base_image, new_image)
+              alpha_diff ? (color_diff | alpha_diff) : color_diff
+            end
+
+            def perceptual_color_diff(base_image, new_image)
+              base_rgb = base_image.bands > 3 ? base_image.extract_band(0, n: 3) : base_image
+              new_rgb = new_image.bands > 3 ? new_image.extract_band(0, n: 3) : new_image
+              base_lab = base_rgb.colourspace(:lab)
+              new_lab = new_rgb.colourspace(:lab)
+              base_lab.dE00(new_lab)
+            rescue Vips::Error
+              base_lab.dE76(new_lab)
+            end
+
+            def alpha_channel_diff(base_image, new_image)
+              return unless base_image.bands > 3 && new_image.bands > 3
+
+              (base_image.extract_band(3) - new_image.extract_band(3)).abs > 0
             end
 
             def difference_region_by(diff_mask)
