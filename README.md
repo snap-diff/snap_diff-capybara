@@ -178,6 +178,31 @@ end
 | Standard Rails apps | 0.0005 | 15 | 1s |
 | Pixel-perfect design tests | 0.0001 | 5 | 1s |
 
+### Configuration Tiers
+
+**Tier 1 — Zero config (works immediately):**
+`blur_active_element`, `hide_caret`, and `fail_if_new` (in CI) are enabled by default.
+Just `require 'capybara_screenshot_diff/minitest'` and call `screenshot`.
+
+**Tier 2 — Set when tests are flaky:**
+
+| Setting | When to use |
+|---------|-------------|
+| `window_size` | Screenshots differ between machines due to different browser sizes |
+| `tolerance` | Sub-pixel rendering differences cause false positives |
+| `skip_area` | Dynamic content (timestamps, ads) changes between runs |
+| `stability_time_limit` | Animations or loading states cause inconsistent captures |
+
+**Tier 3 — Advanced tuning:**
+
+| Setting | When to use |
+|---------|-------------|
+| `perceptual_threshold` | Anti-aliasing false positives across OS/browser versions |
+| `shift_distance_limit` | Content shifts by a few pixels (ChunkyPNG only) |
+| `area_size_limit` | Allow small diff regions below a pixel count |
+| `color_distance_limit` | Fine-tune raw RGB channel tolerance |
+| `median_filter_window_size` | Smooth noise before comparison (VIPS only) |
+
 ### Standalone image comparison
 
 Compare any two images without Capybara or a browser — useful for PDF regression, generated images, or CI artifact validation:
