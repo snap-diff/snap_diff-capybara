@@ -30,6 +30,22 @@ module Capybara::Screenshot::Diff
       assert_same_images "a-and-b.heatmap.diff.png", reporter.heatmap_diff_path
     end
 
+    test "#clean_tmp_files removes heatmap diff along with other diff artifacts" do
+      skip "VIPS not present. Skipping VIPS driver tests." unless defined?(Vips)
+      driver = Drivers::VipsDriver.new
+      comparison = build_comparison_for(driver, "a.png", "b.png")
+      reporter = Reporters::Default.new(driver.find_difference_region(comparison))
+      reporter.generate
+
+      assert_predicate reporter.heatmap_diff_path, :exist?
+
+      reporter.clean_tmp_files
+
+      assert_not reporter.annotated_image_path.exist?, "diff should be cleaned"
+      assert_not reporter.annotated_base_image_path.exist?, "base diff should be cleaned"
+      assert_not reporter.heatmap_diff_path.exist?, "heatmap diff should be cleaned"
+    end
+
     private
 
     def build_comparison_for(driver, *images)

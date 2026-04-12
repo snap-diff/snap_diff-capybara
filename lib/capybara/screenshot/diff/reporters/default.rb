@@ -33,6 +33,7 @@ module Capybara::Screenshot::Diff
       def clean_tmp_files
         annotated_base_image_path.unlink if annotated_base_image_path.exist?
         annotated_image_path.unlink if annotated_image_path.exist?
+        heatmap_diff_path.unlink if heatmap_diff_path.exist?
       end
 
       def build_error_for_different_dimensions
