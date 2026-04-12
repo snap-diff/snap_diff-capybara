@@ -11,6 +11,29 @@ Ever introduced a graphical change unintended?  Never want it to happen again?
 Then this gem is for you!  Use this gem to detect changes in your pages by
 taking screen shots and comparing them to the previous revision.
 
+## Quick Start (60 seconds)
+
+```ruby
+# 1. Add to Gemfile
+gem 'capybara-screenshot-diff'
+
+# 2. Add to test/test_helper.rb
+require 'capybara_screenshot_diff/minitest'
+
+# 3. In any system test
+class MyTest < ActionDispatch::SystemTestCase
+  include CapybaraScreenshotDiff::DSL
+  include CapybaraScreenshotDiff::Minitest::Assertions
+
+  test "homepage" do
+    visit "/"
+    screenshot "homepage"  # First run: saves baseline. Next runs: compares.
+  end
+end
+```
+
+That's it. Screenshots are saved to `doc/screenshots/` and compared against the committed version on each test run.
+
 ## Features
 
 - **Screenshot Capturing**: Easily capture screenshots at any point in your tests to track the visual state of your application.
