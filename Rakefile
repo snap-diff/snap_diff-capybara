@@ -35,8 +35,18 @@ task "report:sample", [:embed] do |_t, args|
   ruby "scripts/generate_sample_report.rb #{embed_arg}"
 end
 
+desc "Remove screenshot diff artifacts (keeps baselines)"
+task "snap_diff:clean" do
+  patterns = ["**/*.diff.png", "**/*.base.diff.png", "**/*.heatmap.diff.png",
+    "**/*.diff.webp", "**/*.base.diff.webp", "**/*.heatmap.diff.webp",
+    "**/snap_diff_report.html"]
+  removed = patterns.flat_map { |p| Dir.glob("tmp/#{p}") + Dir.glob("doc/screenshots/#{p}") }
+  removed.each { |f| FileUtils.rm_f(f) }
+  puts "Removed #{removed.size} diff artifacts"
+end
+
 task "clobber" do
-  puts "Cleanup tmp/*.png"
+  puts "Cleanup tmp/"
   FileUtils.rm_rf(Dir["./tmp/*"])
 end
 
