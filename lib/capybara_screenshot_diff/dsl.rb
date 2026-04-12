@@ -41,7 +41,11 @@ module CapybaraScreenshotDiff
     # @option options [Array<Integer>] :crop [left, top, right, bottom] Edge coordinates to crop the screenshot to.
     # @option options [Array<Array<Integer>>] :skip_area Array of [left, top, right, bottom] edge coordinates to ignore.
     # @option options [Numeric] :tolerance (0.001 for :vips driver) Color tolerance for comparison.
+    #   Represents the maximum allowed ratio of different pixels (0.0-1.0 scale).
     # @option options [Numeric] :color_distance_limit Maximum allowed color distance between pixels.
+    #   Uses Euclidean RGB distance (0-441 scale). Mutually exclusive with :perceptual_threshold.
+    # @option options [Numeric] :perceptual_threshold Maximum perceptual color difference (CIE dE00).
+    #   Uses human perception-based scale (0-100+). VIPS only. Takes priority over :color_distance_limit if both set.
     # @option options [Numeric] :shift_distance_limit Maximum allowed shift distance for pixels.
     # @option options [Numeric] :area_size_limit Maximum allowed difference area size in pixels.
     # @option options [Symbol] :driver (:auto) The image processing driver to use (:auto, :chunky_png, :vips).

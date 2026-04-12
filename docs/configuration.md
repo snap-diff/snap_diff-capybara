@@ -26,8 +26,52 @@ end
 | Use Case | VIPS `tolerance` | ChunkyPNG `color_distance_limit` | `stability_time_limit` |
 |----------|-----------------|--------------------------------|----------------------|
 | Animated/complex pages | 0.01 | 30 | 2s |
-| Standard Rails apps | 0.0005 | 15 | 1s |
+| Standard Rails apps | 0.001 (default) | 15 | 1s |
 | Pixel-perfect design tests | 0.0001 | 5 | 1s |
+
+**Note:** VIPS defaults to `tolerance: 0.001` (allow 0.1% pixel difference). ChunkyPNG has no default tolerance.
+
+## Choosing the Right Color Comparison Method
+
+**Important:** `perceptual_threshold`, `color_distance_limit`, and `tolerance` serve different purposes. Use this decision tree:
+
+### Step 1: Choose color comparison method (pick ONE)
+
+| Method | Scale | Driver | Best for |
+|--------|-------|--------|----------|
+| `perceptual_threshold` | 0-100+ (dE00) | VIPS only | Cross-OS/browser font rendering, anti-aliasing |
+| `color_distance_limit` | 0-510 (RGBA Euclidean) | VIPS, ChunkyPNG | Legacy setups, fine-grained RGB control |
+
+**Recommendation:** Use `perceptual_threshold: 2.0` for most cases. It matches human perception and needs less tuning.
+
+**⚠️ Color comparison methods are exclusive:** `perceptual_threshold` and `color_distance_limit` cannot both be active — if you set both, `perceptual_threshold` wins and `color_distance_limit` is ignored. However, `tolerance` works with **both** methods and is applied by default for VIPS (0.001). This means even with `perceptual_threshold: 2.0`, the `tolerance: 0.001` default still filters results.
+
+### Step 2: Set tolerance (optional, independent)
+
+| Setting | What it does | Scale |
+|---------|--------------|-------|
+| `tolerance` | Maximum allowed *ratio* of different pixels (VIPS) or diff bounding box (ChunkyPNG) | 0.0-1.0 |
+
+**Example:** `tolerance: 0.001` allows 0.1% of the image to differ (e.g., 125 pixels in a 1280×1024 screenshot).
+
+**Key difference:**
+- `perceptual_threshold` / `color_distance_limit` → **"how different can a pixel be?"**
+- `tolerance` → **"how many pixels can differ?"**
+
+**⚠️ Driver difference:** VIPS counts actual different pixels. ChunkyPNG counts the bounding box area around differences — a single pixel diff creates a box, and the entire box area counts against tolerance. This makes ChunkyPNG stricter with the same tolerance value.
+
+### Quick start
+
+```ruby
+# Modern approach (recommended)
+screenshot 'dashboard', perceptual_threshold: 2.0
+
+# Allow small noise regions
+screenshot 'dashboard', perceptual_threshold: 2.0, tolerance: 0.001
+
+# Legacy ChunkyPNG setup
+screenshot 'dashboard', color_distance_limit: 15
+```
 
 ## Configuration Tiers
 
