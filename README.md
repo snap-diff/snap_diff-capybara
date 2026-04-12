@@ -37,9 +37,9 @@ end
 
 ```bash
 bundle exec rake test                    # First run always passes — saves baselines
-bundle exec rake test                    # Second run compares against baselines
 git add doc/screenshots/
 git commit -m "chore: add screenshot baselines"
+bundle exec rake test                    # Second run compares against committed baselines
 ```
 
 That's it. The first run saves baseline screenshots (always passes). Subsequent runs compare against them — if the UI changed, the test fails. Commit baselines to git so CI catches regressions.
