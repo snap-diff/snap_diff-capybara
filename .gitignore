@@ -24,6 +24,8 @@
 *.base.webp
 .ruby-version
 .ai/
+.qwen/
+.claude/
 .specs/
 .emdash.json
 CLAUDE.md

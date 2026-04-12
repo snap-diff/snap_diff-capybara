@@ -9,7 +9,7 @@ require "capybara_screenshot_diff/minitest"
 require "capybara/screenshot/diff"
 require "capybara_screenshot_diff/reporters/html"
 
-output_path = File.expand_path("../tmp/sample_report.html", __dir__)
+output_path = File.expand_path("../tmp/snap_diff/index.html", __dir__)
 
 # Build real comparisons using the gem's own ImageCompare.
 # Each pair gets a unique copy of the base image to avoid annotation file conflicts.
@@ -19,7 +19,8 @@ pairs = [
   {name: "portrait-layout", base: "portrait", new: "portrait_b"}
 ]
 
-reporter = CapybaraScreenshotDiff::Reporters::HTML.new(output_path: output_path)
+embed = ARGV.include?("--embed") || !!ENV["CI"]
+reporter = CapybaraScreenshotDiff::Reporters::HTML.new(output_path: output_path, embed_images: embed)
 fixtures = File.expand_path("../test/fixtures/images", __dir__)
 tmp_dir = File.expand_path("../tmp/sample_images", __dir__)
 FileUtils.mkdir_p(tmp_dir)
