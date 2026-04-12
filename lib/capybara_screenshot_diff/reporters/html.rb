@@ -68,6 +68,19 @@ module CapybaraScreenshotDiff
         (passed.to_f / total * 100).round(1)
       end
 
+      def summary
+        return if total.zero?
+
+        screenshots_label = (total == 1) ? "1 screenshot" : "#{total} screenshots"
+
+        if failures.empty?
+          "[snap_diff] #{screenshots_label} compared, no failures."
+        else
+          failures_label = (failures.size == 1) ? "1 failure" : "#{failures.size} failures"
+          "[snap_diff] #{screenshots_label} compared, #{failures_label}. Report: #{output_path}"
+        end
+      end
+
       def render
         ERB.new(File.read(self.class.template_path)).result(binding)
       end
@@ -130,8 +143,8 @@ end
 
 at_exit do
   CapybaraScreenshotDiff.reporters_mutex.synchronize { CapybaraScreenshotDiff.reporters.dup }.each do |reporter|
-    result = reporter.finalize
-    $stdout.puts "[snap_diff] HTML report: #{result}" if result.is_a?(Pathname)
+    reporter.finalize
+    $stdout.puts reporter.summary if reporter.respond_to?(:summary) && reporter.summary
   rescue => e
     warn "[snap_diff] Reporter #{reporter.class} failed (#{e.class}: #{e.message})" if ENV["DEBUG"]
   end

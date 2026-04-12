@@ -146,6 +146,49 @@ module CapybaraScreenshotDiff
         assert_operator fake_mutex.synchronize_calls, :>=, 1
       end
 
+      test "#finalize returns output_path when there are failures" do
+        reporter = HTML.new(output_path: @output_path)
+        reporter.record([build_failing_assertion("fail")])
+        result = reporter.finalize
+
+        assert_instance_of Pathname, result
+      end
+
+      test "#finalize returns nil when no failures" do
+        reporter = HTML.new(output_path: @output_path)
+        reporter.record([build_passing_assertion("pass")])
+        result = reporter.finalize
+
+        assert_nil result
+      end
+
+      test "#summary returns screenshot count and status" do
+        reporter = HTML.new(output_path: @output_path)
+        reporter.record([build_passing_assertion("ok"), build_failing_assertion("fail")])
+        reporter.finalize
+
+        summary = reporter.summary
+        assert_includes summary, "1 failure"
+        assert_includes summary, "2 screenshots"
+        assert_includes summary, @output_path.to_s
+      end
+
+      test "#summary when all pass shows no failures" do
+        reporter = HTML.new(output_path: @output_path)
+        reporter.record([build_passing_assertion("ok")])
+        reporter.finalize
+
+        summary = reporter.summary
+        assert_includes summary, "1 screenshot"
+        assert_includes summary, "no failures"
+        refute_includes summary, "report"
+      end
+
+      test "#summary when no screenshots recorded" do
+        reporter = HTML.new(output_path: @output_path)
+        assert_nil reporter.summary
+      end
+
       test "#finalize can retry after write_report failure" do
         reporter = HTML.new(output_path: @output_path)
         reporter.record([build_failing_assertion("retry")])
