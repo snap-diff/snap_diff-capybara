@@ -50,7 +50,7 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: screenshot-report
-          path: tmp/snap_diff/index.html
+          path: doc/screenshots/snap_diff_report.html
           archive: false
           retention-days: 2
 
@@ -60,7 +60,7 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: screenshot-report-full
-          path: tmp/snap_diff/
+          path: doc/screenshots/
           retention-days: 2
 ```
 
@@ -86,7 +86,7 @@ This uploads diffs, Capybara failure screenshots, and the HTML report (inline + 
 | Input | Default | Description |
 |-------|---------|-------------|
 | `name` | (required) | Artifact name prefix |
-| `report-path` | `tmp/snap_diff` | Path to HTML report directory |
+| `report-path` | `doc/screenshots` | Path to HTML report directory |
 | `retention-days` | `2` | Days to retain artifacts |
 
 ### 4. PR comment with link to report (optional)

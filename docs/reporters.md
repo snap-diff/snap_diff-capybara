@@ -12,7 +12,7 @@ require 'capybara_screenshot_diff/reporters/html'
 After running tests, open the report (generated only when there are failures):
 
 ```bash
-open tmp/snap_diff/index.html
+open doc/screenshots/snap_diff_report.html
 ```
 
 The report includes a sidebar with thumbnails, side-by-side comparison with diff toggle, search, and summary stats. No configuration needed — just require it.

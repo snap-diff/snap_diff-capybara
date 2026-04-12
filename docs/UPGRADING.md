@@ -148,7 +148,7 @@ require 'capybara_screenshot_diff/reporters/html'
 After running tests:
 
 ```bash
-open tmp/snap_diff-report/index.html
+open doc/screenshots/snap_diff_report.html
 ```
 
 **Features:**
@@ -291,7 +291,7 @@ If tests fail with new screenshot errors in CI:
 require 'capybara_screenshot_diff/reporters/html'
 ```
 
-Run tests and open `tmp/snap_diff-report/index.html` to review differences.
+Run tests and open `doc/screenshots/snap_diff_report.html` to review differences.
 
 ---
 

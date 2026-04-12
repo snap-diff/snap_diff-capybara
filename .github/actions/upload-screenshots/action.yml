@@ -7,7 +7,7 @@ inputs:
     required: true
   report-path:
     description: 'Path to the HTML report directory'
-    default: 'tmp/snap_diff'
+    default: 'doc/screenshots'
   retention-days:
     description: 'Number of days to retain artifacts'
     default: '2'
