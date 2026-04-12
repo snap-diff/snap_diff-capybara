@@ -55,7 +55,7 @@ bundle exec rake test
 ```
 
 After Step 1, you'll see:
-```
+```text
 doc/screenshots/
   homepage.png          <- your baseline (commit this)
 ```
