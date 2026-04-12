@@ -827,6 +827,30 @@ CapybaraScreenshotDiff.reporters << MyReporter.new
 
 Reporters are notified before assertions are cleared on each test teardown. `finalize` is called via `at_exit`.
 
+## Troubleshooting
+
+**"No existing screenshot found"**
+First run creates baselines. Record them: `RECORD_SCREENSHOTS=1 bundle exec rake test`.
+In CI, `fail_if_new` is `true` by default — commit your baselines first.
+
+**Screenshots differ between CI and local**
+Font rendering varies across OS versions. Use `tolerance: 0.001` or `perceptual_threshold: 2.0`
+to ignore sub-pixel differences. Set `window_size` to ensure consistent browser dimensions.
+
+**Animations cause flaky diffs**
+Set `stability_time_limit: 1` to wait for the page to stabilize before capturing.
+The gem takes multiple screenshots and compares them until two consecutive ones match.
+
+**Dynamic content (timestamps, ads) always differs**
+Use `skip_area` to ignore specific regions:
+```ruby
+screenshot "dashboard", skip_area: [".timestamp", "#ad-banner"]
+```
+
+**Screenshot assertion didn't seem to run**
+Check that `Capybara::Screenshot.enabled` is not `false`. With `delayed: true` (default),
+comparisons run in `before_teardown`, not inline — errors appear after the test body.
+
 ## Development
 
 After checking out the repo, run `bin/setup` to install dependencies.
