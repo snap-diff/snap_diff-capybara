@@ -16,6 +16,7 @@ module CapybaraScreenshotDiff
     def delete!
       path.delete if path.exist?
       base_path.delete if base_path.exist?
+      cleanup_diff_artifacts!
       cleanup_attempts!
     end
 
@@ -50,6 +51,16 @@ module CapybaraScreenshotDiff
 
     def find_attempts_paths
       Dir[@manager.abs_path_for("**/#{full_name}.attempt_[0-9][0-9].#{format}")]
+    end
+
+    private
+
+    def cleanup_diff_artifacts!
+      [
+        path.sub_ext(".diff.#{format}"),
+        path.sub_ext(".heatmap.diff.#{format}"),
+        base_path.sub_ext(".diff.#{format}")
+      ].each { |f| f.delete if f.exist? }
     end
   end
 end
