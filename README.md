@@ -827,6 +827,41 @@ CapybaraScreenshotDiff.reporters << MyReporter.new
 
 Reporters are notified before assertions are cleared on each test teardown. `finalize` is called via `at_exit`.
 
+### Non-Rails Projects (Hugo, Jekyll, Static Sites)
+
+```ruby
+# test/test_helper.rb
+require 'capybara_screenshot_diff/static'
+
+CapybaraScreenshotDiff.serve("_site")  # or "public", "build", "dist"
+```
+
+This sets up Capybara to serve static files and configures screenshot paths automatically.
+
+### GitHub Actions Integration
+
+Upload the HTML report as a CI artifact so reviewers can browse screenshot diffs directly:
+
+```yaml
+# .github/workflows/test.yml
+- name: Run tests
+  run: bundle exec rake test
+
+- name: Upload screenshot report
+  if: failure()
+  uses: actions/upload-artifact@v4
+  with:
+    name: screenshot-diffs
+    path: tmp/snap_diff-report/
+    retention-days: 7
+```
+
+To enable the HTML report, add to your test helper:
+
+```ruby
+require 'capybara_screenshot_diff/reporters/html'
+```
+
 ## Troubleshooting
 
 **"No existing screenshot found"**
@@ -838,7 +873,8 @@ Font rendering varies across OS versions. Use `tolerance: 0.001` or `perceptual_
 to ignore sub-pixel differences. Set `window_size` to ensure consistent browser dimensions.
 
 **Animations cause flaky diffs**
-Set `stability_time_limit: 1` to wait for the page to stabilize before capturing.
+Set `Capybara.disable_animation = true` in your test helper to disable CSS animations globally.
+For JS animations, add `stability_time_limit: 1` to wait for the page to stabilize.
 The gem takes multiple screenshots and compares them until two consecutive ones match.
 
 **Dynamic content (timestamps, ads) always differs**
