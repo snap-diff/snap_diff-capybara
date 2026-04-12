@@ -149,6 +149,8 @@ end
 
 if defined?(Minitest) && Minitest.respond_to?(:after_run)
   Minitest.after_run(&snap_diff_finalize)
+elsif defined?(RSpec)
+  RSpec.configure { |c| c.after(:suite, &snap_diff_finalize) }
 else
   at_exit(&snap_diff_finalize)
 end
