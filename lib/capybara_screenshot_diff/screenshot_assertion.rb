@@ -56,8 +56,6 @@ module CapybaraScreenshotDiff
       # Cleanup after comparisons
       if !result && comparison.base_image_path.exist?
         FileUtils.mv(comparison.base_image_path, comparison.image_path, force: true)
-      elsif !comparison.dimensions_changed?
-        FileUtils.rm_rf(comparison.base_image_path)
       end
 
       return unless result
