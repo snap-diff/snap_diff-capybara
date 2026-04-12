@@ -41,8 +41,6 @@ module CapybaraScreenshotDiff
       test_screenshot_errors.compact!
 
       test_screenshot_errors.empty? ? nil : test_screenshot_errors
-    ensure
-      screenshots&.clear
     end
 
     # Asserts that an image has not changed compared to its baseline.

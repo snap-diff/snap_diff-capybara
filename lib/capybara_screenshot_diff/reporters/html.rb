@@ -136,7 +136,7 @@ unless CapybaraScreenshotDiff.reporters.any?(CapybaraScreenshotDiff::Reporters::
   CapybaraScreenshotDiff.reporters << CapybaraScreenshotDiff::Reporters::HTML.new(embed_images: !!ENV["CI"])
 end
 
-at_exit do
+snap_diff_finalize = proc do
   CapybaraScreenshotDiff.reporters_mutex.synchronize { CapybaraScreenshotDiff.reporters.dup }.each do |reporter|
     reporter.finalize
     if (msg = reporter.summary)
@@ -145,4 +145,10 @@ at_exit do
   rescue => e
     warn "[snap_diff] Reporter #{reporter.class} failed (#{e.class}: #{e.message})"
   end
+end
+
+if defined?(Minitest) && Minitest.respond_to?(:after_run)
+  Minitest.after_run(&snap_diff_finalize)
+else
+  at_exit(&snap_diff_finalize)
 end
