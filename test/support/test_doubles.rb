@@ -89,36 +89,10 @@ module Capybara
             @is_vips_driver
           end
 
-          # Return Object to avoid infinite recursion
+          # Returns Object so warning messages in ImagePreprocessor don't
+          # couple tests to the TestDriver class name.
           def class
             Object
-          end
-        end
-
-        # Test double for image preprocessors
-        class TestPreprocessor
-          attr_reader :call_called, :call_args, :process_comparison_called, :process_comparison_args, :processed_images
-
-          def initialize(processed_images)
-            @processed_images = processed_images
-            @call_called = false
-            @call_args = nil
-            @process_comparison_called = false
-            @process_comparison_args = nil
-          end
-
-          def call(images)
-            @call_called = true
-            @call_args = images
-            processed_images
-          end
-
-          # Process a comparison object directly
-          # Mirrors the implementation in ImagePreprocessor
-          def process_comparison(comparison)
-            @process_comparison_called = true
-            @process_comparison_args = comparison
-            comparison
           end
         end
 
