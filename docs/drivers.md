@@ -27,9 +27,16 @@ Capybara::Screenshot::Diff.perceptual_threshold = 2.0
 Use `perceptual_threshold` when you see false positives from font rendering differences across
 CI environments, or when `color_distance_limit` with raw RGB requires frequent tuning.
 
-**Note:** `perceptual_threshold` and `color_distance_limit` are independent options on different
-scales. `perceptual_threshold` uses dE00 (0-100+), `color_distance_limit` uses Euclidean RGB
-distance (0-441). Set one or the other, not both.
+**⚠️ Important:** `perceptual_threshold` and `color_distance_limit` are **mutually exclusive**.
+If you set both, `perceptual_threshold` takes priority and `color_distance_limit` is silently ignored.
+
+These options use different scales and algorithms:
+- `perceptual_threshold` → CIE dE00 perceptual distance (0-100+)
+- `color_distance_limit` → Euclidean RGBA distance (0-510)
+
+**Choose one based on your driver setup:**
+- VIPS with `ruby-vips` gem → prefer `perceptual_threshold`
+- ChunkyPNG (no native dependencies) → use `color_distance_limit`
 
 ## Available Image Processing Drivers
 
@@ -65,14 +72,16 @@ You can use the `tolerance` option to the `screenshot` method to set level:
 ```ruby
 test 'unstable area' do
   visit '/'
-  screenshot 'index', tolerance: 0.3
+  # tolerance: 0.01 allows 1% of pixels to differ (use for noisy pages)
+  screenshot 'index', tolerance: 0.01
 end
 ```
 
 You can also set this globally:
 
 ```ruby
-Capybara::Screenshot::Diff.tolerance = 0.3
+# Default for VIPS is 0.001 (0.1% pixel difference allowed)
+Capybara::Screenshot::Diff.tolerance = 0.001
 ```
 
 ## Median filter size (vips only)

@@ -97,22 +97,29 @@ Then run `bundle install`.
 
 **Defaults work for most Rails apps.** `blur_active_element`, `hide_caret`, and `fail_if_new` (in CI) are enabled automatically.
 
-If you see inconsistent results, add tolerance:
+If you see inconsistent results, choose a color comparison method:
 
 ```ruby
+# Option 1: Perceptual (recommended, VIPS only)
+Capybara::Screenshot::Diff.perceptual_threshold = 2.0
+
+# Option 2: Raw RGB tolerance (legacy)
+Capybara::Screenshot::Diff.tolerance = 0.0005
+
+# Always set window_size for consistent dimensions
 Capybara::Screenshot::Diff.configure do |screenshot, diff|
   screenshot.window_size = [1280, 1024]
-  diff.tolerance = 0.0005
 end
 ```
 
-| Use Case | VIPS `tolerance` | ChunkyPNG `color_distance_limit` |
-|----------|-----------------|--------------------------------|
-| Standard Rails apps | 0.0005 | 15 |
-| Animated/complex pages | 0.01 | 30 |
-| Pixel-perfect design | 0.0001 | 5 |
+| Use Case | VIPS `perceptual_threshold` | VIPS `tolerance` | ChunkyPNG `color_distance_limit` |
+|----------|---------------------------|-----------------|--------------------------------|
+| Cross-OS/browser testing | 2.0 (recommended) | — | — |
+| Standard Rails apps | — | 0.001 (default) | 15 |
+| Animated/complex pages | — | 0.01 | 30 |
+| Pixel-perfect design | — | 0.0001 | 5 |
 
-See [Configuration Reference](docs/configuration.md) for all options.
+**⚠️ Color methods are exclusive:** Use `perceptual_threshold` OR `color_distance_limit`, not both. But `tolerance` works with either — it's applied by default for VIPS (0.001). See [Choosing the Right Method](docs/configuration.md#choosing-the-right-color-comparison-method).
 
 ## Troubleshooting
 
