@@ -103,7 +103,7 @@ If you see inconsistent results, choose a color comparison method:
 # Option 1: Perceptual (recommended, VIPS only)
 Capybara::Screenshot::Diff.perceptual_threshold = 2.0
 
-# Option 2: Raw RGB tolerance (legacy)
+# Option 2: Tolerance-based comparison (legacy)
 Capybara::Screenshot::Diff.tolerance = 0.0005
 
 # Always set window_size for consistent dimensions
