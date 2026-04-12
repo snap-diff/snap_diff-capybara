@@ -9,6 +9,7 @@ module Capybara
         include Vcs
 
         setup do
+          FileUtils.mkdir_p(Screenshot.root)
           @base_screenshot = Tempfile.new(%w[vcs_base_screenshot. .attempt.0.png], Screenshot.root)
         end
 

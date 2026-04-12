@@ -9,11 +9,15 @@ module Capybara
         SILENCE_ERRORS = Os::ON_WINDOWS ? "2>nul" : "2>/dev/null"
 
         def self.checkout_vcs(root, screenshot_path, checkout_path)
-          vcs_file_path = screenshot_path.relative_path_from(root)
+          abs_screenshot_path = Pathname.new(screenshot_path).expand_path
           redirect_target = "#{checkout_path} #{SILENCE_ERRORS}"
-          show_command = "git show HEAD~0:./#{vcs_file_path}"
 
           Dir.chdir(root) do
+            git_toplevel = `git rev-parse --show-toplevel 2>/dev/null`.chomp
+            return false if git_toplevel.empty?
+
+            vcs_file_path = abs_screenshot_path.relative_path_from(Pathname.new(git_toplevel))
+            show_command = "git show HEAD:#{vcs_file_path}"
             if Screenshot.use_lfs
               system("#{show_command} > #{checkout_path}.tmp #{SILENCE_ERRORS}", exception: !!ENV["DEBUG"])
 
