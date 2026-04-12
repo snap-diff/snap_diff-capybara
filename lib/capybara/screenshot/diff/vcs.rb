@@ -9,7 +9,7 @@ module Capybara
       module Vcs
         def self.checkout_vcs(root, screenshot_path, checkout_path)
           root_path = root.to_s
-          git_root, status = Open3.capture2("git", "-C", root_path, "rev-parse", "--show-toplevel")
+          git_root, _, status = Open3.capture3("git", "-C", root_path, "rev-parse", "--show-toplevel")
           return false unless status.success?
 
           git_root = git_root.chomp
