@@ -4,13 +4,16 @@
 
 # Capybara::Screenshot::Diff
 
-Catch visual regressions before they ship. Screenshots taken during tests are automatically compared against committed baselines — if the UI changed, the test fails.
+Stop shipping UI bugs. Take screenshots in your Rails tests, commit baselines to git, and let CI catch visual regressions in pull requests — no cloud service, no subscription, runs entirely in your test suite.
+
+**Why this gem?** Percy and Chromatic cost money and send your screenshots to a third party. BackstopJS requires Node. This gem integrates directly into your Capybara tests, stores baselines in git, and works offline.
 
 ## Quick Start
 
 ```ruby
 # Gemfile
 gem 'capybara-screenshot-diff'
+gem 'ruby-vips'  # Optional: 10x faster comparisons
 ```
 
 ```ruby
@@ -42,22 +45,22 @@ git commit -m "chore: add screenshot baselines"
 bundle exec rake test                    # Second run compares against committed baselines
 ```
 
-That's it. The first run saves baseline screenshots (always passes). Subsequent runs compare against them — if the UI changed, the test fails. Commit baselines to git so CI catches regressions.
+First run saves baseline screenshots to `doc/screenshots/` (always passes). Commit them to git. Subsequent runs compare against committed baselines — if the UI changed, the test fails.
 
-> **CI note:** In CI, `fail_if_new` is `true` by default — new screenshots without a committed baseline will fail. Always commit your baselines before pushing.
+> **CI note:** `fail_if_new` is `true` by default in CI — new screenshots without a committed baseline will fail. Always commit baselines before pushing.
 
 For RSpec, Cucumber, or non-Rails setup, see [Framework Setup](docs/framework-setup.md).
 
-## What You Get
+## What Happens When a Screenshot Changes
 
-When a screenshot differs, the test fails with a clear message:
+The test fails with a clear message and generates diff files:
 
 ```text
 Screenshot does not match for 'homepage':
 ({"area_size":1250,"region":[0,19,199,83],"max_color_distance":42.5})
 ```
 
-And generates diff files for inspection:
+Open `doc/screenshots/homepage.diff.png` to see exactly what changed. If the change is intentional, delete the baseline and re-run to update it.
 
 | File | Description |
 |------|-------------|
@@ -65,73 +68,77 @@ And generates diff files for inspection:
 | `homepage.diff.png` | Visual diff with changes highlighted in red |
 | `homepage.heatmap.diff.png` | Heatmap of pixel differences |
 
-Enable the [HTML report](docs/reporters.md) for an interactive dashboard with side-by-side comparison, zoom, and annotation toggle.
+## Web UI for Reviewing Screenshot Changes
 
-**Compare any two images** without a browser — PDFs, generated images, CI artifacts:
-```ruby
-Capybara::Screenshot::Diff.compare("baseline.png", "current.png")
-```
-
-## Installation
+Add one line to get an interactive dashboard for reviewing all screenshot differences:
 
 ```ruby
-# Gemfile
-gem 'capybara-screenshot-diff'
-
-# Optional: faster image processing (recommended)
-gem 'ruby-vips'
+# test/test_helper.rb
+require 'capybara_screenshot_diff/reporters/html'
 ```
 
-Then run `bundle install`.
+After tests run, open `doc/screenshots/snap_diff_report.html` — side-by-side comparison with 4 view modes (both/base/new/heatmap), per-image zoom, annotation toggle, keyboard navigation, and search.
 
-**Requirements:** Ruby 3.2+, Rails 7.1+. For the `:vips` driver: [libvips 8.9+](https://libvips.github.io/libvips/install.html).
+**In GitHub Actions**, the report renders inline as a CI artifact — no download needed. Add a PR comment with a link to the report automatically:
+
+```yaml
+- name: Upload screenshot report
+  if: failure()
+  uses: snap-diff/snap_diff-capybara/.github/actions/upload-screenshots@master
+  with:
+    name: screenshots
+```
+
+See [CI Integration](docs/ci-integration.md) for the full GitHub Actions setup with PR commenting.
+
+## Compare Any Two Images
+
+Works without a browser — PDFs, generated images, CI artifacts:
+
+```ruby
+result = Capybara::Screenshot::Diff.compare("baseline.png", "current.png")
+result.different?    # => true if visually different
+result.quick_equal?  # => true if byte-identical
+```
 
 ## Next Steps
 
 - **Crop to element:** `screenshot "form", crop: "#main-form"`
 - **Ignore regions:** `screenshot "dashboard", skip_area: [".timestamp"]`
-- **Run in CI:** See [GitHub Actions setup](docs/ci-integration.md)
-- **HTML report:** `require 'capybara_screenshot_diff/reporters/html'` — [details](docs/reporters.md)
+- **Disable animations:** `Capybara::Screenshot.disable_animations = true`
+- **Set window size:** `Capybara::Screenshot.window_size = [1280, 1024]`
 
-## Tuning Flaky Tests
+## Handling Flaky Tests
 
-**Defaults work for most Rails apps.** `blur_active_element`, `hide_caret`, and `fail_if_new` (in CI) are enabled automatically.
+Defaults work for most Rails apps — `blur_active_element`, `hide_caret`, and `fail_if_new` (in CI) are enabled automatically.
 
-If you see inconsistent results, choose a color comparison method:
+If screenshots differ between CI and local, set a comparison threshold:
 
 ```ruby
-# Option 1: Perceptual (recommended, VIPS only)
-Capybara::Screenshot::Diff.perceptual_threshold = 2.0
-
-# Option 2: Tolerance-based comparison (legacy)
-Capybara::Screenshot::Diff.tolerance = 0.0005
-
-# Always set window_size for consistent dimensions
 Capybara::Screenshot::Diff.configure do |screenshot, diff|
   screenshot.window_size = [1280, 1024]
+  diff.perceptual_threshold = 2.0   # Recommended for VIPS — ignores anti-aliasing
+  # or: diff.tolerance = 0.001      # Default for VIPS, percentage-based
 end
 ```
 
-| Use Case | VIPS `perceptual_threshold` | VIPS `tolerance` | ChunkyPNG `color_distance_limit` |
-|----------|---------------------------|-----------------|--------------------------------|
-| Cross-OS/browser testing | 2.0 (recommended) | — | — |
-| Standard Rails apps | — | 0.001 (default) | 15 |
-| Animated/complex pages | — | 0.01 | 30 |
-| Pixel-perfect design | — | 0.0001 | 5 |
+See [Choosing the Right Method](docs/configuration.md#choosing-the-right-color-comparison-method) for detailed comparison options.
 
-**⚠️ Color methods are exclusive:** Use `perceptual_threshold` OR `color_distance_limit`, not both. But `tolerance` works with either — it's applied by default for VIPS (0.001). See [Choosing the Right Method](docs/configuration.md#choosing-the-right-color-comparison-method).
+## Common Questions
 
-## Troubleshooting
+**Why did my test pass on the first run?** First run always passes and saves baselines. Run again to compare.
 
-**"No existing screenshot found"** — First run saves baselines. Run `bundle exec rake test` twice, then commit `doc/screenshots/`.
+**How do I update baselines?** Delete the baseline file and re-run tests. Or delete all: `rm -rf doc/screenshots/ && bundle exec rake test`.
 
-**Screenshots differ between CI and local** — Use `tolerance: 0.001` or `perceptual_threshold: 2.0`. Set `window_size` for consistent dimensions.
+**Animations make screenshots flaky** — `Capybara::Screenshot.disable_animations = true` freezes CSS animations/transitions before each capture.
 
-**Animations cause flaky diffs** — `Capybara::Screenshot.disable_animations = true` disables CSS animations/transitions before each screenshot. Or use `stability_time_limit: 1` to wait for animations to finish.
-
-**Dynamic content always differs** — `screenshot "page", skip_area: [".timestamp", "#ad-banner"]`
+**CI screenshots differ from local** — Set `window_size` for consistent dimensions and use `perceptual_threshold: 2.0` to ignore rendering differences.
 
 **Debug mode** — `DEBUG=1 bundle exec rake test` keeps `.diff.png` files for inspection.
+
+## Installation
+
+**Requirements:** Ruby 3.2+, Rails 7.1+. For the `:vips` driver: [libvips 8.9+](https://libvips.github.io/libvips/install.html).
 
 ## Advanced Topics
 
@@ -139,7 +146,7 @@ end
 - [Image Processing Drivers](docs/drivers.md) — VIPS, ChunkyPNG, perceptual threshold
 - [Screenshot Organization](docs/organization.md) — groups, sections, cropping, multi-browser
 - [Configuration Reference](docs/configuration.md) — all options explained
-- [Reporters](docs/reporters.md) — HTML report, custom reporters
+- [Web UI & Custom Reporters](docs/reporters.md) — interactive report, custom reporters
 - [CI & Non-Rails Integration](docs/ci-integration.md) — GitHub Actions, reusable action, baseline updates
 - [Docker Testing](docs/docker-testing.md) — bin/dtest, recording baselines
 
