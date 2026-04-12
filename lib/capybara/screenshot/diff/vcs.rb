@@ -6,13 +6,9 @@ module Capybara
   module Screenshot
     module Diff
       module Vcs
-        def self.checkout_vcs(root, screenshot_path, checkout_path)
-          restore_git_revision(screenshot_path, checkout_path, root: root)
-        end
-
         SILENCE_ERRORS = Os::ON_WINDOWS ? "2>nul" : "2>/dev/null"
 
-        def self.restore_git_revision(screenshot_path, checkout_path = screenshot_path, root:)
+        def self.checkout_vcs(root, screenshot_path, checkout_path)
           vcs_file_path = screenshot_path.relative_path_from(root)
           redirect_target = "#{checkout_path} #{SILENCE_ERRORS}"
           show_command = "git show HEAD~0:./#{vcs_file_path}"
