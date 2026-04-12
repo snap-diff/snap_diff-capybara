@@ -3,6 +3,7 @@
 require "test_helper"
 require "capybara/screenshot/diff/image_compare"
 require "capybara/screenshot/diff/drivers/chunky_png_driver"
+require "support/driver_contract_tests"
 
 module Capybara
   module Screenshot
@@ -10,6 +11,7 @@ module Capybara
       module Drivers
         class ChunkyPNGDriverTest < ActiveSupport::TestCase
           include CapybaraScreenshotDiff::DSLStub
+          include DriverContractTests
 
           class QuickEqualTest < self
             test "#quick_equal? returns true when comparing identical images" do
