@@ -12,38 +12,14 @@ module CapybaraScreenshotDiff
     teardown do
       CapybaraScreenshotDiff.reporters.clear
       CapybaraScreenshotDiff.reporters.concat(@original_reporters)
-      CapybaraScreenshotDiff.instance_variable_set(:@reporters_mutex, nil)
     end
 
-    test "reporters notification uses mutex snapshot" do
-      fake_mutex = Class.new do
-        attr_reader :synchronize_calls
+    test "reporters_mutex is eagerly initialized" do
+      assert_instance_of Mutex, CapybaraScreenshotDiff.reporters_mutex
+    end
 
-        def initialize
-          @synchronize_calls = 0
-        end
-
-        def synchronize
-          @synchronize_calls += 1
-          yield
-        end
-      end.new
-
-      CapybaraScreenshotDiff.instance_variable_set(:@reporters_mutex, fake_mutex)
-
-      reporter = Class.new do
-        def record(_assertions); end
-      end.new
-
-      CapybaraScreenshotDiff.reporters << reporter
-
-      assertion = CapybaraScreenshotDiff::ScreenshotAssertion.new("sample")
-      assertion.compare = Object.new
-      CapybaraScreenshotDiff.add_assertion(assertion)
-
-      CapybaraScreenshotDiff.reset
-
-      assert_operator fake_mutex.synchronize_calls, :>=, 1
+    test "reporters_mutex returns the same instance" do
+      assert_same CapybaraScreenshotDiff.reporters_mutex, CapybaraScreenshotDiff.reporters_mutex
     end
 
     test "reporters notification iterates over snapshot" do

@@ -98,6 +98,22 @@ module CapybaraScreenshotDiff
         assert_includes html, "data:image/png;base64,"
       end
 
+      test "#record from multiple threads produces correct totals" do
+        reporter = HTML.new(output_path: @output_path)
+        threads = 10
+        assertions_per_thread = 5
+
+        workers = threads.times.map do
+          Thread.new do
+            batch = assertions_per_thread.times.map { |i| build_passing_assertion("t#{Thread.current.object_id}_#{i}") }
+            reporter.record(batch)
+          end
+        end
+        workers.each(&:join)
+
+        assert_equal threads * assertions_per_thread, reporter.total
+      end
+
       test "#record and #finalize synchronize internal state" do
         reporter = HTML.new(output_path: @output_path)
 
@@ -122,6 +138,28 @@ module CapybaraScreenshotDiff
         reporter.finalize
 
         assert_operator fake_mutex.synchronize_calls, :>=, 1
+      end
+
+      test "#finalize can retry after write_report failure" do
+        reporter = HTML.new(output_path: @output_path)
+        reporter.record([build_failing_assertion("retry")])
+
+        # Make write_report fail on first attempt
+        FileUtils.rm_rf(@output_dir)
+        File.write(@output_dir.to_s, "not a directory")
+
+        begin
+          reporter.finalize
+        rescue # rubocop:disable Lint/SuppressedException
+        end
+
+        # Restore writable directory and retry
+        File.delete(@output_dir.to_s)
+        FileUtils.mkdir_p(@output_dir)
+
+        result = reporter.finalize
+        assert_instance_of Pathname, result
+        assert @output_path.exist?
       end
 
       private

@@ -133,9 +133,7 @@ module CapybaraScreenshotDiff
       @reporters ||= []
     end
 
-    def reporters_mutex
-      @reporters_mutex ||= Mutex.new
-    end
+    attr_reader :reporters_mutex
 
     def_delegator :registry, :screenshot_namer
     def_delegator :registry, :verify
@@ -155,4 +153,6 @@ module CapybaraScreenshotDiff
       end
     end
   end
+
+  @reporters_mutex = Mutex.new
 end

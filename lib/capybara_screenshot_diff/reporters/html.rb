@@ -49,11 +49,10 @@ module CapybaraScreenshotDiff
       def finalize
         @mutex.synchronize do
           return if @finalized
-
-          @finalized = true
           return if failures.empty?
 
           write_report
+          @finalized = true
           output_path
         end
       end
@@ -122,7 +121,7 @@ unless CapybaraScreenshotDiff.reporters.any?(CapybaraScreenshotDiff::Reporters::
 end
 
 at_exit do
-  CapybaraScreenshotDiff.reporters.each do |reporter|
+  CapybaraScreenshotDiff.reporters_mutex.synchronize { CapybaraScreenshotDiff.reporters.dup }.each do |reporter|
     result = reporter.finalize
     $stdout.puts "[snap_diff] HTML report: #{result}" if result.is_a?(Pathname)
   rescue => e
