@@ -134,6 +134,11 @@ module Capybara
               driver = ChunkyPNGDriver.new
               assert driver.from_file("#{TEST_IMAGES_DIR}/a.png")
             end
+
+            test "#supports? returns false for median filter" do
+              driver = ChunkyPNGDriver.new
+              refute driver.supports?(:filter_image_with_median)
+            end
           end
 
           def make_comparison(old_img, new_img, options = {})
