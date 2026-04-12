@@ -63,11 +63,6 @@ module CapybaraScreenshotDiff
       def passed = total - failures.size
       def failed = failures.size
 
-      def success_rate
-        return 0 if total.zero?
-        (passed.to_f / total * 100).round(1)
-      end
-
       def summary
         return if total.zero?
 
@@ -144,8 +139,10 @@ end
 at_exit do
   CapybaraScreenshotDiff.reporters_mutex.synchronize { CapybaraScreenshotDiff.reporters.dup }.each do |reporter|
     reporter.finalize
-    $stdout.puts reporter.summary if reporter.respond_to?(:summary) && reporter.summary
+    if (msg = reporter.summary)
+      $stdout.puts msg
+    end
   rescue => e
-    warn "[snap_diff] Reporter #{reporter.class} failed (#{e.class}: #{e.message})" if ENV["DEBUG"]
+    warn "[snap_diff] Reporter #{reporter.class} failed (#{e.class}: #{e.message})"
   end
 end
