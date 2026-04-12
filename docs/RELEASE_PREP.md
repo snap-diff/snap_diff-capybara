@@ -9,7 +9,7 @@
 ### Pre-Release
 
 - [x] Update version to `1.12.0`
-- [x] Run tests: `bundle exec rake test` (210 runs, 0 failures)
+- [x] Run tests: `bundle exec rake test` (218 runs, 0 failures)
 - [x] Add CHANGELOG.md
 - [x] Add docs/UPGRADING.md
 
@@ -28,7 +28,10 @@
 ## What Changed
 
 ### New Features
-- HTML reporter with interactive dashboard
+- HTML reporter with premium UI, 4 comparison modes, zoom, keyboard navigation
+- GitHub Actions artifact integration with inline preview + reusable composite action
+- `disable_animations` helper for stable screenshots
+- `snap_diff:clean` rake task for diff artifact cleanup
 - `Diff.compare` for standalone image comparison
 - Perceptual color distance (dE00) for anti-aliasing
 - `assert_no_screenshot_changes` DSL method
@@ -39,6 +42,7 @@
 - `blur_active_element` defaults to `true`
 - `hide_caret` defaults to `true`
 - `fail_if_new` defaults to `true` in CI
+- Thread-safe reporter notification with mutex
 - SVN support removed
 - ActiveSupport no longer required
 
@@ -46,5 +50,9 @@
 - Faster ChunkyPNG shift-detection (eliminated allocations)
 - Cached computations in VIPS driver
 - Memoized region area size
+
+### Documentation
+- README restructured (970→149 lines) with 7 dedicated docs/ files
+- CI integration guide, upgrade guide, color comparison guide
 
 See [CHANGELOG.md](../CHANGELOG.md) for full details.
