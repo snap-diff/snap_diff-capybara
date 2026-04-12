@@ -173,6 +173,20 @@ module CapybaraScreenshotDiff
         assert_includes summary, @output_path.to_s
       end
 
+      test "#summary pluralizes failures label for multiple failures" do
+        reporter = HTML.new(output_path: @output_path)
+        reporter.record([
+          build_failing_assertion("first failure"),
+          build_failing_assertion("second failure")
+        ])
+        reporter.finalize
+
+        summary = reporter.summary
+        assert_includes summary, "2 failures"
+        assert_includes summary, "2 screenshots"
+        assert_includes summary, @output_path.to_s
+      end
+
       test "#summary when all pass shows no failures" do
         reporter = HTML.new(output_path: @output_path)
         reporter.record([build_passing_assertion("ok")])
