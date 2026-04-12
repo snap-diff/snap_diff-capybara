@@ -18,30 +18,44 @@ module CapybaraScreenshotDiff
         @failures = []
         @total = 0
         @finalized = false
+        @mutex = Mutex.new
       end
 
       def record(assertions)
+        return if @finalized
+
+        failures = []
+        total = 0
+
         assertions.each do |assertion|
           compare = assertion.compare
           next unless compare
 
-          @total += 1
+          total += 1
           next unless compare.difference&.different?
 
-          @failures << failure_entry_for(assertion.name, compare)
+          failures << failure_entry_for(assertion.name, compare)
         rescue => e
           warn "[snap_diff] Reporter skipped '#{assertion.name}': #{e.message}" if ENV["DEBUG"]
+        end
+
+        @mutex.synchronize do
+          return if @finalized
+          @total += total
+          @failures.concat(failures)
         end
       end
 
       def finalize
-        return if @finalized
+        @mutex.synchronize do
+          return if @finalized
 
-        @finalized = true
-        return if failures.empty?
+          @finalized = true
+          return if failures.empty?
 
-        write_report
-        output_path
+          write_report
+          output_path
+        end
       end
 
       def passed = total - failures.size

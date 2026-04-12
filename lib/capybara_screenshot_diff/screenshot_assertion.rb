@@ -133,15 +133,22 @@ module CapybaraScreenshotDiff
       @reporters ||= []
     end
 
+    def reporters_mutex
+      @reporters_mutex ||= Mutex.new
+    end
+
     def_delegator :registry, :screenshot_namer
     def_delegator :registry, :verify
 
     private
 
     def notify_reporters(assertions)
-      return if reporters.empty? || assertions.nil? || assertions.empty?
+      return if assertions.nil? || assertions.empty?
 
-      reporters.each do |reporter|
+      reporters_snapshot = reporters_mutex.synchronize { reporters.dup }
+      return if reporters_snapshot.empty?
+
+      reporters_snapshot.each do |reporter|
         reporter.record(assertions)
       rescue => e
         warn "[capybara-screenshot-diff] Reporter failed: #{e.message}"
