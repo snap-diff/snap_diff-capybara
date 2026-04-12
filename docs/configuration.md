@@ -29,7 +29,7 @@ end
 | Standard Rails apps | 0.001 (default) | 15 | 1s |
 | Pixel-perfect design tests | 0.0001 | 5 | 1s |
 
-**Note:** VIPS defaults to `tolerance: 0.001` (allow 0.1% pixel difference). ChunkyPNG has no default tolerance.
+**Note:** VIPS defaults to `tolerance: 0.001` (allows 0.1% pixel difference). ChunkyPNG has no default tolerance.
 
 ## Choosing the Right Color Comparison Method
 
