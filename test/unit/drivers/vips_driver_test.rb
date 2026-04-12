@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "test_helper"
+require "support/driver_contract_tests"
 
 unless defined?(Vips)
   warn "VIPS not present. Skipping VIPS driver tests."
@@ -15,6 +16,7 @@ module Capybara
       module Drivers
         class VipsDriverTest < ActiveSupport::TestCase
           include CapybaraScreenshotDiff::DSLStub
+          include DriverContractTests
 
           setup do
             @new_screenshot_result = Tempfile.new(%w[screenshot .png], Rails.root)
