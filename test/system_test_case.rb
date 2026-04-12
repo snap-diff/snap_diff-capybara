@@ -2,6 +2,7 @@
 
 require "test_helper"
 require "capybara_screenshot_diff/minitest"
+require "capybara_screenshot_diff/reporters/html"
 
 require "support/setup_capybara_drivers"
 
