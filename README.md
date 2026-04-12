@@ -155,6 +155,23 @@ end
 | Standard Rails apps | 0.0005 | 15 | 1s |
 | Pixel-perfect design tests | 0.0001 | 5 | 1s |
 
+### Standalone image comparison
+
+Compare any two images without Capybara or a browser — useful for PDF regression, generated images, or CI artifact validation:
+
+```ruby
+result = Capybara::Screenshot::Diff.compare("baseline.png", "current.png")
+result.quick_equal?  # => true if byte-identical
+result.different?    # => true if visually different (respects tolerance)
+
+# With options
+result = Capybara::Screenshot::Diff.compare("baseline.pdf.png", "current.pdf.png",
+  driver: :vips,
+  tolerance: 0.001,
+  perceptual_threshold: 2.0
+)
+```
+
 ### Perceptual color comparison (VIPS only)
 
 By default, color differences are measured using raw RGB channel distance. This can produce
