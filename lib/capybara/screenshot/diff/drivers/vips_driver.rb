@@ -142,8 +142,8 @@ module Capybara
             end
 
             def perceptual_color_diff(base_image, new_image)
-              base_rgb = base_image.bands > 3 ? base_image.extract_band(0, n: 3) : base_image
-              new_rgb = new_image.bands > 3 ? new_image.extract_band(0, n: 3) : new_image
+              base_rgb = (base_image.bands > 3) ? base_image.extract_band(0, n: 3) : base_image
+              new_rgb = (new_image.bands > 3) ? new_image.extract_band(0, n: 3) : new_image
               base_lab = base_rgb.colourspace(:lab)
               new_lab = new_rgb.colourspace(:lab)
               base_lab.dE00(new_lab)
