@@ -82,6 +82,6 @@ Minitest, RSpec, and Cucumber are supported out of the box. For other frameworks
 CapybaraScreenshotDiff.finalize_reporters!
 ```
 
-This generates the HTML report and prints the summary. Without this call, the gem falls back to `at_exit` which may not fire at the right time depending on your framework's boot order.
+This generates the HTML report and prints the summary.
 
 [← Back to README](../README.md)

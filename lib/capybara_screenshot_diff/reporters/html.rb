@@ -129,13 +129,9 @@ module CapybaraScreenshotDiff
   end
 end
 
-# Auto-register reporter and at_exit hook.
-# The reporter only writes when there are failures (finalize checks failures.empty?).
-# Scripts that create their own reporter instance call record/finalize directly.
+# Auto-register reporter.
+# Framework adapters (Minitest, RSpec, Cucumber) call finalize_reporters! via native hooks.
+# For custom frameworks, call CapybaraScreenshotDiff.finalize_reporters! manually.
 unless CapybaraScreenshotDiff.reporters.any?(CapybaraScreenshotDiff::Reporters::HTML)
   CapybaraScreenshotDiff.reporters << CapybaraScreenshotDiff::Reporters::HTML.new(embed_images: !!ENV["CI"])
 end
-
-# Safety net for all frameworks. Framework adapters also call finalize_reporters!
-# via native hooks for correct ordering. The @finalized guard prevents double work.
-at_exit { CapybaraScreenshotDiff.finalize_reporters! }
