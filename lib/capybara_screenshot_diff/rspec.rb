@@ -4,11 +4,19 @@ require "rspec/core"
 require "capybara_screenshot_diff/dsl"
 
 RSpec::Matchers.define :match_screenshot do |name, **options|
-  description { "match a screenshot" }
+  description { "match screenshot '#{name}'" }
 
   match do |_page|
     screenshot(name, **options)
     true
+  end
+
+  failure_message do
+    "Expected page to match screenshot '#{name}'"
+  end
+
+  failure_message_when_negated do
+    "Expected page not to match screenshot '#{name}'"
   end
 end
 
