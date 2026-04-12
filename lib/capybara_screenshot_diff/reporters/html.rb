@@ -136,21 +136,6 @@ unless CapybaraScreenshotDiff.reporters.any?(CapybaraScreenshotDiff::Reporters::
   CapybaraScreenshotDiff.reporters << CapybaraScreenshotDiff::Reporters::HTML.new(embed_images: !!ENV["CI"])
 end
 
-snap_diff_finalize = proc do
-  CapybaraScreenshotDiff.reporters_mutex.synchronize { CapybaraScreenshotDiff.reporters.dup }.each do |reporter|
-    reporter.finalize
-    if (msg = reporter.summary)
-      $stdout.puts msg
-    end
-  rescue => e
-    warn "[snap_diff] Reporter #{reporter.class} failed (#{e.class}: #{e.message})"
-  end
-end
-
-if defined?(Minitest) && Minitest.respond_to?(:after_run)
-  Minitest.after_run(&snap_diff_finalize)
-elsif defined?(RSpec)
-  RSpec.configure { |c| c.after(:suite, &snap_diff_finalize) }
-else
-  at_exit(&snap_diff_finalize)
-end
+# Fallback for frameworks without explicit integration (e.g., Cucumber).
+# Minitest and RSpec adapters call finalize_reporters! via their native hooks.
+at_exit { CapybaraScreenshotDiff.finalize_reporters! }

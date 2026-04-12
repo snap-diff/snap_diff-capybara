@@ -131,6 +131,17 @@ module CapybaraScreenshotDiff
 
     attr_reader :reporters_mutex
 
+    def finalize_reporters!
+      reporters_mutex.synchronize { reporters.dup }.each do |reporter|
+        reporter.finalize
+        if (msg = reporter.summary)
+          $stdout.puts msg
+        end
+      rescue => e
+        warn "[snap_diff] Reporter #{reporter.class} failed (#{e.class}: #{e.message})"
+      end
+    end
+
     def_delegator :registry, :screenshot_namer
     def_delegator :registry, :verify
 
