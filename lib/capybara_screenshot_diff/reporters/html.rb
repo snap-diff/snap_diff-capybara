@@ -9,11 +9,10 @@ require "json"
 module CapybaraScreenshotDiff
   module Reporters
     class HTML
-      attr_reader :output_path, :failures, :total
+      attr_reader :failures, :total
 
-      def initialize(output_path: "tmp/snap_diff/index.html", embed_images: false)
-        @output_path = Pathname.new(output_path)
-        @report_dir = @output_path.dirname
+      def initialize(output_path: nil, embed_images: false)
+        @explicit_output_path = output_path
         @embed_images = embed_images
         @failures = []
         @total = 0
@@ -57,6 +56,10 @@ module CapybaraScreenshotDiff
         end
       end
 
+      def output_path
+        @output_path ||= Pathname.new(@explicit_output_path || self.class.default_output_path)
+      end
+
       def passed = total - failures.size
       def failed = failures.size
 
@@ -71,6 +74,11 @@ module CapybaraScreenshotDiff
 
       def self.template_path
         File.expand_path("templates/report.html.erb", __dir__)
+      end
+
+      def self.default_output_path
+        root = Capybara::Screenshot.root || Pathname.pwd
+        root / Capybara::Screenshot.save_path / "snap_diff_report.html"
       end
 
       private
@@ -96,7 +104,7 @@ module CapybaraScreenshotDiff
         pathname = Pathname.new(path).expand_path
         return unless pathname.exist?
 
-        @embed_images ? data_uri(pathname) : pathname.relative_path_from(@report_dir.expand_path).to_s
+        @embed_images ? data_uri(pathname) : pathname.relative_path_from(output_path.dirname.expand_path).to_s
       end
 
       def data_uri(pathname)
@@ -106,7 +114,7 @@ module CapybaraScreenshotDiff
       end
 
       def write_report
-        FileUtils.mkdir_p(@report_dir)
+        FileUtils.mkdir_p(output_path.dirname)
         File.write(output_path, render)
       end
     end

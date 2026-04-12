@@ -30,6 +30,7 @@ module Capybara
     mattr_accessor(:blur_active_element) { true }
     mattr_accessor :enabled
     mattr_accessor(:hide_caret) { true }
+    mattr_accessor :disable_animations
     mattr_reader(:root) { (defined?(Rails) && defined?(Rails.root) && Rails.root) || Pathname(".").expand_path }
     mattr_accessor :stability_time_limit
     mattr_accessor :window_size

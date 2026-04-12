@@ -78,6 +78,12 @@ module CapybaraScreenshotDiff
         assert_includes @output_path.read, "valid"
       end
 
+      test "HTML reporter defaults to screenshot root path" do
+        reporter = HTML.new
+        expected = Capybara::Screenshot.root / Capybara::Screenshot.save_path / "snap_diff_report.html"
+        assert_equal expected, reporter.output_path
+      end
+
       test "#record uses relative paths by default" do
         reporter = HTML.new(output_path: @output_path)
 

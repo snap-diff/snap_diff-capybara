@@ -127,7 +127,7 @@ end
 
 **Screenshots differ between CI and local** — Use `tolerance: 0.001` or `perceptual_threshold: 2.0`. Set `window_size` for consistent dimensions.
 
-**Animations cause flaky diffs** — `Capybara.disable_animation = true`, or `stability_time_limit: 1`.
+**Animations cause flaky diffs** — `Capybara::Screenshot.disable_animations = true` disables CSS animations/transitions before each screenshot. Or use `stability_time_limit: 1` to wait for animations to finish.
 
 **Dynamic content always differs** — `screenshot "page", skip_area: [".timestamp", "#ad-banner"]`
 

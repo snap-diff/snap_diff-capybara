@@ -60,6 +60,19 @@ module Capybara
         session.execute_script(HIDE_CARET_SCRIPT)
       end
 
+      DISABLE_ANIMATIONS_SCRIPT = <<~JS
+        if (!document.getElementById('csdDisableAnimationsStyle')) {
+          let style = document.createElement('style');
+          style.setAttribute('id', 'csdDisableAnimationsStyle');
+          style.textContent = '*, *::before, *::after { animation-duration: 0s !important; animation-delay: 0s !important; transition-duration: 0s !important; transition-delay: 0s !important; }';
+          document.head.appendChild(style);
+        }
+      JS
+
+      def self.disable_animations
+        session.execute_script(DISABLE_ANIMATIONS_SCRIPT)
+      end
+
       FIND_ACTIVE_ELEMENT_SCRIPT = <<~JS
         function activeElement(){
           const ae = document.activeElement; 
