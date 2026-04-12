@@ -41,8 +41,6 @@ module CapybaraScreenshotDiff
       test_screenshot_errors.compact!
 
       test_screenshot_errors.empty? ? nil : test_screenshot_errors
-    ensure
-      screenshots&.clear
     end
 
     # Asserts that an image has not changed compared to its baseline.
@@ -58,8 +56,6 @@ module CapybaraScreenshotDiff
       # Cleanup after comparisons
       if !result && comparison.base_image_path.exist?
         FileUtils.mv(comparison.base_image_path, comparison.image_path, force: true)
-      elsif !comparison.dimensions_changed?
-        FileUtils.rm_rf(comparison.base_image_path)
       end
 
       return unless result
@@ -134,6 +130,17 @@ module CapybaraScreenshotDiff
     end
 
     attr_reader :reporters_mutex
+
+    def finalize_reporters!
+      reporters_mutex.synchronize { reporters.dup }.each do |reporter|
+        reporter.finalize
+        if (msg = reporter.summary)
+          $stdout.puts msg
+        end
+      rescue => e
+        warn "[snap_diff] Reporter #{reporter.class} failed (#{e.class}: #{e.message})"
+      end
+    end
 
     def_delegator :registry, :screenshot_namer
     def_delegator :registry, :verify

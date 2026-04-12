@@ -152,10 +152,10 @@ module CapybaraScreenshotDiff
       assert_not comparison.base_image_path.exist?
     end
 
-    test "#assert_image_not_changed cleans up base image when images differ" do
+    test "#assert_image_not_changed keeps base image when images differ" do
       comparison = make_comparison(:a, :b)
       assert_image_not_changed(["my_test.rb:42"], "name", comparison)
-      assert_not comparison.base_image_path.exist?
+      assert comparison.base_image_path.exist?, "base image should be kept for reporter"
     end
 
     private

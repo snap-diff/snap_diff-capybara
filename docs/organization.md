@@ -28,10 +28,34 @@ doc
     welcome_index
 ```
 
-To store the screen shot history, add the `doc/screenshots` directory to your
-version control system (git, svn, etc).
+To store the screenshot history, add the `doc/screenshots` directory to your
+version control system (git).
 
-    Screen shots are compared to the previously COMMITTED version of the same screen shot.
+Screenshots are compared to the previously COMMITTED version of the same screenshot.
+
+### Generated artifacts (do not commit)
+
+When a screenshot differs, the gem generates temporary diff files alongside the baseline:
+
+| Pattern | Description |
+|---------|-------------|
+| `*.base.png` | VCS checkout of the committed baseline |
+| `*.diff.png` | Annotated diff with changes highlighted |
+| `*.base.diff.png` | Annotated baseline with diff region marked |
+| `*.heatmap.diff.png` | Heatmap of pixel differences |
+| `snap_diff_report.html` | Interactive Web UI report |
+
+Add these to `.gitignore`:
+
+```gitignore
+*.diff.png
+*.base.png
+*.diff.webp
+*.base.webp
+snap_diff_report.html
+```
+
+Clean up artifacts with `rake snap_diff:clean`.
 
 ## Screenshot groups
 

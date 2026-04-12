@@ -41,4 +41,6 @@ RSpec.configure do |config|
       end
     end
   end
+
+  config.after(:suite) { CapybaraScreenshotDiff.finalize_reporters! }
 end

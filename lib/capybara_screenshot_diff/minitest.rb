@@ -47,3 +47,5 @@ module CapybaraScreenshotDiff
     end
   end
 end
+
+::Minitest.after_run { CapybaraScreenshotDiff.finalize_reporters! } if ::Minitest.respond_to?(:after_run)

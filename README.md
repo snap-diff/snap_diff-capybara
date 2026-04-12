@@ -60,6 +60,16 @@ doc/screenshots/
   homepage.png          <- your baseline (commit this)
 ```
 
+Add diff artifacts to `.gitignore` — these are generated at runtime and should not be committed:
+```gitignore
+# Screenshot diff artifacts (generated, not committed)
+*.diff.png
+*.base.png
+*.diff.webp
+*.base.webp
+snap_diff_report.html
+```
+
 If you skip Step 2 and push to CI, the build will fail — `fail_if_new` is `true` by default in CI.
 
 For RSpec, Cucumber, or non-Rails setup, see [Framework Setup](docs/framework-setup.md).

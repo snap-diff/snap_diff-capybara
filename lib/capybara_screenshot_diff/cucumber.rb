@@ -8,3 +8,5 @@ Before do
   Capybara::Screenshot::Diff.delayed = false
   Capybara::Screenshot::BrowserHelpers.resize_window_if_needed
 end
+
+AfterAll { CapybaraScreenshotDiff.finalize_reporters! }
