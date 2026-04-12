@@ -24,10 +24,6 @@ module Capybara
             _load_images(old_bytes, new_bytes)
           end
 
-          def filter_image_with_median(_image)
-            raise NotImplementedError
-          end
-
           def add_black_box(image, _region)
             image
           end
