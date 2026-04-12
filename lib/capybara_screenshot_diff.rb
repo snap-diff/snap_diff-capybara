@@ -90,6 +90,10 @@ module Capybara
         yield Screenshot, self
       end
 
+      def self.compare(baseline_path, current_path, **options)
+        ImageCompare.new(current_path, baseline_path, default_options.merge(options))
+      end
+
       def self.default_options
         {
           area_size_limit: area_size_limit,
