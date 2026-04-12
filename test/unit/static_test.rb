@@ -5,8 +5,13 @@ require "capybara_screenshot_diff/static"
 
 module CapybaraScreenshotDiff
   class StaticTest < ActiveSupport::TestCase
+    setup do
+      @original_root = Capybara::Screenshot.root
+    end
+
     teardown do
       Capybara.app = Rails.application
+      Capybara::Screenshot.root = @original_root
     end
 
     test ".serve sets Capybara.app to serve the directory" do

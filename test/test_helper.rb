@@ -39,20 +39,34 @@ class ActiveSupport::TestCase
   # Set up fixtures and test helpers
   self.file_fixture_path = Pathname.new(File.expand_path("fixtures", __dir__))
 
+  # Snapshot ALL global state before each test, restore after.
+  # Prevents one test from poisoning another via leaked mattr_accessor changes.
+  GLOBAL_STATE_MODULES = [
+    Capybara::Screenshot,
+    Capybara::Screenshot::Diff
+  ].freeze
+
   setup do
-    @_orig_fail_if_new = Capybara::Screenshot::Diff.fail_if_new
-    @_orig_blur = Capybara::Screenshot.blur_active_element
-    @_orig_hide_caret = Capybara::Screenshot.hide_caret
+    @_global_snapshots = GLOBAL_STATE_MODULES.map { |mod|
+      attrs = mod.class_variables.map { |cv| [cv, mod.class_variable_get(cv)] }
+      [mod, attrs]
+    }.to_h
+    @_orig_cwd = Dir.pwd
+    @_orig_capybara_app = Capybara.app
 
     Capybara::Screenshot::Diff.fail_if_new = false
     Capybara::Screenshot.blur_active_element = false
     Capybara::Screenshot.hide_caret = false
+    Capybara::Screenshot.disable_animations = false
   end
 
   teardown do
-    Capybara::Screenshot::Diff.fail_if_new = @_orig_fail_if_new
-    Capybara::Screenshot.blur_active_element = @_orig_blur
-    Capybara::Screenshot.hide_caret = @_orig_hide_caret
+    # Restore all global state
+    @_global_snapshots&.each do |mod, attrs|
+      attrs.each { |cv, val| mod.class_variable_set(cv, val) }
+    end
+    Dir.chdir(@_orig_cwd) if @_orig_cwd && Dir.pwd != @_orig_cwd
+    Capybara.app = @_orig_capybara_app if @_orig_capybara_app
     CapybaraScreenshotDiff::SnapManager.cleanup! unless persist_comparisons?
   end
 
