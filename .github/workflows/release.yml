@@ -1,24 +1,62 @@
 ---
+name: Release
+
 on:
   workflow_dispatch:
+    inputs:
+      version:
+        description: "Release version (e.g., 1.12.0)"
+        required: true
+        type: string
 
 jobs:
-  push:
-    name: Push gem to RubyGems.org
+  release:
+    name: Release v${{ github.event.inputs.version }}
     runs-on: ubuntu-latest
 
     permissions:
-      id-token: write # IMPORTANT: this permission is mandatory for trusted publishing
-      contents: write # IMPORTANT: this permission is required for `rake release` to push the release tag
+      id-token: write
+      contents: write
 
     steps:
-      # Set up
       - uses: actions/checkout@v6
-      - name: Set up Ruby
-        uses: ruby/setup-ruby@v1
+      - uses: ruby/setup-ruby@v1
         with:
           bundler-cache: true
           ruby-version: ruby
 
-      # Release
-      - uses: rubygems/release-gem@v1
+      - name: Verify version
+        run: |
+          GEM_VERSION="${{ github.event.inputs.version }}"
+          CODE_VERSION=$(ruby -rlib/capybara/screenshot/diff/version -e "puts Capybara::Screenshot::Diff::VERSION")
+          if [ "$GEM_VERSION" != "$CODE_VERSION" ]; then
+            echo "Version mismatch: input=$GEM_VERSION code=$CODE_VERSION"
+            exit 1
+          fi
+
+      - name: Test
+        run: bundle exec rake test
+
+      - name: Create tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "v${{ github.event.inputs.version }}" -m "v${{ github.event.inputs.version }}"
+          git push origin "v${{ github.event.inputs.version }}"
+
+      - name: Publish to RubyGems
+        uses: rubygems/release-gem@v1
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: "v${{ github.event.inputs.version }}"
+          name: "v${{ github.event.inputs.version }}"
+          body: |
+            ## What's Changed
+
+            See [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md#v${{ github.event.inputs.version }}) for full details.
+
+            **Upgrade Guide:** [docs/UPGRADING.md](https://github.com/${{ github.repository }}/blob/main/docs/UPGRADING.md)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
