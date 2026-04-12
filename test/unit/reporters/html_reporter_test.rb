@@ -78,6 +78,26 @@ module CapybaraScreenshotDiff
         assert_includes @output_path.read, "valid"
       end
 
+      test "#record uses relative paths by default" do
+        reporter = HTML.new(output_path: @output_path)
+
+        reporter.record([build_failing_assertion("rel")])
+        reporter.finalize
+
+        html = @output_path.read
+        assert_not_includes html, "data:image"
+      end
+
+      test "#record embeds base64 images when embed_images: true" do
+        reporter = HTML.new(output_path: @output_path, embed_images: true)
+
+        reporter.record([build_failing_assertion("embed")])
+        reporter.finalize
+
+        html = @output_path.read
+        assert_includes html, "data:image/png;base64,"
+      end
+
       private
 
       def build_passing_assertion(name)

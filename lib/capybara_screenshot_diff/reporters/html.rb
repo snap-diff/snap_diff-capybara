@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require "base64"
 require "erb"
 require "fileutils"
 require "pathname"
@@ -10,9 +11,10 @@ module CapybaraScreenshotDiff
     class HTML
       attr_reader :output_path, :failures, :total
 
-      def initialize(output_path: "tmp/snap_diff/index.html")
+      def initialize(output_path: "tmp/snap_diff/index.html", embed_images: false)
         @output_path = Pathname.new(output_path)
         @report_dir = @output_path.dirname
+        @embed_images = embed_images
         @failures = []
         @total = 0
         @finalized = false
@@ -36,14 +38,10 @@ module CapybaraScreenshotDiff
         return if @finalized
 
         @finalized = true
-
-        if failures.empty?
-          warn "[snap_diff] No failures found, HTML report not generated" if ENV["DEBUG"]
-          return
-        end
+        return if failures.empty?
 
         write_report
-        true
+        output_path
       end
 
       def passed = total - failures.size
@@ -68,24 +66,30 @@ module CapybaraScreenshotDiff
         difference = compare.difference
         {
           name: name,
-          original: relative_path(compare.base_image_path),
-          new: relative_path(compare.image_path),
-          base_diff: relative_path(compare.reporter.annotated_base_image_path),
-          diff: relative_path(compare.reporter.annotated_image_path),
-          heatmap: relative_path(compare.reporter.heatmap_diff_path),
+          original: resolve_image(compare.base_image_path),
+          new: resolve_image(compare.image_path),
+          base_diff: resolve_image(compare.reporter.annotated_base_image_path),
+          diff: resolve_image(compare.reporter.annotated_image_path),
+          heatmap: resolve_image(compare.reporter.heatmap_diff_path),
           diff_level: difference.ratio && (difference.ratio * 100).round(2),
           area_size: difference.region_area_size,
           max_color_distance: difference.meta[:max_color_distance]&.round(1)
         }
       end
 
-      def relative_path(path)
+      def resolve_image(path)
         return unless path
 
-        pathname = Pathname.new(path)
+        pathname = Pathname.new(path).expand_path
         return unless pathname.exist?
 
-        pathname.relative_path_from(@report_dir).to_s
+        @embed_images ? data_uri(pathname) : pathname.relative_path_from(@report_dir.expand_path).to_s
+      end
+
+      def data_uri(pathname)
+        ext = pathname.extname.delete_prefix(".")
+        mime = (ext == "webp") ? "image/webp" : "image/png"
+        "data:#{mime};base64,#{Base64.strict_encode64(pathname.binread)}"
       end
 
       def write_report
@@ -96,14 +100,17 @@ module CapybaraScreenshotDiff
   end
 end
 
+# Auto-register reporter and at_exit hook.
+# The reporter only writes when there are failures (finalize checks failures.empty?).
+# Scripts that create their own reporter instance call record/finalize directly.
 unless CapybaraScreenshotDiff.reporters.any?(CapybaraScreenshotDiff::Reporters::HTML)
-  CapybaraScreenshotDiff.reporters << CapybaraScreenshotDiff::Reporters::HTML.new
+  CapybaraScreenshotDiff.reporters << CapybaraScreenshotDiff::Reporters::HTML.new(embed_images: !!ENV["CI"])
 end
 
 at_exit do
   CapybaraScreenshotDiff.reporters.each do |reporter|
-    wrote = reporter.finalize
-    $stdout.puts "[snap_diff] HTML report: #{reporter.output_path}" if wrote
+    result = reporter.finalize
+    $stdout.puts "[snap_diff] HTML report: #{result}" if result.is_a?(Pathname)
   rescue => e
     warn "[snap_diff] Reporter #{reporter.class} failed (#{e.class}: #{e.message})" if ENV["DEBUG"]
   end

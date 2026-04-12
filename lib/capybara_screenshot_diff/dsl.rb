@@ -38,8 +38,8 @@ module CapybaraScreenshotDiff
     # @param options [Hash] Additional options for taking the screenshot and comparison.
     # @option options [Boolean] :delayed (Capybara::Screenshot::Diff.delayed)
     #   Whether to validate the screenshot immediately or delay validation.
-    # @option options [Array<Integer>] :crop [x, y, width, height] Area to crop the screenshot to.
-    # @option options [Array<Array<Integer>>] :skip_area Array of [x, y, width, height] areas to ignore.
+    # @option options [Array<Integer>] :crop [left, top, right, bottom] Edge coordinates to crop the screenshot to.
+    # @option options [Array<Array<Integer>>] :skip_area Array of [left, top, right, bottom] edge coordinates to ignore.
     # @option options [Numeric] :tolerance (0.001 for :vips driver) Color tolerance for comparison.
     # @option options [Numeric] :color_distance_limit Maximum allowed color distance between pixels.
     # @option options [Numeric] :shift_distance_limit Maximum allowed shift distance for pixels.
