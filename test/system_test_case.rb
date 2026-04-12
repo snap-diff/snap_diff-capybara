@@ -65,7 +65,7 @@ class SystemTestCase < ActiveSupport::TestCase
     save_annotations_for_debug(comparison)
 
     screenshot_path = comparison.image_path
-    Vcs.restore_git_revision(screenshot_path, root: Capybara::Screenshot.root)
+    Vcs.checkout_vcs(Capybara::Screenshot.root, screenshot_path, screenshot_path)
 
     if comparison.difference
       comparison.reporter.clean_tmp_files

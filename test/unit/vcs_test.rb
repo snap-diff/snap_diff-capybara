@@ -19,11 +19,11 @@ module Capybara
           end
         end
 
-        test "#restore_git_revision checks out and verifies the original screenshot" do
+        test "#checkout_vcs checks out and verifies the original screenshot" do
           screenshot_path = file_fixture("images/a.png")
 
           base_screenshot_path = Pathname.new(@base_screenshot.path)
-          assert Vcs.restore_git_revision(screenshot_path, base_screenshot_path, root: Screenshot.root)
+          assert Vcs.checkout_vcs(Screenshot.root, screenshot_path, base_screenshot_path)
 
           assert base_screenshot_path.exist?
           assert_equal screenshot_path.size, base_screenshot_path.size
