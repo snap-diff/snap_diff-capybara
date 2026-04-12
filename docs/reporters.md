@@ -1,8 +1,8 @@
 # Reporters
 
-## HTML Report
+## Web UI for Reviewing Screenshot Changes
 
-Generate an interactive HTML report of screenshot differences:
+Generate an interactive Web UI report of screenshot differences:
 
 ```ruby
 # Add to test_helper.rb — one line, that's it
