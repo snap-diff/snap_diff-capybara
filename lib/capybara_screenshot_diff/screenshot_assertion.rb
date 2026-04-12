@@ -124,8 +124,28 @@ module CapybaraScreenshotDiff
     def_delegator :registry, :assertions
     def_delegator :registry, :assertions_present?
     def_delegator :registry, :failed_assertions
-    def_delegator :registry, :reset
+    def reset
+      notify_reporters(registry.assertions)
+      registry.reset
+    end
+
+    def reporters
+      @reporters ||= []
+    end
+
     def_delegator :registry, :screenshot_namer
     def_delegator :registry, :verify
+
+    private
+
+    def notify_reporters(assertions)
+      return if reporters.empty? || assertions.nil? || assertions.empty?
+
+      reporters.each do |reporter|
+        reporter.record(assertions)
+      rescue => e
+        warn "[capybara-screenshot-diff] Reporter failed: #{e.message}"
+      end
+    end
   end
 end
