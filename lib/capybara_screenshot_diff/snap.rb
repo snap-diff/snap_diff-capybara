@@ -60,7 +60,7 @@ module CapybaraScreenshotDiff
         path.sub_ext(".diff.#{format}"),
         path.sub_ext(".heatmap.diff.#{format}"),
         base_path.sub_ext(".diff.#{format}")
-      ].each { |f| f.delete if f.exist? }
+      ].each { |f| f.unlink if f.exist? }
     end
   end
 end

@@ -67,7 +67,6 @@ module CapybaraScreenshotDiff
       @manager.provision_snap_with(snap, source)
       @manager.provision_snap_with(snap, source, version: :base)
 
-      # Simulate reporter artifacts
       diff_path = snap.path.sub_ext(".diff.png")
       base_diff_path = snap.path.sub_ext(".base.diff.png")
       heatmap_path = snap.path.sub_ext(".heatmap.diff.png")
