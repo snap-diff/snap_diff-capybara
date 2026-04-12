@@ -9,7 +9,7 @@ require "capybara_screenshot_diff/minitest"
 require "capybara/screenshot/diff"
 require "capybara_screenshot_diff/reporters/html"
 
-output_path = File.expand_path("../tmp/snap_diff/index.html", __dir__)
+output_path = CapybaraScreenshotDiff::Reporters::HTML.default_output_path
 
 # Build real comparisons using the gem's own ImageCompare.
 # Each pair gets a unique copy of the base image to avoid annotation file conflicts.

@@ -8,6 +8,8 @@ module Capybara
     class Screenshoter
       attr_reader :capture_options, :driver
 
+      # @param capture_options [Hash] Options for capturing (window_size, wait, etc.)
+      # @param comparison_options [Hash] Options for image comparison (driver, tolerance, etc.)
       def initialize(capture_options, comparison_options = {})
         @capture_options = capture_options
         @driver = Diff::Drivers.for(comparison_options)
@@ -70,9 +72,8 @@ module Capybara
 
         blurred_input = BrowserHelpers.blur_from_focused_element if Screenshot.blur_active_element
 
-        if Screenshot.hide_caret
-          BrowserHelpers.hide_caret
-        end
+        BrowserHelpers.hide_caret if Screenshot.hide_caret
+        BrowserHelpers.disable_animations if Screenshot.disable_animations
 
         blurred_input
       end
