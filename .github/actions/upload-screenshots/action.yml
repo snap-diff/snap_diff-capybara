@@ -41,7 +41,7 @@ runs:
       id: check-report
       shell: bash
       run: |
-        if [ -f "${{ inputs.report-path }}/index.html" ]; then
+        if [ -f "${{ inputs.report-path }}/snap_diff_report.html" ]; then
           echo "exists=true" >> "$GITHUB_OUTPUT"
         else
           echo "exists=false" >> "$GITHUB_OUTPUT"
@@ -50,7 +50,7 @@ runs:
     - name: Prepare HTML report for inline preview
       if: steps.check-report.outputs.exists == 'true'
       shell: bash
-      run: cp "${{ inputs.report-path }}/index.html" "${{ inputs.report-path }}/${{ inputs.name }}-snap_diff-report.html"
+      run: cp "${{ inputs.report-path }}/snap_diff_report.html" "${{ inputs.report-path }}/${{ inputs.name }}-snap_diff-report.html"
 
     - name: Upload HTML report (inline preview)
       id: upload-report

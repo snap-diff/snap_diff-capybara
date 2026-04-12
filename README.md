@@ -4,11 +4,13 @@
 
 # Capybara::Screenshot::Diff
 
-Stop shipping UI bugs. Take screenshots in your Rails tests, commit baselines to git, and let CI catch visual regressions in pull requests — no cloud service, no subscription, runs entirely in your test suite.
+Stop shipping UI bugs. Take screenshots in your Capybara tests, commit baselines to git, and let CI catch visual regressions in pull requests — no cloud service, no subscription, runs entirely in your test suite.
 
-**Why this gem?** Percy and Chromatic cost money and send your screenshots to a third party. BackstopJS requires Node. This gem integrates directly into your Capybara tests, stores baselines in git, and works offline.
+**Why this gem?** Baselines live in git alongside your code — no external service, no account to sign up for, works offline. Unlike Percy/Chromatic (paid SaaS), this runs locally. Unlike BackstopJS, no Node required.
 
 ## Quick Start
+
+> **Prerequisites:** A working Capybara setup with a browser driver (e.g., selenium-webdriver + Chrome). See [Rails System Testing guide](https://guides.rubyonrails.org/testing.html#system-testing) if you don't have one yet.
 
 ```ruby
 # Gemfile
@@ -38,18 +40,38 @@ class HomepageTest < ApplicationSystemTestCase
 end
 ```
 
+Then run these steps in order:
+
 ```bash
-bundle exec rake test                    # First run always passes — saves baselines
+# Step 1: Save baselines (first run always passes)
+bundle exec rake test
+
+# Step 2: Commit baselines to git
 git add doc/screenshots/
 git commit -m "chore: add screenshot baselines"
-bundle exec rake test                    # Second run compares against committed baselines
+
+# Step 3: Now comparisons work — change your UI and re-run
+bundle exec rake test
 ```
 
-First run saves baseline screenshots to `doc/screenshots/` (always passes). Commit them to git. Subsequent runs compare against committed baselines — if the UI changed, the test fails.
+After Step 1, you'll see:
+```
+doc/screenshots/
+  homepage.png          <- your baseline (commit this)
+```
 
-> **CI note:** `fail_if_new` is `true` by default in CI — new screenshots without a committed baseline will fail. Always commit baselines before pushing.
+If you skip Step 2 and push to CI, the build will fail — `fail_if_new` is `true` by default in CI.
 
 For RSpec, Cucumber, or non-Rails setup, see [Framework Setup](docs/framework-setup.md).
+
+### For Non-Rails Projects (Hugo, Jekyll, Static Sites)
+
+```ruby
+require 'capybara_screenshot_diff/static'
+CapybaraScreenshotDiff.serve("_site")  # or "public", "build", "dist"
+```
+
+Then commit baselines to git just like Rails. [Full setup](docs/ci-integration.md#non-rails-projects-hugo-jekyll-static-sites).
 
 ## What Happens When a Screenshot Changes
 
@@ -116,39 +138,64 @@ If screenshots differ between CI and local, set a comparison threshold:
 
 ```ruby
 Capybara::Screenshot::Diff.configure do |screenshot, diff|
-  screenshot.window_size = [1280, 1024]
-  diff.perceptual_threshold = 2.0   # Recommended for VIPS — ignores anti-aliasing
-  # or: diff.tolerance = 0.001      # Default for VIPS, percentage-based
+  screenshot.window_size = [1280, 1024]        # consistent viewport
+  diff.perceptual_threshold = 2.0              # ignore anti-aliasing (VIPS only)
+  # or: diff.tolerance = 0.001                 # percentage-based (default for VIPS)
 end
 ```
 
 See [Choosing the Right Method](docs/configuration.md#choosing-the-right-color-comparison-method) for detailed comparison options.
 
-## Common Questions
+## FAQ
 
-**Why did my test pass on the first run?** First run always passes and saves baselines. Run again to compare.
+<details>
+<summary><strong>The test passed on first run. Did it work?</strong></summary>
 
-**How do I update baselines?** Delete the baseline file and re-run tests. Or delete all: `rm -rf doc/screenshots/ && bundle exec rake test`.
+Yes. First run saves baselines and always passes. Run tests again to compare against committed baselines.
+</details>
 
-**Animations make screenshots flaky** — `Capybara::Screenshot.disable_animations = true` freezes CSS animations/transitions before each capture.
+<details>
+<summary><strong>How do I update baselines after intentional UI changes?</strong></summary>
 
-**CI screenshots differ from local** — Set `window_size` for consistent dimensions and use `perceptual_threshold: 2.0` to ignore rendering differences.
+Delete the baseline file and re-run tests: `rm doc/screenshots/homepage.png && bundle exec rake test`. Or update all: `rm -rf doc/screenshots/ && bundle exec rake test`.
+</details>
 
-**Debug mode** — `DEBUG=1 bundle exec rake test` keeps `.diff.png` files for inspection.
+<details>
+<summary><strong>CSS animations make my screenshots flaky</strong></summary>
+
+Enable `Capybara::Screenshot.disable_animations = true` to freeze CSS animations/transitions before each capture. Or use `stability_time_limit: 1` to wait for animations to finish.
+</details>
+
+<details>
+<summary><strong>CI screenshots differ from local</strong></summary>
+
+Set `window_size` for consistent dimensions and use `perceptual_threshold: 2.0` to ignore anti-aliasing differences across environments.
+</details>
+
+<details>
+<summary><strong>Will this slow down my tests?</strong></summary>
+
+Comparisons add ~50ms per image with VIPS. Without `ruby-vips`, ChunkyPNG is used (slower but no system dependency). `stability_time_limit` adds wait time — keep it low (0.1-0.5s) or use `disable_animations` instead.
+</details>
+
+<details>
+<summary><strong>Debug mode</strong></summary>
+
+`DEBUG=1 bundle exec rake test` keeps `.diff.png` files for inspection.
+</details>
 
 ## Installation
 
-**Requirements:** Ruby 3.2+, Rails 7.1+. For the `:vips` driver: [libvips 8.9+](https://libvips.github.io/libvips/install.html).
+**Requirements:** Ruby 3.2+. Rails 7.1+ for Rails integration; non-Rails projects supported via `CapybaraScreenshotDiff.serve()`. For the `:vips` driver: [libvips 8.9+](https://libvips.github.io/libvips/install.html).
 
-## Advanced Topics
+## Docs
 
 - [Framework Setup](docs/framework-setup.md) — Minitest, RSpec, Cucumber
+- [CI & Non-Rails Integration](docs/ci-integration.md) — GitHub Actions, reusable action, static sites, baseline updates
+- [Configuration Reference](docs/configuration.md) — all options explained
 - [Image Processing Drivers](docs/drivers.md) — VIPS, ChunkyPNG, perceptual threshold
 - [Screenshot Organization](docs/organization.md) — groups, sections, cropping, multi-browser
-- [Configuration Reference](docs/configuration.md) — all options explained
 - [Web UI & Custom Reporters](docs/reporters.md) — interactive report, custom reporters
-- [CI & Non-Rails Integration](docs/ci-integration.md) — GitHub Actions, reusable action, baseline updates
-- [Docker Testing](docs/docker-testing.md) — bin/dtest, recording baselines
 
 ## Development
 
