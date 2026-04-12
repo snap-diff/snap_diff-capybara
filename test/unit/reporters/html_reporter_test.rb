@@ -98,6 +98,32 @@ module CapybaraScreenshotDiff
         assert_includes html, "data:image/png;base64,"
       end
 
+      test "#record and #finalize synchronize internal state" do
+        reporter = HTML.new(output_path: @output_path)
+
+        fake_mutex = Class.new do
+          attr_reader :synchronize_calls
+
+          def initialize
+            @synchronize_calls = 0
+          end
+
+          def synchronize
+            @synchronize_calls += 1
+            yield
+          end
+        end.new
+
+        # Using private state and a fake mutex here is intentional.
+        # This test guards a tricky synchronization detail; avoid refactors unless behavior changes.
+        reporter.instance_variable_set(:@mutex, fake_mutex)
+
+        reporter.record([build_passing_assertion("sync")])
+        reporter.finalize
+
+        assert_operator fake_mutex.synchronize_calls, :>=, 1
+      end
+
       private
 
       def build_passing_assertion(name)
