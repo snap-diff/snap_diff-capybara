@@ -45,5 +45,29 @@ module CapybaraScreenshotDiff
 
       assert_operator fake_mutex.synchronize_calls, :>=, 1
     end
+
+    test "reporters notification iterates over snapshot" do
+      received = []
+
+      mutating_reporter = Class.new do
+        define_method :record do |assertions|
+          received << [:original, assertions]
+          CapybaraScreenshotDiff.reporters.clear
+          CapybaraScreenshotDiff.reporters << Class.new {
+            define_method(:record) { |a| received << [:added, a] }
+          }.new
+        end
+      end.new
+
+      CapybaraScreenshotDiff.reporters << mutating_reporter
+
+      assertions = [:some, :assertions]
+
+      assert_nothing_raised do
+        CapybaraScreenshotDiff.send(:notify_reporters, assertions)
+      end
+
+      assert_equal [[:original, assertions]], received
+    end
   end
 end
