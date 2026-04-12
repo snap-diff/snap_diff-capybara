@@ -147,8 +147,8 @@ snap_diff_finalize = proc do
   end
 end
 
-if defined?(Minitest) && Minitest.respond_to?(:after_run)
-  Minitest.after_run(&snap_diff_finalize)
-else
-  at_exit(&snap_diff_finalize)
-end
+# Always register at_exit for RSpec/Cucumber/other frameworks.
+# Additionally register Minitest.after_run for correct ordering with Minitest.
+# The @finalized guard in #finalize prevents double execution.
+at_exit(&snap_diff_finalize)
+Minitest.after_run(&snap_diff_finalize) if defined?(Minitest) && Minitest.respond_to?(:after_run)
