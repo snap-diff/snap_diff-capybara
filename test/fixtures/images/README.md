@@ -19,6 +19,7 @@ These files are generated during test runs and should NOT be committed:
 
 | Pattern | Description |
 |---------|-------------|
+| `*.base.png` | VCS checkout of committed baseline |
 | `*.diff.png` | Annotated diff overlay |
-| `*.base.diff.png` | Annotated base image |
+| `*.base.diff.png` | Annotated base image with diff region |
 | `*.heatmap.diff.png` | Heatmap of pixel differences |
