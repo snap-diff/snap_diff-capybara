@@ -2,7 +2,7 @@
 .ruby-lsp/
 coverage/
 tmp/
-.git/
+# Keep .git/ — needed for gemspec git ls-files and VCS checkout in tests
 .idea/
 .claude/
 .bundle/

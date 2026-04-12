@@ -51,7 +51,7 @@ WORKDIR /app
 # Copy entire project (needed for git dependencies in gems.rb)
 COPY --chown=circleci:circleci . .
 
-# Install gems with cached bundle
-RUN --mount=type=cache,target=/bundle \
+# Install gems
+RUN sudo chown -R circleci:circleci /bundle && \
     bundle config set without 'tools' && \
     bundle install
