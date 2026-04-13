@@ -7,29 +7,20 @@ module TestHelpers
 
   # Common assertions for image comparison tests
   module Assertions
-    # Asserts that a dimension check was called a specific number of times
+    # Asserts that a driver check was called a specific number of times
     # @param driver [Object] The test driver object
+    # @param check_type [Symbol] :dimension_check, :pixel_check, or :difference_region
     # @param times [Integer] The expected number of calls (default: 1)
-    def assert_dimension_check_called(driver, times = 1)
-      assert_equal times, driver.dimension_check_calls.size,
-        "Expected dimension check to be called #{times} time(s)"
+    def assert_driver_check_called(driver, check_type, times = 1)
+      calls = driver.public_send(:"#{check_type}_calls")
+      assert_equal times, calls.size,
+        "Expected #{check_type} to be called #{times} time(s), was called #{calls.size}"
     end
 
-    # Asserts that a pixel check was called a specific number of times
-    # @param driver [Object] The test driver object
-    # @param times [Integer] The expected number of calls (default: 1)
-    def assert_pixel_check_called(driver, times = 1)
-      assert_equal times, driver.pixel_check_calls.size,
-        "Expected pixel check to be called #{times} time(s)"
-    end
-
-    # Asserts that a difference region check was called a specific number of times
-    # @param driver [Object] The test driver object
-    # @param times [Integer] The expected number of calls (default: 1)
-    def assert_difference_region_called(driver, times = 1)
-      assert_equal times, driver.difference_region_calls.size,
-        "Expected difference region check to be called #{times} time(s)"
-    end
+    # Convenience aliases for backward compatibility
+    def assert_dimension_check_called(driver, times = 1) = assert_driver_check_called(driver, :dimension_check, times)
+    def assert_pixel_check_called(driver, times = 1) = assert_driver_check_called(driver, :pixel_check, times)
+    def assert_difference_region_called(driver, times = 1) = assert_driver_check_called(driver, :difference_region, times)
   end
 
   # Common setup methods for test drivers

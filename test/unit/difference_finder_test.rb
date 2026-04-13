@@ -11,13 +11,14 @@ module Capybara
         include CapybaraScreenshotDiff::DSLStub
         include TestDoubles
 
+        setup do
+          @base_path = TestDoubles::TestPath.new(12345)
+          @new_path = TestDoubles::TestPath.new(54321)
+          @driver = TestDoubles::TestDriver.new(false)
+          setup_test_comparison
+        end
+
         class InitializationTest < self
-          setup do
-            @base_path = TestDoubles::TestPath.new(12345)
-            @new_path = TestDoubles::TestPath.new(54321)
-            @driver = TestDoubles::TestDriver.new(false)
-            setup_test_comparison
-          end
 
           test "#initialize sets driver and options correctly" do
             driver = TestDoubles::TestDriver.new
@@ -32,10 +33,6 @@ module Capybara
 
         class QuickModeTest < self
           setup do
-            @base_path = TestDoubles::TestPath.new(12345)
-            @new_path = TestDoubles::TestPath.new(54321)
-            @driver = TestDoubles::TestDriver.new(false)
-            setup_test_comparison
             @finder = create_finder
           end
 
@@ -76,10 +73,6 @@ module Capybara
 
         class FullModeTest < self
           setup do
-            @base_path = TestDoubles::TestPath.new(12345)
-            @new_path = TestDoubles::TestPath.new(54321)
-            @driver = TestDoubles::TestDriver.new(false)
-            setup_test_comparison
             @finder = create_finder
           end
 
