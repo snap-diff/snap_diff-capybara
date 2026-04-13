@@ -111,6 +111,19 @@ jobs:
             | Full report with images | ${{ steps.upload-screenshots.outputs.report-full-url || 'N/A' }} |
             | [All artifacts](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}#artifacts) | Browse all |
 
+      - name: Job summary with report links
+        if: failure()
+        run: |
+          cat >> "$GITHUB_STEP_SUMMARY" <<EOF
+          ### Screenshot diffs detected
+
+          | Artifact | Link |
+          |----------|------|
+          | HTML report (inline) | ${{ steps.upload-screenshots.outputs.report-url || 'N/A' }} |
+          | Full report with images | ${{ steps.upload-screenshots.outputs.report-full-url || 'N/A' }} |
+          | [All artifacts](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}#artifacts) | Browse all |
+          EOF
+
       - name: Update comment on success
         if: success() && github.event_name == 'pull_request' && steps.find-comment.outputs.comment-id != ''
         uses: peter-evans/create-or-update-comment@v5
@@ -227,7 +240,7 @@ jobs:
     name: Test Report Upload
     if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
-    timeout-minutes: 3
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v6
 
@@ -240,5 +253,17 @@ jobs:
         run: bin/rake 'report:sample[embed]'
 
       - uses: ./.github/actions/upload-screenshots
+        id: upload-screenshots
         with:
           name: test-report
+
+      - name: Job summary with report links
+        run: |
+          cat >> "$GITHUB_STEP_SUMMARY" <<'EOF'
+          ### SnapDiff Report
+
+          | Artifact | Link |
+          |----------|------|
+          | HTML report (inline) | ${{ steps.upload-screenshots.outputs.report-url || 'N/A' }} |
+          | Full report with images | ${{ steps.upload-screenshots.outputs.report-full-url || 'N/A' }} |
+          EOF
