@@ -114,7 +114,7 @@ After tests run, open `doc/screenshots/snap_diff_report.html`:
 
 ![SnapDiff Web UI — side-by-side comparison with baseline and current screenshots](docs/images/snap_diff_web_ui.png)
 
-4 view modes (both/base/new/heatmap), per-image zoom, annotation toggle, keyboard navigation, and search.
+Review all visual changes in one place — no need to hunt through `.diff.png` files. 4 view modes (both/base/new/heatmap), per-image zoom, annotation toggle, keyboard navigation, and search.
 
 **In GitHub Actions**, the report renders inline as a CI artifact — no download needed. Add a PR comment with a link to the report automatically:
 
