@@ -22,9 +22,6 @@ runs:
         bundler-cache: true
         cache-version: ${{ inputs.ruby-cache-version }}-v1
 
-    - run: sudo apt-get -qq update
-      shell: bash
-
     - name: Install and cache vips
       if: ${{ inputs.cache-apt-packages == 'true' }}
       uses: jetthoughts/cache-apt-pkgs-action@fix/upgrade-actions-cache-v5
@@ -32,8 +29,9 @@ runs:
         packages: libvips libglib2.0-0 libglib2.0-dev libwebp-dev libvips42 libpng-dev
         version: tests-v2
 
-    # fallback if cache version is outdated
-    - run: sudo apt-get -qq install libvips
+    - name: Install vips (fallback)
+      if: ${{ inputs.cache-apt-packages != 'true' }}
+      run: sudo apt-get -qq update && sudo apt-get -qq install -y libvips
       shell: bash
 
     - run: sudo sed -i 's/true/false/g' /etc/fonts/conf.d/10-yes-antialias.conf
