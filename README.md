@@ -1,4 +1,5 @@
 [![Gem Version](https://badge.fury.io/rb/capybara-screenshot-diff.svg)](https://rubygems.org/gems/capybara-screenshot-diff)
+[![Gem Downloads](https://img.shields.io/gem/dt/capybara-screenshot-diff.svg)](https://rubygems.org/gems/capybara-screenshot-diff)
 [![Test](https://github.com/snap-diff/snap_diff-capybara/actions/workflows/test.yml/badge.svg)](https://github.com/snap-diff/snap_diff-capybara/actions/workflows/test.yml)
 [![DeepWiki](https://img.shields.io/badge/DeepWiki-snap--diff%2Fsnap__diff--capybara-blue.svg?logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IndoaXRlIiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+PHBhdGggZD0iTTEyIDJhMTAgMTAgMCAxIDAgMCAyMCAxMCAxMCAwIDAgMCAwLTIweiIvPjxwYXRoIGQ9Ik0xMiA2djEyIi8+PHBhdGggZD0iTTYgMTJoMTIiLz48L3N2Zz4=)](https://deepwiki.com/snap-diff/snap_diff-capybara)
 
@@ -6,11 +7,11 @@
 
 Stop shipping UI bugs. Take screenshots in your Capybara tests, commit baselines to git, and let CI catch visual regressions in pull requests — no cloud service, no subscription, runs entirely in your test suite.
 
-**Why this gem?** Baselines live in git alongside your code — no external service, no account to sign up for, works offline. Unlike Percy/Chromatic (paid SaaS), this runs locally. Unlike BackstopJS, no Node required.
+**Why this gem?** Baselines live in git — review UI changes in pull requests like you review code. Runs offline, works in CI, zero vendor lock-in. Unlike Percy/Chromatic (paid SaaS), nothing to sign up for. Unlike BackstopJS, no Node required.
 
-## Quick Start
+## Quick Start (5 minutes)
 
-> **Prerequisites:** A working Capybara setup with a browser driver (e.g., selenium-webdriver + Chrome). See [Rails System Testing guide](https://guides.rubyonrails.org/testing.html#system-testing) if you don't have one yet.
+> Already using Capybara for system tests? Add the gem and you're ready. New to system tests? See [Rails System Testing guide](https://guides.rubyonrails.org/testing.html#system-testing).
 
 ```ruby
 # Gemfile

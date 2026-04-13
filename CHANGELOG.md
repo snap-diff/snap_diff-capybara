@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [v1.12.0] - 2026-04-12
+## [v1.11.0] - 2026-04-12
 
 ### Added
 - **HTML reporter** — interactive dashboard with 4 comparison modes (both/base/new/heatmap), per-image zoom, keyboard navigation, and search ([#170](https://github.com/snap-diff/snap_diff-capybara/pull/170))
@@ -55,10 +55,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [v1.11.0] - Previous Release
+## [v1.10.3.1] - Previous Release
 
-[Unreleased]: https://github.com/snap-diff/snap_diff-capybara/compare/v1.12.0...HEAD
-[v1.12.0]: https://github.com/snap-diff/snap_diff-capybara/releases/tag/v1.12.0
+[Unreleased]: https://github.com/snap-diff/snap_diff-capybara/compare/v1.11.0...HEAD
 [v1.11.0]: https://github.com/snap-diff/snap_diff-capybara/releases/tag/v1.11.0
+[v1.10.3.1]: https://github.com/snap-diff/snap_diff-capybara/releases/tag/v1.10.3.1
 
 **Upgrade Guide:** See [docs/UPGRADING.md](docs/UPGRADING.md) for detailed migration instructions.
