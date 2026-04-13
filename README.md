@@ -114,7 +114,7 @@ require 'capybara_screenshot_diff/reporters/html'
 
 After tests run, open `doc/screenshots/snap_diff_report.html`:
 
-![SnapDiff Web UI — side-by-side comparison with baseline and current screenshots](docs/images/snap_diff_web_ui.png)
+![SnapDiff Web UI — annotated diff showing changed regions highlighted in red](docs/images/snap_diff_annotated.png)
 
 Review all visual changes in one place — no need to hunt through `.diff.png` files. 4 view modes (both/base/new/heatmap), per-image zoom, annotation toggle, keyboard navigation, and search.
 
