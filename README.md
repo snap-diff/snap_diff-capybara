@@ -7,6 +7,8 @@
 
 Stop shipping UI bugs. Take screenshots in your Capybara tests, commit baselines to git, and let CI catch visual regressions in pull requests — no cloud service, no subscription, runs entirely in your test suite.
 
+[![SnapDiff Web UI](docs/images/snap_diff_web_ui.png)](#web-ui-for-reviewing-screenshot-changes)
+
 **Why this gem?** Baselines live in git — review UI changes in pull requests like you review code. Runs offline, works in CI, zero vendor lock-in. Unlike Percy/Chromatic (paid SaaS), nothing to sign up for. Unlike BackstopJS, no Node required.
 
 ## Quick Start (5 minutes)
