@@ -19,7 +19,6 @@ module Capybara
         end
 
         class InitializationTest < self
-
           test "#initialize sets driver and options correctly" do
             driver = TestDoubles::TestDriver.new
             options = {tolerance: 0.05}
