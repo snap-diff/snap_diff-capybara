@@ -1,8 +1,8 @@
-# Upgrading to v1.11.0
+# Upgrading to v1.12.0
 
 ## Overview
 
-Version 1.11.0 is a **minor release** with new features, performance improvements, and default behavior changes. This guide will help you upgrade smoothly.
+Version 1.12.0 is a **minor release** with new features, performance improvements, and default behavior changes. This guide will help you upgrade smoothly.
 
 **Estimated upgrade time:** 5-15 minutes depending on your setup
 
@@ -14,7 +14,7 @@ For **most users**, upgrading is as simple as:
 
 ```ruby
 # In your Gemfile
-gem 'capybara-screenshot-diff', '~> 1.11.0'
+gem 'capybara-screenshot-diff', '~> 1.12.0'
 ```
 
 ```bash
@@ -22,7 +22,7 @@ bundle update capybara-screenshot-diff
 bundle exec rake test  # Verify tests still pass
 ```
 
-**That's it!** The zero-config setup still works out of the box. Your existing screenshot comparisons will continue to work with v1.11.0.
+**That's it!** The zero-config setup still works out of the box. Your existing screenshot comparisons will continue to work with v1.12.0.
 
 ---
 
@@ -34,8 +34,8 @@ Three settings now have different defaults. This is the most likely source of un
 
 #### `blur_active_element` — Now defaults to `true`
 
-**Before (v1.10.x):** Cursor blinking could delay screenshots  
-**After (v1.11.0):** Cursor is automatically hidden
+**Before (v1.11.x):** Cursor blinking could delay screenshots  
+**After (v1.12.0):** Cursor is automatically hidden
 
 **Action required:** Only if you want the old behavior
 
@@ -46,8 +46,8 @@ Capybara::Screenshot.blur_active_element = false
 
 #### `hide_caret` — Now defaults to `true`
 
-**Before (v1.10.x):** Input caret visible in screenshots  
-**After (v1.11.0):** Caret is transparent for stable screenshots
+**Before (v1.11.x):** Input caret visible in screenshots  
+**After (v1.12.0):** Caret is transparent for stable screenshots
 
 **Action required:** Only if you want the old behavior
 
@@ -58,8 +58,8 @@ Capybara::Screenshot.hide_caret = false
 
 #### `fail_if_new` — Now defaults to `true` in CI
 
-**Before (v1.10.x):** New screenshots allowed in CI  
-**After (v1.11.0):** New screenshots fail tests in CI (when `ENV['CI']` is set)
+**Before (v1.11.x):** New screenshots allowed in CI  
+**After (v1.12.0):** New screenshots fail tests in CI (when `ENV['CI']` is set)
 
 **Action required:** Only if you want to allow new screenshots in CI
 
@@ -74,8 +74,8 @@ Capybara::Screenshot::Diff.fail_if_new = false
 
 ### 2. SVN Support Removed
 
-**Before (v1.10.x):** Could use SVN for version control  
-**After (v1.11.0):** Git only
+**Before (v1.11.x):** Could use SVN for version control  
+**After (v1.12.0):** Git only
 
 **Action required:** If using SVN, migrate to Git
 
@@ -95,8 +95,8 @@ If you find SVN usage:
 
 ### 3. ActiveSupport No Longer Required
 
-**Before (v1.10.x):** ActiveSupport was a runtime dependency  
-**After (v1.11.0):** Pure Ruby, no ActiveSupport required
+**Before (v1.11.x):** ActiveSupport was a runtime dependency  
+**After (v1.12.0):** Pure Ruby, no ActiveSupport required
 
 **Action required:** None (this is a positive change!)
 
@@ -113,8 +113,8 @@ If your project only had ActiveSupport because of this gem, you can now remove i
 
 ### 4. Internal API Changes
 
-**Before (v1.10.x):** Could use internal classes like `CaptureStrategy`, `ComparisonLoader`  
-**After (v1.11.0):** These have been inlined/refactored
+**Before (v1.11.x):** Could use internal classes like `CaptureStrategy`, `ComparisonLoader`  
+**After (v1.12.0):** These have been inlined/refactored
 
 **Action required:** Only if using internal APIs
 
@@ -252,7 +252,7 @@ Enjoy faster screenshot comparisons:
 
 ### Upgrade Notes
 
-**Ruby 4.0:** Fully compatible! If you see DSLStub ordering issues, they're fixed in v1.11.0.
+**Ruby 4.0:** Fully compatible! If you see DSLStub ordering issues, they're fixed in v1.12.0.
 
 **Rails 8.0:** Works out of the box with updated dependencies.
 
@@ -263,7 +263,7 @@ Enjoy faster screenshot comparisons:
 ### Step 1: Update Gemfile
 
 ```ruby
-gem 'capybara-screenshot-diff', '~> 1.11.0'
+gem 'capybara-screenshot-diff', '~> 1.12.0'
 ```
 
 ### Step 2: Bundle Update
@@ -306,7 +306,7 @@ Run tests and open `doc/screenshots/snap_diff_report.html` to review differences
 ```bash
 # Commit the new baselines
 git add doc/screenshots/
-git commit -m "Add screenshot baselines for v1.11.0 upgrade"
+git commit -m "Add screenshot baselines for v1.12.0 upgrade"
 ```
 
 Or temporarily allow them:
@@ -337,7 +337,7 @@ bundle exec rake test
 
 # Commit new baselines
 git add doc/screenshots/
-git commit -m "Re-record baselines with v1.11.0 defaults"
+git commit -m "Re-record baselines with v1.12.0 defaults"
 ```
 
 ### "NoMethodError on internal class"
@@ -354,7 +354,7 @@ If you need to rollback:
 
 ```ruby
 # Pin to previous version
-gem 'capybara-screenshot-diff', '~> 1.11.0'
+gem 'capybara-screenshot-diff', '~> 1.12.0'
 ```
 
 ```bash
@@ -376,7 +376,7 @@ All screenshot baselines are compatible — no data loss.
 
 ## Summary Checklist
 
-- [ ] Update gem version to `~> 1.11.0`
+- [ ] Update gem version to `~> 1.12.0`
 - [ ] Run `bundle update capybara-screenshot-diff`
 - [ ] Run test suite
 - [ ] Check for new screenshot failures in CI
@@ -387,4 +387,4 @@ All screenshot baselines are compatible — no data loss.
 - [ ] Commit changes
 - [ ] Review upgrade issues in [GitHub Issues](https://github.com/snap-diff/snap_diff-capybara/issues)
 
-**Congratulations!** You're now running v1.11.0 🎉
+**Congratulations!** You're now running v1.12.0 🎉

@@ -1,14 +1,14 @@
-# Release Preparation — v1.11.0
+# Release Preparation — v1.12.0
 
 ## Summary
 
-71 commits since v1.10.3.1 with new features, performance improvements, and default behavior changes.
+71 commits since v1.11.0 with new features, performance improvements, and default behavior changes.
 
 ## Release Checklist
 
 ### Pre-Release
 
-- [x] Update version to `1.11.0`
+- [x] Update version to `1.12.0`
 - [x] Run tests: `bundle exec rake test` (218 runs, 0 failures)
 - [x] Add CHANGELOG.md
 - [x] Add docs/UPGRADING.md
@@ -17,7 +17,7 @@
 
 1. Push to GitHub
 2. Go to [Actions → Release](https://github.com/snap-diff/snap_diff-capybara/actions/workflows/release.yml)
-3. Click **Run workflow**, enter `1.11.0`
+3. Click **Run workflow**, enter `1.12.0`
 4. Workflow will: test → tag → publish to RubyGems → create GitHub Release
 
 ### Post-Release
