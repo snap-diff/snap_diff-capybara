@@ -18,6 +18,7 @@
 *.attempt_*.png
 *.diff.png
 *.base.png
+snap_diff_report.html
 
 *.attempt_*.webp
 *.diff.webp
