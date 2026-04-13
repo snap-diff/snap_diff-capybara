@@ -36,12 +36,115 @@ Add to your test helper:
 require 'capybara_screenshot_diff/reporters/html'
 ```
 
-### 2. Upload artifacts (manual setup)
+### 2. Reusable composite action (recommended)
 
-This is the full YAML so you understand what each step does:
+The simplest way — one step handles artifact upload, job summary, and PR comments:
 
 ```yaml
 # .github/workflows/test.yml
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write  # Required for PR comments
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          bundler-cache: true
+
+      - name: Run tests
+        run: bundle exec rake test
+
+      - name: Upload screenshot reports
+        if: failure()
+        uses: snap-diff/snap_diff-capybara/.github/actions/upload-screenshots@master
+        with:
+          name: screenshots
+          pr-comment: 'true'
+```
+
+That's it. On failure, this will:
+- Upload diff images + HTML report as artifacts
+- Post a PR comment with links to the inline report and full artifact download
+- Add a job summary with report links (visible in the Actions UI)
+
+#### Inputs
+
+| Input | Default | Description |
+|-------|---------|-------------|
+| `name` | (required) | Artifact name prefix |
+| `report-path` | `doc/screenshots` | Path to HTML report directory |
+| `retention-days` | `2` | Days to retain artifacts |
+| `pr-comment` | `false` | Post PR comment with report link (requires `pull-requests: write`) |
+
+#### Outputs
+
+| Output | Description |
+|--------|-------------|
+| `report-url` | Direct URL to the inline HTML report artifact |
+| `report-full-url` | Direct URL to the full report artifact (with images) |
+
+### 3. Ruby + libvips setup action
+
+For consistent CI environments (libvips, font antialiasing disabled), use the setup action:
+
+```yaml
+      - uses: snap-diff/snap_diff-capybara/.github/actions/setup-ruby-and-dependencies@master
+        with:
+          ruby-version: '4.0'
+          cache-apt-packages: true
+```
+
+This installs Ruby, libvips (with apt caching), and disables font antialiasing for consistent rendering across CI runs.
+
+#### Inputs
+
+| Input | Default | Description |
+|-------|---------|-------------|
+| `ruby-version` | (required) | Ruby version to install |
+| `cache-apt-packages` | `false` | Cache libvips apt packages for faster runs |
+| `ruby-cache-version` | — | Bundler cache version key |
+
+### 4. Full example with both actions
+
+```yaml
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: snap-diff/snap_diff-capybara/.github/actions/setup-ruby-and-dependencies@master
+        with:
+          ruby-version: '4.0'
+          cache-apt-packages: true
+
+      - run: bundle exec rake test
+
+      - uses: snap-diff/snap_diff-capybara/.github/actions/upload-screenshots@master
+        if: failure()
+        with:
+          name: screenshots
+          pr-comment: 'true'
+```
+
+### 5. Manual setup (without composite actions)
+
+If you prefer full control, here's the expanded YAML:
+
+<details>
+<summary>Expand manual setup</summary>
+
+```yaml
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -52,14 +155,12 @@ jobs:
         with:
           bundler-cache: true
 
-      # Install libvips for the :vips driver (optional — skip if using :chunky_png)
       - name: Install libvips
         run: sudo apt-get install -y libvips-dev
 
       - name: Run tests
         run: bundle exec rake test
 
-      # Upload HTML report — renders inline in Actions UI (no download needed)
       - name: Upload screenshot report
         if: failure()
         uses: actions/upload-artifact@v7
@@ -69,8 +170,7 @@ jobs:
           archive: false
           retention-days: 2
 
-      # Upload full report with images (for offline review)
-      - name: Upload full screenshot report
+      - name: Upload full report with images
         if: failure()
         uses: actions/upload-artifact@v7
         with:
@@ -79,66 +179,7 @@ jobs:
           retention-days: 2
 ```
 
-### 3. Or use the reusable action (one line)
-
-Instead of the manual upload steps above, reference our composite action directly:
-
-```yaml
-      - name: Run tests
-        run: bundle exec rake test
-
-      - name: Upload screenshot reports
-        if: failure()
-        uses: snap-diff/snap_diff-capybara/.github/actions/upload-screenshots@master
-        with:
-          name: screenshots
-```
-
-This uploads diffs, Capybara failure screenshots, and the HTML report (inline + full) in one step.
-
-**Inputs:**
-
-| Input | Default | Description |
-|-------|---------|-------------|
-| `name` | (required) | Artifact name prefix |
-| `report-path` | `doc/screenshots` | Path to HTML report directory |
-| `retention-days` | `2` | Days to retain artifacts |
-
-### 4. PR comment with link to report (optional)
-
-Automatically comment on the PR pointing to the artifact. Uses `find-comment` to update existing comments instead of creating duplicates:
-
-```yaml
-      - name: Find existing comment
-        if: failure() && github.event_name == 'pull_request'
-        uses: peter-evans/find-comment@v3
-        id: find-comment
-        with:
-          issue-number: ${{ github.event.pull_request.number }}
-          comment-author: 'github-actions[bot]'
-          body-includes: 'Screenshot diffs detected'
-
-      - name: Comment PR with report link
-        if: failure() && github.event_name == 'pull_request'
-        uses: peter-evans/create-or-update-comment@v5
-        with:
-          comment-id: ${{ steps.find-comment.outputs.comment-id }}
-          issue-number: ${{ github.event.pull_request.number }}
-          edit-mode: replace
-          body: |
-            ### Screenshot diffs detected
-            [View report](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}#artifacts)
-```
-
-**Required:** Add permissions to the job for PR commenting to work:
-
-```yaml
-jobs:
-  test:
-    permissions:
-      contents: read
-      pull-requests: write
-```
+</details>
 
 ## Update Baselines in CI
 
@@ -151,6 +192,9 @@ git commit -m "chore: update screenshot baselines"
 ```
 
 Or add a workflow that maintainers can trigger manually:
+
+<details>
+<summary>Expand update-baselines workflow</summary>
 
 ```yaml
 # .github/workflows/update-baselines.yml
@@ -175,12 +219,10 @@ jobs:
         with:
           ref: ${{ inputs.branch }}
 
-      - uses: ruby/setup-ruby@v1
+      - uses: snap-diff/snap_diff-capybara/.github/actions/setup-ruby-and-dependencies@master
         with:
-          bundler-cache: true
-
-      - name: Install libvips
-        run: sudo apt-get install -y libvips-dev
+          ruby-version: '4.0'
+          cache-apt-packages: true
 
       - name: Record new baselines
         run: RECORD_SCREENSHOTS=1 bundle exec rake test
@@ -195,14 +237,11 @@ jobs:
           git push
 ```
 
+</details>
+
 **How it works:**
 1. Go to Actions → "Update Screenshot Baselines" → "Run workflow"
 2. Enter the branch name (e.g. your PR branch)
 3. The workflow records new baselines, commits, and pushes
-
-**Safety:**
-- Only maintainers with write access can trigger `workflow_dispatch`
-- The commit uses `git diff --staged --quiet ||` to skip empty commits
-- `GITHUB_TOKEN` pushes don't trigger subsequent CI runs ([by design](https://docs.github.com/actions/using-workflows/events-that-trigger-workflows))
 
 [← Back to README](../README.md)

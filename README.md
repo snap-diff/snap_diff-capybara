@@ -118,7 +118,7 @@ After tests run, open `doc/screenshots/snap_diff_report.html`:
 
 Review all visual changes in one place — no need to hunt through `.diff.png` files. 4 view modes (both/base/new/heatmap), per-image zoom, annotation toggle, keyboard navigation, and search.
 
-**In GitHub Actions**, the report renders inline as a CI artifact — no download needed. Add a PR comment with a link to the report automatically:
+**In GitHub Actions**, one step uploads the report, posts a PR comment with the link, and adds a job summary:
 
 ```yaml
 - name: Upload screenshot report
@@ -126,9 +126,10 @@ Review all visual changes in one place — no need to hunt through `.diff.png` f
   uses: snap-diff/snap_diff-capybara/.github/actions/upload-screenshots@master
   with:
     name: screenshots
+    pr-comment: 'true'
 ```
 
-See [CI Integration](docs/ci-integration.md) for the full GitHub Actions setup with PR commenting.
+See [CI Integration](docs/ci-integration.md) for full setup including Ruby + libvips action and baseline update workflow.
 
 ## Compare Any Two Images
 

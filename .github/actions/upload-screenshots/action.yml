@@ -1,6 +1,6 @@
 ---
 name: 'Upload SnapDiff screenshots'
-description: 'Upload screenshot diffs and HTML report as CI artifacts'
+description: 'Upload screenshot diffs, HTML report, and optionally comment on PR'
 inputs:
   name:
     description: 'Artifact name prefix'
@@ -11,6 +11,9 @@ inputs:
   retention-days:
     description: 'Number of days to retain artifacts'
     default: '2'
+  pr-comment:
+    description: 'Post PR comment with report link (requires pull-requests: write)'
+    default: 'false'
 outputs:
   report-url:
     description: 'Direct URL to the inline HTML report artifact'
@@ -70,3 +73,41 @@ runs:
         name: ${{ inputs.name }}-report-full
         retention-days: ${{ inputs.retention-days }}
         path: ${{ inputs.report-path }}/
+
+    - name: Job summary
+      if: steps.check-report.outputs.exists == 'true'
+      shell: bash
+      run: |
+        cat >> "$GITHUB_STEP_SUMMARY" <<EOF
+        ### SnapDiff Report
+
+        | Artifact | Link |
+        |----------|------|
+        | HTML report (inline) | ${{ steps.upload-report.outputs.artifact-url || 'N/A' }} |
+        | Full report with images | ${{ steps.upload-report-full.outputs.artifact-url || 'N/A' }} |
+        EOF
+
+    - name: Find existing PR comment
+      if: inputs.pr-comment == 'true' && github.event_name == 'pull_request'
+      uses: peter-evans/find-comment@v3
+      id: find-comment
+      with:
+        issue-number: ${{ github.event.pull_request.number }}
+        comment-author: 'github-actions[bot]'
+        body-includes: 'Screenshot diffs'
+
+    - name: Comment PR with report link
+      if: inputs.pr-comment == 'true' && github.event_name == 'pull_request'
+      uses: peter-evans/create-or-update-comment@v5
+      with:
+        comment-id: ${{ steps.find-comment.outputs.comment-id }}
+        issue-number: ${{ github.event.pull_request.number }}
+        edit-mode: replace
+        body: |
+          ### Screenshot diffs detected
+
+          | Artifact | Link |
+          |----------|------|
+          | HTML report (inline) | ${{ steps.upload-report.outputs.artifact-url || 'N/A' }} |
+          | Full report with images | ${{ steps.upload-report-full.outputs.artifact-url || 'N/A' }} |
+          | [All artifacts](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}#artifacts) | Browse all |

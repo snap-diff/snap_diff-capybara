@@ -82,58 +82,9 @@ jobs:
 
       - uses: ./.github/actions/upload-screenshots
         if: failure()
-        id: upload-screenshots
         with:
           name: base-screenshots
-
-      - name: Find existing report comment
-        if: always() && github.event_name == 'pull_request'
-        uses: peter-evans/find-comment@v3
-        id: find-comment
-        with:
-          issue-number: ${{ github.event.pull_request.number }}
-          comment-author: 'github-actions[bot]'
-          body-includes: 'Screenshot diffs'
-
-      - name: Comment PR with report link
-        if: failure() && github.event_name == 'pull_request'
-        uses: peter-evans/create-or-update-comment@v5
-        with:
-          comment-id: ${{ steps.find-comment.outputs.comment-id }}
-          issue-number: ${{ github.event.pull_request.number }}
-          edit-mode: replace
-          body: |
-            ### Screenshot diffs detected
-
-            | Artifact | Link |
-            |----------|------|
-            | HTML report (inline preview) | ${{ steps.upload-screenshots.outputs.report-url || 'N/A' }} |
-            | Full report with images | ${{ steps.upload-screenshots.outputs.report-full-url || 'N/A' }} |
-            | [All artifacts](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}#artifacts) | Browse all |
-
-      - name: Job summary with report links
-        if: failure()
-        run: |
-          cat >> "$GITHUB_STEP_SUMMARY" <<EOF
-          ### Screenshot diffs detected
-
-          | Artifact | Link |
-          |----------|------|
-          | HTML report (inline) | ${{ steps.upload-screenshots.outputs.report-url || 'N/A' }} |
-          | Full report with images | ${{ steps.upload-screenshots.outputs.report-full-url || 'N/A' }} |
-          | [All artifacts](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}#artifacts) | Browse all |
-          EOF
-
-      - name: Update comment on success
-        if: success() && github.event_name == 'pull_request' && steps.find-comment.outputs.comment-id != ''
-        uses: peter-evans/create-or-update-comment@v5
-        with:
-          comment-id: ${{ steps.find-comment.outputs.comment-id }}
-          edit-mode: replace
-          body: |
-            ### Screenshot diffs resolved
-
-            All screenshots match their baselines. Previous diffs have been fixed.
+          pr-comment: 'true'
 
       - name: Uploading Coverage Report
         uses: actions/upload-artifact@v7
@@ -253,17 +204,5 @@ jobs:
         run: bin/rake 'report:sample[embed]'
 
       - uses: ./.github/actions/upload-screenshots
-        id: upload-screenshots
         with:
           name: test-report
-
-      - name: Job summary with report links
-        run: |
-          cat >> "$GITHUB_STEP_SUMMARY" <<'EOF'
-          ### SnapDiff Report
-
-          | Artifact | Link |
-          |----------|------|
-          | HTML report (inline) | ${{ steps.upload-screenshots.outputs.report-url || 'N/A' }} |
-          | Full report with images | ${{ steps.upload-screenshots.outputs.report-full-url || 'N/A' }} |
-          EOF
