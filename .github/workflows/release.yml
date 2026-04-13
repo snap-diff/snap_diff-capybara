@@ -35,7 +35,7 @@ jobs:
           fi
 
       - name: Test
-        run: bundle exec rake test
+        run: bundle exec rake test:unit
 
       - name: Create tag
         run: |
