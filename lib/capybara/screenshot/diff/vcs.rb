@@ -9,7 +9,7 @@ module Capybara
       module Vcs
         def self.checkout_vcs(root, screenshot_path, checkout_path)
           root_path = root.to_s
-          git_env = { "GIT_DIR" => nil, "GIT_WORK_TREE" => nil, "GIT_INDEX_FILE" => nil }
+          git_env = {"GIT_DIR" => nil, "GIT_WORK_TREE" => nil, "GIT_INDEX_FILE" => nil}
           git_root, _, status = Open3.capture3(git_env, "git", "-C", root_path, "rev-parse", "--show-toplevel")
           return false unless status.success?
 
