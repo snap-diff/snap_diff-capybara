@@ -32,6 +32,30 @@ module Capybara
           assert base_screenshot_path.exist?
           assert_equal screenshot_path.size, base_screenshot_path.size
         end
+
+        test "#checkout_vcs ignores external git env overrides" do
+          screenshot_path = file_fixture("images/a.png")
+          base_screenshot_path = Pathname.new(@base_screenshot.path)
+
+          with_env("GIT_DIR" => "/tmp/does-not-exist", "GIT_WORK_TREE" => "/tmp/does-not-exist") do
+            assert Vcs.checkout_vcs(@tmp_dir, screenshot_path, base_screenshot_path),
+              "checkout_vcs failed with overridden git env: root=#{@tmp_dir}"
+          end
+
+          assert base_screenshot_path.exist?
+          assert_equal screenshot_path.size, base_screenshot_path.size
+        end
+
+        private
+
+        def with_env(vars)
+          previous = vars.transform_values { |_, _| nil }
+          vars.each_key { |key| previous[key] = ENV[key] }
+          vars.each { |key, value| ENV[key] = value }
+          yield
+        ensure
+          previous.each { |key, value| ENV[key] = value }
+        end
       end
     end
   end
