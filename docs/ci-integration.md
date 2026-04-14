@@ -90,7 +90,8 @@ That's it. On failure, this will:
 
 ### 3. Ruby + libvips setup action
 
-For consistent CI environments (libvips, font antialiasing disabled), use the setup action:
+For consistent CI environments (libvips, standardized fonts, hinting disabled),
+use the setup action:
 
 ```yaml
       - uses: snap-diff/snap_diff-capybara/.github/actions/setup-ruby-and-dependencies@master
@@ -99,7 +100,10 @@ For consistent CI environments (libvips, font antialiasing disabled), use the se
           cache-apt-packages: true
 ```
 
-This installs Ruby, libvips (with apt caching), and disables font antialiasing for consistent rendering across CI runs.
+This installs Ruby, libvips (with apt caching), installs the core font stack,
+and disables font hinting for consistent rendering across CI runs.
+
+For local or Docker setups, see `docs/os-setup.md`.
 
 #### Inputs
 

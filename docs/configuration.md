@@ -135,6 +135,83 @@ If you want to skip the assertion for change in the screen shot, set
 Capybara::Screenshot::Diff.enabled = false
 ```
 
+### DOM normalization (recommended for cross-OS baselines)
+
+To reduce visual noise from OS-level font rendering, scrollbars, and UI chrome,
+the default config injects a normalization stylesheet and waits for web fonts
+before capture. You can override as needed:
+
+```ruby
+Capybara::Screenshot.normalize_css = false
+Capybara::Screenshot.wait_for_fonts = false
+```
+
+The built-in normalization stylesheet:
+- disables animations/transitions
+- standardizes font rendering
+- hides carets and number spinners
+- hides OS-specific scrollbars
+
+To supply custom CSS instead:
+
+```ruby
+Capybara::Screenshot.normalize_css = true
+Capybara::Screenshot.normalize_stylesheet = <<~CSS
+  /* your custom normalization rules */
+CSS
+```
+
+### One-line preset
+
+If you'd rather toggle everything in one call:
+
+```ruby
+Capybara::Screenshot.enable_consistent_screenshots!
+```
+
+### Unified consistency config (recommended)
+
+For a single entry point with custom injections:
+
+```ruby
+Capybara::Screenshot.configure_consistency(preset: :default) do |c|
+  c.blur_active_element = true
+  c.hide_caret = true
+  c.disable_animations = true
+  c.normalize_css = true
+  c.wait_for_fonts = true
+  c.css << "/* your custom css */"
+  c.js  << "/* your custom js */"
+end
+```
+
+Available presets:
+- `:default` (enable normalization + font wait + disable animations + hide caret + blur)
+- `:off` (disable all consistency shims)
+
+**Compatibility:** existing flags (`normalize_css`, `wait_for_fonts`, `disable_animations`, etc.)
+remain supported as aliases.
+
+For OS-level setup (fonts + hinting), see `docs/os-setup.md`.
+
+### Cross-OS baseline preset (Ubuntu ↔ Alpine)
+
+If you compare baselines across `glibc` and `musl`, combine perceptual diffing
+with a tighter tolerated diff area:
+
+```ruby
+Capybara::Screenshot::Diff.configure do |screenshot, diff|
+  screenshot.window_size = [1280, 1024]
+  screenshot.disable_animations = true
+  screenshot.normalize_css = true
+  screenshot.wait_for_fonts = true
+
+  diff.driver = :vips
+  diff.perceptual_threshold = 2.0
+  diff.tolerance = 0.00005 # 0.005% of pixels
+end
+```
+
 Using an environment variable
 
 ```ruby

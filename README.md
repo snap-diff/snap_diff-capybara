@@ -187,7 +187,13 @@ Enable `Capybara::Screenshot.disable_animations = true` to freeze CSS animations
 <details>
 <summary><strong>CI screenshots differ from local</strong></summary>
 
-Set `window_size` for consistent dimensions and use `perceptual_threshold: 2.0` to ignore anti-aliasing differences across environments.
+Set `window_size` for consistent dimensions and use `perceptual_threshold: 2.0` to ignore anti-aliasing differences across environments. For cross-OS baselines, use the preset:
+
+```ruby
+Capybara::Screenshot.enable_consistent_screenshots!
+```
+
+For advanced tuning and custom injections, see `docs/configuration.md`.
 </details>
 
 <details>

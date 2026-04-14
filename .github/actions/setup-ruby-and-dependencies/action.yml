@@ -26,13 +26,27 @@ runs:
       if: ${{ inputs.cache-apt-packages == 'true' }}
       uses: jetthoughts/cache-apt-pkgs-action@fix/upgrade-actions-cache-v5
       with:
-        packages: libvips libglib2.0-0 libglib2.0-dev libwebp-dev libvips42 libpng-dev
+        packages: libvips libglib2.0-0 libglib2.0-dev libwebp-dev libvips42 libpng-dev fonts-dejavu fonts-liberation fonts-ubuntu fonts-noto-color-emoji
         version: tests-v2
 
     - name: Install vips (fallback)
       if: ${{ inputs.cache-apt-packages != 'true' }}
-      run: sudo apt-get -qq update && sudo apt-get -qq install -y libvips
+      run: sudo apt-get -qq update && sudo apt-get -qq install -y libvips fonts-dejavu fonts-liberation fonts-ubuntu fonts-noto-color-emoji
       shell: bash
 
-    - run: sudo sed -i 's/true/false/g' /etc/fonts/conf.d/10-yes-antialias.conf
+    - name: Configure font rendering
+      run: |
+        sudo tee /etc/fonts/local.conf >/dev/null <<'XML'
+        <?xml version="1.0"?>
+        <!DOCTYPE fontconfig SYSTEM "fonts.dtd">
+        <fontconfig>
+          <match target="font">
+            <edit name="hinting" mode="assign"><bool>false</bool></edit>
+            <edit name="autohint" mode="assign"><bool>false</bool></edit>
+            <edit name="hintstyle" mode="assign"><const>hintnone</const></edit>
+            <edit name="rgba" mode="assign"><const>none</const></edit>
+          </match>
+        </fontconfig>
+        XML
+        sudo fc-cache -f
       shell: bash

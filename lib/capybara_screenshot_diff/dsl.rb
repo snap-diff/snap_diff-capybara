@@ -49,6 +49,9 @@ module CapybaraScreenshotDiff
     # @option options [Numeric] :shift_distance_limit Maximum allowed shift distance for pixels.
     # @option options [Numeric] :area_size_limit Maximum allowed difference area size in pixels.
     # @option options [Symbol] :driver (:auto) The image processing driver to use (:auto, :chunky_png, :vips).
+    # @option options [Boolean] :normalize_css Inject a CSS normalization layer before capturing.
+    # @option options [String] :normalize_stylesheet Custom CSS to inject when :normalize_css is enabled.
+    # @option options [Boolean] :wait_for_fonts Wait for document fonts to load before capturing.
     # @return [Boolean] True if the screenshot was successfully captured and processed.
     # @raise [CapybaraScreenshotDiff::ExpectationNotMet] If comparison fails and immediate validation is enabled.
     # @raise [CapybaraScreenshotDiff::UnstableImage] If the image comparison is unstable.

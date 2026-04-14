@@ -47,6 +47,32 @@ module Capybara
 
         assert_nil screenshoter.prepare_page_for_screenshot(timeout: nil) # does not raise an error
       end
+
+      test "#prepare_page_for_screenshot injects normalization and custom hooks in order" do
+        Capybara::Screenshot.normalize_css = true
+        Capybara::Screenshot.custom_stylesheets = ["body { color: red; }"]
+        Capybara::Screenshot.custom_scripts = ["window.__csd = true;"]
+        Capybara::Screenshot.blur_active_element = false
+        Capybara::Screenshot.hide_caret = false
+        Capybara::Screenshot.disable_animations = false
+
+        screenshoter = Screenshoter.new({wait: nil}, {driver: :chunky_png})
+        calls = []
+
+        BrowserHelpers.stub(:normalize_css, ->(css = nil) { calls << [:normalize_css, css] }) do
+          BrowserHelpers.stub(:inject_custom_stylesheets, ->(styles) { calls << [:inject_custom_stylesheets, styles] }) do
+            BrowserHelpers.stub(:inject_custom_scripts, ->(scripts) { calls << [:inject_custom_scripts, scripts] }) do
+              screenshoter.prepare_page_for_screenshot(timeout: nil)
+            end
+          end
+        end
+
+        assert_equal [
+          [:normalize_css, nil],
+          [:inject_custom_stylesheets, ["body { color: red; }"]],
+          [:inject_custom_scripts, ["window.__csd = true;"]]
+        ], calls
+      end
     end
   end
 end

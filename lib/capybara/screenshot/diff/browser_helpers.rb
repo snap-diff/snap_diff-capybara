@@ -73,6 +73,76 @@ module Capybara
         session.execute_script(DISABLE_ANIMATIONS_SCRIPT)
       end
 
+      DEFAULT_NORMALIZE_CSS = <<~CSS
+        /* Kill animations and transitions */
+        *, *::before, *::after {
+          animation-duration: 0s !important;
+          animation-delay: 0s !important;
+          animation-iteration-count: 1 !important;
+          transition-duration: 0s !important;
+          transition-delay: 0s !important;
+          scroll-behavior: auto !important;
+        }
+
+        /* Standardize font rendering */
+        * {
+          -webkit-font-smoothing: antialiased !important;
+          -moz-osx-font-smoothing: grayscale !important;
+          text-rendering: geometricPrecision !important;
+        }
+
+        /* Neutralize inputs and dynamic artifacts */
+        * { caret-color: transparent !important; }
+        input[type="number"]::-webkit-inner-spin-button,
+        input[type="number"]::-webkit-outer-spin-button {
+          -webkit-appearance: none !important;
+        }
+
+        /* Hide OS-specific scrollbars */
+        ::-webkit-scrollbar { display: none !important; }
+        * { scrollbar-width: none !important; -ms-overflow-style: none !important; }
+      CSS
+
+      def self.normalize_css(css = nil)
+        css ||= DEFAULT_NORMALIZE_CSS
+
+        session.execute_script(<<~JS, css)
+          (function(cssText) {
+            if (!document.getElementById('csdNormalizeStyle')) {
+              let style = document.createElement('style');
+              style.setAttribute('id', 'csdNormalizeStyle');
+              style.textContent = cssText;
+              document.head.appendChild(style);
+            }
+          })(arguments[0]);
+        JS
+      end
+
+      def self.inject_custom_stylesheets(stylesheets)
+        Array(stylesheets).each_with_index do |css, index|
+          inject_stylesheet(css, "csdCustomStyle#{index}")
+        end
+      end
+
+      def self.inject_custom_scripts(scripts)
+        Array(scripts).each do |script|
+          session.execute_script(script)
+        end
+      end
+
+      def self.inject_stylesheet(css, element_id)
+        session.execute_script(<<~JS, css, element_id)
+          (function(cssText, styleId) {
+            if (!document.getElementById(styleId)) {
+              let style = document.createElement('style');
+              style.setAttribute('id', styleId);
+              style.textContent = cssText;
+              document.head.appendChild(style);
+            }
+          })(arguments[0], arguments[1]);
+        JS
+      end
+
       FIND_ACTIVE_ELEMENT_SCRIPT = <<~JS
         function activeElement(){
           const ae = document.activeElement; 
@@ -111,6 +181,17 @@ module Capybara
 
       def self.pending_image_to_load
         BrowserHelpers.session.evaluate_script(IMAGE_WAIT_SCRIPT)
+      end
+
+      FONTS_READY_SCRIPT = <<~JS
+        (function() {
+          if (!document.fonts) return true;
+          return document.fonts.status === "loaded";
+        })();
+      JS
+
+      def self.fonts_ready?
+        BrowserHelpers.session.evaluate_script(FONTS_READY_SCRIPT)
       end
 
       def self.current_capybara_driver_class

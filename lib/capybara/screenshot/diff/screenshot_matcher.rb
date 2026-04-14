@@ -102,6 +102,9 @@ module Capybara
               # screenshot options
               capybara_screenshot_options: driver_options[:capybara_screenshot_options],
               crop: driver_options.delete(:crop),
+              normalize_css: driver_options.delete(:normalize_css),
+              normalize_stylesheet: driver_options.delete(:normalize_stylesheet),
+              wait_for_fonts: driver_options.delete(:wait_for_fonts),
               # delivery options
               screenshot_format: driver_options[:screenshot_format],
               # stability options

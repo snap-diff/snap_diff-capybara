@@ -31,6 +31,11 @@ module Capybara
     mattr_accessor :enabled
     mattr_accessor(:hide_caret) { true }
     mattr_accessor :disable_animations
+    mattr_accessor(:normalize_css) { true }
+    mattr_accessor :normalize_stylesheet
+    mattr_accessor(:wait_for_fonts) { true }
+    mattr_accessor(:custom_stylesheets) { [] }
+    mattr_accessor(:custom_scripts) { [] }
     mattr_reader(:root) { (defined?(Rails) && defined?(Rails.root) && Rails.root) || Pathname(".").expand_path }
     mattr_accessor :stability_time_limit
     mattr_accessor :window_size
@@ -40,6 +45,81 @@ module Capybara
     mattr_accessor(:capybara_screenshot_options) { {} }
 
     class << self
+      class ConsistencyConfig
+        attr_accessor :css, :js,
+          :normalize_css, :wait_for_fonts, :disable_animations,
+          :hide_caret, :blur_active_element
+
+        def initialize(
+          css:,
+          js:,
+          normalize_css:,
+          wait_for_fonts:,
+          disable_animations:,
+          hide_caret:,
+          blur_active_element:
+        )
+          @css = css
+          @js = js
+          @normalize_css = normalize_css
+          @wait_for_fonts = wait_for_fonts
+          @disable_animations = disable_animations
+          @hide_caret = hide_caret
+          @blur_active_element = blur_active_element
+        end
+
+        def apply_to_screenshot!(screenshot)
+          screenshot.normalize_css = normalize_css
+          screenshot.wait_for_fonts = wait_for_fonts
+          screenshot.disable_animations = disable_animations
+          screenshot.hide_caret = hide_caret
+          screenshot.blur_active_element = blur_active_element
+        end
+      end
+
+      def enable_consistent_screenshots!(
+        normalize_css: true,
+        wait_for_fonts: true,
+        disable_animations: true,
+        hide_caret: true,
+        blur_active_element: true
+      )
+        self.normalize_css = normalize_css
+        self.wait_for_fonts = wait_for_fonts
+        self.disable_animations = disable_animations
+        self.hide_caret = hide_caret
+        self.blur_active_element = blur_active_element
+      end
+
+      def configure_consistency(preset: :default)
+        case preset
+        when :default
+          enable_consistent_screenshots!
+        when :off
+          enable_consistent_screenshots!(
+            normalize_css: false,
+            wait_for_fonts: false,
+            disable_animations: false,
+            hide_caret: false,
+            blur_active_element: false
+          )
+        else
+          raise ArgumentError, "Unknown consistency preset: #{preset.inspect}"
+        end
+
+        config = ConsistencyConfig.new(
+          css: custom_stylesheets,
+          js: custom_scripts,
+          normalize_css: normalize_css,
+          wait_for_fonts: wait_for_fonts,
+          disable_animations: disable_animations,
+          hide_caret: hide_caret,
+          blur_active_element: blur_active_element
+        )
+        yield config if block_given?
+        config.apply_to_screenshot!(self)
+      end
+
       def root=(path)
         @@root = Pathname(path).expand_path
       end

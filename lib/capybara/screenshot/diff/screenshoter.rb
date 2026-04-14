@@ -69,6 +69,11 @@ module Capybara
 
       def prepare_page_for_screenshot(timeout:)
         wait_images_loaded(timeout: timeout) if timeout
+        wait_for_fonts(timeout: timeout) if wait_for_fonts?
+
+        BrowserHelpers.normalize_css(normalize_stylesheet) if normalize_css?
+        BrowserHelpers.inject_custom_stylesheets(Screenshot.custom_stylesheets)
+        BrowserHelpers.inject_custom_scripts(Screenshot.custom_scripts)
 
         blurred_input = BrowserHelpers.blur_from_focused_element if Screenshot.blur_active_element
 
@@ -94,7 +99,38 @@ module Capybara
         end
       end
 
+      def wait_for_fonts(timeout:)
+        return unless timeout
+
+        deadline_at = Process.clock_gettime(Process::CLOCK_MONOTONIC) + timeout
+        loop do
+          break if BrowserHelpers.fonts_ready?
+
+          if Process.clock_gettime(Process::CLOCK_MONOTONIC) > deadline_at
+            raise CapybaraScreenshotDiff::ExpectationNotMet.new("Fonts have not been loaded after #{timeout}s", caller)
+          end
+
+          sleep 0.025
+        end
+      end
+
       private
+
+      def normalize_css?
+        return @capture_options[:normalize_css] unless @capture_options[:normalize_css].nil?
+
+        Screenshot.normalize_css
+      end
+
+      def normalize_stylesheet
+        @capture_options.key?(:normalize_stylesheet) ? @capture_options[:normalize_stylesheet] : Screenshot.normalize_stylesheet
+      end
+
+      def wait_for_fonts?
+        return @capture_options[:wait_for_fonts] unless @capture_options[:wait_for_fonts].nil?
+
+        Screenshot.wait_for_fonts
+      end
 
       def save_and_process_screenshot(screenshot_path)
         tmpfile = Tempfile.new([screenshot_path.basename.to_s, PNG_EXTENSION])

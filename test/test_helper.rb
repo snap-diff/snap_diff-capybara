@@ -58,6 +58,10 @@ class ActiveSupport::TestCase
     Capybara::Screenshot.blur_active_element = false
     Capybara::Screenshot.hide_caret = false
     Capybara::Screenshot.disable_animations = false
+    Capybara::Screenshot.normalize_css = false
+    Capybara::Screenshot.wait_for_fonts = false
+    Capybara::Screenshot.custom_stylesheets = []
+    Capybara::Screenshot.custom_scripts = []
   end
 
   teardown do
