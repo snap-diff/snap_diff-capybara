@@ -116,20 +116,7 @@ After tests run, open `doc/screenshots/snap_diff_report.html`:
 
 ![SnapDiff Web UI — annotated diff showing changed regions highlighted in red](docs/images/snap_diff_annotated.png)
 
-Review all visual changes in one place — no need to hunt through `.diff.png` files. 4 view modes (both/base/new/heatmap), per-image zoom, annotation toggle, keyboard navigation, and search.
-
-**In GitHub Actions**, one step uploads the report, posts a PR comment with the link, and adds a job summary:
-
-```yaml
-- name: Upload screenshot report
-  if: failure()
-  uses: snap-diff/snap_diff-capybara/.github/actions/upload-screenshots@master
-  with:
-    name: screenshots
-    pr-comment: 'true'
-```
-
-See [CI Integration](docs/ci-integration.md) for full setup including Ruby + libvips action and baseline update workflow.
+See [Web UI & Custom Reporters](docs/reporters.md) for full feature details and [CI Integration](docs/ci-integration.md) for GitHub Actions setup.
 
 ## Compare Any Two Images
 

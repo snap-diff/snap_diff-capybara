@@ -13,16 +13,7 @@ This sets up Capybara to serve static files and configures screenshot paths auto
 
 ## .gitignore Setup
 
-Add these patterns to your `.gitignore` — diff artifacts are generated at runtime and should not be committed:
-
-```gitignore
-# Screenshot diff artifacts (generated, not committed)
-*.diff.png
-*.base.png
-*.diff.webp
-*.base.webp
-snap_diff_report.html
-```
+See the [Quick Start section](../README.md#quick-start-5-minutes) in the README for recommended `.gitignore` patterns.
 
 Only commit the baseline screenshots (e.g., `homepage.png`). The `.base.png`, `.diff.png`, `.heatmap.diff.png`, and report files are regenerated on every test run.
 

@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Questions & Discussion
+    url: https://github.com/snap-diff/snap_diff-capybara/discussions
+    about: Ask questions and discuss usage with the community
+  - name: Documentation
+    url: https://github.com/snap-diff/snap_diff-capybara#readme
+    about: Check the README and docs/ directory first

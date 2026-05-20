@@ -33,29 +33,7 @@ version control system (git).
 
 Screenshots are compared to the previously COMMITTED version of the same screenshot.
 
-### Generated artifacts (do not commit)
-
-When a screenshot differs, the gem generates temporary diff files alongside the baseline:
-
-| Pattern | Description |
-|---------|-------------|
-| `*.base.png` | VCS checkout of the committed baseline |
-| `*.diff.png` | Annotated diff with changes highlighted |
-| `*.base.diff.png` | Annotated baseline with diff region marked |
-| `*.heatmap.diff.png` | Heatmap of pixel differences |
-| `snap_diff_report.html` | Interactive Web UI report |
-
-Add these to `.gitignore`:
-
-```gitignore
-*.diff.png
-*.base.png
-*.diff.webp
-*.base.webp
-snap_diff_report.html
-```
-
-Clean up artifacts with `rake snap_diff:clean`.
+**Note:** When a screenshot differs, diff artifacts (`.diff.png`, `.heatmap.diff.png`, etc.) are generated alongside the baseline. Add `*.diff.png`, `*.base.png`, `*.diff.webp`, `*.base.webp`, and `snap_diff_report.html` to your `.gitignore`. Clean up artifacts with `rake snap_diff:clean`.
 
 ## Screenshot groups
 
