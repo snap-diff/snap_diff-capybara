@@ -7,12 +7,17 @@ module CapybaraScreenshotDiff
     # Runs a throwaway ::Minitest::Test that takes a single screenshot, so we can
     # inspect how before_teardown resolved (passed/skipped/failed) without polluting
     # the outer test's own assertions/reporting.
-    def run_inner_test(&block)
+    #
+    # @param teardown [Proc, nil] optional replacement `teardown` method, to
+    #   simulate a user teardown that runs after `before_teardown`. Calls
+    #   `super()` first so DSLStub's own cleanup still happens.
+    def run_inner_test(teardown: nil, &block)
       test_class = Class.new(::Minitest::Test) do
         include CapybaraScreenshotDiff::Minitest::Assertions
         include CapybaraScreenshotDiff::DSLStub
 
         define_method(:test_it, &block)
+        define_method(:teardown, &teardown) if teardown
       end
       test_class.new(:test_it).run
     end
@@ -40,6 +45,20 @@ module CapybaraScreenshotDiff
 
         assert_predicate result, :passed?
         assert_equal 2, result.assertions
+      end
+    end
+
+    test "#before_teardown does not mask a real teardown error behind a pending skip" do
+      Capybara::Screenshot::Diff::Vcs.stub(:checkout_vcs, false) do
+        Capybara::Screenshot::Diff.stub(:pending_if_new, true) do
+          result = run_inner_test(teardown: proc {
+            super()
+            raise "boom from teardown"
+          }) { screenshot("a") }
+
+          refute_predicate result, :skipped?
+          assert_predicate result, :error?
+        end
       end
     end
 
