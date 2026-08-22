@@ -3,7 +3,6 @@
 require "pathname"
 require "fileutils"
 
-require "capybara/screenshot/diff/comparison"
 require "capybara/screenshot/diff/difference"
 require "capybara/screenshot/diff/drivers"
 require "capybara/screenshot/diff/image_preprocessor"
@@ -13,6 +12,13 @@ module Capybara
   module Screenshot
     module Diff
       LOADED_DRIVERS = {}
+
+      # Holds the two images (and their paths/options/driver) being compared.
+      class Comparison < Struct.new(:new_image, :base_image, :options, :driver, :new_image_path, :base_image_path)
+        def skip_area
+          options[:skip_area]
+        end
+      end
 
       # Handles comparison of two images with a focus on performance and accuracy.
       #
