@@ -1,5 +1,19 @@
 # Framework Setup
 
+> **Canonical equivalents.** This page uses the legacy `CapybaraScreenshotDiff` names, which keep
+> working. Each has a `SnapDiff` home:
+>
+> | This page | Canonical |
+> |-----------|-----------|
+> | `require "capybara_screenshot_diff/minitest"` | `require "snap_diff/integrations/minitest"` |
+> | `require "capybara_screenshot_diff/rspec"` | `require "snap_diff/integrations/rspec"` |
+> | `require "capybara_screenshot_diff/cucumber"` | `require "snap_diff/integrations/cucumber"` |
+> | `CapybaraScreenshotDiff::DSL` | `SnapDiff::DSL` |
+> | `CapybaraScreenshotDiff::Minitest::Assertions` | `SnapDiff::Minitest::Assertions` |
+> | `CapybaraScreenshotDiff.finalize_reporters!` | `SnapDiff::Reporting.finalize!` |
+>
+> The canonical setup, written out in full, is in [SnapDiff — the canonical API](snapdiff.md).
+
 ## Including DSL
 
 To use the screenshot capturing and change detection features in your tests, include the `CapybaraScreenshotDiff::DSL` in your test classes. It provides the `screenshot` method to capture and compare screenshots.
@@ -76,12 +90,16 @@ end
 
 ## Custom Test Frameworks
 
-Minitest, RSpec, and Cucumber are supported out of the box. For other frameworks, call `finalize_reporters!` in your framework's "after suite" hook:
+Minitest, RSpec, and Cucumber are supported out of the box. For other frameworks, call the
+end-of-suite hook yourself:
 
 ```ruby
-CapybaraScreenshotDiff.finalize_reporters!
+SnapDiff::Reporting.finalize!            # canonical
+CapybaraScreenshotDiff.finalize_reporters!   # legacy, same thing
 ```
 
-This generates the HTML report and prints the summary.
+This generates the HTML report and prints the summary. A framework also needs the per-test
+lifecycle wired up — see
+[Frameworks other than Minitest/RSpec/Cucumber](snapdiff.md#frameworks-other-than-minitestrspeccucumber).
 
 [← Back to README](../README.md)

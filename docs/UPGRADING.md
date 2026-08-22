@@ -10,6 +10,10 @@ Version 2.0 introduces a new canonical namespace (`SnapDiff`) for cleaner, more 
 
 **Estimated upgrade time:** 5–15 minutes (most users need only the Gemfile pin)
 
+**Writing new code rather than migrating?** Skip this guide and read
+[SnapDiff — the canonical API](snapdiff.md): the same setup, configuration, and extension points
+with canonical names only, no legacy shapes to unlearn.
+
 **Breaking changes:** None for the DSL; deprecation warnings if you reference legacy constants (suppressible), plus two known alpha caveats (see below)
 
 ---
@@ -43,6 +47,17 @@ The implementation now lives in `lib/snap_diff/` under the `SnapDiff` namespace.
 | `Capybara::Screenshot::Diff::Drivers::BaseDriver` | `SnapDiff::Driver` (now a mixin — see below) |
 | `CapybaraScreenshotDiff::SnapManager` / `::Snap` | `SnapDiff::SnapManager` / `SnapDiff::Snap` |
 | `CapybaraScreenshotDiff::RED_RGBA` / `::ORANGE_RGBA` | `SnapDiff::RED_RGBA` / `SnapDiff::ORANGE_RGBA` |
+| `CapybaraScreenshotDiff::Minitest::Assertions` | `SnapDiff::Minitest::Assertions` |
+| `require "capybara_screenshot_diff/minitest"` | `require "snap_diff/integrations/minitest"` |
+| `require "capybara_screenshot_diff/rspec"` | `require "snap_diff/integrations/rspec"` |
+| `require "capybara_screenshot_diff/cucumber"` | `require "snap_diff/integrations/cucumber"` |
+| `require "capybara_screenshot_diff/reporters/html"` | `require "snap_diff/reporters/html"` |
+| `CapybaraScreenshotDiff.serve` (`…/static`) | `SnapDiff.serve` (`require "snap_diff/static"`) |
+| `CapybaraScreenshotDiff.reporters <<` | `SnapDiff::Reporting.register` |
+| `CapybaraScreenshotDiff.finalize_reporters!` | `SnapDiff::Reporting.finalize!` |
+
+Note the integration require paths gain an `integrations/` segment — `require "snap_diff/minitest"`
+is a `LoadError`.
 
 **What stays the same:**
 - `screenshot(name)` — still works
@@ -679,7 +694,7 @@ All screenshot baselines are compatible — no data loss.
 
 ## Need Help?
 
-- **Documentation:** [README.md](README.md)
+- **Documentation:** [README.md](../README.md)
 - **Changelog:** [CHANGELOG.md](CHANGELOG.md)
 - **Issues:** [GitHub Issues](https://github.com/snap-diff/snap_diff-capybara/issues)
 - **DeepWiki:** [Code Documentation](https://deepwiki.com/snap-diff/snap_diff-capybara)
