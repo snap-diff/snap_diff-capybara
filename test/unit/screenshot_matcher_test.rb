@@ -90,6 +90,20 @@ module Capybara
           assert_not_includes comparison_options, :crop
         end
 
+        # D1 (fixed): the split is a pure partition — the input hash survives
+        # untouched. The frozen input would raise FrozenError under the old
+        # delete-based carve.
+        test "#extract_capture_and_comparison_options does not mutate the input options" do
+          matcher = ScreenshotMatcher.new("a")
+          options = {tolerance: 0.03, wait: 5, crop: [0, 0, 2, 2], stability_time_limit: 1}.freeze
+
+          capture_options, comparison_options = matcher.send(:extract_capture_and_comparison_options, options)
+
+          assert_equal 5, capture_options[:wait]
+          assert_not_includes comparison_options, :wait
+          assert_equal({tolerance: 0.03, wait: 5, crop: [0, 0, 2, 2], stability_time_limit: 1}, options)
+        end
+
         # D2: screenshoter selection is by hash-key presence — no
         # :stability_time_limit means the configured plain screenshoter.
         test "#build_screenshot_assertion uses the configured screenshoter without stability_time_limit" do
