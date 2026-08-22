@@ -6,7 +6,7 @@ require "fileutils"
 require "pathname"
 require "json"
 
-module CapybaraScreenshotDiff
+module SnapDiff
   module Reporters
     class HTML
       attr_reader :failures, :total
@@ -132,6 +132,6 @@ end
 # Auto-register reporter.
 # Framework adapters (Minitest, RSpec, Cucumber) call finalize_reporters! via native hooks.
 # For custom frameworks, call CapybaraScreenshotDiff.finalize_reporters! manually.
-unless CapybaraScreenshotDiff.reporters.any?(CapybaraScreenshotDiff::Reporters::HTML)
-  CapybaraScreenshotDiff.reporters << CapybaraScreenshotDiff::Reporters::HTML.new(embed_images: !!ENV["CI"])
+unless CapybaraScreenshotDiff.reporters.any?(SnapDiff::Reporters::HTML)
+  CapybaraScreenshotDiff.reporters << SnapDiff::Reporters::HTML.new(embed_images: !!ENV["CI"])
 end
