@@ -15,26 +15,42 @@ class SnapDiffConfigTest < ActiveSupport::TestCase
     assert_same config, SnapDiff.config
   end
 
-  # Reflection-based completeness check: derive the real, current list of
-  # mattr_accessor/mattr_reader settings straight from the class variables
-  # Rails' mattr_* declares them as (one @@foo per setting), rather than a
-  # hand-maintained list here. If someone adds a new mattr_accessor to
-  # Capybara::Screenshot or Capybara::Screenshot::Diff without adding a
-  # matching entry to SnapDiff::Config::MAPPING, this test fails -- the
-  # count is derived, not asserted as a literal number.
-  test "SnapDiff::Config::MAPPING covers every current mattr_accessor setting" do
+  # Reflection-based completeness check, reworked for the ADR-008 storage
+  # inversion (the old version derived settings from mattr class variables,
+  # which no longer exist). Two directions:
+  #
+  # (a) every singleton writer on the legacy modules is a mapped config
+  #     setting -- a future `mattr_accessor :foo` (active_support's ext is
+  #     one require away) or hand-rolled writer would create unmapped
+  #     storage invisible to SnapDiff.config;
+  # (b) SnapDiff.config stores exactly one ivar per MAPPING key -- catches
+  #     both an unmapped ivar sneaking into Config and a mapped setting
+  #     whose ivar is missing (which would also silently escape
+  #     test_helper's per-test ivar snapshot/restore).
+  NON_CONFIG_WRITERS = [].freeze # currently no non-config writer API on the legacy modules
+
+  test "every legacy singleton writer is covered by SnapDiff::Config::MAPPING" do
     covered = SnapDiff::Config::MAPPING.values
 
     [Capybara::Screenshot, Capybara::Screenshot::Diff].each do |mod|
-      mod.class_variables.each do |cv|
-        mattr = cv.to_s.delete_prefix("@@").to_sym
+      writers = mod.singleton_class.public_instance_methods(false).grep(/=\z/) - NON_CONFIG_WRITERS
+
+      assert_operator writers.size, :>, 0, "#{mod} lost all its config writers"
+      writers.each do |writer|
+        mattr = writer.to_s.delete_suffix("=").to_sym
 
         assert_includes covered, [mod, mattr],
-          "#{mod}.#{mattr} is a mattr_accessor with no SnapDiff::Config mapping. " \
+          "#{mod}.#{writer} is a config writer with no SnapDiff::Config mapping. " \
           "Add an entry to Config::MAPPING (rename the key if `#{mattr}` collides " \
-          "with an existing one, as `enabled` does)."
+          "with an existing one, as `enabled` does), or add it to NON_CONFIG_WRITERS " \
+          "if it is deliberately not a config setting."
       end
     end
+  end
+
+  test "SnapDiff.config stores exactly one ivar per MAPPING key" do
+    assert_equal SnapDiff::Config::MAPPING.keys.map { |k| :"@#{k}" }.sort,
+      SnapDiff.config.instance_variables.sort
   end
 
   test "every mapped setting is readable via config and equal to its mattr_accessor's value" do
