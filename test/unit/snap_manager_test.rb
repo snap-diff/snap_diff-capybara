@@ -61,6 +61,36 @@ module CapybaraScreenshotDiff
       assert_includes snap.next_attempt_path!.to_s, "test_image.attempt_00.png"
     end
 
+    # Store-API split guard (v2 amendment item 1): #path_for is the pure
+    # lookup half of what #snapshot used to be used for. Callers that only
+    # need paths (e.g. dsl_test's post-capture assertions) must be able to
+    # look up without registering the name for cleanup!.
+    test "#path_for resolves the same paths as #snapshot" do
+      registered = @manager.snapshot("split_guard")
+      looked_up = @manager.path_for("split_guard")
+
+      assert_equal registered.path, looked_up.path
+      assert_equal registered.base_path, looked_up.base_path
+    end
+
+    test "#path_for never registers the snapshot for cleanup" do
+      @manager.path_for("split_guard")
+
+      assert_empty @manager.snapshots.to_a
+    end
+
+    test ".path_for is a pure lookup on the shared instance" do
+      tracked_before = SnapManager.instance.snapshots.dup
+
+      looked_up = SnapManager.path_for("split_guard_class")
+
+      assert_equal tracked_before, SnapManager.instance.snapshots
+
+      registered = SnapManager.snapshot("split_guard_class")
+      assert_includes SnapManager.instance.snapshots, registered
+      assert_equal registered.path, looked_up.path
+    end
+
     test "#cleanup! removes diff artifacts created by reporters" do
       snap = @manager.snapshot("test_image")
       source = fixture_image_path_from("a")

@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require "active_support/concern"
+
 # Shared contract tests for all image processing drivers.
 # Include in any driver test class that uses DSLStub (provides make_comparison).
 module DriverContractTests

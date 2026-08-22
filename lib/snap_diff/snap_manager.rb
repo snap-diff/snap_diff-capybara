@@ -26,6 +26,17 @@ module SnapDiff
       instance.snapshot(screenshot_full_name, screenshot_format)
     end
 
+    # Pure path lookup: builds the Snap (path bundle) for a name WITHOUT
+    # registering it for cleanup. Use this when you only need to know where
+    # a screenshot lives; use #snapshot when taking one that cleanup! owns.
+    def path_for(screenshot_full_name, screenshot_format = "png")
+      Snap.new(screenshot_full_name, screenshot_format, manager: self)
+    end
+
+    def self.path_for(screenshot_full_name, screenshot_format = "png")
+      instance.path_for(screenshot_full_name, screenshot_format)
+    end
+
     def abs_path_for(relative_path)
       @root / relative_path
     end
@@ -79,8 +90,19 @@ module SnapDiff
       instance.root
     end
 
+    # Thread-local memoized manager (D7 fix): snapshots tracked via the
+    # class-method path and class-method cleanup! now share one instance, so
+    # cleanup! actually deletes what was tracked. Rebuilt when the configured
+    # manager class or screenshot root changes (tests re-root per example).
     def self.instance
-      Capybara::Screenshot::Diff.manager.new(Capybara::Screenshot.screenshot_area_abs)
+      manager_class = Capybara::Screenshot::Diff.manager
+      root = Pathname.new(Capybara::Screenshot.screenshot_area_abs)
+
+      current = Thread.current[:snap_diff_manager]
+      unless current&.instance_of?(manager_class) && current.root == root
+        current = Thread.current[:snap_diff_manager] = manager_class.new(root)
+      end
+      current
     end
   end
 end
