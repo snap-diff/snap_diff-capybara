@@ -34,12 +34,16 @@ class LegacyNamespaceDeprecationTest < ActiveSupport::TestCase
 
   def setup
     @original_silence = SnapDiff.silence_deprecations
+    # silence_deprecations? also reads the env var live, so an inherited
+    # SNAP_DIFF_SILENCE_DEPRECATIONS would defeat the accessor below.
+    @original_silence_env = ENV.delete("SNAP_DIFF_SILENCE_DEPRECATIONS")
     SnapDiff.silence_deprecations = false
     SnapDiff::Deprecation.reset!
   end
 
   def teardown
     SnapDiff.silence_deprecations = @original_silence
+    ENV["SNAP_DIFF_SILENCE_DEPRECATIONS"] = @original_silence_env if @original_silence_env
     SnapDiff::Deprecation.reset!
   end
 
