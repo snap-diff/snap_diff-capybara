@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- **`SnapDiff` namespace aliases** — `SnapDiff::Comparison`, `SnapDiff.compare`, and `SnapDiff.start` provide a forward-looking entry point onto the existing `Capybara::Screenshot::Diff` API, no behavior changes ([#166](https://github.com/snap-diff/snap_diff-capybara/issues/166))
+
+---
+
 ## [v1.13.0] - 2026-08-22
 
 ### Added
