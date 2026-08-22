@@ -1,5 +1,8 @@
 # frozen_string_literal: true
 
+# The MAPPING below references the legacy modules, so they must be loaded first.
+require "capybara_screenshot_diff"
+
 module SnapDiff
   # Flat, additive consolidation of every existing
   # +Capybara::Screenshot+ / +Capybara::Screenshot::Diff+ +mattr_accessor+
