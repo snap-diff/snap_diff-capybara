@@ -1,23 +1,24 @@
-# Release Preparation — v1.12.0
+# Release Preparation — v1.13.0
 
 ## Summary
 
-71 commits since v1.11.0 with new features, performance improvements, and default behavior changes.
+Issue #191 API decoupling: `assert_matches_screenshot` becomes the primary
+assertion method, plus a capture-only API and opt-in pending-instead-of-pass
+for missing baselines.
 
 ## Release Checklist
 
 ### Pre-Release
 
-- [x] Update version to `1.12.0`
-- [x] Run tests: `bundle exec rake test` (218 runs, 0 failures)
-- [x] Add CHANGELOG.md
-- [x] Add docs/UPGRADING.md
+- [x] Update version to `1.13.0`
+- [x] Run tests: `bundle exec rake test:unit` (235 runs, 0 failures)
+- [x] Update CHANGELOG.md
 
 ### Release (One Click)
 
 1. Push to GitHub
 2. Go to [Actions → Release](https://github.com/snap-diff/snap_diff-capybara/actions/workflows/release.yml)
-3. Click **Run workflow**, enter `1.12.0`
+3. Click **Run workflow**, enter `1.13.0`
 4. Workflow will: test → tag → publish to RubyGems → create GitHub Release
 
 ### Post-Release
@@ -28,31 +29,14 @@
 ## What Changed
 
 ### New Features
-- HTML reporter with premium UI, 4 comparison modes, zoom, keyboard navigation
-- GitHub Actions artifact integration with inline preview + reusable composite action
-- `disable_animations` helper for stable screenshots
-- `snap_diff:clean` rake task for diff artifact cleanup
-- `Diff.compare` for standalone image comparison
-- Perceptual color distance (dE00) for anti-aliasing
-- `assert_no_screenshot_changes` DSL method
-- `Diff.configure` block helper
-- Ruby 3.5 & 4.0 support
+- `capture_screenshot` DSL method — capture without comparing or asserting
+- `compare:` option on `screenshot` — `compare: false` captures only
+- `Capybara::Screenshot::Diff.pending_if_new` — mark tests skipped in teardown
+  when a screenshot has no committed baseline (Minitest, RSpec, and Cucumber)
 
 ### Behavior Changes
-- `blur_active_element` defaults to `true`
-- `hide_caret` defaults to `true`
-- `fail_if_new` defaults to `true` in CI
-- Thread-safe reporter notification with mutex
-- SVN support removed
-- ActiveSupport no longer required
-
-### Performance
-- Faster ChunkyPNG shift-detection (eliminated allocations)
-- Cached computations in VIPS driver
-- Memoized region area size
-
-### Documentation
-- README restructured (970→149 lines) with 7 dedicated docs/ files
-- CI integration guide, upgrade guide, color comparison guide
+- `assert_matches_screenshot` is now the primary assertion method; `screenshot`
+  remains as a convenience wrapper and is safe to override in user test classes —
+  the gem no longer calls it internally ([#191](https://github.com/snap-diff/snap_diff-capybara/issues/191))
 
 See [CHANGELOG.md](../CHANGELOG.md) for full details.
