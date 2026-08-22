@@ -1,122 +1,20 @@
 # frozen_string_literal: true
 
-require "fileutils"
+require "snap_diff/screenshot_assertion"
 
 module CapybaraScreenshotDiff
-  class ScreenshotAssertion
-    attr_reader :name, :args
-    attr_accessor :compare, :caller
-
-    def initialize(name, **args)
-      @name = name
-      @args = args
-    end
-
-    def validate
-      return unless compare
-
-      self.class.assert_image_not_changed(caller, name, compare)
-    end
-
-    def validate!
-      error_msg = validate
-
-      if error_msg
-        raise CapybaraScreenshotDiff::ExpectationNotMet.new(error_msg, caller)
-      end
-    end
-
-    # Verifies that all scheduled screenshots do not show any unintended differences.
-    #
-    # @param screenshots [Array(Array(Array(String), String, ImageCompare))] The list of match screenshots jobs. Defaults to all screenshots taken during the test.
-    # @return [Array, nil] Returns an array of error messages if there are screenshot differences, otherwise nil.
-    # @note This method is typically called at the end of a test to assert all screenshots are as expected.
-    def self.verify_screenshots!(screenshots)
-      return unless ::Capybara::Screenshot.active? && ::Capybara::Screenshot::Diff.fail_on_difference
-
-      test_screenshot_errors = screenshots.map do |assertion|
-        assertion.validate
-      end
-
-      test_screenshot_errors.compact!
-
-      test_screenshot_errors.empty? ? nil : test_screenshot_errors
-    end
-
-    # Asserts that an image has not changed compared to its baseline.
-    #
-    # @param backtrace [Array(String)] The caller context, used for error reporting.
-    # @param name [String] The name of the screenshot being verified.
-    # @param comparison [Object] The comparison object containing the result and details of the comparison.
-    # @return [String, nil] Returns an error message if the screenshot differs from the baseline, otherwise nil.
-    # @note This method is used internally to verify individual screenshots.
-    def self.assert_image_not_changed(backtrace, name, comparison)
-      result = comparison.different?
-
-      # Cleanup after comparisons
-      if !result && comparison.base_image_path.exist?
-        FileUtils.mv(comparison.base_image_path, comparison.image_path, force: true)
-      end
-
-      return unless result
-
-      "Screenshot does not match for '#{name}': #{comparison.error_message}\n#{backtrace.join("\n")}"
-    end
-  end
-
-  class AssertionRegistry
-    attr_reader :assertions, :screenshot_namer, :new_screenshots
-
-    def initialize
-      @assertions = []
-      @new_screenshots = []
-      @screenshot_namer = CapybaraScreenshotDiff::ScreenshotNamer.new
-    end
-
-    def add_assertion(assertion)
-      return unless assertion&.compare
-
-      @assertions.push(assertion)
-
-      assertion
-    end
-
-    def assertions_present?
-      !@assertions.empty?
-    end
-
-    def record_new_screenshot(name)
-      @new_screenshots.push(name)
-    end
-
-    def new_screenshots_present?
-      !@new_screenshots.empty?
-    end
-
-    def verify(screenshots = CapybaraScreenshotDiff.assertions)
-      return unless ::Capybara::Screenshot.active? && ::Capybara::Screenshot::Diff.fail_on_difference
-
-      failed_assertions = CapybaraScreenshotDiff.registry.failed_assertions
-      failed_screenshot = failed_assertions.first
-      result = ScreenshotAssertion.verify_screenshots!(screenshots)
-
-      if result
-        raise CapybaraScreenshotDiff::ExpectationNotMet.new(result.join("\n\n"), failed_screenshot.caller)
-      end
-    end
-
-    def failed_assertions
-      assertions.filter { |screenshot_assert| screenshot_assert.compare&.different? }
-    end
-
-    def reset
-      @assertions.clear
-      @new_screenshots.clear
-      @screenshot_namer = CapybaraScreenshotDiff::ScreenshotNamer.new
-    end
-  end
+  ScreenshotAssertion = SnapDiff::ScreenshotAssertion
+  AssertionRegistry = SnapDiff::AssertionRegistry
 end
 
+# The registry/reporters module-level machinery below is deliberately NOT
+# moved in this PR. It's global per-thread state plumbing (the assertion
+# registry, reporter list, verify/reset/finalize_reporters! lifecycle) in
+# the same category as Config's old mattr_accessors -- an "ownership"
+# change, not a mechanical move, and out of scope here (see the v2
+# file-tree-move PR description). It stays attached to
+# CapybaraScreenshotDiff, just updated to reference the two classes
+# above at their new SnapDiff:: names.
 module CapybaraScreenshotDiff
   class << self
     require "forwardable"

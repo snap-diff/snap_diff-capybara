@@ -1,9 +1,11 @@
 # frozen_string_literal: true
 
+require "snap_diff/version"
+
 module Capybara
   module Screenshot
     module Diff
-      VERSION = "1.15.1"
+      VERSION = SnapDiff::VERSION
     end
   end
 end
