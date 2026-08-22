@@ -4,10 +4,19 @@
 
 ```ruby
 # test/test_helper.rb
-require 'capybara_screenshot_diff/static'
+require 'snap_diff/static'
 
-CapybaraScreenshotDiff.serve("_site")  # or "public", "build", "dist"
+SnapDiff.serve("_site")  # or "public", "build", "dist"
 ```
+
+<details>
+<summary>Legacy names (still supported)</summary>
+
+```ruby
+require 'capybara_screenshot_diff/static'
+CapybaraScreenshotDiff.serve("_site")
+```
+</details>
 
 This sets up Capybara to serve static files and configures screenshot paths automatically.
 
@@ -24,7 +33,8 @@ Only commit the baseline screenshots (e.g., `homepage.png`). The `.base.png`, `.
 Add to your test helper:
 
 ```ruby
-require 'capybara_screenshot_diff/reporters/html'
+require 'snap_diff/reporters/html'            # canonical
+# require 'capybara_screenshot_diff/reporters/html'   # legacy, same thing
 ```
 
 ### 2. Reusable composite action (recommended)

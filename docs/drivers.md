@@ -1,5 +1,11 @@
 # Image Processing Drivers
 
+> **Canonical equivalents.** Global settings shown here as
+> `Capybara::Screenshot::Diff.<option> = …` are also `SnapDiff.config.<option> = …` — same
+> option names, same storage, either surface works. Writing your own driver? See
+> [Custom drivers](snapdiff.md#custom-drivers) for the `SnapDiff::Driver` mixin and how
+> registration in `SnapDiff::Drivers.loaded` works.
+
 ## Perceptual color comparison (VIPS only)
 
 By default, color differences are measured using raw RGB channel distance. This can produce

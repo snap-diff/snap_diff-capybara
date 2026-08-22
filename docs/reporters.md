@@ -6,7 +6,8 @@ Generate an interactive Web UI report of screenshot differences:
 
 ```ruby
 # Add to test_helper.rb — one line, that's it
-require 'capybara_screenshot_diff/reporters/html'
+require 'snap_diff/reporters/html'            # canonical
+# require 'capybara_screenshot_diff/reporters/html'   # legacy, same thing
 ```
 
 After running tests, open the report (generated only when there are failures):
@@ -21,7 +22,7 @@ The report includes a sidebar with thumbnails, side-by-side comparison with diff
 
 ## Custom Reporters
 
-Build your own reporter by implementing `record` and `finalize`:
+Build your own reporter by implementing `record`, `finalize` and `summary`:
 
 ```ruby
 class MyReporter
@@ -33,14 +34,28 @@ class MyReporter
   end
 
   def finalize
-    # called once at process exit — write summary, upload report, etc.
+    # called once at end of suite — write summary, upload report, etc.
+  end
+
+  def summary
+    # printed to stdout after finalize; return nil to print nothing
+    nil
   end
 end
 
 # Register in test_helper.rb
-CapybaraScreenshotDiff.reporters << MyReporter.new
+SnapDiff::Reporting.register(MyReporter.new)   # canonical — appends under the mutex
+# CapybaraScreenshotDiff.reporters << MyReporter.new   # legacy, same list, skips the lock
 ```
 
-Reporters are notified before assertions are cleared on each test teardown. `finalize` is called via `at_exit`.
+Reporters are notified before assertions are cleared on each test teardown. `finalize` runs from
+the framework's end-of-suite hook (`Minitest.after_run`, RSpec `after(:suite)`, Cucumber
+`AfterAll`), which calls `SnapDiff::Reporting.finalize!`.
+
+**Do implement `summary`.** `finalize!` calls it unconditionally, so a reporter without it is
+finalized and then warned about. A reporter that raises is warned about and skipped — the others
+still run.
+
+Full details in [Custom reporters](snapdiff.md#custom-reporters).
 
 [← Back to README](../README.md)

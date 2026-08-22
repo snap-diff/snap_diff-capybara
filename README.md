@@ -11,7 +11,7 @@ Stop shipping UI bugs. Take screenshots in your Capybara tests, commit baselines
 
 **Why this gem?** Baselines live in git — review UI changes in pull requests like you review code. Runs offline, works in CI, zero vendor lock-in. Unlike Percy/Chromatic (paid SaaS), nothing to sign up for. Unlike BackstopJS, no Node required.
 
-> **2.0 experiment (alpha):** the gem is moving to a `SnapDiff` canonical namespace. Opt in with `gem "capybara-screenshot-diff", "2.0.0.beta1"` (or the latest 2.0.0 prerelease; prereleases are never installed by default — normal installs stay on 1.x). Legacy names keep working with a one-time deprecation warning, silenceable via `SnapDiff.silence_deprecations = true` or `SNAP_DIFF_SILENCE_DEPRECATIONS=1`. See the [upgrade guide](docs/UPGRADING.md) and share feedback on [#166](https://github.com/snap-diff/snap_diff-capybara/issues/166).
+> **2.0 experiment (alpha):** the gem is moving to a `SnapDiff` canonical namespace. Opt in with `gem "capybara-screenshot-diff", "2.0.0.beta1"` (or the latest 2.0.0 prerelease; prereleases are never installed by default — normal installs stay on 1.x). Legacy names keep working with a one-time deprecation warning, silenceable via `SnapDiff.silence_deprecations = true` or `SNAP_DIFF_SILENCE_DEPRECATIONS=1`. Writing new code? Start from [SnapDiff — the canonical API](docs/snapdiff.md), which uses canonical names only. Migrating an existing suite? See the [upgrade guide](docs/UPGRADING.md). Share feedback on [#166](https://github.com/snap-diff/snap_diff-capybara/issues/166).
 >
 > Starting with the 2.0 prereleases the gem is also published as [`snap_diff-capybara`](https://rubygems.org/gems/snap_diff-capybara) — identical content and versions under the forward-looking name, matching this repository. Install either; don't install both.
 
@@ -201,6 +201,7 @@ Comparisons add ~50ms per image with VIPS. Without `ruby-vips`, ChunkyPNG is use
 
 ## Docs
 
+- [SnapDiff — the canonical API](docs/snapdiff.md) — setup, config, object map, custom drivers & reporters, canonical names only
 - [Framework Setup](docs/framework-setup.md) — Minitest, RSpec, Cucumber
 - [CI & Non-Rails Integration](docs/ci-integration.md) — GitHub Actions, reusable action, static sites, baseline updates
 - [Configuration Reference](docs/configuration.md) — all options explained

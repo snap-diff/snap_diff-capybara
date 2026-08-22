@@ -2,10 +2,25 @@
 
 ## Quick Setup
 
-Configure all settings in one place using the `configure` helper:
+**Canonical (v2):** every setting lives on one flat object, `SnapDiff.config`.
 
 ```ruby
 # In test_helper.rb or rails_helper.rb
+SnapDiff.configure do |config|
+  config.window_size = [1280, 1024]
+  config.stability_time_limit = 1
+  config.blur_active_element = true
+  config.hide_caret = true
+  config.driver = :vips
+  config.tolerance = 0.0005
+  config.color_distance_limit = 15
+end
+```
+
+**Legacy (still supported):** the two-holder block, split across `Capybara::Screenshot` and
+`Capybara::Screenshot::Diff`.
+
+```ruby
 Capybara::Screenshot::Diff.configure do |screenshot, diff|
   screenshot.window_size = [1280, 1024]
   screenshot.stability_time_limit = 1
@@ -16,6 +31,20 @@ Capybara::Screenshot::Diff.configure do |screenshot, diff|
   diff.color_distance_limit = 15
 end
 ```
+
+`SnapDiff::Config` **is** the storage; the legacy accessors are thin delegators onto it. There is
+one source of truth, so a write through either surface is visible through the other — mixing them
+is safe, and you can migrate a suite one line at a time:
+
+```ruby
+SnapDiff.config.window_size = [1280, 1024]
+Capybara::Screenshot.window_size    # => [1280, 1024]
+```
+
+Every option name below is identical on both surfaces — only the receiver changes. The one
+exception: `Capybara::Screenshot.enabled` is `SnapDiff.config.screenshot_enabled`, because
+`SnapDiff.config.enabled` is taken by `Capybara::Screenshot::Diff.enabled`. See
+[SnapDiff — the canonical API](snapdiff.md) for the full SnapDiff-native surface.
 
 **Note:** `fail_if_new` defaults to `true` in CI environments (when `ENV['CI']` is set). New screenshots are allowed locally but rejected in CI — no configuration needed.
 
@@ -77,7 +106,7 @@ screenshot 'dashboard', color_distance_limit: 15
 
 **Tier 1 — Zero config (works immediately):**
 `blur_active_element`, `hide_caret`, and `fail_if_new` (in CI) are enabled by default.
-Just `require 'capybara_screenshot_diff/minitest'` and call `screenshot`.
+Just `require 'snap_diff/integrations/minitest'` (legacy: `capybara_screenshot_diff/minitest`) and call `screenshot`.
 
 **Tier 2 — Set when tests are flaky:**
 

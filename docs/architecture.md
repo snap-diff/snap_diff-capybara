@@ -2,7 +2,7 @@
 
 This document describes the internal architecture of `capybara-screenshot-diff` — how screenshots are captured, compared, and reported, and how the components fit together.
 
-Since the v2 namespace move (ADR-004), the implementation lives in `lib/snap_diff/` under the `SnapDiff` namespace. The old file paths (`lib/capybara/screenshot/diff/`, `lib/capybara_screenshot_diff/`) remain as thin forwarders, and the old constants resolve to the same objects via `lib/snap_diff/legacy_shims.rb` with a one-time deprecation warning. Class names below use the canonical `SnapDiff::` names, with legacy names noted where they differ.
+Since the v2 namespace move (ADR-004), the implementation lives in `lib/snap_diff/` under the `SnapDiff` namespace. The old file paths (`lib/capybara/screenshot/diff/`, `lib/capybara_screenshot_diff/`) remain as thin forwarders, and the old constants resolve to the same objects via `lib/snap_diff/legacy_shims.rb` with a one-time deprecation warning. Class names below use the canonical `SnapDiff::` names, with legacy names noted where they differ. For the user-facing view of the same surface, see [SnapDiff — the canonical API](snapdiff.md).
 
 ## Overview
 
@@ -14,8 +14,8 @@ Since the v2 namespace move (ADR-004), the implementation lives in `lib/snap_dif
                │                              │
                ▼                              ▼
 ┌──────────────────────────┐    ┌──────────────────────────┐
-│  CapybaraScreenshotDiff   │    │  CapybaraScreenshotDiff   │
-│  ::DSL (screenshot, etc)  │    │  ::AssertionRegistry       │
+│  SnapDiff::DSL            │    │  SnapDiff::AssertionRegistry│
+│  (screenshot, etc)        │    │  (SnapDiff.session)        │
 └──────────────┬───────────┘    └──────────────┬───────────┘
                │                               │
                ▼                               ▼
@@ -127,6 +127,8 @@ Drivers abstract image processing operations. Shared default behavior lives in t
 
 **Auto-detection:** `Utils.detect_available_drivers` tries to load `:vips` first (via `ruby-vips` gem), then `:chunky_png`. The `:auto` driver mode picks the first available.
 
+**Registry (ADR-008 step 5b):** `SnapDiff::Drivers.loaded` is the canonical driver-class cache — a `name => class` hash filled lazily by `Utils.find_driver_class_for`, and the registration point for custom drivers (the legacy `Capybara::Screenshot::Diff::LOADED_DRIVERS` is an eager same-object alias, so registrations through either land in the same hash). `SnapDiff::Drivers.available` is the canonical read API for the detected list; the value itself still lives on `Capybara::Screenshot::Diff::AVAILABLE_DRIVERS`, which stays the published stubbing point. `SnapDiff::Drivers.for` resolves an options hash to a driver instance. See [Custom drivers](snapdiff.md#custom-drivers).
+
 ### 6. Difference Region Detection
 
 **VipsDriver** uses a **difference mask** approach:
@@ -173,7 +175,7 @@ Handles baseline retrieval from git. Uses `git show HEAD:<path>` to extract the 
 - Keyboard navigation and shortcuts
 - Responsive layout for mobile
 
-**Custom reporters:** Implement `record(assertions)` and `finalize` methods, then add to `CapybaraScreenshotDiff.reporters`. The process-global reporter lifecycle (registration, notification, finalization) is owned by `SnapDiff::Reporting` (`lib/snap_diff/reporting.rb`); `CapybaraScreenshotDiff.reporters` / `.finalize_reporters!` are thin public shims over it.
+**Custom reporters:** Implement `record(assertions)`, `finalize` and `summary`, then register via `SnapDiff::Reporting.register(reporter)` — the canonical way in, because the append happens under the mutex. The process-global reporter lifecycle (registration, notification, finalization) is owned by `SnapDiff::Reporting` (`lib/snap_diff/reporting.rb`); `CapybaraScreenshotDiff.reporters` / `.finalize_reporters!` are thin public shims over it, and `reporters` stays a mutable array for compatibility (appending directly still works, it just skips the lock). See [Custom reporters](snapdiff.md#custom-reporters).
 
 ### 10. Assertion Lifecycle
 
@@ -189,16 +191,19 @@ Test begins
     │         └─ delayed=false → validate immediately
     │
     ├─ teardown:
-    │    └─ CapybaraScreenshotDiff.verify
-    │         ├─ iterates thread-local assertions
-    │         ├─ calls validate on each
-    │         ├─ raises ExpectationNotMet on first failure
-    │         └─ notifies reporters via mutex-protected snapshot
+    │    ├─ SnapDiff.session.verify
+    │    │    ├─ iterates the fiber-local assertions
+    │    │    ├─ calls validate on each
+    │    │    └─ raises SnapDiff::ExpectationNotMet if any differed
+    │    │
+    │    └─ SnapDiff.reset (always, in an ensure)
+    │         ├─ SnapDiff::Reporting.notify — mutex-protected reporter snapshot
+    │         └─ clears the session
     │
-    └─ at_exit:
-         └─ CapybaraScreenshotDiff.finalize_reporters!
+    └─ end of suite (Minitest.after_run / RSpec after(:suite) / Cucumber AfterAll):
+         └─ SnapDiff::Reporting.finalize!
               ├─ Generates HTML report (if reporter registered)
-              └─ Prints summary
+              └─ Prints each reporter's summary
 ```
 
 ### 11. Thread Safety
@@ -209,12 +214,16 @@ Test begins
 | Reporter notification | Mutex-protected snapshot of reporter list before iteration |
 | HTML reporter internals | Mutex protecting `@failures`, `@total`, `@finalized` |
 | Screenshot naming | Per-thread `ScreenshotNamer` instance |
-| Global configuration | `mattr_accessor` — must be set before tests run, not mutated during parallel execution |
+| Global configuration | One process-wide `SnapDiff::Config` instance — must be set before tests run, not mutated during parallel execution |
 | File system | Atomic `FileUtils.mv`, unique paths per screenshot name + counter, thread-safe `mkpath` |
 
 ### 12. Configuration System
 
-Configuration uses Ruby's `mattr_accessor` (pure Ruby implementation in `lib/capybara/screenshot/diff/config_legacy.rb`, deliberately kept at the old path as the single source of truth for settings storage) and is organized into two namespaces:
+Since ADR-008 step 1 the storage ownership is inverted from the original v2 consolidation: **`SnapDiff::Config` (`lib/snap_diff/config.rb`) IS the storage** — one eagerly-created instance, reachable as `SnapDiff.config`, holding every setting as a plain `attr_accessor`. It is the leaf of the config require graph and requires nothing that leads back to either entry point.
+
+The legacy `Capybara::Screenshot.*` / `Capybara::Screenshot::Diff.*` accessors are thin delegators generated from `Config::MAPPING` (both singleton and instance methods, matching what `mattr_accessor` used to define) that forward to that one object. One storage, two views — a write through either surface is visible through the other structurally, not by synchronization. `lib/capybara/screenshot/diff/config_legacy.rb` remains at the old path, but it now installs the delegating surface rather than owning the state.
+
+The two legacy views are organized into two namespaces:
 
 **`Capybara::Screenshot`** — capture settings:
 - `window_size`, `stability_time_limit`, `blur_active_element`, `hide_caret`, `disable_animations`
@@ -225,7 +234,11 @@ Configuration uses Ruby's `mattr_accessor` (pure Ruby implementation in `lib/cap
 - `driver`, `tolerance`, `color_distance_limit`, `perceptual_threshold`, `shift_distance_limit`
 - `area_size_limit`, `skip_area`, `fail_if_new`, `fail_on_difference`, `delayed`
 
-The `Diff.configure` block helper provides a convenient way to set both namespaces at once. Since v2, `SnapDiff::Config` (`lib/snap_diff/config.rb`) additionally exposes all 27 settings as one flat object via `SnapDiff.config` / `SnapDiff.configure { |config| ... }` — it holds no state of its own, every accessor forwards to the legacy `mattr_accessor` storage, so both views stay consistent.
+The canonical way in is `SnapDiff.configure { |config| ... }` (all 27 settings flat on one object). `SnapDiff.start` and `Capybara::Screenshot::Diff.configure` are the two-holder block shape over the same storage — since ADR-008 step 7b, `Diff.configure` forwards to `SnapDiff.start` rather than the other way round.
+
+`Config` also owns the derived values that used to live on the legacy modules: `active?` (ex `Capybara::Screenshot.active?`), `screenshot_area` / `screenshot_area_abs`, and `default_options` (ex `Capybara::Screenshot::Diff.default_options`, the option hash handed to `SnapDiff::Comparison`). The legacy module methods one-line forward here.
+
+**Default timing contract:** every default is evaluated once, in `Config#initialize`, which runs at require time of `config.rb` — the same load moment the old `mattr_accessor` default blocks evaluated at. `fail_if_new` (from `ENV["CI"]`) and `root` (from `Rails.root`) must never become lazy read-time defaults. The one deliberately live value is `default_options[:wait]`, a method-body read of `Capybara.default_max_wait_time`.
 
 ## File Layout
 
@@ -234,7 +247,9 @@ lib/
   snap_diff.rb                                 # SnapDiff module: compare/start/configure/config
   snap_diff/                                   # Canonical implementation (v2)
     dsl.rb                                     # screenshot(), screenshot_group(), etc.
-    config.rb                                  # SnapDiff::Config — flat view over all 27 settings
+    config.rb                                  # SnapDiff::Config — THE storage for all 27 settings
+    errors.rb                                  # Error / ExpectationNotMet / UnstableImage / WindowSizeMismatchError
+    region.rb                                  # SnapDiff::Region — bounding box (+ eager top-level ::Region alias)
     deprecation.rb                             # Warn-once-per-constant machinery
     legacy_shims.rb                            # const_missing forwarders for the old namespaces
     comparison.rb                              # Layered comparison engine (ex-ImageCompare)
@@ -272,17 +287,19 @@ lib/
       minitest.rb                              # Minitest assertions integration
       rspec.rb                                 # RSpec matcher integration
       cucumber.rb                              # Cucumber World integration
-  capybara_screenshot_diff.rb                  # Umbrella entry point + error classes
+  capybara_screenshot_diff.rb                  # Umbrella entry point + eager error-class aliases
   capybara_screenshot_diff/                    # Legacy paths — mostly thin forwarders
     minitest.rb / rspec.rb / cucumber.rb       # Legacy entry points (load the full gem)
     screenshot_assertion.rb                    # CapybaraScreenshotDiff session/reporter shims
     ...                                        # Everything else forwards to snap_diff/
   capybara/screenshot/diff.rb                  # Convenience require (loads minitest)
   capybara/screenshot/diff/
-    config_legacy.rb                           # mattr_accessor settings storage (source of truth)
-    region.rb                                  # Bounding box region value object (top-level Region)
+    config_legacy.rb                           # Legacy accessor surface, delegating to SnapDiff::Config
+    region.rb                                  # Forwarder to snap_diff/region.rb
     version.rb                                 # Capybara::Screenshot::Diff::VERSION (gemspec reads it)
     ...                                        # Everything else forwards to snap_diff/
 ```
 
-The legacy `Capybara::Screenshot::Diff::*` and `CapybaraScreenshotDiff::*` constants resolve lazily via `snap_diff/legacy_shims.rb` (`const_missing`), pointing at the same objects with a one-time deprecation warning. See [UPGRADING.md](UPGRADING.md) for the migration guide.
+Most legacy `Capybara::Screenshot::Diff::*` and `CapybaraScreenshotDiff::*` constants resolve lazily via `snap_diff/legacy_shims.rb` (`const_missing`), pointing at the same objects with a one-time deprecation warning. The error classes are the deliberate exception: they are **eager** same-object aliases, because `rescue` clauses and `defined?` / `const_defined?` feature detection in adopter code must keep behaving exactly as before (`const_defined?` never triggers `const_missing`). Same for `LOADED_DRIVERS`, pinned as an eager alias of `SnapDiff::Drivers.loaded` so user registrations through the old constant are not silently dropped.
+
+See [SnapDiff — the canonical API](snapdiff.md) for the canonical surface, and [UPGRADING.md](UPGRADING.md) for the migration guide.
