@@ -13,10 +13,39 @@ module SnapDiff
       @args = args
     end
 
+    # One-line debugging summary. Never triggers the (expensive, file-touching)
+    # comparison itself: an unprocessed comparison shows as "pending".
+    def inspect
+      return "#<#{self.class.name} #{name.inspect} (no comparison)>" unless compare
+
+      state = if compare.processed?
+        compare.difference.different? ? "different" : "matches"
+      else
+        "pending"
+      end
+      "#<#{self.class.name} #{name.inspect} #{state} new=#{compare.image_path} base=#{compare.base_image_path}>"
+    end
+
     def validate
       return unless compare
 
-      self.class.assert_image_not_changed(caller, name, compare)
+      if compare.different?
+        "Screenshot does not match for '#{name}': #{compare.error_message}\n#{caller.join("\n")}"
+      else
+        archive_baseline!
+        nil
+      end
+    end
+
+    # Commits the baseline after a passing comparison: the base image is
+    # moved over the actual image, so the captured screenshot becomes the
+    # recorded baseline again. This is the file-mutating half of the verify
+    # flow, kept explicit and separate from the pure "are they different?"
+    # question. Idempotent: a second call is a no-op.
+    def archive_baseline!
+      return unless compare && !compare.different? && compare.base_image_path.exist?
+
+      FileUtils.mv(compare.base_image_path, compare.image_path, force: true)
     end
 
     def validate!
@@ -50,18 +79,13 @@ module SnapDiff
     # @param name [String] The name of the screenshot being verified.
     # @param comparison [Object] The comparison object containing the result and details of the comparison.
     # @return [String, nil] Returns an error message if the screenshot differs from the baseline, otherwise nil.
-    # @note This method is used internally to verify individual screenshots.
+    # @note Legacy entry point; delegates to the instance verify flow
+    #   (pure question + explicit #archive_baseline! on pass).
     def self.assert_image_not_changed(backtrace, name, comparison)
-      result = comparison.different?
-
-      # Cleanup after comparisons
-      if !result && comparison.base_image_path.exist?
-        FileUtils.mv(comparison.base_image_path, comparison.image_path, force: true)
-      end
-
-      return unless result
-
-      "Screenshot does not match for '#{name}': #{comparison.error_message}\n#{backtrace.join("\n")}"
+      assertion = new(name)
+      assertion.caller = backtrace
+      assertion.compare = comparison
+      assertion.validate
     end
   end
 

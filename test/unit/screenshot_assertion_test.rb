@@ -58,6 +58,53 @@ module SnapDiff
       end
     end
 
+    test "#archive_baseline! moves the base image over the actual image and is idempotent" do
+      comparison = make_comparison(:a, :a)
+      assertion = build_assertion(comparison)
+
+      assertion.archive_baseline!
+
+      assert_not comparison.base_image_path.exist?
+      assert_predicate comparison.image_path, :exist?
+
+      assertion.archive_baseline! # second call is a no-op
+
+      assert_predicate comparison.image_path, :exist?
+    end
+
+    test "#archive_baseline! keeps the baseline when the comparison differs" do
+      comparison = make_comparison(:a, :b)
+      assertion = build_assertion(comparison)
+
+      assertion.archive_baseline!
+
+      assert comparison.base_image_path.exist?
+    end
+
+    test "#inspect is a one-line summary that does not run the comparison" do
+      comparison = make_comparison(:a, :b)
+      assertion = build_assertion(comparison, name: "widget")
+
+      line = assertion.inspect
+
+      assert_includes line, '"widget"'
+      assert_includes line, "pending"
+      assert_includes line, comparison.image_path.to_s
+      assert_includes line, comparison.base_image_path.to_s
+      assert_not_includes line, "\n"
+      assert_not comparison.processed?, "#inspect must not trigger the comparison"
+    end
+
+    test "#inspect shows the verified state after the comparison ran" do
+      comparison = make_comparison(:a, :b)
+      assertion = build_assertion(comparison)
+      assertion.validate
+
+      assert_includes assertion.inspect, "different"
+
+      assert_includes SnapDiff::ScreenshotAssertion.new("fresh").inspect, "no comparison"
+    end
+
     private
 
     def build_assertion(comparison, name: "name")
