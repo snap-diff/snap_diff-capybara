@@ -68,15 +68,19 @@ module DriverContractTests
     end
 
     # load_images -------------------------------------------------------------
+    # Strengthened (vs. #204's original): a.png/b.png share dimensions, so a
+    # swapped return would go undetected. Uses fixtures with DIFFERENT
+    # dimensions so slot identity is verifiable by content.
 
-    test "[contract] #load_images loads both images from disk in (old, new) order" do
+    test "[contract] #load_images returns [old_image, new_image] without swapping slots" do
       driver = make_comparison(:a, :a).driver
+      old_path = TEST_IMAGES_DIR / "a.png" # 80x80
+      new_path = TEST_IMAGES_DIR / "a_cropped.png" # 80x60
 
-      old_image, new_image = driver.load_images(TEST_IMAGES_DIR / "a.png", TEST_IMAGES_DIR / "b.png")
+      old_image, new_image = driver.load_images(old_path, new_path)
 
-      assert_not_nil old_image
-      assert_not_nil new_image
-      assert_equal driver.dimension(old_image), driver.dimension(new_image)
+      assert_equal [80, 80], driver.dimension(old_image)
+      assert_equal [80, 60], driver.dimension(new_image)
     end
 
     # find_difference_region result shape --------------------------------------
@@ -195,6 +199,19 @@ module DriverContractTests
         Capybara::Screenshot::Diff::ImageCompare.new(TEST_IMAGES_DIR / "does_not_exist.png", TEST_IMAGES_DIR / "a.png")
       end
       assert_match(/no new screenshot/, error.message)
+    end
+
+    # Resize behavior -------------------------------------------------------
+    # Behavioral (vs. #204's method-presence check above): asserts the actual
+    # output dimensions, not just that #resize_image_to responds.
+
+    test "[contract] resize_image_to resizes a non-square source to the exact requested non-square dimensions" do
+      driver = make_comparison(:a, :a).driver
+      source = driver.from_file(TEST_IMAGES_DIR / "portrait.png") # 3x6, non-square
+
+      resized = driver.resize_image_to(source, 40, 30)
+
+      assert_equal [40, 30], driver.dimension(resized)
     end
   end
 end
