@@ -88,7 +88,7 @@ module SnapDiff
         break unless pending_image
 
         if Process.clock_gettime(Process::CLOCK_MONOTONIC) > deadline_at
-          raise CapybaraScreenshotDiff::ExpectationNotMet.new("Images have not been loaded after #{timeout}s: #{pending_image.inspect}", caller)
+          raise SnapDiff::ExpectationNotMet.new("Images have not been loaded after #{timeout}s: #{pending_image.inspect}", caller)
         end
 
         sleep 0.025

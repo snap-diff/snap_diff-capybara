@@ -59,9 +59,9 @@ module SnapDiff
     # @option options [Numeric] :area_size_limit Maximum allowed difference area size in pixels.
     # @option options [Symbol] :driver (:auto) The image processing driver to use (:auto, :chunky_png, :vips).
     # @return [Boolean] True if the screenshot was successfully captured and processed.
-    # @raise [CapybaraScreenshotDiff::ExpectationNotMet] If comparison fails and immediate validation is enabled.
-    # @raise [CapybaraScreenshotDiff::UnstableImage] If the image comparison is unstable.
-    # @raise [CapybaraScreenshotDiff::WindowSizeMismatchError] If the window size doesn't match expectations.
+    # @raise [SnapDiff::ExpectationNotMet] If comparison fails and immediate validation is enabled.
+    # @raise [SnapDiff::UnstableImage] If the image comparison is unstable.
+    # @raise [SnapDiff::WindowSizeMismatchError] If the window size doesn't match expectations.
     def assert_matches_screenshot(name, skip_stack_frames: 0, **options)
       return false unless Capybara::Screenshot.active?
 

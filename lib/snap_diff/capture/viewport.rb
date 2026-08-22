@@ -17,7 +17,7 @@ module SnapDiff
       # @param expected_window_size [Array(Integer, Integer), nil] the configured window size
       # @param anchor [Object, nil] reserved for v3 (scroll preservation /
       #   element-anchored capture); accepted but unused today.
-      # @raise [CapybaraScreenshotDiff::WindowSizeMismatchError] if the browser
+      # @raise [SnapDiff::WindowSizeMismatchError] if the browser
       #   window does not match the expected size.
       def prepare!(expected_window_size, anchor: nil)
         return unless BrowserHelpers.window_size_is_wrong?(expected_window_size)
@@ -26,7 +26,7 @@ module SnapDiff
           BrowserHelpers.session.driver.browser.manage.window.size.to_s :
           "unknown"
 
-        raise CapybaraScreenshotDiff::WindowSizeMismatchError.new(<<~ERROR.chomp, caller)
+        raise SnapDiff::WindowSizeMismatchError.new(<<~ERROR.chomp, caller)
           Window size mismatch detected!
           Expected: #{expected_window_size.inspect}
           Actual: #{current_size}
