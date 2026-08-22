@@ -158,6 +158,17 @@ module CapybaraScreenshotDiff
     def_delegator :registry, :screenshot_namer
     def_delegator :registry, :verify
 
+    # Message to skip the test with when a new screenshot has no baseline yet
+    # and `pending_if_new` is enabled. Adapters call this after verifying
+    # screenshots, and skip the test with the returned message when present.
+    #
+    # @return [String, nil] the pending message, or nil when there is nothing to report
+    def pending_screenshots_message
+      return unless ::Capybara::Screenshot::Diff.pending_if_new && new_screenshots_present?
+
+      "No baseline for: #{new_screenshots.join(", ")}. Commit the captured screenshots to record them."
+    end
+
     private
 
     def notify_reporters(assertions)
