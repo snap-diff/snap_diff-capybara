@@ -1,23 +1,23 @@
-# Release Preparation — v1.15.0
+# Release Preparation — v1.15.1
 
 ## Summary
 
-Additive `SnapDiff::Config`, two failure-masking fixes in the `pending_if_new`
-teardown paths, a `BacktraceFilter` boundary fix, and an internal hygiene pass.
+HIGH-severity VipsDriver resize fix (retina halving could enlarge screenshots
+and corrupt baselines) plus the driver contract tests that caught it.
 
 ## Release Checklist
 
 ### Pre-Release
 
-- [x] Update version to `1.15.0`
-- [x] Run tests: `bundle exec rake test:unit` (267 runs, 0 failures)
+- [x] Update version to `1.15.1`
+- [x] Run tests: `bundle exec rake test:unit` (376 runs, 0 failures)
 - [x] Update CHANGELOG.md
 
 ### Release (One Click)
 
 1. Push to GitHub
 2. Go to [Actions → Release](https://github.com/snap-diff/snap_diff-capybara/actions/workflows/release.yml)
-3. Click **Run workflow**, enter `1.15.0`
+3. Click **Run workflow**, enter `1.15.1`
 4. Workflow will: test → tag → publish to RubyGems → create GitHub Release
 
 ### Post-Release

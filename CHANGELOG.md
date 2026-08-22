@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v1.15.1] - 2026-08-22
+
+### Fixed
+- **`VipsDriver#resize_image_to` resizes to the requested dimensions** — the vips driver passed a target aspect ratio where libvips expects a scale factor, so retina-halving on macOS/Selenium could enlarge screenshots (2560×1600 → 4096×2560) and save wrongly-sized baselines; now scales width and height independently via `resize(scale, vscale:)` ([#205](https://github.com/snap-diff/snap_diff-capybara/pull/205))
+
+### Internal
+- Driver contract tests pinning the shared ChunkyPNG/Vips driver seam (method surface, load/compare behavior, option handling) — the net that caught the resize bug ([#204](https://github.com/snap-diff/snap_diff-capybara/pull/204))
+
+---
+
 ## [v1.15.0] - 2026-08-22
 
 ### Added
