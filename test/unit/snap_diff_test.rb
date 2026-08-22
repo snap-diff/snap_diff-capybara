@@ -74,6 +74,47 @@ class SnapDiffTest < ActiveSupport::TestCase
     assert status.success?, "expected bare `require \"snap_diff\"` to annotate a difference, got:\n#{out}"
   end
 
+  # Acyclicity contract (the #208 deadlock-class fix): the lean
+  # `require "snap_diff"` entry must NEVER pull the umbrella
+  # capybara_screenshot_diff.rb back in. The old autoload wiring had
+  # snap_diff <-> capybara_screenshot_diff requiring each other, which
+  # produced load-order deadlocks/partially-initialized constants; #208
+  # broke the cycle, but until now only discipline guarded it -- a probe
+  # that reintroduced the cycle left the whole suite green. This asserts
+  # the contract as data: after a bare require, the umbrella file must be
+  # absent from $LOADED_FEATURES.
+  test "bare require \"snap_diff\" never loads the umbrella capybara_screenshot_diff" do
+    script = <<~RUBY
+      require "snap_diff"
+      umbrella = $LOADED_FEATURES.grep(%r{/lib/capybara_screenshot_diff\\.rb\\z})
+      abort("umbrella loaded via: \#{umbrella.join(", ")}") unless umbrella.empty?
+    RUBY
+
+    out, status = Open3.capture2e(RbConfig.ruby, "-Ilib", "-e", script)
+
+    assert status.success?, "expected bare `require \"snap_diff\"` to keep the umbrella unloaded, got:\n#{out}"
+  end
+
+  # Dual-install guard: both gem names ship identical files, so with BOTH
+  # activated every require silently resolves from whichever gem activated
+  # first -- version skew between them is undetectable. The entry point
+  # refuses that setup outright.
+  test "raises when both capybara-screenshot-diff and snap_diff-capybara are activated" do
+    specs = {"capybara-screenshot-diff" => :spec, "snap_diff-capybara" => :spec}
+
+    error = assert_raises(SnapDiff::DualInstallError) { SnapDiff.assert_single_gem!(specs) }
+
+    assert_match(/capybara-screenshot-diff/, error.message)
+    assert_match(/snap_diff-capybara/, error.message)
+    assert_match(/remove one/i, error.message)
+  end
+
+  test "dual-install guard passes single-gem installs and local dev from source" do
+    SnapDiff.assert_single_gem!({"capybara-screenshot-diff" => :spec})
+    SnapDiff.assert_single_gem!({"snap_diff-capybara" => :spec})
+    SnapDiff.assert_single_gem!({}) # local dev from source: neither spec loaded
+  end
+
   test ".start yields the same objects Diff.configure yields" do
     yielded = []
     Capybara::Screenshot::Diff.configure { |screenshot, diff| yielded << [screenshot, diff] }

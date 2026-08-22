@@ -6,7 +6,7 @@
 
 Version 2.0 introduces a new canonical namespace (`SnapDiff`) for cleaner, more discoverable code. The public DSL remains unchanged — your existing `screenshot` and `assert_matches_screenshot` calls work without modification. This guide covers the optional migration path for settings and the new namespace.
 
-**Status:** `2.0.0.alpha1` is an opt-in prerelease. RubyGems never installs prereleases by default resolution — normal `bundle update` keeps you on the 1.x line. The final 2.0.0 ships only after adopter feedback; please report anything surprising on [#166](https://github.com/snap-diff/snap_diff-capybara/issues/166).
+**Status:** `2.0.0.beta1` is an opt-in prerelease. RubyGems never installs prereleases by default resolution — normal `bundle update` keeps you on the 1.x line. The final 2.0.0 ships only after adopter feedback; please report anything surprising on [#166](https://github.com/snap-diff/snap_diff-capybara/issues/166).
 
 **Estimated upgrade time:** 5–15 minutes (most users need only the Gemfile pin)
 
@@ -18,7 +18,7 @@ Version 2.0 introduces a new canonical namespace (`SnapDiff`) for cleaner, more 
 
 ```ruby
 # In your Gemfile — the exact prerelease version is required to opt in
-gem "capybara-screenshot-diff", "2.0.0.alpha1"
+gem "capybara-screenshot-diff", "2.0.0.beta1" # or the latest 2.0.0 prerelease
 ```
 
 ```bash
@@ -218,7 +218,7 @@ All settings and baselines are compatible with v1.x. Simply pin your Gemfile bac
 
 ### Summary Checklist
 
-- [ ] Pin `gem "capybara-screenshot-diff", "2.0.0.alpha1"` in your Gemfile
+- [ ] Pin `gem "capybara-screenshot-diff", "2.0.0.beta1"` (or the latest 2.0.0 prerelease) in your Gemfile
 - [ ] Run `bundle install`
 - [ ] Run your test suite to verify no regressions
 - [ ] (Optional) Migrate config to the `SnapDiff` namespace

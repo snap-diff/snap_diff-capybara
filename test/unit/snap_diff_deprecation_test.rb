@@ -49,6 +49,17 @@ class SnapDiffDeprecationTest < ActiveSupport::TestCase
     assert_match(/New::Thing/, lines.first)
   end
 
+  # Actionable attribution: the first caller frame OUTSIDE the gem's lib
+  # dir is named, so users can find the deprecated reference. This test
+  # file plays the part of "user code" -- the warning must point here.
+  test "warning names the caller's file and line" do
+    lines = capture_warnings do
+      SnapDiff::Deprecation.warn("Old::Where", "New::Where", category: :constant)
+    end
+
+    assert_match(/called from #{Regexp.escape(File.expand_path(__FILE__))}:\d+/, lines.first)
+  end
+
   test "warns separately for different subjects" do
     lines = capture_warnings do
       SnapDiff::Deprecation.warn("Old::A", "New::A", category: :constant)

@@ -1,5 +1,26 @@
 # frozen_string_literal: true
 
+# Dual-install guard: capybara-screenshot-diff and snap_diff-capybara ship
+# identical files. With BOTH activated, every require silently resolves
+# from whichever gem activated first, so version skew between the two is
+# undetectable. Refuse that setup at the entry point. Local dev from
+# source loads neither spec, so the guard fires only when both are
+# genuinely installed as gems.
+module SnapDiff
+  DualInstallError = Class.new(StandardError)
+
+  # @api private
+  def self.assert_single_gem!(loaded_specs = Gem.loaded_specs)
+    return unless loaded_specs.key?("capybara-screenshot-diff") && loaded_specs.key?("snap_diff-capybara")
+
+    raise DualInstallError,
+      "Both `capybara-screenshot-diff` and `snap_diff-capybara` gems are installed. " \
+      "They ship identical files, so files load from whichever gem activated first " \
+      "and versions can silently diverge. Remove one of them from your Gemfile."
+  end
+end
+SnapDiff.assert_single_gem!
+
 # None of these requires ever leads back to this file: config_legacy is a
 # leaf (see its own header comment), the image_compare forwarder pulls in
 # snap_diff/comparison plus the legacy const_missing shims, and
