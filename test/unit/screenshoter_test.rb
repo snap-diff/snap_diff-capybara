@@ -47,6 +47,17 @@ module Capybara
 
         assert_nil screenshoter.prepare_page_for_screenshot(timeout: nil) # does not raise an error
       end
+
+      test "#resize_if_needed halves a non-square retina screenshot to the expected window size via VipsDriver" do
+        screenshoter = Screenshoter.new({}, {driver: :vips})
+        retina_image = Vips::Image.black(2560, 1600) # 2x window size, non-square
+
+        resized = Screenshot.stub(:window_size, [1280, 1024]) do
+          screenshoter.send(:resize_if_needed, retina_image)
+        end
+
+        assert_equal [1280, 800], screenshoter.driver.dimension(resized)
+      end
     end
   end
 end

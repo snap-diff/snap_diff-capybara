@@ -76,7 +76,7 @@ module Capybara
           end
 
           def resize_image_to(image, new_width, new_height)
-            image.resize(new_width.to_f / new_height)
+            image.resize(new_width.to_f / image.width, vscale: new_height.to_f / image.height)
           end
 
           def load_images(old_file_name, new_file_name)
