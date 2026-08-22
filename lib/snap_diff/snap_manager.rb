@@ -3,7 +3,6 @@
 require "fileutils"
 
 require_relative "vcs"
-require "active_support/core_ext/module/attribute_accessors"
 
 require_relative "snap"
 

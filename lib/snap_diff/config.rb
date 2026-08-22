@@ -89,7 +89,13 @@ module SnapDiff
     attr_reader :root
 
     def initialize
-      # Capybara::Screenshot side. Unlisted attributes default to nil.
+      # Every mapped setting gets its ivar up front (nil-defaulted ones
+      # included) so the full set always exists -- test_helper's per-test
+      # isolation snapshots/restores config by instance variable, and an
+      # ivar that only appears on first write would escape that snapshot
+      # and leak between tests.
+      MAPPING.each_key { |key| instance_variable_set(:"@#{key}", nil) }
+      # Capybara::Screenshot side.
       @blur_active_element = true
       @hide_caret = true
       # Raw Rails.root (no coercion), matching the old mattr_reader default;
