@@ -1,11 +1,11 @@
 # frozen_string_literal: true
 
-require "capybara/screenshot/diff/vcs"
+require_relative "vcs"
 require "active_support/core_ext/module/attribute_accessors"
 
-require "capybara_screenshot_diff/snap"
+require_relative "snap"
 
-module CapybaraScreenshotDiff
+module SnapDiff
   class SnapManager
     attr_reader :root
 

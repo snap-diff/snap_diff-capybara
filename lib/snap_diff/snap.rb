@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-module CapybaraScreenshotDiff
+module SnapDiff
   class Snap
     attr_reader :full_name, :format, :path, :base_path, :manager, :attempt_path, :prev_attempt_path, :attempts_count
 

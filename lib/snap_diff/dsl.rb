@@ -4,10 +4,10 @@ require "capybara_screenshot_diff"
 require "capybara/screenshot/diff/drivers"
 require "capybara/screenshot/diff/image_compare"
 require "capybara/screenshot/diff/screenshot_matcher"
-require "capybara_screenshot_diff/screenshot_namer"
-require "capybara_screenshot_diff/screenshot_assertion"
+require_relative "screenshot_namer"
+require_relative "screenshot_assertion"
 
-module CapybaraScreenshotDiff
+module SnapDiff
   # DSL for taking screenshots and making assertions in Capybara tests.
   # This module provides methods for taking screenshots, comparing them against baselines,
   # and managing the comparison process with various configuration options.

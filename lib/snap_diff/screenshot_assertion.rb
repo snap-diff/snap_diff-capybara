@@ -1,8 +1,9 @@
 # frozen_string_literal: true
 
 require "fileutils"
+require_relative "screenshot_namer"
 
-module CapybaraScreenshotDiff
+module SnapDiff
   class ScreenshotAssertion
     attr_reader :name, :args
     attr_accessor :compare, :caller
@@ -70,7 +71,7 @@ module CapybaraScreenshotDiff
     def initialize
       @assertions = []
       @new_screenshots = []
-      @screenshot_namer = CapybaraScreenshotDiff::ScreenshotNamer.new
+      @screenshot_namer = SnapDiff::ScreenshotNamer.new
     end
 
     def add_assertion(assertion)
@@ -112,78 +113,7 @@ module CapybaraScreenshotDiff
     def reset
       @assertions.clear
       @new_screenshots.clear
-      @screenshot_namer = CapybaraScreenshotDiff::ScreenshotNamer.new
+      @screenshot_namer = SnapDiff::ScreenshotNamer.new
     end
   end
-end
-
-module CapybaraScreenshotDiff
-  class << self
-    require "forwardable"
-    extend Forwardable
-
-    def registry
-      Thread.current[:capybara_screenshot_diff_registry] ||= AssertionRegistry.new
-    end
-
-    def_delegator :registry, :add_assertion
-    def_delegator :registry, :assertions
-    def_delegator :registry, :assertions_present?
-    def_delegator :registry, :failed_assertions
-    def_delegator :registry, :record_new_screenshot
-    def_delegator :registry, :new_screenshots
-    def_delegator :registry, :new_screenshots_present?
-    def reset
-      notify_reporters(registry.assertions)
-      registry.reset
-    end
-
-    def reporters
-      @reporters ||= []
-    end
-
-    attr_reader :reporters_mutex
-
-    def finalize_reporters!
-      reporters_mutex.synchronize { reporters.dup }.each do |reporter|
-        reporter.finalize
-        if (msg = reporter.summary)
-          $stdout.puts msg
-        end
-      rescue => e
-        warn "[snap_diff] Reporter #{reporter.class} failed (#{e.class}: #{e.message})"
-      end
-    end
-
-    def_delegator :registry, :screenshot_namer
-    def_delegator :registry, :verify
-
-    # Message to skip the test with when a new screenshot has no baseline yet
-    # and `pending_if_new` is enabled. Adapters call this after verifying
-    # screenshots, and skip the test with the returned message when present.
-    #
-    # @return [String, nil] the pending message, or nil when there is nothing to report
-    def pending_screenshots_message
-      return unless ::Capybara::Screenshot::Diff.pending_if_new && new_screenshots_present?
-
-      "No baseline for: #{new_screenshots.join(", ")}. Commit the captured screenshots to record them."
-    end
-
-    private
-
-    def notify_reporters(assertions)
-      return if assertions.nil? || assertions.empty?
-
-      reporters_snapshot = reporters_mutex.synchronize { reporters.dup }
-      return if reporters_snapshot.empty?
-
-      reporters_snapshot.each do |reporter|
-        reporter.record(assertions)
-      rescue => e
-        warn "[capybara-screenshot-diff] Reporter failed: #{e.message}"
-      end
-    end
-  end
-
-  @reporters_mutex = Mutex.new
 end

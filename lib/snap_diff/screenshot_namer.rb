@@ -3,7 +3,7 @@
 require "fileutils"
 require "pathname"
 
-module CapybaraScreenshotDiff
+module SnapDiff
   # Handles the naming, path generation, and organization of screenshots.
   # This class encapsulates logic related to screenshot sections, groups,
   # and counters, providing a centralized way to determine screenshot filenames
