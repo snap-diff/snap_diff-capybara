@@ -6,7 +6,7 @@ require "fileutils"
 require "snap_diff/comparison_result"
 require "snap_diff/drivers"
 require "snap_diff/image_preprocessor"
-require "capybara/screenshot/diff/reporters/default"
+require "snap_diff/reporters/default"
 
 # The internal images-holder struct and the driver cache keep their legacy
 # Capybara::Screenshot::Diff homes for now: SnapDiff::Comparison is the
@@ -195,7 +195,7 @@ module SnapDiff
 
     def build_reporter
       current_difference = difference || build_null_difference
-      Capybara::Screenshot::Diff::Reporters::Default.new(current_difference)
+      Reporters::Default.new(current_difference)
     end
 
     # Loads and preprocesses images for detailed comparison.

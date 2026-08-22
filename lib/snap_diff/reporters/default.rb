@@ -1,10 +1,8 @@
 # frozen_string_literal: true
 
 require "snap_diff/annotation_service"
-# Defines the Capybara::Screenshot::Diff namespace this file reopens.
-require "snap_diff/legacy_shims"
 
-module Capybara::Screenshot::Diff
+module SnapDiff
   module Reporters
     class Default
       attr_reader :difference

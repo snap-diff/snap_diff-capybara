@@ -207,7 +207,7 @@ module Capybara
           comparison.processed
 
           assert_predicate comparison, :dimensions_changed?
-          assert_kind_of Reporters::Default, comparison.reporter
+          assert_kind_of SnapDiff::Reporters::Default, comparison.reporter
         end
 
         test "#dimensions_changed? returns false when images have same dimensions" do
@@ -220,7 +220,7 @@ module Capybara
         # Test reporter configuration
         test "#reporter returns Default reporter by default" do
           comparison = make_comparison(:a, :a)
-          assert_kind_of Reporters::Default, comparison.reporter
+          assert_kind_of SnapDiff::Reporters::Default, comparison.reporter
         end
       end
     end

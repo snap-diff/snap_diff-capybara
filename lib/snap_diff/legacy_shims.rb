@@ -47,6 +47,8 @@ end
 module Capybara
   module Screenshot
     module Diff
+      module Reporters
+      end
     end
   end
 end
@@ -72,6 +74,10 @@ SnapDiff::LegacyShims.install(Capybara::Screenshot::Diff, "Capybara::Screenshot:
   Drivers: "SnapDiff::Drivers",
   ImageCompare: "SnapDiff::Comparison",
   Difference: "SnapDiff::ComparisonResult"
+}.freeze)
+
+SnapDiff::LegacyShims.install(Capybara::Screenshot::Diff::Reporters, "Capybara::Screenshot::Diff::Reporters", {
+  Default: "SnapDiff::Reporters::Default"
 }.freeze)
 
 SnapDiff::LegacyShims.install(CapybaraScreenshotDiff, "CapybaraScreenshotDiff", {

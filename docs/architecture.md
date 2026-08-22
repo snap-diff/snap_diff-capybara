@@ -158,7 +158,7 @@ Drivers abstract image processing operations. Shared default behavior lives in t
 
 Handles baseline retrieval from git. Uses `git show HEAD:<path>` to extract the committed version. Supports Git LFS via `git lfs smudge`. Returns `false` if the file doesn't exist in VCS (first-run scenario).
 
-### 9. Reporters (`lib/capybara/screenshot/diff/reporters/default.rb`, `lib/snap_diff/reporters/html.rb`)
+### 9. Reporters (`lib/snap_diff/reporters/default.rb`, `lib/snap_diff/reporters/html.rb`)
 
 **Default reporter:** Generates annotated diff images:
 - `image.diff.png` — new screenshot with diff region outlined in red
@@ -281,7 +281,6 @@ lib/
   capybara/screenshot/diff/
     config_legacy.rb                           # mattr_accessor settings storage (source of truth)
     region.rb                                  # Bounding box region value object (top-level Region)
-    reporters/default.rb                       # Default annotated-image reporter
     version.rb                                 # Capybara::Screenshot::Diff::VERSION (gemspec reads it)
     ...                                        # Everything else forwards to snap_diff/
 ```

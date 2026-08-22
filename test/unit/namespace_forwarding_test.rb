@@ -49,6 +49,7 @@ class NamespaceForwardingTest < ActiveSupport::TestCase
     "Capybara::Screenshot::Diff::Drivers::BaseDriver" => "SnapDiff::Driver",
     "Capybara::Screenshot::Diff::Drivers::ChunkyPNGDriver" => "SnapDiff::Drivers::ChunkyPNGDriver",
     "Capybara::Screenshot::Diff::Drivers::VipsDriver" => "SnapDiff::Drivers::VipsDriver",
+    "Capybara::Screenshot::Diff::Reporters::Default" => "SnapDiff::Reporters::Default",
     "Capybara::Screenshot::Diff::ImageCompare" => "SnapDiff::Comparison",
     "Capybara::Screenshot::Diff::Difference" => "SnapDiff::ComparisonResult",
     "CapybaraScreenshotDiff::RED_RGBA" => "SnapDiff::RED_RGBA",
@@ -58,7 +59,7 @@ class NamespaceForwardingTest < ActiveSupport::TestCase
   # Explicit requires: a dedicated forwarder-identity test shouldn't rely
   # on incidental transitive loads from other test files (or on rake's
   # file-load order within a single process) to make every one of these
-  # 29 constants resolvable. Most of these are already pulled in by
+  # constants resolvable. Most of these are already pulled in by
   # test_helper's own "capybara_screenshot_diff/minitest" require; listed
   # here anyway so this file passes standalone.
   require "capybara/screenshot/diff/os"
@@ -80,6 +81,7 @@ class NamespaceForwardingTest < ActiveSupport::TestCase
   require "capybara_screenshot_diff/error_with_filtered_backtrace"
   require "capybara_screenshot_diff/reporters/html"
   require "capybara_screenshot_diff/screenshot_assertion"
+  require "capybara/screenshot/diff/reporters/default"
   require "capybara/screenshot/diff/drivers"
   require "capybara/screenshot/diff/drivers/base_driver"
   require "capybara/screenshot/diff/drivers/chunky_png_driver"
@@ -105,7 +107,7 @@ class NamespaceForwardingTest < ActiveSupport::TestCase
     end
   end
 
-  test "MAPPING covers all 29 documented forwarders" do
-    assert_equal 29, MAPPING.size
+  test "MAPPING covers all 30 documented forwarders" do
+    assert_equal 30, MAPPING.size
   end
 end
