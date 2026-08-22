@@ -2,8 +2,42 @@
 
 require "fileutils"
 require_relative "screenshot_namer"
+require_relative "reporting"
 
 module SnapDiff
+  # --- Session lifecycle (per-test) ---
+  #
+  # The canonical home of the per-test session: the AssertionRegistry
+  # holding the assertions and new-screenshot names of the test running
+  # here. CapybaraScreenshotDiff.registry / .reset /
+  # .pending_screenshots_message are thin forwarders over these.
+  #
+  # Note: Thread.current[] is *fiber*-local, so a session is per fiber, not
+  # per thread. That is pre-existing, documented behaviour (issue #217);
+  # ADR-008 step 6 relocates the accessor without touching the semantics.
+  def self.session
+    Thread.current[:capybara_screenshot_diff_registry] ||= AssertionRegistry.new
+  end
+
+  # Ends a test: hands the finished session's assertions to the reporters,
+  # then clears it. The one deliberate bridge between the process-global
+  # reporter lifecycle (SnapDiff::Reporting) and the per-test session.
+  def self.reset
+    Reporting.notify(session.assertions)
+    session.reset
+  end
+
+  # Message to skip the test with when a new screenshot has no baseline yet
+  # and `pending_if_new` is enabled. Adapters call this after verifying
+  # screenshots, and skip the test with the returned message when present.
+  #
+  # @return [String, nil] the pending message, or nil when there is nothing to report
+  def self.pending_screenshots_message
+    return unless ::Capybara::Screenshot::Diff.pending_if_new && session.new_screenshots_present?
+
+    "No baseline for: #{session.new_screenshots.join(", ")}. Commit the captured screenshots to record them."
+  end
+
   class ScreenshotAssertion
     attr_reader :name, :args
     attr_accessor :compare, :caller
@@ -118,10 +152,9 @@ module SnapDiff
       !@new_screenshots.empty?
     end
 
-    def verify(screenshots = CapybaraScreenshotDiff.assertions)
+    def verify(screenshots = assertions)
       return unless ::Capybara::Screenshot.active? && ::Capybara::Screenshot::Diff.fail_on_difference
 
-      failed_assertions = CapybaraScreenshotDiff.registry.failed_assertions
       failed_screenshot = failed_assertions.first
       result = ScreenshotAssertion.verify_screenshots!(screenshots)
 

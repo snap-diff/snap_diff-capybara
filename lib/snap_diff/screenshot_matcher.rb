@@ -32,7 +32,7 @@ module SnapDiff
       # Pre-computation: No need to compare without base screenshot
       # NOTE: Consider to return PreValid Assertion Value Object with hard coded valid result
       unless need_to_compare?
-        CapybaraScreenshotDiff.record_new_screenshot(screenshot_full_name)
+        SnapDiff.session.record_new_screenshot(screenshot_full_name)
         return
       end
 

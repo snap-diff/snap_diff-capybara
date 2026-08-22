@@ -2,12 +2,11 @@
 
 require "minitest"
 require_relative "../dsl"
-# The CapybaraScreenshotDiff.verify/.reset/.pending_screenshots_message/
-# .finalize_reporters! calls below need the registry singleton machinery,
-# which lives in the *old* capybara_screenshot_diff/screenshot_assertion.rb
-# file (deliberately not moved -- see that file's own comment) and is no
-# longer pulled in transitively by requiring dsl.rb alone.
-require "capybara_screenshot_diff/screenshot_assertion"
+# SnapDiff.session/.reset/.pending_screenshots_message live in
+# snap_diff/screenshot_assertion, SnapDiff::Reporting.finalize! in
+# snap_diff/reporting -- neither is pulled in by requiring dsl.rb alone.
+require "snap_diff/screenshot_assertion"
+require "snap_diff/reporting"
 
 used_deprecated_entrypoint = caller.any? do |path|
   path.include?("capybara-screenshot-diff.rb") || path.include?("capybara/screenshot/diff.rb")
@@ -40,18 +39,18 @@ module SnapDiff
 
       def before_teardown
         super
-        CapybaraScreenshotDiff.verify
+        SnapDiff.session.verify
 
         # Computed here (before teardown/reset), but the actual `skip` is
         # deferred to `after_teardown` so a real error raised by the user's
         # `teardown` isn't masked by a pending skip recorded before it ran.
-        @capybara_screenshot_diff_pending_message = CapybaraScreenshotDiff.pending_screenshots_message
+        @capybara_screenshot_diff_pending_message = SnapDiff.pending_screenshots_message
       rescue SnapDiff::ExpectationNotMet => e
         assertion = ::Minitest::Assertion.new(e)
         assertion.set_backtrace(e.backtrace)
         failures << assertion
       ensure
-        CapybaraScreenshotDiff.reset
+        SnapDiff.reset
       end
 
       def after_teardown
@@ -67,4 +66,4 @@ module SnapDiff
   end
 end
 
-::Minitest.after_run { CapybaraScreenshotDiff.finalize_reporters! } if ::Minitest.respond_to?(:after_run)
+::Minitest.after_run { SnapDiff::Reporting.finalize! } if ::Minitest.respond_to?(:after_run)

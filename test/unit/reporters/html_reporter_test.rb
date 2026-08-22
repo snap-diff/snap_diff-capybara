@@ -17,6 +17,16 @@ module CapybaraScreenshotDiff
         FileUtils.remove_entry(@output_dir)
       end
 
+      # Requiring this file is the only thing that puts a reporter in the
+      # default list -- nothing else in the suite registers one. Guards the
+      # auto-registration block at the bottom of reporters/html.rb, which
+      # goes through SnapDiff::Reporting.register since ADR-008 step 6.
+      test "requiring the reporter auto-registers exactly one HTML reporter" do
+        registered = SnapDiff::Reporting.reporters.count { |reporter| reporter.is_a?(SnapDiff::Reporters::HTML) }
+
+        assert_equal 1, registered
+      end
+
       test "#record with no assertions writes nothing" do
         reporter = SnapDiff::Reporters::HTML.new(output_path: @output_path)
         reporter.record([])

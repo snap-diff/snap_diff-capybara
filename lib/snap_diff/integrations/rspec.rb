@@ -3,7 +3,8 @@
 require "rspec/core"
 require_relative "../dsl"
 # See the matching comment in integrations/minitest.rb.
-require "capybara_screenshot_diff/screenshot_assertion"
+require "snap_diff/screenshot_assertion"
+require "snap_diff/reporting"
 
 RSpec::Matchers.define :match_screenshot do |name, **options|
   description { "match screenshot '#{name}'" }
@@ -45,7 +46,7 @@ RSpec.configure do |config|
   config.append_after do |example|
     if self.class.include?(SnapDiff::DSL)
       begin
-        CapybaraScreenshotDiff.verify
+        SnapDiff.session.verify
 
         # Never mask a real failure with a pending marker. Kept as
         # defense-in-depth: `append_after` observes failures from plain
@@ -53,16 +54,16 @@ RSpec.configure do |config|
         # so a user `append_after` registered after this gem still runs
         # later than us — RSpec has no "run absolutely last" construct.
         # Mitigation for such consumers: require this gem last.
-        if example.exception.nil? && (msg = CapybaraScreenshotDiff.pending_screenshots_message)
+        if example.exception.nil? && (msg = SnapDiff.pending_screenshots_message)
           skip(msg)
         end
       rescue SnapDiff::ExpectationNotMet => e
         raise RSpec::Expectations::ExpectationNotMetError.new(e.message).tap { |ex| ex.set_backtrace(e.backtrace) }
       ensure
-        CapybaraScreenshotDiff.reset
+        SnapDiff.reset
       end
     end
   end
 
-  config.after(:suite) { CapybaraScreenshotDiff.finalize_reporters! }
+  config.after(:suite) { SnapDiff::Reporting.finalize! }
 end
