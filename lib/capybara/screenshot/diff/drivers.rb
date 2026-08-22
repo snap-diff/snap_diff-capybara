@@ -1,16 +1,14 @@
 # frozen_string_literal: true
 
+require "snap_diff/drivers"
+
 module Capybara
   module Screenshot
     module Diff
-      module Drivers
-        def self.for(driver_options = {})
-          driver_option = driver_options.is_a?(Hash) ? driver_options.fetch(:driver, :chunky_png) : driver_options
-          return driver_option unless driver_option.is_a?(Symbol)
-
-          Utils.find_driver_class_for(driver_option).new
-        end
-      end
+      # Same-object forwarder (ADR-004 v2 step 4): aliasing the whole module
+      # keeps Drivers.for and the lazily-loaded Drivers::VipsDriver /
+      # Drivers::ChunkyPNGDriver constants resolving through the old name.
+      Drivers = SnapDiff::Drivers
     end
   end
 end
