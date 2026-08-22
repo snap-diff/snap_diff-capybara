@@ -13,7 +13,7 @@ on:
       - 'Gemfile*'
       - '!bin/**'
   pull_request:
-    types: [ opened, synchronize, reopened, review_requested ]
+    types: [ opened, synchronize, reopened, labeled ]
     paths:
       - '**.gemfile'
       - '**.rb'
@@ -21,6 +21,9 @@ on:
       - '.github/actions/**'
       - 'Gemfile*'
       - '!bin/**'
+  schedule:
+    # Weekly full-suite drift check on master, quiet slot.
+    - cron: '0 6 * * 1'
   workflow_dispatch:
 
 env:
@@ -95,13 +98,14 @@ jobs:
 
   matrix:
     name: Test Ruby & Rails
-    # Runs on master pushes, manual dispatch, and any pull_request event.
-    # The workflow-level `on.pull_request.paths` filter above already keeps
-    # doc-only PRs from triggering this workflow at all.
+    # Cost-intentional: full matrix stays off PRs by default (free-tier
+    # Actions minutes). Runs on master pushes, manual dispatch, the weekly
+    # scheduled drift check, and PRs opted in via the 'full-ci' label.
     if: >
       github.ref == 'refs/heads/master' ||
       github.event_name == 'workflow_dispatch' ||
-      github.event_name == 'pull_request'
+      github.event_name == 'schedule' ||
+      contains(github.event.pull_request.labels.*.name, 'full-ci')
     needs: [ functional-test ]
     runs-on: ubuntu-latest
     timeout-minutes: ${{ contains(matrix.ruby-version, 'jruby') && 20 || 8 }}
@@ -149,13 +153,14 @@ jobs:
 
   matrix-screenshot-driver:
     name: Test Drivers
-    # Runs on master pushes, manual dispatch, and any pull_request event.
-    # The workflow-level `on.pull_request.paths` filter above already keeps
-    # doc-only PRs from triggering this workflow at all.
+    # Cost-intentional: full matrix stays off PRs by default (free-tier
+    # Actions minutes). Runs on master pushes, manual dispatch, the weekly
+    # scheduled drift check, and PRs opted in via the 'full-ci' label.
     if: >
       github.ref == 'refs/heads/master' ||
       github.event_name == 'workflow_dispatch' ||
-      github.event_name == 'pull_request'
+      github.event_name == 'schedule' ||
+      contains(github.event.pull_request.labels.*.name, 'full-ci')
     needs: [ 'functional-test' ]
 
     strategy:
