@@ -42,7 +42,7 @@ module SnapDiff
   # +Rails.root+ / pwd) must never become lazy read-time defaults, memoized
   # or not. The one deliberately LIVE value, +default_options[:wait]+, is
   # not storage at all: it stays a method-body read of
-  # +Capybara.default_max_wait_time+ in +Diff.default_options+.
+  # +Capybara.default_max_wait_time+ in +#default_options+.
   class Config
     # config attr name => [legacy module, legacy accessor name].
     #
@@ -118,6 +118,53 @@ module SnapDiff
     def root=(path)
       @root = Pathname(path).expand_path
     end
+
+    # --- Derived config (ADR-008 step 7b) -------------------------------
+    # Read-only values computed from the storage above. They used to live
+    # on the legacy modules; those now one-line forward here.
+
+    # ex +Capybara::Screenshot.active?+. The two +enabled+ settings are
+    # independent (see {MAPPING}): the Screenshot-side one wins whenever it
+    # was set at all, and only a nil there falls through to the Diff-side
+    # one.
+    def active?
+      screenshot_enabled || (screenshot_enabled.nil? && enabled)
+    end
+
+    # ex +Capybara::Screenshot.screenshot_area+: the save_path, optionally
+    # segmented per OS and per Capybara driver.
+    def screenshot_area
+      parts = [save_path]
+      parts << Os.name if add_os_path
+      parts << Capybara.current_driver.to_s if add_driver_path
+      File.join(*parts)
+    end
+
+    # ex +Capybara::Screenshot.screenshot_area_abs+.
+    def screenshot_area_abs
+      root / screenshot_area
+    end
+
+    # ex +Capybara::Screenshot::Diff.default_options+: the capture/compare
+    # defaults handed to {SnapDiff::Comparison}. Carries the one literal
+    # that is not a stored setting -- the vips tolerance floor.
+    def default_options
+      {
+        area_size_limit: area_size_limit,
+        color_distance_limit: color_distance_limit,
+        driver: driver,
+        screenshot_format: screenshot_format,
+        capybara_screenshot_options: capybara_screenshot_options,
+        perceptual_threshold: perceptual_threshold,
+        shift_distance_limit: shift_distance_limit,
+        skip_area: skip_area,
+        stability_time_limit: stability_time_limit,
+        tolerance: tolerance || ((driver == :vips) ? 0.001 : nil),
+        # Deliberately LIVE (pinned by config_default_timing_test.rb):
+        # read at call time, never frozen into storage.
+        wait: Capybara.default_max_wait_time
+      }
+    end
   end
 
   # Instantiated eagerly so the require-time defaults above are evaluated
@@ -128,5 +175,26 @@ module SnapDiff
   # See {SnapDiff::Config}.
   def self.config
     @config
+  end
+
+  # Installs the old mattr_accessor surface onto the legacy modules,
+  # delegating to the single storage above. mattr_accessor used to define
+  # both singleton and instance accessors (the instance ones are what
+  # `include Capybara::Screenshot::Diff` picks up), so both are installed.
+  # root keeps its historical asymmetry -- readable everywhere, writable
+  # only at module level (it was mattr_reader plus a custom module-level
+  # writer) -- with the Pathname coercion living in Config#root=.
+  #
+  # Generated here rather than in config_legacy.rb (ADR-008 step 7b) for
+  # the same reason legacy_shims.rb generates the legacy constants here:
+  # the generator is code, and the v1 trees must stay alias-only so 3.0 is
+  # a `git rm`. Same technique, same side of the fence.
+  Config::MAPPING.each do |name, (mod, mattr)|
+    [mod, mod.singleton_class].each do |target|
+      target.define_method(mattr) { SnapDiff.config.public_send(name) }
+      next if name == :root && target == mod
+
+      target.define_method(:"#{mattr}=") { |value| SnapDiff.config.public_send(:"#{name}=", value) }
+    end
   end
 end

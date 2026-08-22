@@ -19,22 +19,22 @@ class LegacyTreeIsAliasOnlyTest < ActiveSupport::TestCase
     Dir[LIB.join("capybara_screenshot_diff/**/*.rb")]
   ).map { |path| Pathname.new(path) }.sort.freeze
 
-  # THE ALLOWLIST. Every entry is a file that legitimately still holds code,
-  # with the reason. This list is the honest state of the tree -- keep it in
-  # sync with ADR-008, and never add to it to make a red build green without
-  # first asking whether the code belongs in lib/snap_diff/ instead.
-  ALLOWED_WITH_CODE = {
-    # ADR-008 step 1 moved config STORAGE to SnapDiff::Config and generates
-    # the old accessor names here from Config::MAPPING (delegation, but via
-    # define_method). It also still holds DERIVED config logic that never
-    # moved: .active? precedence, .screenshot_area path assembly and
-    # .default_options (which carries one literal default, the vips
-    # tolerance 0.001). Narrowed below by pinning the method inventory, so
-    # new logic here still reds. AVAILABLE_DRIVERS also lives here on
-    # purpose (see #227: test_helper reads it at boot, image_compare_test
-    # stubs it) -- the gate does not push it out.
-    "capybara/screenshot/diff/config_legacy.rb" => "generates delegating accessors from Config::MAPPING; retains derived config logic (ADR-008 step 1)"
-  }.freeze
+  # THE ALLOWLIST -- and as of ADR-008 step 7b it is EMPTY: not one file in
+  # the v1 trees holds logic any more. config_legacy.rb was the last entry;
+  # step 7b moved its derived config (.active? precedence, .screenshot_area
+  # path assembly, .default_options incl. the vips tolerance literal) into
+  # SnapDiff::Config, and the Config::MAPPING accessor generator into
+  # snap_diff/config.rb alongside it, leaving only one-line forwarders.
+  #
+  # Keep it empty. Adding an entry back is a decision to keep behaviour on
+  # the v1 side of the 3.0 deletion, so it needs a written reason here AND
+  # an ADR-008 update -- never just to turn a red build green.
+  #
+  # (Diff::AVAILABLE_DRIVERS still lives in config_legacy.rb, but as a bare
+  # constant assignment it is alias-shaped and needs no exemption. It stays
+  # there on purpose -- see #227: test_helper reads it at boot and
+  # image_compare_test stubs it as the published no-drivers hook.)
+  ALLOWED_WITH_CODE = {}.freeze
 
   # Shapes that are pure compatibility plumbing rather than behaviour.
   ALIAS_SHAPES = /\A(
@@ -62,15 +62,13 @@ class LegacyTreeIsAliasOnlyTest < ActiveSupport::TestCase
     MSG
   end
 
-  test "config_legacy.rb keeps exactly its known set of methods" do
-    source = LIB.join("capybara/screenshot/diff/config_legacy.rb").read
-    defined_methods = source.scan(/^\s*def\s+(self\.)?([a-z_]\w*[?!]?)/).map { |receiver, name| "#{receiver}#{name}" }
-
-    assert_equal(
-      ["active?", "screenshot_area", "screenshot_area_abs", "self.compare", "self.configure", "self.default_options"],
-      defined_methods.sort,
-      "config_legacy.rb is allowlisted for the logic it already had, not for new logic -- move new methods to lib/snap_diff/"
-    )
+  # The pinned method inventory that used to narrow config_legacy.rb's
+  # allowlist entry is gone with the entry itself (ADR-008 step 7b): with
+  # nothing allowlisted, the general rule above already checks every `def`
+  # in the tree, config_legacy.rb's included.
+  test "the allowlist is empty, so nothing is exempt from the general rule" do
+    assert_empty ALLOWED_WITH_CODE,
+      "an exemption came back -- see the comment on ALLOWED_WITH_CODE before keeping it"
   end
 
   private
