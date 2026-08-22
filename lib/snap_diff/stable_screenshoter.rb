@@ -93,7 +93,7 @@ module SnapDiff
     end
 
     # Builds the failed-stability outcome as data: annotates the attempt artifacts on disk
-    # and returns the report message. Pure query — no raising here.
+    # and returns the report message. Does not raise.
     # @return [String] the annotated attempts report
     def stability_failure_report(snapshot)
       require_relative "attempts_reporter"
