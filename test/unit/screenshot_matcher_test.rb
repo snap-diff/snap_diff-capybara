@@ -153,6 +153,54 @@ module Capybara
               end
             end
           end
+
+          refute SnapDiff::SnapManager.path_for("matcher_window_size").path.exist?,
+            "no screenshot may be written when the window size is wrong"
+        end
+
+        # Same guard on the compare-free #capture path.
+        test "#capture raises WindowSizeMismatchError when the window size is wrong" do
+          SnapDiff::BrowserHelpers.stub(:window_size_is_wrong?, true) do
+            SnapDiff::BrowserHelpers.stub(:selenium?, false) do
+              assert_raises(CapybaraScreenshotDiff::WindowSizeMismatchError) do
+                ScreenshotMatcher.new("matcher_window_size").capture
+              end
+            end
+          end
+
+          refute SnapDiff::SnapManager.path_for("matcher_window_size").path.exist?,
+            "no screenshot may be written when the window size is wrong"
+        end
+
+        # Pins ScreenshotMatcher's viewport-preparation cadence: exactly one
+        # window-size check per capture, before the screenshoter runs. The
+        # stable screenshoter is stubbed here, so this guard does not police
+        # the real retry loop — that it stays check-free is verified by
+        # reading (no window-size calls in stable_screenshoter.rb).
+        test "window size is checked exactly once per capture even when stability retries happen" do
+          checks = 0
+          fake_stable = Object.new
+          def fake_stable.take_comparison_screenshot(snapshot)
+            # Simulates a stability loop that needed several attempts; nothing
+            # here may trigger another window-size check.
+            2.times { snapshot.next_attempt_path! }
+            snapshot.path.dirname.mkpath
+            FileUtils.cp(File.expand_path("a.png", TEST_IMAGES_DIR), snapshot.path)
+          end
+
+          SnapDiff::BrowserHelpers.stub(:window_size_is_wrong?, proc { |_expected|
+            checks += 1
+            false
+          }) do
+            Vcs.stub(:checkout_vcs, true) do
+              SnapDiff::StableScreenshoter.stub(:new, ->(*, **) { fake_stable }) do
+                snap = create_snapshot_for(:a, :c)
+                ScreenshotMatcher.new(snap.full_name, stability_time_limit: 0.1, wait: 1).build_screenshot_assertion
+              end
+            end
+          end
+
+          assert_equal 1, checks
         end
 
         # #capture is the compare-free path: file written, no assertion built,
