@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require "test_helper"
-require "capybara_screenshot_diff/backtrace_filter"
+require "capybara_screenshot_diff/error_with_filtered_backtrace"
 
 module CapybaraScreenshotDiff
   class BacktraceFilterTest < ActiveSupport::TestCase
@@ -41,7 +41,7 @@ module CapybaraScreenshotDiff
 
     test "#initialize defaults to the library's own lib directory" do
       filter = BacktraceFilter.new
-      lib_file = File.expand_path("../../lib/capybara_screenshot_diff/backtrace_filter.rb", __dir__)
+      lib_file = File.expand_path("../../lib/capybara_screenshot_diff/error_with_filtered_backtrace.rb", __dir__)
 
       result = filter.filtered([
         "#{lib_file}:1:in 'filtered'",
