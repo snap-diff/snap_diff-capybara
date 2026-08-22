@@ -6,7 +6,7 @@ require "minitest/mock"
 module Capybara
   module Screenshot
     class ScreenshoterTest < ActiveSupport::TestCase
-      include CapybaraScreenshotDiff::DSL
+      include SnapDiff::DSL
       include CapybaraScreenshotDiff::DSLStub
 
       test "#take_screenshot without wait skips image loading" do

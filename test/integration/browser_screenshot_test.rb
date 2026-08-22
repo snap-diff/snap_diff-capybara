@@ -233,7 +233,7 @@ module Capybara::Screenshot
         end
       end
     ensure
-      CapybaraScreenshotDiff::SnapManager.snapshot("index-with-anim").delete!
+      SnapDiff::SnapManager.snapshot("index-with-anim").delete!
     end
 
     def test_await_all_images_are_loaded

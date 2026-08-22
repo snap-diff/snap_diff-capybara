@@ -59,7 +59,7 @@ class ReportScreenshotTest < SystemTestCase
       build_assertion("islands-variant", img_dir / "a.png", img_dir / "c.png")
     ]
 
-    reporter = CapybaraScreenshotDiff::Reporters::HTML.new(output_path: @report_path)
+    reporter = SnapDiff::Reporters::HTML.new(output_path: @report_path)
     reporter.record(assertions)
     reporter.finalize
   end
@@ -71,8 +71,8 @@ class ReportScreenshotTest < SystemTestCase
     FileUtils.cp(base_path, unique_base)
     FileUtils.cp(new_path, unique_new)
 
-    compare = Capybara::Screenshot::Diff::ImageCompare.new(unique_new, unique_base, driver: :vips)
+    compare = SnapDiff::Comparison.new(unique_new, unique_base, driver: :vips)
     compare.processed
-    CapybaraScreenshotDiff::ScreenshotAssertion.new(name).tap { |a| a.compare = compare }
+    SnapDiff::ScreenshotAssertion.new(name).tap { |a| a.compare = compare }
   end
 end

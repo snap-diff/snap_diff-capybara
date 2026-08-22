@@ -9,6 +9,19 @@ require "test_helper"
 # of surfacing as a mysterious downstream `NameError` or a comparison
 # that always returns false.
 class NamespaceForwardingTest < ActiveSupport::TestCase
+  # This file's whole purpose is resolving the old names, so silence the
+  # shims' deprecation warnings here (the suite-wide guard in test_helper
+  # raises on any unexpected one); the warning behavior itself is pinned by
+  # legacy_namespace_deprecation_test.rb.
+  setup do
+    @original_silence = SnapDiff.silence_deprecations
+    SnapDiff.silence_deprecations = true
+  end
+
+  teardown do
+    SnapDiff.silence_deprecations = @original_silence
+  end
+
   # old constant path => new constant path
   MAPPING = {
     "Capybara::Screenshot::Os" => "SnapDiff::Os",

@@ -12,7 +12,7 @@ module CapybaraScreenshotDiff
   # notifies registered reporters BEFORE clearing the registry, and
   # finalize_reporters! drives finalize/summary.
   class ReporterInterplayTest < ActiveSupport::TestCase
-    include CapybaraScreenshotDiff::DSL
+    include SnapDiff::DSL
     include CapybaraScreenshotDiff::DSLStub
 
     class SpyReporter
@@ -53,7 +53,7 @@ module CapybaraScreenshotDiff
     end
 
     test "a delayed assertion reaches registered reporters through the real reset path" do
-      Capybara::Screenshot::Diff::Vcs.stub(:checkout_vcs, true) do
+      SnapDiff::Vcs.stub(:checkout_vcs, true) do
         snap = create_snapshot_for(:a, :a)
 
         assert_matches_screenshot(snap.full_name) # delayed by default
@@ -97,7 +97,7 @@ module CapybaraScreenshotDiff
         CapybaraScreenshotDiff.reporters.unshift(RaisingReporter.new)
       end
 
-      Capybara::Screenshot::Diff::Vcs.stub(:checkout_vcs, true) do
+      SnapDiff::Vcs.stub(:checkout_vcs, true) do
         snap = create_snapshot_for(:a, :a)
         assert_matches_screenshot(snap.full_name)
 

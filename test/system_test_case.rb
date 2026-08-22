@@ -60,7 +60,7 @@ class SystemTestCase < ActiveSupport::TestCase
   private
 
   def rollback_comparison_runtime_files(screenshot_assert)
-    comparison = screenshot_assert.is_a?(CapybaraScreenshotDiff::ScreenshotAssertion) ? screenshot_assert.compare : screenshot_assert[2]
+    comparison = screenshot_assert.is_a?(SnapDiff::ScreenshotAssertion) ? screenshot_assert.compare : screenshot_assert[2]
     return unless comparison
 
     save_annotations_for_debug(comparison)

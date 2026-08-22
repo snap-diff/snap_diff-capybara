@@ -8,12 +8,15 @@ class SnapDiffDeprecationTest < ActiveSupport::TestCase
     SnapDiff::Deprecation.reset!
     @original_silence = SnapDiff.silence_deprecations
     @original_env = ENV["SNAP_DIFF_SILENCE_DEPRECATIONS"]
-    # test_helper silences deprecations suite-wide (v2 step 6 shims);
-    # these examples assert on the unsilenced default behavior.
+    # These examples assert on the unsilenced default warning behavior, so
+    # tell the suite-wide raise-on-deprecation guard (test_helper) that the
+    # warnings emitted here -- including from spawned threads -- are expected.
     SnapDiff.silence_deprecations = false
+    SnapDiffDeprecationGuard.expected = true
   end
 
   def teardown
+    SnapDiffDeprecationGuard.expected = false
     SnapDiff::Deprecation.reset!
     SnapDiff.silence_deprecations = @original_silence
 

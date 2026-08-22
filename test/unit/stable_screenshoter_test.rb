@@ -10,7 +10,7 @@ module Capybara
 
         def setup
           super
-          @manager = CapybaraScreenshotDiff::SnapManager.new(Capybara::Screenshot.root / "stable_screenshoter_test")
+          @manager = SnapDiff::SnapManager.new(Capybara::Screenshot.root / "stable_screenshoter_test")
           @manager.create_output_directory_for
         end
 
@@ -59,7 +59,7 @@ module Capybara
           assert_not_predicate snap.path, :exist?
 
           SnapDiff::Comparison.stub :new, mock do
-            Capybara::Screenshot::Diff::StableScreenshoter
+            SnapDiff::StableScreenshoter
               .new({stability_time_limit: 0.5, wait: 1}, image_compare_stub.driver_options)
               .take_comparison_screenshot(snap)
           end
@@ -95,7 +95,7 @@ module Capybara
           assert_raises CapybaraScreenshotDiff::UnstableImage, "Could not get stable screenshot within 1s" do
             SnapDiff::Comparison.stub :new, mock do
               # Wait time is less then stability time, which will generate problem
-              Capybara::Screenshot::Diff::StableScreenshoter
+              SnapDiff::StableScreenshoter
                 .new({stability_time_limit: 0.5, wait: 1}, build_image_compare_stub(equal: false).driver_options)
                 .take_comparison_screenshot(snap)
             end

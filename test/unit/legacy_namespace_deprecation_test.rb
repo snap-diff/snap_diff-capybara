@@ -39,9 +39,13 @@ class LegacyNamespaceDeprecationTest < ActiveSupport::TestCase
     @original_silence_env = ENV.delete("SNAP_DIFF_SILENCE_DEPRECATIONS")
     SnapDiff.silence_deprecations = false
     SnapDiff::Deprecation.reset!
+    # These tests emit (and capture) the warnings on purpose; keep the
+    # suite-wide raise-on-deprecation guard from test_helper out of the way.
+    SnapDiffDeprecationGuard.expected = true
   end
 
   def teardown
+    SnapDiffDeprecationGuard.expected = false
     SnapDiff.silence_deprecations = @original_silence
     ENV["SNAP_DIFF_SILENCE_DEPRECATIONS"] = @original_silence_env if @original_silence_env
     SnapDiff::Deprecation.reset!

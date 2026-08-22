@@ -6,7 +6,7 @@ require "capybara_screenshot_diff/screenshot_assertion"
 
 module CapybaraScreenshotDiff
   class DSLTest < ActiveSupport::TestCase
-    include CapybaraScreenshotDiff::DSL
+    include SnapDiff::DSL
     include CapybaraScreenshotDiff::DSLStub
 
     def before_setup
@@ -23,7 +23,7 @@ module CapybaraScreenshotDiff
     end
 
     test "#screenshot raises error when screenshot is missing and fail_if_new is true" do
-      Capybara::Screenshot::Diff::Vcs.stub(:checkout_vcs, false) do
+      SnapDiff::Vcs.stub(:checkout_vcs, false) do
         Capybara::Screenshot::Diff.stub(:fail_if_new, true) do
           assert_raises CapybaraScreenshotDiff::ExpectationNotMet, match: /No existing screenshot found for/ do
             screenshot "not_existing_screenshot-name"
@@ -72,7 +72,7 @@ module CapybaraScreenshotDiff
     end
 
     test "#screenshot with skip_stack_frames: 0 includes our_screenshot in caller" do
-      Capybara::Screenshot::Diff::Vcs.stub(:checkout_vcs, true) do
+      SnapDiff::Vcs.stub(:checkout_vcs, true) do
         assert_no_screenshot_jobs_scheduled
 
         snap = create_snapshot_for(:a, :c)
@@ -85,7 +85,7 @@ module CapybaraScreenshotDiff
     end
 
     test "#screenshot with skip_stack_frames: 1 includes test method in caller" do
-      Capybara::Screenshot::Diff::Vcs.stub(:checkout_vcs, true) do
+      SnapDiff::Vcs.stub(:checkout_vcs, true) do
         assert_no_screenshot_jobs_scheduled
 
         snap = create_snapshot_for(:a, :c)
@@ -101,7 +101,7 @@ module CapybaraScreenshotDiff
     end
 
     test "#assert_no_screenshot_changes reports caller from test method" do
-      Capybara::Screenshot::Diff::Vcs.stub(:checkout_vcs, true) do
+      SnapDiff::Vcs.stub(:checkout_vcs, true) do
         assert_no_screenshot_jobs_scheduled
 
         snap = create_snapshot_for(:a, :c)
@@ -116,7 +116,7 @@ module CapybaraScreenshotDiff
     end
 
     test "#screenshot with delayed: false raises error when images differ" do
-      Capybara::Screenshot::Diff::Vcs.stub(:checkout_vcs, true) do
+      SnapDiff::Vcs.stub(:checkout_vcs, true) do
         Capybara::Screenshot::Diff.stub(:delayed, false) do
           assert_raises(CapybaraScreenshotDiff::ExpectationNotMet) do
             snap = create_snapshot_for(:c, :a)
@@ -127,7 +127,7 @@ module CapybaraScreenshotDiff
     end
 
     test "#screenshot with delayed: false succeeds when images match" do
-      Capybara::Screenshot::Diff::Vcs.stub(:checkout_vcs, true) do
+      SnapDiff::Vcs.stub(:checkout_vcs, true) do
         Capybara::Screenshot::Diff.stub(:delayed, false) do
           snap = create_snapshot_for(:a)
           assert_nothing_raised { screenshot(snap.full_name, delayed: false) }
@@ -142,7 +142,7 @@ module CapybaraScreenshotDiff
     test "#screenshot creates new screenshot file when it doesn't exist" do
       screenshot(:c)
 
-      snap = CapybaraScreenshotDiff::SnapManager.snapshot("c")
+      snap = SnapDiff::SnapManager.snapshot("c")
       assert_predicate snap.path, :exist?
     end
 
@@ -153,7 +153,7 @@ module CapybaraScreenshotDiff
         @user_screenshot_called = true
       end
 
-      Capybara::Screenshot::Diff::Vcs.stub(:checkout_vcs, true) do
+      SnapDiff::Vcs.stub(:checkout_vcs, true) do
         snap = create_snapshot_for(:a, :c)
 
         assert_no_screenshot_changes(snap.full_name)
@@ -167,7 +167,7 @@ module CapybaraScreenshotDiff
         @user_screenshot_called = true
       end
 
-      Capybara::Screenshot::Diff::Vcs.stub(:checkout_vcs, true) do
+      SnapDiff::Vcs.stub(:checkout_vcs, true) do
         snap = create_snapshot_for(:a, :c)
 
         assert_matches_screenshot(snap.full_name)
@@ -177,7 +177,7 @@ module CapybaraScreenshotDiff
     end
 
     test "#screenshot records new screenshots that have no baseline in the registry" do
-      Capybara::Screenshot::Diff::Vcs.stub(:checkout_vcs, false) do
+      SnapDiff::Vcs.stub(:checkout_vcs, false) do
         screenshot "a"
 
         assert_equal ["a"], CapybaraScreenshotDiff.new_screenshots
@@ -185,7 +185,7 @@ module CapybaraScreenshotDiff
     end
 
     test "CapybaraScreenshotDiff.reset clears new_screenshots" do
-      Capybara::Screenshot::Diff::Vcs.stub(:checkout_vcs, false) do
+      SnapDiff::Vcs.stub(:checkout_vcs, false) do
         screenshot "a"
         assert_predicate CapybaraScreenshotDiff, :new_screenshots_present?
 
@@ -197,10 +197,10 @@ module CapybaraScreenshotDiff
     end
 
     test "#capture_screenshot writes the file and registers no assertion" do
-      Capybara::Screenshot::Diff::Vcs.stub(:checkout_vcs, true) do
+      SnapDiff::Vcs.stub(:checkout_vcs, true) do
         capture_screenshot(:c)
 
-        snap = CapybaraScreenshotDiff::SnapManager.snapshot("c")
+        snap = SnapDiff::SnapManager.snapshot("c")
         assert_predicate snap.path, :exist?
         assert_no_screenshot_jobs_scheduled
       end
@@ -219,12 +219,12 @@ module CapybaraScreenshotDiff
       Capybara::Screenshot::Diff.stub(:screenshoter, naive_screenshoter) do
         capture_screenshot("nested/dir/example")
 
-        assert_predicate CapybaraScreenshotDiff::SnapManager.snapshot("nested/dir/example").path, :exist?
+        assert_predicate SnapDiff::SnapManager.snapshot("nested/dir/example").path, :exist?
       end
     end
 
     test "#capture_screenshot does not raise even when a differing baseline exists" do
-      Capybara::Screenshot::Diff::Vcs.stub(:checkout_vcs, true) do
+      SnapDiff::Vcs.stub(:checkout_vcs, true) do
         snap = create_snapshot_for(:a, :c)
 
         assert_nothing_raised { capture_screenshot(snap.full_name) }
@@ -233,7 +233,7 @@ module CapybaraScreenshotDiff
     end
 
     test "#screenshot with compare: false captures without registering an assertion" do
-      Capybara::Screenshot::Diff::Vcs.stub(:checkout_vcs, true) do
+      SnapDiff::Vcs.stub(:checkout_vcs, true) do
         snap = create_snapshot_for(:a, :c)
         snap.path.delete
 
@@ -263,7 +263,7 @@ module CapybaraScreenshotDiff
     end
 
     def assert_image_not_changed(*args)
-      CapybaraScreenshotDiff::ScreenshotAssertion.assert_image_not_changed(*args)
+      SnapDiff::ScreenshotAssertion.assert_image_not_changed(*args)
     end
   end
 end

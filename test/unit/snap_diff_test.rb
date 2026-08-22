@@ -4,8 +4,16 @@ require "test_helper"
 require "open3"
 
 class SnapDiffTest < ActiveSupport::TestCase
+  # Deliberate legacy-name use: this test pins the public alias claim in its
+  # own name, so it silences the shim warning locally (the suite-wide guard
+  # in test_helper raises on unexpected ones).
   test "SnapDiff::Comparison aliases Capybara::Screenshot::Diff::ImageCompare" do
+    original_silence = SnapDiff.silence_deprecations
+    SnapDiff.silence_deprecations = true
+
     assert_same Capybara::Screenshot::Diff::ImageCompare, SnapDiff::Comparison
+  ensure
+    SnapDiff.silence_deprecations = original_silence
   end
 
   test ".compare returns the same kind of result as Diff.compare, forwarding options" do
@@ -15,7 +23,7 @@ class SnapDiffTest < ActiveSupport::TestCase
       tolerance: 0.02
     )
 
-    assert_kind_of Capybara::Screenshot::Diff::ImageCompare, result
+    assert_kind_of SnapDiff::Comparison, result
     assert_equal 0.02, result.driver_options[:tolerance]
   end
 

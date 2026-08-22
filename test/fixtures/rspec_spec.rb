@@ -25,7 +25,7 @@ RSpec.describe "capybara_screenshot_diff/rspec", type: :feature do
   end
 
   it "should include CapybaraScreenshotDiff in rspec" do
-    expect(self.class.ancestors).to include CapybaraScreenshotDiff::DSL
+    expect(self.class.ancestors).to include SnapDiff::DSL
   end
 
   it "visits and compare screenshot on teardown" do
@@ -49,6 +49,6 @@ RSpec.describe "capybara_screenshot_diff/rspec", type: :feature do
     visit "/"
     screenshot name
   ensure
-    FileUtils.rm_f(CapybaraScreenshotDiff::SnapManager.snapshot(name).path)
+    FileUtils.rm_f(SnapDiff::SnapManager.snapshot(name).path)
   end
 end

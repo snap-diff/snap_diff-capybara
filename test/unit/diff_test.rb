@@ -27,7 +27,7 @@ module Capybara
       include CapybaraScreenshotDiff::DSLStub
 
       teardown do
-        CapybaraScreenshotDiff::SnapManager.cleanup! unless persist_comparisons?
+        SnapDiff::SnapManager.cleanup! unless persist_comparisons?
         CapybaraScreenshotDiff.reset
 
         Capybara::Screenshot.add_driver_path = @orig_add_driver_path
@@ -155,7 +155,7 @@ module Capybara
           mock.expect(:base_image_path, Pathname.new("screenshot.base.png"))
           mock.expect(:error_message, "expected error message")
 
-          assertion = CapybaraScreenshotDiff::ScreenshotAssertion.new("sample_screenshot")
+          assertion = SnapDiff::ScreenshotAssertion.new("sample_screenshot")
           assertion.caller = ["my_test.rb:42"]
           assertion.compare = mock
           CapybaraScreenshotDiff.add_assertion(assertion)
@@ -191,7 +191,7 @@ module Capybara
           comparison.expect(:base_image_path, Pathname.new("screenshot.base.png"))
           comparison.expect(:error_message, "expected error message for non minitest")
 
-          assertion = CapybaraScreenshotDiff::ScreenshotAssertion.new("sample_screenshot")
+          assertion = SnapDiff::ScreenshotAssertion.new("sample_screenshot")
           assertion.caller = ["my_test.rb:42"]
           assertion.compare = comparison
           CapybaraScreenshotDiff.add_assertion(assertion)
@@ -213,7 +213,7 @@ module Capybara
 
         test "stores screenshot using default format extension" do
           skip "VIPS not present. Skipping VIPS driver tests." unless defined?(Vips)
-          snap = CapybaraScreenshotDiff::SnapManager.snapshot("a", "webp")
+          snap = SnapDiff::SnapManager.snapshot("a", "webp")
 
           set_test_images(snap, :a, :a)
 
@@ -225,7 +225,7 @@ module Capybara
         end
 
         test "stores screenshot using overridden format extension" do
-          snap = CapybaraScreenshotDiff::SnapManager.snapshot("a", "png")
+          snap = SnapDiff::SnapManager.snapshot("a", "png")
           set_test_images(snap, :a, :a)
 
           Capybara::Screenshot.stub(:screenshot_format, "webp") do
