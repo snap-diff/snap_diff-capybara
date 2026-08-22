@@ -232,11 +232,14 @@ module CapybaraScreenshotDiff
       end
     end
 
-    test "#screenshot with compare: false registers no assertion" do
+    test "#screenshot with compare: false captures without registering an assertion" do
       Capybara::Screenshot::Diff::Vcs.stub(:checkout_vcs, true) do
         snap = create_snapshot_for(:a, :c)
+        snap.path.delete
 
         screenshot(snap.full_name, compare: false)
+
+        assert_predicate snap.path, :exist?
         assert_no_screenshot_jobs_scheduled
       end
     end
