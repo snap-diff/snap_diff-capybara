@@ -1,35 +1,50 @@
 # frozen_string_literal: true
 
-# The MAPPING below references the legacy modules, so they must be loaded
-# first. Requires config_legacy directly (a leaf, see its own header
-# comment), not the capybara_screenshot_diff umbrella -- config.rb is
-# required by both snap_diff.rb and (indirectly) capybara_screenshot_diff.rb,
-# and neither of those may lead back here.
-require "capybara/screenshot/diff/config_legacy"
+require "pathname"
+
+# This file is the LEAF of the config require graph (ADR-008 step 1):
+# config_legacy.rb requires it, so it must never require config_legacy nor
+# anything that leads back to either entry point. The MAPPING below needs
+# the legacy module constants to exist at class-body eval time, so the empty
+# skeleton is predefined here (same technique as legacy_shims.rb);
+# config_legacy.rb reopens these modules and installs the delegating
+# accessors from MAPPING.
+module Capybara
+  module Screenshot
+    module Diff
+    end
+  end
+end
+
+# Referenced by Config#initialize (screenshoter/manager defaults), which
+# runs at the eager Config.new at the bottom of this file, so they must be
+# real, already-loaded classes first. Neither requires back here.
+require "snap_diff/screenshoter"
+require "snap_diff/snap_manager"
 
 module SnapDiff
-  # Flat, additive consolidation of every existing
-  # +Capybara::Screenshot+ / +Capybara::Screenshot::Diff+ +mattr_accessor+
-  # setting behind one object: <tt>SnapDiff.config.<em>attr</em></tt>.
+  # Flat consolidation of every legacy +Capybara::Screenshot+ /
+  # +Capybara::Screenshot::Diff+ setting behind one object:
+  # <tt>SnapDiff.config.<em>attr</em></tt>.
   #
-  # Storage ownership: the OLD mattr_accessors remain the single source of
-  # truth. Config holds no state of its own -- every reader/writer defined
-  # from {MAPPING} simply forwards to the existing accessor. This is
-  # deliberate, not just simplest: several of those accessors carry default
-  # logic with observable timing (+fail_if_new+ derives its default from
-  # +ENV["CI"]+, +root+ falls back to +Rails.root+) that Rails' +mattr_accessor+
-  # evaluates once, at class-body-eval time, when +capybara_screenshot_diff.rb+
-  # first loads. Re-implementing that logic here -- even faithfully -- would
-  # mean evaluating it again, at a different moment (Config#new time), which
-  # is exactly the kind of "when defaults are evaluated" divergence the v2
-  # consolidation must not introduce. Delegating sidesteps the question
-  # entirely: Config never evaluates a default, it only ever forwards to
-  # whichever accessor already owns one. Bidirectional consistency (a write
-  # through either the old accessor or Config is visible through the other)
-  # falls out for free, because both paths read and write the exact same
-  # class-variable-backed storage.
+  # Storage ownership (ADR-008 step 1, inverted from the original v2
+  # consolidation): Config IS the single storage. The legacy accessors on
+  # +Capybara::Screenshot+ / +Capybara::Screenshot::Diff+ are thin
+  # delegators installed by config_legacy.rb from {MAPPING} -- one storage,
+  # two views, so a write through either surface is visible through the
+  # other structurally, not by synchronization.
+  #
+  # Default timing contract (pinned by config_default_timing_test.rb):
+  # every default below is evaluated ONCE, in #initialize, which runs at
+  # require time of this file (the eager +Config.new+ at the bottom) -- the
+  # same load moment the old +mattr_accessor+ default blocks evaluated at.
+  # In particular +fail_if_new+ (from <tt>ENV["CI"]</tt>) and +root+ (from
+  # +Rails.root+ / pwd) must never become lazy read-time defaults, memoized
+  # or not. The one deliberately LIVE value, +default_options[:wait]+, is
+  # not storage at all: it stays a method-body read of
+  # +Capybara.default_max_wait_time+ in +Diff.default_options+.
   class Config
-    # config attr name => [owning module, mattr_accessor name].
+    # config attr name => [legacy module, legacy accessor name].
     #
     # The two names differ only for +screenshot_enabled+:
     # +Capybara::Screenshot.enabled+ and +Capybara::Screenshot::Diff.enabled+
@@ -70,9 +85,48 @@ module SnapDiff
       manager: [Capybara::Screenshot::Diff, :manager]
     }.freeze
 
-    MAPPING.each do |name, (mod, mattr)|
-      define_method(name) { mod.public_send(mattr) }
-      define_method(:"#{name}=") { |value| mod.public_send(:"#{mattr}=", value) }
+    attr_accessor(*(MAPPING.keys - [:root]))
+    attr_reader :root
+
+    def initialize
+      # Every mapped setting gets its ivar up front (nil-defaulted ones
+      # included) so the full set always exists -- test_helper's per-test
+      # isolation snapshots/restores config by instance variable, and an
+      # ivar that only appears on first write would escape that snapshot
+      # and leak between tests.
+      MAPPING.each_key { |key| instance_variable_set(:"@#{key}", nil) }
+      # Capybara::Screenshot side.
+      @blur_active_element = true
+      @hide_caret = true
+      # Raw Rails.root (no coercion), matching the old mattr_reader default;
+      # only the writer below coerces.
+      @root = (defined?(Rails) && defined?(Rails.root) && Rails.root) || Pathname(".").expand_path
+      @save_path = "doc/screenshots"
+      @screenshot_format = "png"
+      @capybara_screenshot_options = {}
+      # Capybara::Screenshot::Diff side.
+      @delayed = true
+      @fail_if_new = !ENV["CI"].nil? && !ENV["CI"].empty?
+      @pending_if_new = false
+      @fail_on_difference = true
+      @enabled = true
+      @driver = :auto
+      @screenshoter = SnapDiff::Screenshoter
+      @manager = SnapDiff::SnapManager
     end
+
+    def root=(path)
+      @root = Pathname(path).expand_path
+    end
+  end
+
+  # Instantiated eagerly so the require-time defaults above are evaluated
+  # NOW, at load, not at the first SnapDiff.config call.
+  @config = Config.new
+
+  # The single consolidated settings object -- and the single storage.
+  # See {SnapDiff::Config}.
+  def self.config
+    @config
   end
 end

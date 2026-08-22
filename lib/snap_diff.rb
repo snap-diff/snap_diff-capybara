@@ -21,8 +21,10 @@ module SnapDiff
 end
 SnapDiff.assert_single_gem!
 
-# None of these requires ever leads back to this file: config_legacy is a
-# leaf (see its own header comment), the image_compare forwarder pulls in
+# None of these requires ever leads back to this file: config_legacy sits
+# just above the snap_diff/config leaf (see both headers -- since ADR-008
+# step 1 the storage leaf is snap_diff/config, which config_legacy
+# requires), the image_compare forwarder pulls in
 # snap_diff/comparison plus the legacy const_missing shims, and
 # "capybara/dsl" is the base gem. That keeps this file's require graph
 # acyclic -- it never requires "capybara_screenshot_diff" back, unlike the
@@ -79,8 +81,7 @@ module SnapDiff
     yield config
   end
 
-  # The single consolidated settings object. See {SnapDiff::Config}.
-  def self.config
-    @config ||= Config.new
-  end
+  # SnapDiff.config itself is defined in snap_diff/config.rb (the storage
+  # leaf), where the Config instance is created eagerly at require time so
+  # the ENV["CI"] / Rails.root defaults evaluate at load, not first call.
 end
