@@ -1,5 +1,5 @@
 # frozen_string_literal: true
 
 module SnapDiff
-  VERSION = "1.15.1"
+  VERSION = "2.0.0.alpha1"
 end

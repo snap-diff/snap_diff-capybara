@@ -5,6 +5,55 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v2.0.0.alpha1] - 2026-08-22
+
+**Opt-in experiment prerelease.** RubyGems never installs prereleases by default
+resolution — to try it: `gem "capybara-screenshot-diff", "2.0.0.alpha1"`. The
+final 2.0.0 ships only after adopter feedback on this train; please report
+anything surprising on [#166](https://github.com/snap-diff/snap_diff-capybara/issues/166).
+
+### Changed
+- **`SnapDiff` is the canonical namespace.** The implementation lives in
+  `lib/snap_diff/`; every legacy constant (`Capybara::Screenshot::Diff::*`,
+  `CapybaraScreenshotDiff::*`) still resolves to the *same object* and keeps
+  working ([#208](https://github.com/snap-diff/snap_diff-capybara/pull/208),
+  [#209](https://github.com/snap-diff/snap_diff-capybara/pull/209),
+  [#210](https://github.com/snap-diff/snap_diff-capybara/pull/210)):
+  `ImageCompare` → `SnapDiff::Comparison`, `Difference` →
+  `SnapDiff::ComparisonResult`, `Drivers::BaseDriver` → `SnapDiff::Driver` (mixin).
+- **Legacy constants warn on first use** — once per constant per process, naming
+  the replacement ([#218](https://github.com/snap-diff/snap_diff-capybara/pull/218)).
+  Silence with `SnapDiff.silence_deprecations = true` or
+  `SNAP_DIFF_SILENCE_DEPRECATIONS=1`. A few constants stay silent by design
+  (`Os`, `DSL`, `VERSION`, driver leaf classes — see `lib/snap_diff/legacy_shims.rb`).
+
+### Fixed
+- Annotation color constants resolve under the bare `require "snap_diff"` entry;
+  previously a differing comparison raised `NameError` there
+  ([#219](https://github.com/snap-diff/snap_diff-capybara/pull/219))
+
+### Known caveats (deliberate, alpha)
+- `defined?(...)` / `const_defined?` on lazily-shimmed legacy names returns
+  false/nil — feature detection like `defined?(Capybara::Screenshot::Diff::Drivers::VipsDriver)`
+  must move to the `SnapDiff::` name. Rescuing legacy error classes is unaffected
+  (they remain eagerly defined).
+- Reopening `module Capybara::Screenshot::Diff::Drivers` (historical custom-driver
+  monkey-patch pattern) defines a fresh module that shadows the shim; define custom
+  drivers under `SnapDiff::Drivers` instead.
+
+### Internal
+- Core simplification, behavior-preserving (the "5.5-lite" pass): pure
+  capture/comparison option partition ([#212](https://github.com/snap-diff/snap_diff-capybara/pull/212)),
+  stability failure as data ([#213](https://github.com/snap-diff/snap_diff-capybara/pull/213)),
+  explicit `ScreenshotAssertion#archive_baseline!` + `#inspect` on
+  assertion/result ([#214](https://github.com/snap-diff/snap_diff-capybara/pull/214)),
+  `SnapDiff::Capture::Viewport` seam with the future `anchor:` hook
+  ([#215](https://github.com/snap-diff/snap_diff-capybara/pull/215)), reporter vs
+  session lifecycle separation ([#216](https://github.com/snap-diff/snap_diff-capybara/pull/216)),
+  all behind a guard-test net ([#211](https://github.com/snap-diff/snap_diff-capybara/pull/211))
+
+---
+
 ## [v1.15.1] - 2026-08-22
 
 ### Fixed
