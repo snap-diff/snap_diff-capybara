@@ -55,7 +55,7 @@ jobs:
       # snap_diff-capybara gem on rubygems.org to trust this repo+workflow
       # as a trusted publisher.
       - name: Configure RubyGems credentials for mirror push
-        uses: rubygems/configure-rubygems-credentials@v1
+        uses: rubygems/configure-rubygems-credentials@dc5a8d8553e6ee01fc26761a49e99e733d17954a # v2.1.0
 
       - name: Publish snap_diff-capybara mirror to RubyGems
         run: |
