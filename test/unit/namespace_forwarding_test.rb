@@ -35,13 +35,15 @@ class NamespaceForwardingTest < ActiveSupport::TestCase
     "Capybara::Screenshot::Diff::Drivers" => "SnapDiff::Drivers",
     "Capybara::Screenshot::Diff::Drivers::BaseDriver" => "SnapDiff::Driver",
     "Capybara::Screenshot::Diff::Drivers::ChunkyPNGDriver" => "SnapDiff::Drivers::ChunkyPNGDriver",
-    "Capybara::Screenshot::Diff::Drivers::VipsDriver" => "SnapDiff::Drivers::VipsDriver"
+    "Capybara::Screenshot::Diff::Drivers::VipsDriver" => "SnapDiff::Drivers::VipsDriver",
+    "Capybara::Screenshot::Diff::ImageCompare" => "SnapDiff::Comparison",
+    "Capybara::Screenshot::Diff::Difference" => "SnapDiff::ComparisonResult"
   }.freeze
 
   # Explicit requires: a dedicated forwarder-identity test shouldn't rely
   # on incidental transitive loads from other test files (or on rake's
   # file-load order within a single process) to make every one of these
-  # 25 constants resolvable. Most of these are already pulled in by
+  # 27 constants resolvable. Most of these are already pulled in by
   # test_helper's own "capybara_screenshot_diff/minitest" require; listed
   # here anyway so this file passes standalone.
   require "capybara/screenshot/diff/os"
@@ -66,6 +68,8 @@ class NamespaceForwardingTest < ActiveSupport::TestCase
   require "capybara/screenshot/diff/drivers"
   require "capybara/screenshot/diff/drivers/base_driver"
   require "capybara/screenshot/diff/drivers/chunky_png_driver"
+  require "capybara/screenshot/diff/image_compare"
+  require "capybara/screenshot/diff/difference"
   begin
     require "capybara/screenshot/diff/drivers/vips_driver"
   rescue LoadError, RuntimeError # vips_driver.rb re-raises missing-gem LoadError as RuntimeError
@@ -86,7 +90,7 @@ class NamespaceForwardingTest < ActiveSupport::TestCase
     end
   end
 
-  test "MAPPING covers all 25 documented forwarders" do
-    assert_equal 25, MAPPING.size
+  test "MAPPING covers all 27 documented forwarders" do
+    assert_equal 27, MAPPING.size
   end
 end

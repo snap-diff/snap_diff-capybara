@@ -9,7 +9,7 @@ end
 
 require "snap_diff/driver"
 require "snap_diff/drivers"
-require "capybara/screenshot/diff/difference"
+require "snap_diff/comparison_result"
 
 module SnapDiff
   module Drivers
@@ -103,7 +103,7 @@ module SnapDiff
             find_diff_rectangle(base_image, new_image, region, cache: meta)
           end
 
-          result = Capybara::Screenshot::Diff::Difference.new(region, meta, comparison)
+          result = ComparisonResult.new(region, meta, comparison)
 
           unless result.blank?
             meta[:max_color_distance] = meta[:max_color_distance].ceil(1) if meta[:max_color_distance]

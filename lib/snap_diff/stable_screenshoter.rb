@@ -87,7 +87,7 @@ module SnapDiff
     end
 
     def build_last_attempts_comparison_for(snapshot)
-      Capybara::Screenshot::Diff::ImageCompare.new(snapshot.attempt_path, snapshot.prev_attempt_path, @comparison_options)
+      Comparison.new(snapshot.attempt_path, snapshot.prev_attempt_path, @comparison_options)
     end
 
     # TODO: Move to the HistoricalReporter
