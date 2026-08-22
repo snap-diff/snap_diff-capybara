@@ -17,7 +17,7 @@ module Capybara::Screenshot::Diff
     end
 
     test "for vips driver generates heatmap diff file" do
-      driver = Drivers::VipsDriver.new
+      driver = SnapDiff::Drivers::VipsDriver.new
       comparison = build_comparison_for(driver, "a.png", "b.png")
       reporter = Reporters::Default.new(driver.find_difference_region(comparison))
 
@@ -27,7 +27,7 @@ module Capybara::Screenshot::Diff
     end
 
     test "#clean_tmp_files removes heatmap diff along with other diff artifacts" do
-      driver = Drivers::VipsDriver.new
+      driver = SnapDiff::Drivers::VipsDriver.new
       comparison = build_comparison_for(driver, "a.png", "b.png")
       reporter = Reporters::Default.new(driver.find_difference_region(comparison))
       reporter.generate

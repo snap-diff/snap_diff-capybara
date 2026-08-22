@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
-require "capybara/screenshot/diff/annotation_service"
+require "snap_diff/annotation_service"
+# Defines the Capybara::Screenshot::Diff namespace this file reopens.
+require "snap_diff/legacy_shims"
 
 module Capybara::Screenshot::Diff
   module Reporters
@@ -9,7 +11,7 @@ module Capybara::Screenshot::Diff
 
       def initialize(difference)
         @difference = difference
-        @annotation_service = AnnotationService.new(difference)
+        @annotation_service = SnapDiff::AnnotationService.new(difference)
       end
 
       def annotated_image_path

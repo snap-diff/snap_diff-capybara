@@ -36,8 +36,8 @@ module Capybara
           # ScreenshoterStub resolves "c_<digits>" to the c.png fixture.
           name = "c_#{Time.now.nsec}"
 
-          Vcs.stub(:checkout_vcs, false) do
-            assertion = ScreenshotMatcher.new(name).build_screenshot_assertion
+          SnapDiff::Vcs.stub(:checkout_vcs, false) do
+            assertion = SnapDiff::ScreenshotMatcher.new(name).build_screenshot_assertion
 
             assert_nil assertion
             assert_includes CapybaraScreenshotDiff.new_screenshots, name
@@ -48,10 +48,10 @@ module Capybara
 
         # D4: the other return shape — a fully wired ScreenshotAssertion.
         test "#build_screenshot_assertion returns an assertion with compare and caller when a baseline exists" do
-          Vcs.stub(:checkout_vcs, true) do
+          SnapDiff::Vcs.stub(:checkout_vcs, true) do
             snap = create_snapshot_for(:a, :c)
 
-            assertion = ScreenshotMatcher.new(snap.full_name).build_screenshot_assertion
+            assertion = SnapDiff::ScreenshotMatcher.new(snap.full_name).build_screenshot_assertion
 
             assert_instance_of CapybaraScreenshotDiff::ScreenshotAssertion, assertion
             assert_equal snap.full_name, assertion.name
@@ -68,11 +68,11 @@ module Capybara
         test "#build_screenshot_assertion splits capture options from comparison options" do
           calls = []
 
-          Vcs.stub(:checkout_vcs, true) do
+          SnapDiff::Vcs.stub(:checkout_vcs, true) do
             Capybara::Screenshot::Diff.stub(:screenshoter, recording_screenshoter(calls)) do
               snap = create_snapshot_for(:a, :c)
 
-              ScreenshotMatcher.new(snap.full_name, tolerance: 0.03, wait: 5).build_screenshot_assertion
+              SnapDiff::ScreenshotMatcher.new(snap.full_name, tolerance: 0.03, wait: 5).build_screenshot_assertion
             end
           end
 
@@ -94,7 +94,7 @@ module Capybara
         # untouched. The frozen input would raise FrozenError under the old
         # delete-based carve.
         test "#extract_capture_and_comparison_options does not mutate the input options" do
-          matcher = ScreenshotMatcher.new("a")
+          matcher = SnapDiff::ScreenshotMatcher.new("a")
           options = {tolerance: 0.03, wait: 5, crop: [0, 0, 2, 2], stability_time_limit: 1}.freeze
 
           capture_options, comparison_options = matcher.send(:extract_capture_and_comparison_options, options)
@@ -109,10 +109,10 @@ module Capybara
         test "#build_screenshot_assertion uses the configured screenshoter without stability_time_limit" do
           calls = []
 
-          Vcs.stub(:checkout_vcs, true) do
+          SnapDiff::Vcs.stub(:checkout_vcs, true) do
             Capybara::Screenshot::Diff.stub(:screenshoter, recording_screenshoter(calls)) do
               snap = create_snapshot_for(:a, :c)
-              ScreenshotMatcher.new(snap.full_name).build_screenshot_assertion
+              SnapDiff::ScreenshotMatcher.new(snap.full_name).build_screenshot_assertion
             end
           end
 
@@ -128,13 +128,13 @@ module Capybara
             FileUtils.cp(File.expand_path("a.png", TEST_IMAGES_DIR), snapshot.path)
           end
 
-          Vcs.stub(:checkout_vcs, true) do
+          SnapDiff::Vcs.stub(:checkout_vcs, true) do
             SnapDiff::StableScreenshoter.stub(:new, lambda { |capture_options, comparison_options|
               stable_calls << [capture_options, comparison_options]
               fake_stable
             }) do
               snap = create_snapshot_for(:a, :c)
-              ScreenshotMatcher.new(snap.full_name, stability_time_limit: 0.1, wait: 1).build_screenshot_assertion
+              SnapDiff::ScreenshotMatcher.new(snap.full_name, stability_time_limit: 0.1, wait: 1).build_screenshot_assertion
             end
           end
 
@@ -149,7 +149,7 @@ module Capybara
           SnapDiff::BrowserHelpers.stub(:window_size_is_wrong?, true) do
             SnapDiff::BrowserHelpers.stub(:selenium?, false) do
               assert_raises(CapybaraScreenshotDiff::WindowSizeMismatchError) do
-                ScreenshotMatcher.new("matcher_window_size").build_screenshot_assertion
+                SnapDiff::ScreenshotMatcher.new("matcher_window_size").build_screenshot_assertion
               end
             end
           end
@@ -163,7 +163,7 @@ module Capybara
           SnapDiff::BrowserHelpers.stub(:window_size_is_wrong?, true) do
             SnapDiff::BrowserHelpers.stub(:selenium?, false) do
               assert_raises(CapybaraScreenshotDiff::WindowSizeMismatchError) do
-                ScreenshotMatcher.new("matcher_window_size").capture
+                SnapDiff::ScreenshotMatcher.new("matcher_window_size").capture
               end
             end
           end
@@ -192,10 +192,10 @@ module Capybara
             checks += 1
             false
           }) do
-            Vcs.stub(:checkout_vcs, true) do
+            SnapDiff::Vcs.stub(:checkout_vcs, true) do
               SnapDiff::StableScreenshoter.stub(:new, ->(*, **) { fake_stable }) do
                 snap = create_snapshot_for(:a, :c)
-                ScreenshotMatcher.new(snap.full_name, stability_time_limit: 0.1, wait: 1).build_screenshot_assertion
+                SnapDiff::ScreenshotMatcher.new(snap.full_name, stability_time_limit: 0.1, wait: 1).build_screenshot_assertion
               end
             end
           end
@@ -209,8 +209,8 @@ module Capybara
           # ScreenshoterStub resolves "b_<digits>" to the b.png fixture.
           name = "b_#{Time.now.nsec}"
 
-          Vcs.stub(:checkout_vcs, true) do
-            ScreenshotMatcher.new(name).capture
+          SnapDiff::Vcs.stub(:checkout_vcs, true) do
+            SnapDiff::ScreenshotMatcher.new(name).capture
 
             assert_predicate CapybaraScreenshotDiff::SnapManager.path_for(name).path, :exist?
             assert_not_predicate CapybaraScreenshotDiff.registry, :assertions_present?

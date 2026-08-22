@@ -35,7 +35,7 @@ module SnapDiff
 
       def setup
         super
-        ::Capybara::Screenshot::BrowserHelpers.resize_window_if_needed
+        ::SnapDiff::BrowserHelpers.resize_window_if_needed
       end
 
       def before_teardown

@@ -6,7 +6,7 @@ module Capybara
   module Screenshot
     module Diff
       class VcsTest < ActiveSupport::TestCase
-        include Vcs
+        include SnapDiff::Vcs
 
         PROJECT_ROOT = Pathname.new(File.expand_path("../..", __dir__))
 
@@ -26,7 +26,7 @@ module Capybara
           screenshot_path = file_fixture("images/a.png")
           base_screenshot_path = Pathname.new(@base_screenshot.path)
 
-          assert Vcs.checkout_vcs(@tmp_dir, screenshot_path, base_screenshot_path),
+          assert SnapDiff::Vcs.checkout_vcs(@tmp_dir, screenshot_path, base_screenshot_path),
             "checkout_vcs failed: root=#{@tmp_dir}"
 
           assert base_screenshot_path.exist?

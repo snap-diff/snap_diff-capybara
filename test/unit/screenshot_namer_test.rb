@@ -6,7 +6,7 @@ module CapybaraScreenshotDiff
   class ScreenshotNamerTest < ActiveSupport::TestCase
     setup do
       @screenshot_area_root = Dir.mktmpdir("screenshots_area")
-      @screenshot_namer = ScreenshotNamer.new(@screenshot_area_root)
+      @screenshot_namer = SnapDiff::ScreenshotNamer.new(@screenshot_area_root)
     end
 
     teardown do

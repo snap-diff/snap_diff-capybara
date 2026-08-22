@@ -21,9 +21,9 @@ module Capybara::Screenshot::Diff
 
     test "#annotate_and_save_images writes annotated and heatmap images" do
       skip "VIPS not present. Skipping VIPS driver tests." unless defined?(Vips)
-      driver = Drivers::VipsDriver.new
+      driver = SnapDiff::Drivers::VipsDriver.new
       comparison = build_comparison_for(driver, "a.png", "b.png")
-      service = AnnotationService.new(driver.find_difference_region(comparison))
+      service = SnapDiff::AnnotationService.new(driver.find_difference_region(comparison))
 
       service.annotate_and_save_images
 
@@ -32,9 +32,9 @@ module Capybara::Screenshot::Diff
 
     test "#clean_tmp_files removes annotated and heatmap images" do
       skip "VIPS not present. Skipping VIPS driver tests." unless defined?(Vips)
-      driver = Drivers::VipsDriver.new
+      driver = SnapDiff::Drivers::VipsDriver.new
       comparison = build_comparison_for(driver, "a.png", "b.png")
-      service = AnnotationService.new(driver.find_difference_region(comparison))
+      service = SnapDiff::AnnotationService.new(driver.find_difference_region(comparison))
       service.annotate_and_save_images
 
       assert_predicate service.heatmap_diff_path, :exist?
@@ -48,7 +48,7 @@ module Capybara::Screenshot::Diff
 
     test "#save_annotation_for bakes in a visibly different image when a skip_area is set" do
       skip "VIPS not present. Skipping VIPS driver tests." unless defined?(Vips)
-      driver = Drivers::VipsDriver.new
+      driver = SnapDiff::Drivers::VipsDriver.new
       new_image = driver.from_file(TEST_IMAGES_DIR.join("a.png"))
       base_image = driver.from_file(TEST_IMAGES_DIR.join("b.png"))
 
@@ -57,8 +57,8 @@ module Capybara::Screenshot::Diff
       without_skip_area = Comparison.new(new_image, base_image, {}, driver,
         @_tmpdir / "without_skip_area.png", @_tmpdir / "without_skip_area_base.png")
 
-      service_with = AnnotationService.new(driver.find_difference_region(with_skip_area))
-      service_without = AnnotationService.new(driver.find_difference_region(without_skip_area))
+      service_with = SnapDiff::AnnotationService.new(driver.find_difference_region(with_skip_area))
+      service_without = SnapDiff::AnnotationService.new(driver.find_difference_region(without_skip_area))
       service_with.annotate_and_save_images
       service_without.annotate_and_save_images
 

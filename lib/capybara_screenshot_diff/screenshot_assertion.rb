@@ -2,11 +2,9 @@
 
 require "snap_diff/screenshot_assertion"
 require "snap_diff/reporting"
-
-module CapybaraScreenshotDiff
-  ScreenshotAssertion = SnapDiff::ScreenshotAssertion
-  AssertionRegistry = SnapDiff::AssertionRegistry
-end
+# ScreenshotAssertion / AssertionRegistry forward lazily (with deprecation
+# warnings) via snap_diff/legacy_shims' const_missing since v2 step 6.
+require "snap_diff/legacy_shims"
 
 # CapybaraScreenshotDiff's module methods cover two lifecycles with
 # different scopes, kept separate below:
@@ -27,7 +25,7 @@ module CapybaraScreenshotDiff
     # --- Session lifecycle (thread-local, per-test) ---
 
     def registry
-      Thread.current[:capybara_screenshot_diff_registry] ||= AssertionRegistry.new
+      Thread.current[:capybara_screenshot_diff_registry] ||= SnapDiff::AssertionRegistry.new
     end
 
     def_delegators :registry, :add_assertion, :assertions, :assertions_present?,

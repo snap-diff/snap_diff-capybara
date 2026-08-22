@@ -17,7 +17,7 @@ module SnapDiff
       @driver_options = Capybara::Screenshot::Diff.default_options.merge(options)
 
       @screenshot_format = @driver_options[:screenshot_format]
-      @snapshot = CapybaraScreenshotDiff::SnapManager.snapshot(screenshot_full_name, @screenshot_format)
+      @snapshot = SnapDiff::SnapManager.snapshot(screenshot_full_name, @screenshot_format)
     end
 
     def build_screenshot_assertion(skip_stack_frames: 0)
@@ -61,7 +61,7 @@ module SnapDiff
 
       driver_options[:crop] = area_calculator.calculate_crop
       driver_options[:skip_area] = area_calculator.calculate_skip_area
-      driver_options[:driver] = Capybara::Screenshot::Diff::Drivers.for(driver_options[:driver])
+      driver_options[:driver] = SnapDiff::Drivers.for(driver_options[:driver])
     end
 
     def check_base_screenshot
@@ -86,7 +86,7 @@ module SnapDiff
     end
 
     def create_screenshot_assertion(skip_stack_frames, comparison_options)
-      assertion = CapybaraScreenshotDiff::ScreenshotAssertion.new(screenshot_full_name)
+      assertion = SnapDiff::ScreenshotAssertion.new(screenshot_full_name)
       assertion.caller = caller(skip_stack_frames + 1)
       assertion.compare = Comparison.new(@snapshot.path, @snapshot.base_path, comparison_options)
       assertion

@@ -17,7 +17,7 @@ module Capybara
         end
 
         test "#process_comparison returns comparison unchanged when no preprocessing options are provided" do
-          preprocessor = ImagePreprocessor.new(@driver, {})
+          preprocessor = SnapDiff::ImagePreprocessor.new(@driver, {})
           comparison = Comparison.new(:new_image, :base_image, {}, @driver)
 
           result = preprocessor.process_comparison(comparison)
@@ -29,7 +29,7 @@ module Capybara
 
         test "#process_comparison applies black box to skip areas when skip_area option is provided" do
           skip_area = [{x: 10, y: 20, width: 30, height: 40}]
-          preprocessor = ImagePreprocessor.new(@driver, skip_area: skip_area)
+          preprocessor = SnapDiff::ImagePreprocessor.new(@driver, skip_area: skip_area)
           comparison = Comparison.new(:new_image, :base_image, {}, @driver)
 
           result = preprocessor.process_comparison(comparison)
@@ -52,7 +52,7 @@ module Capybara
           @driver = create_test_driver(is_vips: true)
           window_size = 3
           options = {median_filter_window_size: window_size}
-          preprocessor = ImagePreprocessor.new(@driver, options)
+          preprocessor = SnapDiff::ImagePreprocessor.new(@driver, options)
           comparison = Comparison.new(:new_image, :base_image, {}, @driver)
 
           result = preprocessor.process_comparison(comparison)
@@ -81,7 +81,7 @@ module Capybara
           comparison = Comparison.new(:new_image, :base_image, {}, @driver)
 
           warning_output = capture_io do
-            preprocessor = ImagePreprocessor.new(@driver, options)
+            preprocessor = SnapDiff::ImagePreprocessor.new(@driver, options)
             result = preprocessor.process_comparison(comparison)
 
             assert_equal comparison, result

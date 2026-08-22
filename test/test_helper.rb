@@ -24,6 +24,13 @@ require "support/setup_capybara"
 
 require "capybara_screenshot_diff/minitest"
 
+# Many tests deliberately exercise the old (pre-v2) constant names, which
+# warn once per constant per process since v2 step 6. Silence them globally
+# so suite output stays clean; the deprecation behavior itself is pinned by
+# unit/legacy_namespace_deprecation_test.rb (which flips this flag off per
+# test) and by its unsilenced subprocess probes.
+SnapDiff.silence_deprecations = true
+
 require "support/stub_test_methods"
 require "support/setup_capybara_drivers"
 require "support/test_helpers"

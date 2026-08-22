@@ -1,14 +1,9 @@
 # frozen_string_literal: true
 
+# Forwarder (ADR-004 v2 step 6): Capybara::Screenshot::Diff::Drivers now
+# resolves lazily via snap_diff/legacy_shims' const_missing, with a
+# deprecation warning pointing at SnapDiff::Drivers. The forwarded module is
+# the same object, so Drivers.for and the Drivers::VipsDriver /
+# Drivers::ChunkyPNGDriver constants keep resolving through the old name.
 require "snap_diff/drivers"
-
-module Capybara
-  module Screenshot
-    module Diff
-      # Same-object forwarder (ADR-004 v2 step 4): aliasing the whole module
-      # keeps Drivers.for and the lazily-loaded Drivers::VipsDriver /
-      # Drivers::ChunkyPNGDriver constants resolving through the old name.
-      Drivers = SnapDiff::Drivers
-    end
-  end
-end
+require "snap_diff/legacy_shims"

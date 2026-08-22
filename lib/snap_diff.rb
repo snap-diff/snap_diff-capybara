@@ -2,12 +2,14 @@
 
 # None of these requires ever leads back to this file: config_legacy is a
 # leaf (see its own header comment), the image_compare forwarder pulls in
-# snap_diff/comparison plus the legacy Drivers alias, and "capybara/dsl" is
-# the base gem. That keeps this file's require graph acyclic -- it never
-# requires "capybara_screenshot_diff" back, unlike the old autoload-based
-# wiring this replaced. The forwarder path (not "snap_diff/comparison"
-# directly) is deliberate: SnapDiff.compare delegates to Diff.compare,
-# whose body resolves the legacy ImageCompare alias the forwarder defines.
+# snap_diff/comparison plus the legacy const_missing shims, and
+# "capybara/dsl" is the base gem. That keeps this file's require graph
+# acyclic -- it never requires "capybara_screenshot_diff" back, unlike the
+# old autoload-based wiring this replaced. The forwarder path (not
+# "snap_diff/comparison" directly) is deliberate: it installs
+# snap_diff/legacy_shims, so the old Capybara::Screenshot::Diff constants
+# stay resolvable (now with deprecation warnings) even in processes that
+# only ever require "snap_diff".
 # "capybara/dsl" is needed directly (not just transitively) so
 # `Capybara.default_max_wait_time` in Diff.default_options resolves even
 # when "snap_diff" is required standalone (SnapDiffTest's
@@ -20,10 +22,10 @@ require "snap_diff/config"
 # Forward-looking namespace for the gem, per ADR-004.
 #
 # Since v2 step 5 the comparison implementation lives here
-# ({SnapDiff::Comparison}, {SnapDiff::ComparisonResult}); the old
-# +Capybara::Screenshot::Diff+ constants are same-object aliases defined by
-# their forwarder files. No behavior changes, no deprecation warnings yet.
-# See ADR-004 for the full migration plan.
+# ({SnapDiff::Comparison}, {SnapDiff::ComparisonResult}); since step 6 the
+# old +Capybara::Screenshot::Diff+ constants are same-object const_missing
+# shims (snap_diff/legacy_shims) that emit a deprecation warning once per
+# constant per process. See ADR-004 for the full migration plan.
 module SnapDiff
   def self.compare(...)
     Capybara::Screenshot::Diff.compare(...)

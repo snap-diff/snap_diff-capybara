@@ -66,7 +66,7 @@ class SystemTestCase < ActiveSupport::TestCase
     save_annotations_for_debug(comparison)
 
     screenshot_path = comparison.image_path
-    Vcs.checkout_vcs(Capybara::Screenshot.root, screenshot_path, screenshot_path)
+    SnapDiff::Vcs.checkout_vcs(Capybara::Screenshot.root, screenshot_path, screenshot_path)
 
     if comparison.difference
       comparison.reporter.clean_tmp_files

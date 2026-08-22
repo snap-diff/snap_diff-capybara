@@ -28,7 +28,7 @@ module Capybara
           mock.expect(:quick_equal?, false)
           mock.expect(:quick_equal?, true)
 
-          ImageCompare.stub :new, mock do
+          SnapDiff::Comparison.stub :new, mock do
             snap = @manager.snapshot("02_a")
             take_stable_screenshot_with(snap)
           end
@@ -58,7 +58,7 @@ module Capybara
           snap = @manager.snapshot("02_a")
           assert_not_predicate snap.path, :exist?
 
-          ImageCompare.stub :new, mock do
+          SnapDiff::Comparison.stub :new, mock do
             Capybara::Screenshot::Diff::StableScreenshoter
               .new({stability_time_limit: 0.5, wait: 1}, image_compare_stub.driver_options)
               .take_comparison_screenshot(snap)
@@ -93,7 +93,7 @@ module Capybara
           end
 
           assert_raises CapybaraScreenshotDiff::UnstableImage, "Could not get stable screenshot within 1s" do
-            ImageCompare.stub :new, mock do
+            SnapDiff::Comparison.stub :new, mock do
               # Wait time is less then stability time, which will generate problem
               Capybara::Screenshot::Diff::StableScreenshoter
                 .new({stability_time_limit: 0.5, wait: 1}, build_image_compare_stub(equal: false).driver_options)
