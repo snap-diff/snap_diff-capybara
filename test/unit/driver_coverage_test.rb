@@ -5,13 +5,13 @@ require "support/driver_coverage"
 
 module CapybaraScreenshotDiff
   class DriverCoverageTest < ActiveSupport::TestCase
-    test "#banner lists exercised drivers" do
-      assert_equal "[capybara-screenshot-diff] drivers exercised: chunky_png, vips",
+    test "#banner lists detected drivers" do
+      assert_equal "[capybara-screenshot-diff] drivers detected: chunky_png, vips",
         DriverCoverage.banner(%i[chunky_png vips])
     end
 
     test "#banner calls out unavailable drivers" do
-      assert_equal "[capybara-screenshot-diff] drivers exercised: chunky_png | unavailable: vips",
+      assert_equal "[capybara-screenshot-diff] drivers detected: chunky_png | unavailable: vips",
         DriverCoverage.banner(%i[chunky_png])
     end
 

@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module CapybaraScreenshotDiff
-  # Reports which screenshot-diff drivers the test suite actually exercised, and
+  # Reports which screenshot-diff drivers were detected as loadable for this run, and
   # guards CI against a driver going silently missing (e.g. libvips not installed).
   #
   # Driver availability is detected once, at load time, via
@@ -15,7 +15,7 @@ module CapybaraScreenshotDiff
 
     def self.banner(available)
       unavailable = ALL_DRIVERS - available
-      msg = "[capybara-screenshot-diff] drivers exercised: #{available.join(", ")}"
+      msg = "[capybara-screenshot-diff] drivers detected: #{available.join(", ")}"
       msg += " | unavailable: #{unavailable.join(", ")}" if unavailable.any?
       msg
     end
