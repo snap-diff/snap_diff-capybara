@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v1.15.0] - 2026-08-22
+
+### Added
+- **`SnapDiff::Config`** — one flat object consolidating all 27 settings behind `SnapDiff.config` / `SnapDiff.configure { |config| ... }`; purely additive, the existing accessors stay canonical and both views share one source of truth ([#200](https://github.com/snap-diff/snap_diff-capybara/pull/200))
+
+### Fixed
+- **`pending_if_new` no longer masks real failures** — a raising Minitest `teardown` or a raising RSpec `after` hook registered before the gem could previously be reported as a skipped/pending test with exit 0; the pending marker now defers until the framework's teardown chain has run and yields to any failure. Known residual: an RSpec `config.append_after` registered after this gem still runs later than the gem's hook — require the gem last if you use appended after-hooks ([#203](https://github.com/snap-diff/snap_diff-capybara/pull/203))
+- **`BacktraceFilter` path-boundary matching** — a custom `lib_directory` of `/app/lib` no longer also filters locations under `/app/library` ([#202](https://github.com/snap-diff/snap_diff-capybara/pull/202))
+
+### Internal
+- Failure-masking guard tests for the `pending_if_new` teardown paths via subprocess RSpec runs ([#199](https://github.com/snap-diff/snap_diff-capybara/pull/199))
+- Hygiene pass — skip-area/VCS-baseline and `BacktraceFilter` guard tests, entry-point forwarder dedupe, `Comparison` and `BacktraceFilter` merged into their sole consumers (−2 files, constant paths preserved) ([#201](https://github.com/snap-diff/snap_diff-capybara/pull/201))
+
+---
+
 ## [v1.14.0] - 2026-08-22
 
 ### Added
