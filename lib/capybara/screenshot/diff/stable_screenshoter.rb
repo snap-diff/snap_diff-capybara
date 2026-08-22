@@ -14,7 +14,7 @@ module Capybara
         # `:stability_time_limit` and `:wait` in capture options and ensures that `:stability_time_limit` is less than or equal to `:wait`.
         #
         # @param capture_options [Hash] The options for capturing screenshots, must include `:stability_time_limit` and `:wait`.
-        # @param comparison_options [Hash, nil] The options for comparing screenshots, defaults to `nil` which uses `Diff.default_options`.
+        # @param comparison_options [Hash] The options for comparing screenshots, defaults to `{}`. Same signature as {Capybara::Screenshot::Screenshoter#initialize}.
         # @raise [ArgumentError] If `:wait` or `:stability_time_limit` are not provided, or if `:stability_time_limit` is greater than `:wait`.
         def initialize(capture_options, comparison_options = {})
           @stability_time_limit, @wait = capture_options.fetch_values(*STABILITY_OPTIONS)
