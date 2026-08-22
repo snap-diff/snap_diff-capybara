@@ -1,6 +1,11 @@
 # frozen_string_literal: true
 
 module SnapDiff
+  # Annotation colors, defined here (not in the capybara_screenshot_diff
+  # umbrella) so they resolve in processes that only `require "snap_diff"`.
+  RED_RGBA = [255, 0, 0, 255].freeze
+  ORANGE_RGBA = [255, 192, 0, 255].freeze
+
   # Draws diff/skip-area rectangles and the heatmap overlay for a Difference,
   # and saves the resulting images to their `.diff.*` / `.heatmap.diff.*` paths.
   #
@@ -40,12 +45,12 @@ module SnapDiff
     end
 
     def annotate_difference(image, region)
-      driver.draw_rectangles([image], region, CapybaraScreenshotDiff::RED_RGBA, offset: 1).first
+      driver.draw_rectangles([image], region, RED_RGBA, offset: 1).first
     end
 
     def annotate_skip_areas(image, skip_areas)
       skip_areas.reduce(image) do |memo, region|
-        driver.draw_rectangles([memo], region, CapybaraScreenshotDiff::ORANGE_RGBA).first
+        driver.draw_rectangles([memo], region, ORANGE_RGBA).first
       end
     end
 
@@ -59,7 +64,7 @@ module SnapDiff
 
     def save_heatmap_diff
       merged_image = driver.merge(new_image, base_image)
-      highlighted_mask = driver.highlight_mask(difference.diff_mask, merged_image, color: CapybaraScreenshotDiff::RED_RGBA)
+      highlighted_mask = driver.highlight_mask(difference.diff_mask, merged_image, color: RED_RGBA)
 
       save(highlighted_mask, heatmap_diff_path.to_path)
     end

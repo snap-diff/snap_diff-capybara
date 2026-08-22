@@ -10,6 +10,8 @@ end
 require "snap_diff/driver"
 require "snap_diff/drivers"
 require "snap_diff/comparison_result"
+# Defines SnapDiff::RED_RGBA, the highlight_mask default color.
+require "snap_diff/annotation_service"
 
 module SnapDiff
   module Drivers
@@ -106,7 +108,7 @@ module SnapDiff
         base_image.composite2(new_image, :over)
       end
 
-      def highlight_mask(diff_mask, merged_image, color: CapybaraScreenshotDiff::RED_RGBA)
+      def highlight_mask(diff_mask, merged_image, color: SnapDiff::RED_RGBA)
         diff_mask.ifthenelse(color, merged_image * 0.75)
       end
 

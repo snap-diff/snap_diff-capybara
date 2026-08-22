@@ -37,6 +37,35 @@ class SnapDiffTest < ActiveSupport::TestCase
     assert status.success?, "expected standalone `require \"snap_diff\"` to succeed, got:\n#{out}"
   end
 
+  # Regression test (#218 adversarial review): the probe above only builds a
+  # comparison; annotation runs when a difference is actually reported, and
+  # under bare `require "snap_diff"` that used to raise
+  # `NameError: uninitialized constant CapybaraScreenshotDiff::RED_RGBA` --
+  # the annotation colors were defined only in the umbrella
+  # capybara_screenshot_diff.rb, which this entry never loads.
+  test "bare require \"snap_diff\" can annotate a difference between differing images" do
+    script = <<~RUBY
+      require "snap_diff"
+      require "fileutils"
+      require "tmpdir"
+
+      Dir.mktmpdir do |dir|
+        base = File.join(dir, "base.png")
+        new_image = File.join(dir, "new.png")
+        FileUtils.cp(#{(TEST_IMAGES_DIR / "a.png").to_s.inspect}, base)
+        FileUtils.cp(#{(TEST_IMAGES_DIR / "b.png").to_s.inspect}, new_image)
+
+        comparison = SnapDiff.compare(base, new_image)
+        abort("expected a.png and b.png to differ") unless comparison.different?
+        comparison.error_message
+      end
+    RUBY
+
+    out, status = Open3.capture2e(RbConfig.ruby, "-Ilib", "-e", script)
+
+    assert status.success?, "expected bare `require \"snap_diff\"` to annotate a difference, got:\n#{out}"
+  end
+
   test ".start yields the same objects Diff.configure yields" do
     yielded = []
     Capybara::Screenshot::Diff.configure { |screenshot, diff| yielded << [screenshot, diff] }
