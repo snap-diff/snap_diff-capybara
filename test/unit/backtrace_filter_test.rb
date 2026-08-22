@@ -6,7 +6,7 @@ require "capybara_screenshot_diff/error_with_filtered_backtrace"
 module CapybaraScreenshotDiff
   class BacktraceFilterTest < ActiveSupport::TestCase
     test "#filtered removes lines originating from the given lib directory" do
-      filter = BacktraceFilter.new("/app/lib/")
+      filter = SnapDiff::BacktraceFilter.new("/app/lib/")
 
       result = filter.filtered([
         "/app/lib/capybara_screenshot_diff/foo.rb:1:in 'bar'",
@@ -17,7 +17,7 @@ module CapybaraScreenshotDiff
     end
 
     test "#filtered removes lines from activesupport, minitest, and railties gems" do
-      filter = BacktraceFilter.new("/app/lib/")
+      filter = SnapDiff::BacktraceFilter.new("/app/lib/")
 
       result = filter.filtered([
         "/gems/activesupport-7.0.0/lib/foo.rb:1:in 'bar'",
@@ -30,7 +30,7 @@ module CapybaraScreenshotDiff
     end
 
     test "#filtered keeps lines outside the lib directory and unrelated gems" do
-      filter = BacktraceFilter.new("/app/lib/")
+      filter = SnapDiff::BacktraceFilter.new("/app/lib/")
       backtrace = [
         "/app/test/some_test.rb:5:in 'test_thing'",
         "/gems/rack-3.0.0/lib/rack.rb:1:in 'call'"
@@ -40,7 +40,7 @@ module CapybaraScreenshotDiff
     end
 
     test "#filtered does not treat a sibling directory sharing the prefix as inside lib" do
-      filter = BacktraceFilter.new("/app/lib")
+      filter = SnapDiff::BacktraceFilter.new("/app/lib")
 
       backtrace = ["/app/library/foo.rb:1:in 'bar'"]
 
@@ -48,7 +48,7 @@ module CapybaraScreenshotDiff
     end
 
     test "#initialize defaults to the library's own lib directory" do
-      filter = BacktraceFilter.new
+      filter = SnapDiff::BacktraceFilter.new
       lib_file = File.expand_path("../../lib/capybara_screenshot_diff/error_with_filtered_backtrace.rb", __dir__)
 
       result = filter.filtered([

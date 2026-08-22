@@ -27,13 +27,13 @@ module CapybaraScreenshotDiff
   RED_RGBA = [255, 0, 0, 255].freeze
   ORANGE_RGBA = [255, 192, 0, 255].freeze
 
-  class CapybaraScreenshotDiffError < ErrorWithFilteredBacktrace; end
+  class CapybaraScreenshotDiffError < SnapDiff::ErrorWithFilteredBacktrace; end
 
   class ExpectationNotMet < CapybaraScreenshotDiffError; end
 
   class UnstableImage < CapybaraScreenshotDiffError; end
 
-  class WindowSizeMismatchError < ErrorWithFilteredBacktrace; end
+  class WindowSizeMismatchError < SnapDiff::ErrorWithFilteredBacktrace; end
 end
 
 require "capybara_screenshot_diff/dsl"

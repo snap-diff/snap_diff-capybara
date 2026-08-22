@@ -18,7 +18,7 @@ module CapybaraScreenshotDiff
     end
 
     def build_assertion(name)
-      assertion = ScreenshotAssertion.new(name)
+      assertion = SnapDiff::ScreenshotAssertion.new(name)
       assertion.caller = ["#{name}:1"]
       assertion.compare = PassingCompare.new(name)
       assertion
@@ -79,7 +79,7 @@ module CapybaraScreenshotDiff
       }
 
       failing_thread = Thread.new do
-        assertion = ScreenshotAssertion.new("failing_shot")
+        assertion = SnapDiff::ScreenshotAssertion.new("failing_shot")
         assertion.caller = ["failing_shot:1"]
         assertion.compare = failing_compare.new("failing_shot")
         CapybaraScreenshotDiff.add_assertion(assertion)

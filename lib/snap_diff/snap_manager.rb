@@ -43,7 +43,7 @@ module SnapDiff
 
     def checkout_file(path, as_path)
       create_output_directory_for(as_path) unless as_path.exist?
-      Capybara::Screenshot::Diff::Vcs.checkout_vcs(root, path, as_path)
+      SnapDiff::Vcs.checkout_vcs(root, path, as_path)
     end
 
     def provision_snap_with(snap, path, version: :actual)

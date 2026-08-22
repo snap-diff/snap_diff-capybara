@@ -11,7 +11,7 @@ module Capybara
             TEST_IMAGES_DIR / "a.png",
             TEST_IMAGES_DIR / "a.png"
           )
-          assert_kind_of ImageCompare, result
+          assert_kind_of SnapDiff::Comparison, result
         end
 
         test ".compare detects identical images" do

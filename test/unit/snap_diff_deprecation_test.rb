@@ -8,6 +8,9 @@ class SnapDiffDeprecationTest < ActiveSupport::TestCase
     SnapDiff::Deprecation.reset!
     @original_silence = SnapDiff.silence_deprecations
     @original_env = ENV["SNAP_DIFF_SILENCE_DEPRECATIONS"]
+    # test_helper silences deprecations suite-wide (v2 step 6 shims);
+    # these examples assert on the unsilenced default behavior.
+    SnapDiff.silence_deprecations = false
   end
 
   def teardown

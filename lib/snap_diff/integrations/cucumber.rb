@@ -8,7 +8,7 @@ World(::SnapDiff::DSL)
 
 Before do
   Capybara::Screenshot::Diff.delayed = false
-  Capybara::Screenshot::BrowserHelpers.resize_window_if_needed
+  SnapDiff::BrowserHelpers.resize_window_if_needed
 end
 
 After do |scenario|

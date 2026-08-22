@@ -28,7 +28,7 @@ RSpec.configure do |config|
 
   config.before do
     if self.class.include?(SnapDiff::DSL)
-      Capybara::Screenshot::BrowserHelpers.resize_window_if_needed
+      SnapDiff::BrowserHelpers.resize_window_if_needed
     end
   end
 

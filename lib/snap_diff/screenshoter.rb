@@ -13,7 +13,7 @@ module SnapDiff
     # @param comparison_options [Hash] Options for image comparison (driver, tolerance, etc.)
     def initialize(capture_options, comparison_options = {})
       @capture_options = capture_options
-      @driver = Capybara::Screenshot::Diff::Drivers.for(comparison_options)
+      @driver = SnapDiff::Drivers.for(comparison_options)
     end
 
     def crop

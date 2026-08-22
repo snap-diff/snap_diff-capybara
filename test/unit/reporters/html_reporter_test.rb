@@ -18,14 +18,14 @@ module CapybaraScreenshotDiff
       end
 
       test "#record with no assertions writes nothing" do
-        reporter = HTML.new(output_path: @output_path)
+        reporter = SnapDiff::Reporters::HTML.new(output_path: @output_path)
         reporter.record([])
 
         assert_not @output_path.exist?
       end
 
       test "#record with passing assertions writes nothing" do
-        reporter = HTML.new(output_path: @output_path)
+        reporter = SnapDiff::Reporters::HTML.new(output_path: @output_path)
 
         reporter.record([build_passing_assertion("index")])
         reporter.finalize
@@ -34,7 +34,7 @@ module CapybaraScreenshotDiff
       end
 
       test "#record and #finalize with failing assertion generates HTML file" do
-        reporter = HTML.new(output_path: @output_path)
+        reporter = SnapDiff::Reporters::HTML.new(output_path: @output_path)
 
         reporter.record([build_failing_assertion("index")])
         reporter.finalize
@@ -46,7 +46,7 @@ module CapybaraScreenshotDiff
       end
 
       test "#record and #finalize includes summary stats" do
-        reporter = HTML.new(output_path: @output_path)
+        reporter = SnapDiff::Reporters::HTML.new(output_path: @output_path)
 
         reporter.record([
           build_failing_assertion("page_a"),
@@ -62,9 +62,9 @@ module CapybaraScreenshotDiff
       end
 
       test "#record tolerates broken assertions without crashing" do
-        reporter = HTML.new(output_path: @output_path)
+        reporter = SnapDiff::Reporters::HTML.new(output_path: @output_path)
 
-        broken = ScreenshotAssertion.new("broken")
+        broken = SnapDiff::ScreenshotAssertion.new("broken")
         broken.compare = Object.new # will raise on .difference
 
         valid = build_failing_assertion("valid")
@@ -79,13 +79,13 @@ module CapybaraScreenshotDiff
       end
 
       test "HTML reporter defaults to screenshot root path" do
-        reporter = HTML.new
+        reporter = SnapDiff::Reporters::HTML.new
         expected = Capybara::Screenshot.root / Capybara::Screenshot.save_path / "snap_diff_report.html"
         assert_equal expected, reporter.output_path
       end
 
       test "#record uses relative paths by default" do
-        reporter = HTML.new(output_path: @output_path)
+        reporter = SnapDiff::Reporters::HTML.new(output_path: @output_path)
 
         reporter.record([build_failing_assertion("rel")])
         reporter.finalize
@@ -95,7 +95,7 @@ module CapybaraScreenshotDiff
       end
 
       test "#record embeds base64 images when embed_images: true" do
-        reporter = HTML.new(output_path: @output_path, embed_images: true)
+        reporter = SnapDiff::Reporters::HTML.new(output_path: @output_path, embed_images: true)
 
         reporter.record([build_failing_assertion("embed")])
         reporter.finalize
@@ -105,7 +105,7 @@ module CapybaraScreenshotDiff
       end
 
       test "#record from multiple threads produces correct totals" do
-        reporter = HTML.new(output_path: @output_path)
+        reporter = SnapDiff::Reporters::HTML.new(output_path: @output_path)
         threads = 10
         assertions_per_thread = 5
 
@@ -121,7 +121,7 @@ module CapybaraScreenshotDiff
       end
 
       test "#record and #finalize synchronize internal state" do
-        reporter = HTML.new(output_path: @output_path)
+        reporter = SnapDiff::Reporters::HTML.new(output_path: @output_path)
 
         fake_mutex = Class.new do
           attr_reader :synchronize_calls
@@ -147,7 +147,7 @@ module CapybaraScreenshotDiff
       end
 
       test "#finalize returns output_path when there are failures" do
-        reporter = HTML.new(output_path: @output_path)
+        reporter = SnapDiff::Reporters::HTML.new(output_path: @output_path)
         reporter.record([build_failing_assertion("fail")])
         result = reporter.finalize
 
@@ -155,7 +155,7 @@ module CapybaraScreenshotDiff
       end
 
       test "#finalize returns nil when no failures" do
-        reporter = HTML.new(output_path: @output_path)
+        reporter = SnapDiff::Reporters::HTML.new(output_path: @output_path)
         reporter.record([build_passing_assertion("pass")])
         result = reporter.finalize
 
@@ -163,7 +163,7 @@ module CapybaraScreenshotDiff
       end
 
       test "#summary returns screenshot count and status" do
-        reporter = HTML.new(output_path: @output_path)
+        reporter = SnapDiff::Reporters::HTML.new(output_path: @output_path)
         reporter.record([build_passing_assertion("ok"), build_failing_assertion("fail")])
         reporter.finalize
 
@@ -174,7 +174,7 @@ module CapybaraScreenshotDiff
       end
 
       test "#summary pluralizes failures label for multiple failures" do
-        reporter = HTML.new(output_path: @output_path)
+        reporter = SnapDiff::Reporters::HTML.new(output_path: @output_path)
         reporter.record([
           build_failing_assertion("first failure"),
           build_failing_assertion("second failure")
@@ -188,7 +188,7 @@ module CapybaraScreenshotDiff
       end
 
       test "#summary when all pass shows no failures" do
-        reporter = HTML.new(output_path: @output_path)
+        reporter = SnapDiff::Reporters::HTML.new(output_path: @output_path)
         reporter.record([build_passing_assertion("ok")])
         reporter.finalize
 
@@ -199,12 +199,12 @@ module CapybaraScreenshotDiff
       end
 
       test "#summary when no screenshots recorded" do
-        reporter = HTML.new(output_path: @output_path)
+        reporter = SnapDiff::Reporters::HTML.new(output_path: @output_path)
         assert_nil reporter.summary
       end
 
       test "#finalize can retry after write_report failure" do
-        reporter = HTML.new(output_path: @output_path)
+        reporter = SnapDiff::Reporters::HTML.new(output_path: @output_path)
         reporter.record([build_failing_assertion("retry")])
 
         # Make write_report fail on first attempt
@@ -231,14 +231,14 @@ module CapybaraScreenshotDiff
         compare = make_comparison(:a, :a, destination: "pass_#{name}")
         compare.processed
 
-        ScreenshotAssertion.new(name).tap { |a| a.compare = compare }
+        SnapDiff::ScreenshotAssertion.new(name).tap { |a| a.compare = compare }
       end
 
       def build_failing_assertion(name)
         compare = make_comparison(:a, :b, destination: "fail_#{name}")
         compare.processed
 
-        ScreenshotAssertion.new(name).tap { |a| a.compare = compare }
+        SnapDiff::ScreenshotAssertion.new(name).tap { |a| a.compare = compare }
       end
     end
   end

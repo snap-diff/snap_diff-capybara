@@ -10,15 +10,15 @@
 # (Screenshoter, SnapManager, Utils) are referenced here at class-body
 # eval time (mattr_accessor default blocks, AVAILABLE_DRIVERS) rather
 # than at call time, so they must be real, already-loaded classes before
-# this module body runs. Pulling in exactly those three -- via their old
-# forwarder paths, so the code below is byte-identical to what used to
-# live directly in capybara_screenshot_diff.rb -- is enough; everything
-# else this module references (Os, ImageCompare, Difference, Drivers) is
-# referenced only inside method bodies, resolved lazily at call time by
-# whichever entry point loaded them.
-require "capybara/screenshot/diff/screenshoter"
-require "capybara_screenshot_diff/snap_manager"
-require "capybara/screenshot/diff/utils"
+# this module body runs. Since v2 step 6 they are pulled in and referenced
+# under their canonical SnapDiff names: the old-name aliases are lazy
+# const_missing shims that emit deprecation warnings, and the gem's own
+# code must stay warning-free. Everything else this module references
+# (Os, Comparison) is referenced only inside method bodies, resolved
+# lazily at call time by whichever entry point loaded them.
+require "snap_diff/screenshoter"
+require "snap_diff/snap_manager"
+require "snap_diff/utils"
 
 module Capybara
   module Screenshot
@@ -47,7 +47,7 @@ module Capybara
 
       def screenshot_area
         parts = [Screenshot.save_path]
-        parts << Os.name if Screenshot.add_os_path
+        parts << SnapDiff::Os.name if Screenshot.add_os_path
         parts << Capybara.current_driver.to_s if Screenshot.add_driver_path
         File.join(*parts)
       end
@@ -72,10 +72,10 @@ module Capybara
       mattr_accessor :tolerance
       mattr_accessor :perceptual_threshold
 
-      mattr_accessor(:screenshoter) { Screenshoter }
-      mattr_accessor(:manager) { CapybaraScreenshotDiff::SnapManager }
+      mattr_accessor(:screenshoter) { SnapDiff::Screenshoter }
+      mattr_accessor(:manager) { SnapDiff::SnapManager }
 
-      AVAILABLE_DRIVERS = Utils.detect_available_drivers.freeze
+      AVAILABLE_DRIVERS = SnapDiff::Utils.detect_available_drivers.freeze
 
       # Configure screenshot and diff settings in one block.
       #
@@ -90,7 +90,7 @@ module Capybara
       end
 
       def self.compare(baseline_path, current_path, **options)
-        ImageCompare.new(current_path, baseline_path, default_options.merge(options))
+        SnapDiff::Comparison.new(current_path, baseline_path, default_options.merge(options))
       end
 
       def self.default_options

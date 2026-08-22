@@ -17,18 +17,18 @@ module Capybara
 
         test "#initialize creates instance with chunky_png driver by default" do
           comparison = make_comparison(:b)
-          assert_kind_of Drivers::ChunkyPNGDriver, comparison.driver
+          assert_kind_of SnapDiff::Drivers::ChunkyPNGDriver, comparison.driver
         end
 
         test "#initialize creates instance with explicit chunky_png driver" do
           comparison = make_comparison(:b, driver: :chunky_png)
-          assert_kind_of Drivers::ChunkyPNGDriver, comparison.driver
+          assert_kind_of SnapDiff::Drivers::ChunkyPNGDriver, comparison.driver
         end
 
         test "#initialize creates instance with vips driver when specified" do
           skip "VIPS not present. Skipping VIPS driver tests." unless defined?(Vips)
           comparison = make_comparison(:b, driver: :vips)
-          assert_kind_of Drivers::VipsDriver, comparison.driver
+          assert_kind_of SnapDiff::Drivers::VipsDriver, comparison.driver
         end
 
         test "#different? with vips driver generates annotated diff images" do
@@ -75,7 +75,7 @@ module Capybara
         test "#initialize with :auto driver selects vips when available" do
           skip "VIPS not present. Skipping VIPS driver tests." unless defined?(Vips)
           comparison = make_comparison(:b, driver: :auto)
-          assert_kind_of Drivers::VipsDriver, comparison.driver
+          assert_kind_of SnapDiff::Drivers::VipsDriver, comparison.driver
         end
 
         test "#initialize with :auto driver raises error when no drivers available" do

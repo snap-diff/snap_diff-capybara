@@ -105,7 +105,7 @@ module SnapDiff
       return false unless Capybara::Screenshot.active?
 
       full_name = CapybaraScreenshotDiff.screenshot_namer.full_name(name)
-      Capybara::Screenshot::Diff::ScreenshotMatcher.new(full_name, options).capture
+      SnapDiff::ScreenshotMatcher.new(full_name, options).capture
 
       true
     end
@@ -131,7 +131,7 @@ module SnapDiff
     # @return [ScreenshotAssertion, nil] The assertion object or nil if no assertion is needed.
     # @see ScreenshotAssertion
     def build_screenshot_assertion(name, options, skip_stack_frames: 0)
-      Capybara::Screenshot::Diff::ScreenshotMatcher
+      SnapDiff::ScreenshotMatcher
         .new(name, options)
         .build_screenshot_assertion(skip_stack_frames: skip_stack_frames + 1)
     end

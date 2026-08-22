@@ -5,7 +5,7 @@ require "test_helper"
 module CapybaraScreenshotDiff
   class SnapManagerTest < ActiveSupport::TestCase
     setup do
-      @manager = SnapManager.new(Dir.mktmpdir("snap_diff-storage"))
+      @manager = SnapDiff::SnapManager.new(Dir.mktmpdir("snap_diff-storage"))
     end
 
     teardown do
@@ -92,14 +92,14 @@ module CapybaraScreenshotDiff
     end
 
     test ".path_for is a pure lookup on the shared instance" do
-      tracked_before = SnapManager.instance.snapshots.dup
+      tracked_before = SnapDiff::SnapManager.instance.snapshots.dup
 
-      looked_up = SnapManager.path_for("split_guard_class")
+      looked_up = SnapDiff::SnapManager.path_for("split_guard_class")
 
-      assert_equal tracked_before, SnapManager.instance.snapshots
+      assert_equal tracked_before, SnapDiff::SnapManager.instance.snapshots
 
-      registered = SnapManager.snapshot("split_guard_class")
-      assert_includes SnapManager.instance.snapshots, registered
+      registered = SnapDiff::SnapManager.snapshot("split_guard_class")
+      assert_includes SnapDiff::SnapManager.instance.snapshots, registered
       assert_equal registered.path, looked_up.path
     end
 

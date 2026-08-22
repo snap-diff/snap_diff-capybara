@@ -206,7 +206,7 @@ module Capybara::Screenshot
     test "bounds_for_css for multiple elements returns all areas" do
       visit "/"
 
-      label_bounds = BrowserHelpers.bounds_for_css("label")
+      label_bounds = SnapDiff::BrowserHelpers.bounds_for_css("label")
 
       assert_equal 2, label_bounds.size
     end
@@ -239,7 +239,7 @@ module Capybara::Screenshot
     def test_await_all_images_are_loaded
       visit "/index.html"
       assert_raises ::Minitest::Assertion do
-        BrowserHelpers.stub(:pending_image_to_load, "http://127.0.0.1:62815/image.png") do
+        SnapDiff::BrowserHelpers.stub(:pending_image_to_load, "http://127.0.0.1:62815/image.png") do
           assert_matches_screenshot :index
         end
       end
@@ -249,7 +249,7 @@ module Capybara::Screenshot
     private
 
     def rect_for(css_selector)
-      BrowserHelpers.all_visible_regions_for(css_selector).first
+      SnapDiff::BrowserHelpers.all_visible_regions_for(css_selector).first
     end
 
     def window_size

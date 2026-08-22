@@ -49,7 +49,7 @@ module Capybara
           end
 
           def is_a?(klass)
-            return @is_vips_driver if klass == Drivers::VipsDriver
+            return @is_vips_driver if klass == SnapDiff::Drivers::VipsDriver
             super
           end
 
