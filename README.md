@@ -43,7 +43,7 @@ class HomepageTest < ApplicationSystemTestCase
 end
 ```
 
-(`screenshot` is a shorthand wrapper — safe to override with `compare: false` if needed.)
+(`screenshot` still works as a shorthand, and is safe to override in your own helpers — the gem no longer calls it internally.)
 
 Then run these steps in order:
 
