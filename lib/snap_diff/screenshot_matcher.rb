@@ -4,6 +4,7 @@ require "capybara_screenshot_diff/snap_manager"
 require_relative "screenshoter"
 require_relative "stable_screenshoter"
 require_relative "browser_helpers"
+require_relative "capture/viewport"
 require_relative "vcs"
 require_relative "area_calculator"
 
@@ -20,7 +21,7 @@ module SnapDiff
     end
 
     def build_screenshot_assertion(skip_stack_frames: 0)
-      check_window_size!
+      Capture::Viewport.prepare!(Capybara::Screenshot.window_size, anchor: nil)
       prepare_screenshot_options
       check_base_screenshot
 
@@ -40,7 +41,7 @@ module SnapDiff
 
     # Captures a screenshot without comparing it to a baseline.
     def capture
-      check_window_size!
+      Capture::Viewport.prepare!(Capybara::Screenshot.window_size, anchor: nil)
       prepare_screenshot_options
 
       capture_options, comparison_options = extract_capture_and_comparison_options(driver_options)
@@ -53,23 +54,6 @@ module SnapDiff
 
     def need_to_compare?
       @snapshot.base_path.exist?
-    end
-
-    def check_window_size!
-      if BrowserHelpers.window_size_is_wrong?(Capybara::Screenshot.window_size)
-        current_size = BrowserHelpers.selenium? ?
-          BrowserHelpers.session.driver.browser.manage.window.size.to_s :
-          "unknown"
-
-        raise CapybaraScreenshotDiff::WindowSizeMismatchError.new(<<~ERROR.chomp, caller)
-          Window size mismatch detected!
-          Expected: #{Capybara::Screenshot.window_size.inspect}
-          Actual: #{current_size}
-
-          Screenshots cannot be compared when window sizes don't match.
-          Please ensure the browser window is properly sized before taking screenshots.
-        ERROR
-      end
     end
 
     def prepare_screenshot_options
