@@ -42,4 +42,13 @@ RSpec.describe "capybara_screenshot_diff/rspec", type: :feature do
   it "does not conflicts with rspec methods" do
     expect { raise StandardError }.to raise_error(StandardError)
   end
+
+  it "marks the example pending when a new screenshot has no baseline and pending_if_new is enabled" do
+    name = "pending-if-new-example"
+    allow(Capybara::Screenshot::Diff).to receive(:pending_if_new).and_return(true)
+    visit "/"
+    screenshot name
+  ensure
+    FileUtils.rm_f(CapybaraScreenshotDiff::SnapManager.snapshot(name).path)
+  end
 end

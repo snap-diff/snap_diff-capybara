@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- **`capture_screenshot` DSL method** — take a screenshot without ever comparing or asserting ([#191](https://github.com/snap-diff/snap_diff-capybara/issues/191))
+- **`compare:` option on `screenshot`** — pass `compare: true` (default) to assert, or `compare: false` to capture only ([#191](https://github.com/snap-diff/snap_diff-capybara/issues/191))
+- **`Capybara::Screenshot::Diff.pending_if_new` config** — mark tests as skipped in teardown when a baseline does not exist, complementing `fail_if_new` ([#191](https://github.com/snap-diff/snap_diff-capybara/issues/191))
+
+### Changed
+- **`assert_matches_screenshot` is now the primary assertion method** — captures a screenshot and compares against baseline ([#191](https://github.com/snap-diff/snap_diff-capybara/issues/191))
+- **`screenshot` is now a convenience wrapper** — safe to override in user test classes; the gem no longer calls it internally ([#191](https://github.com/snap-diff/snap_diff-capybara/issues/191))
+
+---
+
 ## [v1.12.0] - 2026-04-12
 
 ### Added

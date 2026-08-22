@@ -165,6 +165,19 @@ that does not have a corresponding previous image to compare against.
 This can be useful in situations where you want to ensure
 that every screenshot taken by your tests corresponds to an expected state of your application.
 
+### Marks new screenshots as pending
+
+To mark tests as pending (skipped) if a new screenshot is taken without a baseline, set:
+
+```ruby
+Capybara::Screenshot::Diff.pending_if_new = true
+```
+
+If `pending_if_new` is set to `true`, the test will be marked as skipped in teardown
+when a new screenshot has no committed baseline to compare against.
+This is complementary to `fail_if_new` (which raises immediately); `fail_if_new` takes precedence since it raises first.
+This option is useful when you want to record new screenshots without blocking CI, but still track them as needing review.
+
 ### Screen shot save path
 
 By default, `Capybara::Screenshot::Diff` saves screenshots to a

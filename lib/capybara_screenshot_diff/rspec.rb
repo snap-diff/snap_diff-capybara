@@ -7,7 +7,7 @@ RSpec::Matchers.define :match_screenshot do |name, **options|
   description { "match screenshot '#{name}'" }
 
   match do |_page|
-    screenshot(name, **options)
+    assert_matches_screenshot(name, **options)
     true
   end
 
@@ -34,6 +34,11 @@ RSpec.configure do |config|
     if self.class.include?(CapybaraScreenshotDiff::DSL)
       begin
         CapybaraScreenshotDiff.verify
+
+        if Capybara::Screenshot::Diff.pending_if_new && CapybaraScreenshotDiff.new_screenshots_present?
+          names = CapybaraScreenshotDiff.new_screenshots
+          skip "No baseline for: #{names.join(", ")}. Commit the captured screenshots to record them."
+        end
       rescue CapybaraScreenshotDiff::ExpectationNotMet => e
         raise RSpec::Expectations::ExpectationNotMetError.new(e.message).tap { |ex| ex.set_backtrace(e.backtrace) }
       ensure

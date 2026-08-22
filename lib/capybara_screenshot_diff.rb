@@ -65,6 +65,7 @@ module Capybara
       mattr_accessor(:delayed) { true }
       mattr_accessor :area_size_limit
       mattr_accessor(:fail_if_new) { !ENV["CI"].nil? && !ENV["CI"].empty? }
+      mattr_accessor(:pending_if_new) { false }
       mattr_accessor(:fail_on_difference) { true }
       mattr_accessor :color_distance_limit
       mattr_accessor(:enabled) { true }

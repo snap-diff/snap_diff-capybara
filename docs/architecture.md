@@ -52,7 +52,7 @@ This document describes the internal architecture of `capybara-screenshot-diff` 
 
 ### 1. DSL Layer (`lib/capybara_screenshot_diff/dsl.rb`)
 
-The entry point for test code. Provides the `screenshot` method (and aliases `assert_matches_screenshot`, `assert_no_screenshot_changes`).
+The entry point for test code. `assert_matches_screenshot` is the primary assertion method (captures and compares). `screenshot` is a convenience wrapper with a `compare:` option — `compare: true` (default) delegates to `assert_matches_screenshot`, while `compare: false` delegates to the new `capture_screenshot` method. `capture_screenshot` takes screenshots without assertions. `assert_no_screenshot_changes` keeps its behavior but now delegates to `assert_matches_screenshot` (that redirect is part of the #191 fix). Users can safely override `screenshot` in their test classes without affecting internal gem flow.
 
 **Flow:**
 1. Checks if screenshots are `active?` (returns `false` if disabled)
