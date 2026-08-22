@@ -39,6 +39,14 @@ module CapybaraScreenshotDiff
       assert_equal backtrace, filter.filtered(backtrace)
     end
 
+    test "#filtered does not treat a sibling directory sharing the prefix as inside lib" do
+      filter = BacktraceFilter.new("/app/lib")
+
+      backtrace = ["/app/library/foo.rb:1:in 'bar'"]
+
+      assert_equal backtrace, filter.filtered(backtrace)
+    end
+
     test "#initialize defaults to the library's own lib directory" do
       filter = BacktraceFilter.new
       lib_file = File.expand_path("../../lib/capybara_screenshot_diff/error_with_filtered_backtrace.rb", __dir__)
