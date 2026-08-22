@@ -75,6 +75,8 @@ SnapDiff::LegacyShims.install(Capybara::Screenshot::Diff, "Capybara::Screenshot:
 }.freeze)
 
 SnapDiff::LegacyShims.install(CapybaraScreenshotDiff, "CapybaraScreenshotDiff", {
+  RED_RGBA: "SnapDiff::RED_RGBA",
+  ORANGE_RGBA: "SnapDiff::ORANGE_RGBA",
   SnapManager: "SnapDiff::SnapManager",
   Snap: "SnapDiff::Snap",
   ScreenshotNamer: "SnapDiff::ScreenshotNamer",

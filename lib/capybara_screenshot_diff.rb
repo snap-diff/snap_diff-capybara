@@ -24,8 +24,9 @@ require "capybara/screenshot/diff/reporters/default"
 require "capybara_screenshot_diff/error_with_filtered_backtrace"
 
 module CapybaraScreenshotDiff
-  RED_RGBA = [255, 0, 0, 255].freeze
-  ORANGE_RGBA = [255, 192, 0, 255].freeze
+  # RED_RGBA / ORANGE_RGBA moved to SnapDiff (snap_diff/annotation_service)
+  # so the bare "snap_diff" entry gets them too; the old names resolve via
+  # snap_diff/legacy_shims with a deprecation warning.
 
   class CapybaraScreenshotDiffError < SnapDiff::ErrorWithFilteredBacktrace; end
 
