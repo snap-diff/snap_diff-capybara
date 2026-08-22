@@ -155,6 +155,46 @@ module Capybara
           end
         end
 
+        # Same guard on the compare-free #capture path.
+        test "#capture raises WindowSizeMismatchError when the window size is wrong" do
+          SnapDiff::BrowserHelpers.stub(:window_size_is_wrong?, true) do
+            SnapDiff::BrowserHelpers.stub(:selenium?, false) do
+              assert_raises(CapybaraScreenshotDiff::WindowSizeMismatchError) do
+                ScreenshotMatcher.new("matcher_window_size").capture
+              end
+            end
+          end
+        end
+
+        # Pins the viewport-preparation cadence the Capture::Viewport seam must
+        # preserve: the window-size check runs exactly once per capture, before
+        # the screenshoter — never re-run per stability retry.
+        test "window size is checked exactly once per capture even when stability retries happen" do
+          checks = 0
+          fake_stable = Object.new
+          def fake_stable.take_comparison_screenshot(snapshot)
+            # Simulates a stability loop that needed several attempts; nothing
+            # here may trigger another window-size check.
+            2.times { snapshot.next_attempt_path! }
+            snapshot.path.dirname.mkpath
+            FileUtils.cp(File.expand_path("a.png", TEST_IMAGES_DIR), snapshot.path)
+          end
+
+          SnapDiff::BrowserHelpers.stub(:window_size_is_wrong?, proc { |_expected|
+            checks += 1
+            false
+          }) do
+            Vcs.stub(:checkout_vcs, true) do
+              SnapDiff::StableScreenshoter.stub(:new, ->(*, **) { fake_stable }) do
+                snap = create_snapshot_for(:a, :c)
+                ScreenshotMatcher.new(snap.full_name, stability_time_limit: 0.1, wait: 1).build_screenshot_assertion
+              end
+            end
+          end
+
+          assert_equal 1, checks
+        end
+
         # #capture is the compare-free path: file written, no assertion built,
         # nothing recorded in the registry.
         test "#capture writes the screenshot without touching the registry" do
