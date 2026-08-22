@@ -48,6 +48,25 @@ jobs:
       - name: Publish to RubyGems
         uses: rubygems/release-gem@v1
 
+      # Mirror release: the same content ships under the forward-looking gem
+      # name snap_diff-capybara with an identical version. The mirror gemspec
+      # is generated here (not committed) so local `gem build` and the
+      # Gemfile's `gemspec` directive stay unambiguous. Requires the
+      # snap_diff-capybara gem on rubygems.org to trust this repo+workflow
+      # as a trusted publisher.
+      - name: Configure RubyGems credentials for mirror push
+        uses: rubygems/configure-rubygems-credentials@v1
+
+      - name: Publish snap_diff-capybara mirror to RubyGems
+        run: |
+          ruby -e '
+            spec = Gem::Specification.load("capybara-screenshot-diff.gemspec")
+            spec.name = "snap_diff-capybara"
+            File.write("snap_diff-capybara.gemspec", spec.to_ruby)
+          '
+          gem build snap_diff-capybara.gemspec
+          gem push "snap_diff-capybara-${{ github.event.inputs.version }}.gem"
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v3
         with:
