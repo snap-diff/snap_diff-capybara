@@ -1,14 +1,17 @@
 # frozen_string_literal: true
 
 # None of these requires ever leads back to this file: config_legacy is a
-# leaf (see its own header comment), image_compare.rb's own require chain
-# only touches other not-yet-moved lib/capybara/screenshot/diff files, and
-# "capybara/dsl" is the base gem. That keeps this file's require graph
-# acyclic -- it never requires "capybara_screenshot_diff" back, unlike the
-# old autoload-based wiring this replaced. "capybara/dsl" is needed
-# directly (not just transitively) so `Capybara.default_max_wait_time` in
-# Diff.default_options resolves even when "snap_diff" is required standalone
-# (SnapDiffTest's "standalone-loadable in a fresh process" regression test).
+# leaf (see its own header comment), the image_compare forwarder pulls in
+# snap_diff/comparison plus the legacy Drivers alias, and "capybara/dsl" is
+# the base gem. That keeps this file's require graph acyclic -- it never
+# requires "capybara_screenshot_diff" back, unlike the old autoload-based
+# wiring this replaced. The forwarder path (not "snap_diff/comparison"
+# directly) is deliberate: SnapDiff.compare delegates to Diff.compare,
+# whose body resolves the legacy ImageCompare alias the forwarder defines.
+# "capybara/dsl" is needed directly (not just transitively) so
+# `Capybara.default_max_wait_time` in Diff.default_options resolves even
+# when "snap_diff" is required standalone (SnapDiffTest's
+# "standalone-loadable in a fresh process" regression test).
 require "capybara/dsl"
 require "capybara/screenshot/diff/config_legacy"
 require "capybara/screenshot/diff/image_compare"
@@ -16,12 +19,12 @@ require "snap_diff/config"
 
 # Forward-looking namespace for the gem, per ADR-004.
 #
-# These are pure additive aliases onto the existing
-# +Capybara::Screenshot::Diff+ API — no behavior changes, no deprecation
-# warnings. See ADR-004 for the full migration plan.
+# Since v2 step 5 the comparison implementation lives here
+# ({SnapDiff::Comparison}, {SnapDiff::ComparisonResult}); the old
+# +Capybara::Screenshot::Diff+ constants are same-object aliases defined by
+# their forwarder files. No behavior changes, no deprecation warnings yet.
+# See ADR-004 for the full migration plan.
 module SnapDiff
-  Comparison = Capybara::Screenshot::Diff::ImageCompare
-
   def self.compare(...)
     Capybara::Screenshot::Diff.compare(...)
   end

@@ -9,7 +9,7 @@ end
 
 require "snap_diff/driver"
 require "snap_diff/drivers"
-require "capybara/screenshot/diff/difference"
+require "snap_diff/comparison_result"
 
 module SnapDiff
   module Drivers
@@ -28,7 +28,7 @@ module SnapDiff
         # TODO: schedule research when we got this case for VIPs
         # region = nil if region && region_covers_entire_image?(region, base_image)
 
-        result = Capybara::Screenshot::Diff::Difference.new(region, {}, comparison)
+        result = ComparisonResult.new(region, {}, comparison)
 
         unless result.blank?
           result.meta[:difference_level] = difference_level(diff_mask, base_image) if comparison.options[:tolerance]

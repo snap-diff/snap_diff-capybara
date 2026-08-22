@@ -104,7 +104,7 @@ module SnapDiff
     def create_screenshot_assertion(skip_stack_frames, comparison_options)
       assertion = CapybaraScreenshotDiff::ScreenshotAssertion.new(screenshot_full_name)
       assertion.caller = caller(skip_stack_frames + 1)
-      assertion.compare = Capybara::Screenshot::Diff::ImageCompare.new(@snapshot.path, @snapshot.base_path, comparison_options)
+      assertion.compare = Comparison.new(@snapshot.path, @snapshot.base_path, comparison_options)
       assertion
     end
 

@@ -2,7 +2,7 @@
 
 require "fileutils"
 
-require "capybara/screenshot/diff/image_compare"
+require "snap_diff/comparison"
 
 module SnapDiff
   class AttemptsReporter
@@ -21,7 +21,7 @@ module SnapDiff
     end
 
     def build_comparison_for(attempt_path, previous_attempt_path)
-      Capybara::Screenshot::Diff::ImageCompare.new(attempt_path, previous_attempt_path, @comparison_options)
+      Comparison.new(attempt_path, previous_attempt_path, @comparison_options)
     end
 
     private

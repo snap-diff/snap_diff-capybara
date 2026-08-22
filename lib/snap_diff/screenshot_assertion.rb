@@ -29,7 +29,7 @@ module SnapDiff
 
     # Verifies that all scheduled screenshots do not show any unintended differences.
     #
-    # @param screenshots [Array(Array(Array(String), String, ImageCompare))] The list of match screenshots jobs. Defaults to all screenshots taken during the test.
+    # @param screenshots [Array(Array(Array(String), String, Comparison))] The list of match screenshots jobs. Defaults to all screenshots taken during the test.
     # @return [Array, nil] Returns an array of error messages if there are screenshot differences, otherwise nil.
     # @note This method is typically called at the end of a test to assert all screenshots are as expected.
     def self.verify_screenshots!(screenshots)

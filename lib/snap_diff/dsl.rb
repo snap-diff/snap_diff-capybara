@@ -11,7 +11,7 @@
 require "capybara/dsl"
 require "capybara/screenshot/diff/config_legacy"
 require "capybara/screenshot/diff/drivers"
-require "capybara/screenshot/diff/image_compare"
+require "snap_diff/comparison"
 require "capybara/screenshot/diff/screenshot_matcher"
 require_relative "screenshot_namer"
 require_relative "screenshot_assertion"
