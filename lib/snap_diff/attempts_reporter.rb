@@ -2,7 +2,7 @@
 
 require "capybara/screenshot/diff/image_compare"
 
-module CapybaraScreenshotDiff
+module SnapDiff
   class AttemptsReporter
     def initialize(snapshot, comparison_options, stability_options = {})
       @snapshot = snapshot

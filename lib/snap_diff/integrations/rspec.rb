@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require "rspec/core"
-require "capybara_screenshot_diff/dsl"
+require_relative "../dsl"
 
 RSpec::Matchers.define :match_screenshot do |name, **options|
   description { "match screenshot '#{name}'" }
@@ -21,11 +21,11 @@ RSpec::Matchers.define :match_screenshot do |name, **options|
 end
 
 RSpec.configure do |config|
-  config.include CapybaraScreenshotDiff::DSL, type: :feature
-  config.include CapybaraScreenshotDiff::DSL, type: :system
+  config.include SnapDiff::DSL, type: :feature
+  config.include SnapDiff::DSL, type: :system
 
   config.before do
-    if self.class.include?(CapybaraScreenshotDiff::DSL)
+    if self.class.include?(SnapDiff::DSL)
       Capybara::Screenshot::BrowserHelpers.resize_window_if_needed
     end
   end
@@ -41,7 +41,7 @@ RSpec.configure do |config|
   # failure behind our pending skip. `append_after` runs after the full user
   # after-chain no matter the registration order, closing that gap.
   config.append_after do |example|
-    if self.class.include?(CapybaraScreenshotDiff::DSL)
+    if self.class.include?(SnapDiff::DSL)
       begin
         CapybaraScreenshotDiff.verify
 

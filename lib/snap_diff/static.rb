@@ -1,9 +1,9 @@
 # frozen_string_literal: true
 
 require "rack/files"
-require "capybara_screenshot_diff/minitest"
+require_relative "integrations/minitest"
 
-module CapybaraScreenshotDiff
+module SnapDiff
   def self.serve(directory, root: Dir.pwd)
     Capybara.app = Rack::Files.new(directory)
     Capybara::Screenshot.root = root

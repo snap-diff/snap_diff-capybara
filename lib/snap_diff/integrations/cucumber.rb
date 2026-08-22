@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
-require "capybara_screenshot_diff/dsl"
+require_relative "../dsl"
 
-World(::CapybaraScreenshotDiff::DSL)
+World(::SnapDiff::DSL)
 
 Before do
   Capybara::Screenshot::Diff.delayed = false

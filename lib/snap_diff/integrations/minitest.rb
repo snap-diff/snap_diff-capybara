@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require "minitest"
-require "capybara_screenshot_diff/dsl"
+require_relative "../dsl"
 
 used_deprecated_entrypoint = caller.any? do |path|
   path.include?("capybara-screenshot-diff.rb") || path.include?("capybara/screenshot/diff.rb")
@@ -9,15 +9,15 @@ end
 
 if used_deprecated_entrypoint
   warn <<~MSG
-    [DEPRECATION] The default activation of `capybara_screenshot_diff/minitest` will be removed. 
+    [DEPRECATION] The default activation of `capybara_screenshot_diff/minitest` will be removed.
                   Please `require "capybara_screenshot_diff/minitest"` explicitly.
   MSG
 end
 
-module CapybaraScreenshotDiff
+module SnapDiff
   module Minitest
     module Assertions
-      include ::CapybaraScreenshotDiff::DSL
+      include ::SnapDiff::DSL
 
       def assert_matches_screenshot(*args, skip_stack_frames: 0, **opts)
         self.assertions += 1

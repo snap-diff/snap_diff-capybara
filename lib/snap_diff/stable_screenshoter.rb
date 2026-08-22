@@ -92,10 +92,8 @@ module SnapDiff
 
     # TODO: Move to the HistoricalReporter
     def annotate_attempts_and_fail!(snapshot)
-      # AttemptsReporter has not moved yet (later batch in the same PR);
-      # this old-path require will start forwarding once it does.
-      require "capybara_screenshot_diff/attempts_reporter"
-      attempts_reporter = CapybaraScreenshotDiff::AttemptsReporter.new(snapshot, @comparison_options, {wait: wait, stability_time_limit: stability_time_limit})
+      require_relative "attempts_reporter"
+      attempts_reporter = SnapDiff::AttemptsReporter.new(snapshot, @comparison_options, {wait: wait, stability_time_limit: stability_time_limit})
 
       # TODO: Move fail to the queue after tests passed
       raise CapybaraScreenshotDiff::UnstableImage.new(attempts_reporter.generate, caller)

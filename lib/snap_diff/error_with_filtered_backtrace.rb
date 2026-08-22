@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-module CapybaraScreenshotDiff
+module SnapDiff
   class BacktraceFilter
     LIB_DIRECTORY = File.expand_path(File.join(File.dirname(__FILE__), "..")) + File::SEPARATOR
 
