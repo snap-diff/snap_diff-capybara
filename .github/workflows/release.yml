@@ -54,9 +54,9 @@ jobs:
       # Gemfile's `gemspec` directive stay unambiguous. Requires the
       # snap_diff-capybara gem on rubygems.org to trust this repo+workflow
       # as a trusted publisher.
-      - name: Configure RubyGems credentials for mirror push
-        uses: rubygems/configure-rubygems-credentials@dc5a8d8553e6ee01fc26761a49e99e733d17954a # v2.1.0
-
+      # No separate credential setup: release-gem above already configured
+      # trusted-publishing credentials, and the temporary key covers any gem
+      # whose rubygems.org settings trust this repo+workflow.
       - name: Publish snap_diff-capybara mirror to RubyGems
         run: |
           ruby -e '
