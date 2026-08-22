@@ -75,7 +75,7 @@ module Capybara::Screenshot::Diff
 
       def build_error_message
         [
-          "(#{difference.inspect})",
+          "(#{difference.to_h.to_json})",
           image_path.to_path,
           annotated_base_image_path.to_path,
           annotated_image_path.to_path,

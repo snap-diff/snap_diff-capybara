@@ -16,5 +16,15 @@ module Capybara::Screenshot::Diff
     test "#failed? returns true when images have different dimensions" do
       assert_predicate @difference, :failed?
     end
+
+    test "#inspect is a one-line summary with the difference metrics" do
+      line = @difference.inspect
+
+      assert_includes line, "different=true"
+      assert_includes line, "failed_by="
+      assert_includes line, "area_size=0"
+      assert_includes line, "difference_level="
+      assert_not_includes line, "\n"
+    end
   end
 end

@@ -75,8 +75,13 @@ module SnapDiff
       region&.to_edge_coordinates
     end
 
+    # One-line debugging summary with the difference metrics.
+    # (Error messages use #to_h — see Reporters::Default#build_error_message.)
     def inspect
-      to_h.to_json
+      "#<#{self.class.name} different=#{different?} failed_by=#{failed_by.inspect} " \
+        "area_size=#{region_area_size} region=#{coordinates.inspect} " \
+        "difference_level=#{ratio.inspect} " \
+        "base=#{original_image_path} new=#{new_image_path}>"
     end
 
     def tolerable?
