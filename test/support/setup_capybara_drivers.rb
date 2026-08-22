@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require "capybara/screenshot/diff/os"
+
 ENV["CAPYBARA_DRIVER"] ||= "cuprite"
 
 SCREEN_SIZE = [800, 600]
