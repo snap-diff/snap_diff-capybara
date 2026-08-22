@@ -24,6 +24,18 @@ module CapybaraScreenshotDiff
       assertion
     end
 
+    # ADR-008 step 6: SnapDiff.session is the canonical accessor and
+    # CapybaraScreenshotDiff.registry a forwarder over it -- they must hand
+    # back the *same* object, not two registries that happen to look alike.
+    test "SnapDiff.session and CapybaraScreenshotDiff.registry are the same object" do
+      assert_same SnapDiff.session, CapybaraScreenshotDiff.registry
+
+      SnapDiff.session.record_new_screenshot("shared_object_probe")
+      assert_equal ["shared_object_probe"], CapybaraScreenshotDiff.new_screenshots
+    ensure
+      SnapDiff.session.reset
+    end
+
     test "each thread gets its own registry instance" do
       here = CapybaraScreenshotDiff.registry
       there = Thread.new { CapybaraScreenshotDiff.registry }.value

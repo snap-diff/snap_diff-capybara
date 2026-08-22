@@ -99,7 +99,7 @@ module SnapDiff
     # manager class or screenshot root changes (tests re-root per example).
     #
     # Thread.current[] is fiber-local — same construct as
-    # CapybaraScreenshotDiff.registry; both split per fiber and must migrate
+    # SnapDiff.session; both split per fiber and must migrate
     # together if async support ever lands.
     #
     # Scope of the fix: default-root unit tests and before_setup re-rooters

@@ -5,11 +5,9 @@ require "erb"
 require "fileutils"
 require "pathname"
 require "json"
-# The auto-registration block at the bottom of this file calls
-# CapybaraScreenshotDiff.reporters, which needs the registry singleton
-# machinery in the *old* capybara_screenshot_diff/screenshot_assertion.rb
-# file (deliberately not moved -- see that file's own comment).
-require "capybara_screenshot_diff/screenshot_assertion"
+# The auto-registration block at the bottom of this file registers with
+# SnapDiff::Reporting.
+require "snap_diff/reporting"
 require "capybara/screenshot/diff/config_legacy"
 
 module SnapDiff
@@ -136,8 +134,8 @@ module SnapDiff
 end
 
 # Auto-register reporter.
-# Framework adapters (Minitest, RSpec, Cucumber) call finalize_reporters! via native hooks.
-# For custom frameworks, call CapybaraScreenshotDiff.finalize_reporters! manually.
-unless CapybaraScreenshotDiff.reporters.any?(SnapDiff::Reporters::HTML)
-  CapybaraScreenshotDiff.reporters << SnapDiff::Reporters::HTML.new(embed_images: !!ENV["CI"])
+# Framework adapters (Minitest, RSpec, Cucumber) call SnapDiff::Reporting.finalize! via native hooks.
+# For custom frameworks, call SnapDiff::Reporting.finalize! manually.
+unless SnapDiff::Reporting.reporters.any?(SnapDiff::Reporters::HTML)
+  SnapDiff::Reporting.register(SnapDiff::Reporters::HTML.new(embed_images: !!ENV["CI"]))
 end

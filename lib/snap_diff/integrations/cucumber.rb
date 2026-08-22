@@ -2,7 +2,8 @@
 
 # See the matching comment in integrations/minitest.rb.
 require_relative "../dsl"
-require "capybara_screenshot_diff/screenshot_assertion"
+require "snap_diff/screenshot_assertion"
+require "snap_diff/reporting"
 
 World(::SnapDiff::DSL)
 
@@ -12,11 +13,11 @@ Before do
 end
 
 After do |scenario|
-  if !scenario.failed? && (msg = CapybaraScreenshotDiff.pending_screenshots_message)
+  if !scenario.failed? && (msg = SnapDiff.pending_screenshots_message)
     skip_this_scenario(msg)
   end
 ensure
-  CapybaraScreenshotDiff.reset
+  SnapDiff.reset
 end
 
-AfterAll { CapybaraScreenshotDiff.finalize_reporters! }
+AfterAll { SnapDiff::Reporting.finalize! }

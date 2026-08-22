@@ -6,49 +6,37 @@ require "snap_diff/reporting"
 # warnings) via snap_diff/legacy_shims' const_missing since v2 step 6.
 require "snap_diff/legacy_shims"
 
-# CapybaraScreenshotDiff's module methods cover two lifecycles with
-# different scopes, kept separate below:
-#
-# - Session lifecycle: thread-local, per-test. The AssertionRegistry holds
-#   the assertions and screenshot names of the test running on this thread;
-#   `reset` clears it between tests.
-# - Reporter lifecycle: process-global, suite-long. Owned by
-#   SnapDiff::Reporting; the methods here are thin public shims over it.
-#
-# `reset` is the one deliberate bridge between the two: a finished test's
-# assertions are handed to the reporters before the registry is cleared.
+# Since ADR-008 step 6 every method here is a thin forwarder; the canonical
+# homes are SnapDiff (session lifecycle: per-test, `SnapDiff.session` and
+# friends) and SnapDiff::Reporting (reporter lifecycle: process-global,
+# suite-long). Names, arities and object identities are unchanged -- this
+# module stays as the compatibility surface for existing consumers.
 module CapybaraScreenshotDiff
   class << self
     require "forwardable"
     extend Forwardable
 
-    # --- Session lifecycle (thread-local, per-test) ---
+    # --- Session lifecycle (per-test) -> SnapDiff ---
 
     def registry
-      Thread.current[:capybara_screenshot_diff_registry] ||= SnapDiff::AssertionRegistry.new
+      SnapDiff.session
     end
 
     def_delegators :registry, :add_assertion, :assertions, :assertions_present?,
       :failed_assertions, :record_new_screenshot, :new_screenshots,
       :new_screenshots_present?, :screenshot_namer, :verify
 
+    # Written out rather than def_delegators so the arities stay 0 (a
+    # Forwardable-generated method takes *args, **kwargs, &block).
     def reset
-      notify_reporters(registry.assertions)
-      registry.reset
+      SnapDiff.reset
     end
 
-    # Message to skip the test with when a new screenshot has no baseline yet
-    # and `pending_if_new` is enabled. Adapters call this after verifying
-    # screenshots, and skip the test with the returned message when present.
-    #
-    # @return [String, nil] the pending message, or nil when there is nothing to report
     def pending_screenshots_message
-      return unless ::Capybara::Screenshot::Diff.pending_if_new && new_screenshots_present?
-
-      "No baseline for: #{new_screenshots.join(", ")}. Commit the captured screenshots to record them."
+      SnapDiff.pending_screenshots_message
     end
 
-    # --- Reporter lifecycle (process-global, suite-long) ---
+    # --- Reporter lifecycle (process-global, suite-long) -> SnapDiff::Reporting ---
 
     def reporters
       SnapDiff::Reporting.reporters

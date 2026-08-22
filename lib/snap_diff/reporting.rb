@@ -5,10 +5,9 @@ module SnapDiff
   # end-of-suite finalization. One list of reporters for the whole process,
   # guarded by one mutex.
   #
-  # Deliberately separate from the per-test session lifecycle (the
-  # thread-local AssertionRegistry reached through
-  # CapybaraScreenshotDiff.registry): reporters outlive any single test,
-  # the registry does not. CapybaraScreenshotDiff keeps its public
+  # Deliberately separate from the per-test session lifecycle
+  # (SnapDiff.session): reporters outlive any single test, the session does
+  # not. CapybaraScreenshotDiff keeps its public
   # reporters/reporters_mutex/finalize_reporters! methods as thin shims
   # over this module.
   module Reporting
@@ -17,6 +16,16 @@ module SnapDiff
 
     class << self
       attr_reader :reporters, :mutex
+
+      # Registers a reporter for the rest of the process. The canonical way
+      # in: the append happens under the mutex, so concurrent registrations
+      # cannot lose one (issue #217 item 2). `reporters` stays public and
+      # mutable for compatibility -- appending to it directly still works,
+      # it just skips the lock.
+      def register(reporter)
+        @mutex.synchronize { @reporters << reporter }
+        reporter
+      end
 
       # Delivers a finished test's assertions to every registered reporter.
       # Iterates over a snapshot so a reporter mutating the list mid-notify

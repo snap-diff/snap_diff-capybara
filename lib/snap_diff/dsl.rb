@@ -1,11 +1,11 @@
 # frozen_string_literal: true
 
 # No require of "capybara_screenshot_diff" here: every Capybara::Screenshot
-# / CapybaraScreenshotDiff reference below is inside a method body, resolved
-# lazily at call time, not at this file's own load time -- so this unit has
-# no eager dependency on the umbrella entry point, and requiring it here
-# would create a require cycle back to capybara_screenshot_diff.rb (which
-# requires this file's old-path forwarder).
+# reference below is inside a method body, resolved lazily at call time, not
+# at this file's own load time -- so this unit has no eager dependency on
+# the umbrella entry point, and requiring it here would create a require
+# cycle back to capybara_screenshot_diff.rb (which requires this file's
+# old-path forwarder).
 # DSL includes Capybara::DSL directly below, so it needs the base gem
 # loaded regardless of what pulled this file in.
 require "capybara/dsl"
@@ -66,7 +66,7 @@ module SnapDiff
       return false unless Capybara::Screenshot.active?
 
       # Get the full name with section and group information
-      full_name = CapybaraScreenshotDiff.screenshot_namer.full_name(name)
+      full_name = SnapDiff.session.screenshot_namer.full_name(name)
 
       # Build the screenshot assertion
       assertion = build_screenshot_assertion(full_name, options, skip_stack_frames: skip_stack_frames + 1)
@@ -77,7 +77,7 @@ module SnapDiff
       delayed = options.fetch(:delayed, Capybara::Screenshot::Diff.delayed)
 
       if delayed
-        CapybaraScreenshotDiff.add_assertion(assertion)
+        SnapDiff.session.add_assertion(assertion)
       else
         assertion.validate!
       end
@@ -104,7 +104,7 @@ module SnapDiff
     def capture_screenshot(name, **options)
       return false unless Capybara::Screenshot.active?
 
-      full_name = CapybaraScreenshotDiff.screenshot_namer.full_name(name)
+      full_name = SnapDiff.session.screenshot_namer.full_name(name)
       SnapDiff::ScreenshotMatcher.new(full_name, options).capture
 
       true
@@ -137,7 +137,7 @@ module SnapDiff
     end
 
     def screenshot_namer
-      CapybaraScreenshotDiff.screenshot_namer
+      SnapDiff.session.screenshot_namer
     end
   end
 end
