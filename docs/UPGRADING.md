@@ -1,6 +1,91 @@
-# Upgrading to v1.12.0
+# Upgrading
 
-## Overview
+## Upgrading to v1.13.0
+
+### Overview
+
+Version 1.13.0 is a **minor release** clarifying API terminology and adding new capture methods. No breaking changes — your existing code continues to work.
+
+**Estimated upgrade time:** 0 minutes (no action required for most users)
+
+---
+
+### Quick Upgrade Path (Most Users)
+
+```ruby
+# In your Gemfile
+gem 'capybara-screenshot-diff', '~> 1.13.0'
+```
+
+```bash
+bundle update capybara-screenshot-diff
+bundle exec rake test
+```
+
+**That's it!** Existing `screenshot` calls work unchanged. New methods available if needed.
+
+---
+
+### What Changed
+
+#### API Clarification: Primary Method is `assert_matches_screenshot`
+
+**v1.12.0 and earlier:** `screenshot` was the primary method  
+**v1.13.0+:** `assert_matches_screenshot` is the primary method
+
+**Action required:** None. `screenshot` continues to work as-is.
+
+The method names now better reflect their behavior:
+- `assert_matches_screenshot(name)` — takes screenshot and asserts it matches baseline
+- `screenshot(name, compare: true)` — convenience wrapper (same behavior as above when `compare: true`)
+- `capture_screenshot(name)` — new: captures without asserting
+
+```ruby
+# All three work and are safe to use:
+assert_matches_screenshot "homepage"                # Primary: explicit intent
+screenshot "homepage"                               # Shorthand (familiar)
+screenshot "homepage", compare: false               # Capture only
+capture_screenshot "homepage"                       # Also capture only
+```
+
+**Safe to override:** You can safely define your own `screenshot` method in your test base class — the gem's implementation won't interfere.
+
+---
+
+### New: `capture_screenshot` Method
+
+Capture without comparing to baseline:
+
+```ruby
+capture_screenshot "dynamic_page"  # No assertion
+```
+
+Equivalent to: `screenshot "dynamic_page", compare: false`
+
+---
+
+### New: `Diff.pending_if_new` Helper
+
+Mark baseline-less tests pending instead of failing during initial CI runs:
+
+```ruby
+# In test_helper.rb — before running tests
+Capybara::Screenshot::Diff.pending_if_new = true
+```
+
+**CI requirement:** When using `pending_if_new`, ensure CI is configured with `fail_if_new: false` (see [Configuration Reference](configuration.md#quick-setup)):
+
+```ruby
+Capybara::Screenshot::Diff.configure do |screenshot, diff|
+  diff.fail_if_new = false  # Allow baselines to be added
+end
+```
+
+---
+
+## Upgrading to v1.12.0
+
+### Overview
 
 Version 1.12.0 is a **minor release** with new features, performance improvements, and default behavior changes. This guide will help you upgrade smoothly.
 

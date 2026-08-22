@@ -38,10 +38,12 @@ end
 class HomepageTest < ApplicationSystemTestCase
   test "homepage" do
     visit "/"
-    screenshot "homepage"
+    assert_matches_screenshot "homepage"
   end
 end
 ```
+
+(`screenshot` is a shorthand wrapper — safe to override with `compare: false` if needed.)
 
 Then run these steps in order:
 
