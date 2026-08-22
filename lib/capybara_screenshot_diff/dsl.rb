@@ -25,7 +25,7 @@ module CapybaraScreenshotDiff
       screenshot_namer.group = name
     end
 
-    # Takes a screenshot and optionally compares it against a baseline image.
+    # Takes a screenshot and compares it against a baseline image.
     #
     # The method follows a layered optimization strategy for comparison:
     # 1. First checks if screenshot functionality is active
@@ -53,7 +53,7 @@ module CapybaraScreenshotDiff
     # @raise [CapybaraScreenshotDiff::ExpectationNotMet] If comparison fails and immediate validation is enabled.
     # @raise [CapybaraScreenshotDiff::UnstableImage] If the image comparison is unstable.
     # @raise [CapybaraScreenshotDiff::WindowSizeMismatchError] If the window size doesn't match expectations.
-    def screenshot(name, skip_stack_frames: 0, **options)
+    def assert_matches_screenshot(name, skip_stack_frames: 0, **options)
       return false unless Capybara::Screenshot.active?
 
       # Get the full name with section and group information
@@ -76,15 +76,36 @@ module CapybaraScreenshotDiff
       true
     end
 
-    # Alias for backward compatibility with older test suites.
-    # @see #screenshot
-    alias_method :assert_matches_screenshot, :screenshot
+    # Convenience wrapper around {#assert_matches_screenshot} and {#capture_screenshot}.
+    # @param compare [Boolean] When false, only captures the screenshot without comparing it to a baseline.
+    # @see #assert_matches_screenshot
+    # @see #capture_screenshot
+    def screenshot(name, skip_stack_frames: 0, compare: true, **options)
+      if compare
+        assert_matches_screenshot(name, skip_stack_frames: skip_stack_frames + 1, **options)
+      else
+        capture_screenshot(name, **options)
+      end
+    end
+
+    # Captures a screenshot without comparing it to a baseline.
+    # @param name [String] The base name of the screenshot, used to generate the filename.
+    # @param options [Hash] Additional options for taking the screenshot. See {#assert_matches_screenshot}.
+    # @return [Boolean] True if the screenshot was successfully captured.
+    def capture_screenshot(name, **options)
+      return false unless Capybara::Screenshot.active?
+
+      full_name = CapybaraScreenshotDiff.screenshot_namer.full_name(name)
+      Capybara::Screenshot::Diff::ScreenshotMatcher.new(full_name, options).capture
+
+      true
+    end
 
     # Asserts the current page has no visual changes from the baseline.
     # Override in your base test class to add project-specific behavior
     # (e.g., waiting for Turbo, default skip areas).
     def assert_no_screenshot_changes(name, skip_stack_frames: 0, **opts)
-      screenshot(name, skip_stack_frames: skip_stack_frames + 1, **opts)
+      assert_matches_screenshot(name, skip_stack_frames: skip_stack_frames + 1, **opts)
     end
 
     private
@@ -96,7 +117,7 @@ module CapybaraScreenshotDiff
     #
     # @param name [String] The full name of the screenshot, including any section/group context.
     # @param options [Hash] Options for screenshot taking and comparison.
-    #   See {#screenshot} for available options.
+    #   See {#assert_matches_screenshot} for available options.
     # @param skip_stack_frames [Integer] Number of stack frames to skip for error reporting.
     # @return [ScreenshotAssertion, nil] The assertion object or nil if no assertion is needed.
     # @see ScreenshotAssertion

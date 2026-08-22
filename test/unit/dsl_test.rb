@@ -146,6 +146,104 @@ module CapybaraScreenshotDiff
       assert_predicate snap.path, :exist?
     end
 
+    # Regression for https://github.com/snap-diff/snap_diff-capybara/issues/191:
+    # a user-defined #screenshot in the test class must not hijack the gem's internals.
+    test "#assert_no_screenshot_changes ignores user-defined #screenshot" do
+      def self.screenshot(*, **)
+        @user_screenshot_called = true
+      end
+
+      Capybara::Screenshot::Diff::Vcs.stub(:checkout_vcs, true) do
+        snap = create_snapshot_for(:a, :c)
+
+        assert_no_screenshot_changes(snap.full_name)
+        assert_not @user_screenshot_called
+        assert_equal 1, CapybaraScreenshotDiff.assertions.size
+      end
+    end
+
+    test "#assert_matches_screenshot ignores user-defined #screenshot" do
+      def self.screenshot(*, **)
+        @user_screenshot_called = true
+      end
+
+      Capybara::Screenshot::Diff::Vcs.stub(:checkout_vcs, true) do
+        snap = create_snapshot_for(:a, :c)
+
+        assert_matches_screenshot(snap.full_name)
+        assert_not @user_screenshot_called
+        assert_equal 1, CapybaraScreenshotDiff.assertions.size
+      end
+    end
+
+    test "#screenshot records new screenshots that have no baseline in the registry" do
+      Capybara::Screenshot::Diff::Vcs.stub(:checkout_vcs, false) do
+        screenshot "a"
+
+        assert_equal ["a"], CapybaraScreenshotDiff.new_screenshots
+      end
+    end
+
+    test "CapybaraScreenshotDiff.reset clears new_screenshots" do
+      Capybara::Screenshot::Diff::Vcs.stub(:checkout_vcs, false) do
+        screenshot "a"
+        assert_predicate CapybaraScreenshotDiff, :new_screenshots_present?
+
+        CapybaraScreenshotDiff.reset
+
+        assert_not_predicate CapybaraScreenshotDiff, :new_screenshots_present?
+        assert_empty CapybaraScreenshotDiff.new_screenshots
+      end
+    end
+
+    test "#capture_screenshot writes the file and registers no assertion" do
+      Capybara::Screenshot::Diff::Vcs.stub(:checkout_vcs, true) do
+        capture_screenshot(:c)
+
+        snap = CapybaraScreenshotDiff::SnapManager.snapshot("c")
+        assert_predicate snap.path, :exist?
+        assert_no_screenshot_jobs_scheduled
+      end
+    end
+
+    test "#capture_screenshot creates the destination directory for nested names" do
+      naive_screenshoter = Class.new do
+        def initialize(_capture_options, _comparison_options)
+        end
+
+        def take_comparison_screenshot(snapshot)
+          File.binwrite(snapshot.path, "png")
+        end
+      end
+
+      Capybara::Screenshot::Diff.stub(:screenshoter, naive_screenshoter) do
+        capture_screenshot("nested/dir/example")
+
+        assert_predicate CapybaraScreenshotDiff::SnapManager.snapshot("nested/dir/example").path, :exist?
+      end
+    end
+
+    test "#capture_screenshot does not raise even when a differing baseline exists" do
+      Capybara::Screenshot::Diff::Vcs.stub(:checkout_vcs, true) do
+        snap = create_snapshot_for(:a, :c)
+
+        assert_nothing_raised { capture_screenshot(snap.full_name) }
+        assert_no_screenshot_jobs_scheduled
+      end
+    end
+
+    test "#screenshot with compare: false captures without registering an assertion" do
+      Capybara::Screenshot::Diff::Vcs.stub(:checkout_vcs, true) do
+        snap = create_snapshot_for(:a, :c)
+        snap.path.delete
+
+        screenshot(snap.full_name, compare: false)
+
+        assert_predicate snap.path, :exist?
+        assert_no_screenshot_jobs_scheduled
+      end
+    end
+
     test "#assert_image_not_changed cleans up base image when images are identical" do
       comparison = make_comparison(:a, :a)
       assert_image_not_changed(["my_test.rb:42"], "name", comparison)

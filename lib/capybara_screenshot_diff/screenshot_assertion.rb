@@ -65,10 +65,11 @@ module CapybaraScreenshotDiff
   end
 
   class AssertionRegistry
-    attr_reader :assertions, :screenshot_namer
+    attr_reader :assertions, :screenshot_namer, :new_screenshots
 
     def initialize
       @assertions = []
+      @new_screenshots = []
       @screenshot_namer = CapybaraScreenshotDiff::ScreenshotNamer.new
     end
 
@@ -82,6 +83,14 @@ module CapybaraScreenshotDiff
 
     def assertions_present?
       !@assertions.empty?
+    end
+
+    def record_new_screenshot(name)
+      @new_screenshots.push(name)
+    end
+
+    def new_screenshots_present?
+      !@new_screenshots.empty?
     end
 
     def verify(screenshots = CapybaraScreenshotDiff.assertions)
@@ -102,6 +111,7 @@ module CapybaraScreenshotDiff
 
     def reset
       @assertions.clear
+      @new_screenshots.clear
       @screenshot_namer = CapybaraScreenshotDiff::ScreenshotNamer.new
     end
   end
@@ -120,6 +130,9 @@ module CapybaraScreenshotDiff
     def_delegator :registry, :assertions
     def_delegator :registry, :assertions_present?
     def_delegator :registry, :failed_assertions
+    def_delegator :registry, :record_new_screenshot
+    def_delegator :registry, :new_screenshots
+    def_delegator :registry, :new_screenshots_present?
     def reset
       notify_reporters(registry.assertions)
       registry.reset

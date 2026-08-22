@@ -32,9 +32,23 @@ module Capybara
 
           # Pre-computation: No need to compare without base screenshot
           # NOTE: Consider to return PreValid Assertion Value Object with hard coded valid result
-          return unless need_to_compare?
+          unless need_to_compare?
+            CapybaraScreenshotDiff.record_new_screenshot(screenshot_full_name)
+            return
+          end
 
           create_screenshot_assertion(skip_stack_frames + 1, comparison_options)
+        end
+
+        # Captures a screenshot without comparing it to a baseline.
+        def capture
+          check_window_size!
+          prepare_screenshot_options
+
+          capture_options, comparison_options = extract_capture_and_comparison_options!(driver_options)
+
+          @snapshot.manager.create_output_directory_for(@snapshot.path)
+          capture_screenshot(capture_options, comparison_options)
         end
 
         private

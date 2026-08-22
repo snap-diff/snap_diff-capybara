@@ -19,15 +19,13 @@ module CapybaraScreenshotDiff
     module Assertions
       include ::CapybaraScreenshotDiff::DSL
 
-      def screenshot(*args, skip_stack_frames: 0, **opts)
+      def assert_matches_screenshot(*args, skip_stack_frames: 0, **opts)
         self.assertions += 1
 
         super(*args, skip_stack_frames: skip_stack_frames + 1, **opts)
       rescue ::CapybaraScreenshotDiff::ExpectationNotMet => e
         raise ::Minitest::Assertion, e.message
       end
-
-      alias_method :assert_matches_screenshot, :screenshot
 
       def setup
         super
@@ -37,6 +35,11 @@ module CapybaraScreenshotDiff
       def before_teardown
         super
         CapybaraScreenshotDiff.verify
+
+        if ::Capybara::Screenshot::Diff.pending_if_new && CapybaraScreenshotDiff.new_screenshots_present?
+          names = CapybaraScreenshotDiff.new_screenshots
+          skip "No baseline for: #{names.join(", ")}. Commit the captured screenshots to record them."
+        end
       rescue CapybaraScreenshotDiff::ExpectationNotMet => e
         assertion = ::Minitest::Assertion.new(e)
         assertion.set_backtrace(e.backtrace)
