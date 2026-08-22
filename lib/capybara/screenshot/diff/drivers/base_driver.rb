@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "capybara/screenshot/diff/difference"
+require "snap_diff/driver"
 
 module Capybara
   module Screenshot
@@ -9,31 +10,7 @@ module Capybara
       # range considering color values and difference area size.
       module Drivers
         class BaseDriver
-          PNG_EXTENSION = ".png"
-
-          def same_dimension?(comparison)
-            dimension(comparison.base_image) == dimension(comparison.new_image)
-          end
-
-          def height_for(image)
-            image.height
-          end
-
-          def width_for(image)
-            image.width
-          end
-
-          def image_area_size(image)
-            width_for(image) * height_for(image)
-          end
-
-          def dimension(image)
-            [width_for(image), height_for(image)]
-          end
-
-          def supports?(feature)
-            respond_to?(feature)
-          end
+          include SnapDiff::Driver
         end
       end
     end
