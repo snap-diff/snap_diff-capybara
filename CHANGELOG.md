@@ -5,10 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [v1.14.0] - 2026-08-22
 
 ### Added
 - **`SnapDiff` namespace aliases** — `SnapDiff::Comparison`, `SnapDiff.compare`, and `SnapDiff.start` provide a forward-looking entry point onto the existing `Capybara::Screenshot::Diff` API, no behavior changes ([#166](https://github.com/snap-diff/snap_diff-capybara/issues/166))
+
+### Fixed
+- **Standalone require path** — `require "capybara_screenshot_diff"` (or `require "snap_diff"`) followed by `Diff.compare` no longer raises `NameError` for the missing drivers require ([#194](https://github.com/snap-diff/snap_diff-capybara/pull/194))
+
+### Internal
+- Merged `DifferenceFinder` into `ImageCompare` (ADR-004 step) ([#192](https://github.com/snap-diff/snap_diff-capybara/pull/192))
+- Extracted `AnnotationService` from `Reporters::Default`; full public surface preserved via delegation ([#193](https://github.com/snap-diff/snap_diff-capybara/pull/193))
+- Consolidated `pending_if_new` teardown logic into one shared helper across Minitest/RSpec/Cucumber adapters ([#197](https://github.com/snap-diff/snap_diff-capybara/pull/197))
+- Test-suite driver-coverage banner and CI guard against silently missing drivers ([#198](https://github.com/snap-diff/snap_diff-capybara/pull/198))
 
 ---
 

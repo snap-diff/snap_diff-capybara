@@ -1,24 +1,23 @@
-# Release Preparation — v1.13.0
+# Release Preparation — v1.14.0
 
 ## Summary
 
-Issue #191 API decoupling: `assert_matches_screenshot` becomes the primary
-assertion method, plus a capture-only API and opt-in pending-instead-of-pass
-for missing baselines.
+SnapDiff namespace aliases (ADR-004 PR 9), standalone-require fix, and three
+internal consolidation refactors (ADR-004 PR 2/PR 7, teardown logic).
 
 ## Release Checklist
 
 ### Pre-Release
 
-- [x] Update version to `1.13.0`
-- [x] Run tests: `bundle exec rake test:unit` (235 runs, 0 failures)
+- [x] Update version to `1.14.0`
+- [x] Run tests: `bundle exec rake test:unit` (green)
 - [x] Update CHANGELOG.md
 
 ### Release (One Click)
 
 1. Push to GitHub
 2. Go to [Actions → Release](https://github.com/snap-diff/snap_diff-capybara/actions/workflows/release.yml)
-3. Click **Run workflow**, enter `1.13.0`
+3. Click **Run workflow**, enter `1.14.0`
 4. Workflow will: test → tag → publish to RubyGems → create GitHub Release
 
 ### Post-Release
@@ -28,15 +27,18 @@ for missing baselines.
 
 ## What Changed
 
-### New Features
-- `capture_screenshot` DSL method — capture without comparing or asserting
-- `compare:` option on `screenshot` — `compare: false` captures only
-- `Capybara::Screenshot::Diff.pending_if_new` — mark tests skipped in teardown
-  when a screenshot has no committed baseline (Minitest, RSpec, and Cucumber)
+### Added
+- `SnapDiff` namespace aliases — `SnapDiff::Comparison`, `SnapDiff.compare`,
+  `SnapDiff.start` (additive; deprecations deferred to v2.0)
 
-### Behavior Changes
-- `assert_matches_screenshot` is now the primary assertion method; `screenshot`
-  remains as a convenience wrapper and is safe to override in user test classes —
-  the gem no longer calls it internally ([#191](https://github.com/snap-diff/snap_diff-capybara/issues/191))
+### Fixed
+- Standalone `require "capybara_screenshot_diff"` + `Diff.compare` no longer
+  raises `NameError` (missing drivers require)
+
+### Internal
+- `DifferenceFinder` merged into `ImageCompare`; `AnnotationService` extracted
+  from `Reporters::Default` (public surface preserved); `pending_if_new`
+  teardown consolidated across the three framework adapters; driver-coverage
+  banner + CI guard in the test suite
 
 See [CHANGELOG.md](../CHANGELOG.md) for full details.
