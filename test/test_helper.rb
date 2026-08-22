@@ -71,18 +71,16 @@ class ActiveSupport::TestCase
   # Set up fixtures and test helpers
   self.file_fixture_path = Pathname.new(File.expand_path("fixtures", __dir__))
 
-  # Snapshot ALL global state before each test, restore after.
-  # Prevents one test from poisoning another via leaked mattr_accessor changes.
-  GLOBAL_STATE_MODULES = [
-    Capybara::Screenshot,
-    Capybara::Screenshot::Diff
-  ].freeze
-
+  # Snapshot ALL global config state before each test, restore after.
+  # Prevents one test from poisoning another via leaked config changes.
+  # Since ADR-008 step 1 the single storage is the SnapDiff.config instance
+  # (the legacy Capybara::Screenshot / ::Diff accessors delegate to it), so
+  # snapshotting its instance variables covers both surfaces.
   setup do
-    @_global_snapshots = GLOBAL_STATE_MODULES.map { |mod|
-      attrs = mod.class_variables.map { |cv| [cv, mod.class_variable_get(cv)] }
-      [mod, attrs]
-    }.to_h
+    config = SnapDiff.config
+    @_global_snapshots = config.instance_variables.map { |iv|
+      [iv, config.instance_variable_get(iv)]
+    }
     @_orig_cwd = Dir.pwd
     @_orig_capybara_app = Capybara.app
 
@@ -93,9 +91,9 @@ class ActiveSupport::TestCase
   end
 
   teardown do
-    # Restore all global state
-    @_global_snapshots&.each do |mod, attrs|
-      attrs.each { |cv, val| mod.class_variable_set(cv, val) }
+    # Restore all global config state
+    @_global_snapshots&.each do |iv, val|
+      SnapDiff.config.instance_variable_set(iv, val)
     end
     Dir.chdir(@_orig_cwd) if @_orig_cwd && Dir.pwd != @_orig_cwd
     Capybara.app = @_orig_capybara_app if @_orig_capybara_app
