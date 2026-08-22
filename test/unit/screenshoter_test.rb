@@ -49,6 +49,7 @@ module Capybara
       end
 
       test "#resize_if_needed halves a non-square retina screenshot to the expected window size via VipsDriver" do
+        skip "VIPS not present. Skipping VIPS driver tests." unless defined?(Vips)
         screenshoter = Screenshoter.new({}, {driver: :vips})
         retina_image = Vips::Image.black(2560, 1600) # 2x window size, non-square
 
