@@ -46,8 +46,11 @@ RSpec.configure do |config|
         CapybaraScreenshotDiff.verify
 
         # Never mask a real failure with a pending marker. Kept as
-        # defense-in-depth even though `append_after` should already
-        # guarantee this hook observes any failure raised by user hooks.
+        # defense-in-depth: `append_after` observes failures from plain
+        # `after`/`prepend_after` user hooks, but appended hooks run FIFO,
+        # so a user `append_after` registered after this gem still runs
+        # later than us — RSpec has no "run absolutely last" construct.
+        # Mitigation for such consumers: require this gem last.
         if example.exception.nil? && (msg = CapybaraScreenshotDiff.pending_screenshots_message)
           skip(msg)
         end
