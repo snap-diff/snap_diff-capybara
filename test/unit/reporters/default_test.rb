@@ -3,15 +3,12 @@
 require "test_helper"
 require "capybara/screenshot/diff/reporters/default"
 
-unless defined?(Vips)
-  warn "VIPS not present. Skipping VIPS driver tests."
-  return
-end
-require "capybara/screenshot/diff/drivers/vips_driver"
+require "capybara/screenshot/diff/drivers/vips_driver" if defined?(Vips)
 
 module Capybara::Screenshot::Diff
   class Reporters::DefaultTest < ActiveSupport::TestCase
     setup do
+      skip "VIPS not present. Skipping VIPS driver tests." unless defined?(Vips)
       @_tmpdir = Pathname.new(Dir.mktmpdir)
     end
 
@@ -20,7 +17,6 @@ module Capybara::Screenshot::Diff
     end
 
     test "for vips driver generates heatmap diff file" do
-      skip "VIPS not present. Skipping VIPS driver tests." unless defined?(Vips)
       driver = Drivers::VipsDriver.new
       comparison = build_comparison_for(driver, "a.png", "b.png")
       reporter = Reporters::Default.new(driver.find_difference_region(comparison))
@@ -31,7 +27,6 @@ module Capybara::Screenshot::Diff
     end
 
     test "#clean_tmp_files removes heatmap diff along with other diff artifacts" do
-      skip "VIPS not present. Skipping VIPS driver tests." unless defined?(Vips)
       driver = Drivers::VipsDriver.new
       comparison = build_comparison_for(driver, "a.png", "b.png")
       reporter = Reporters::Default.new(driver.find_difference_region(comparison))

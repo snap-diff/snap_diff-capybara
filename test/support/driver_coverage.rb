@@ -6,10 +6,10 @@ module CapybaraScreenshotDiff
   #
   # Driver availability is detected once, at load time, via
   # Capybara::Screenshot::Diff::AVAILABLE_DRIVERS — so if libvips is missing,
-  # vips-only tests never get defined (see test/unit/drivers/vips_driver_test.rb)
-  # and vips-gated tests elsewhere silently skip instead of failing. Neither shows
-  # up as a failure, which is how a 232-run/0-skip environment and a
-  # 194-run/11-skip environment can both look "green".
+  # vips-gated tests (see test/unit/drivers/vips_driver_test.rb) register and
+  # report as skips rather than failing. That's expected on a vips-less runner;
+  # this module exists so CI specifically (not a plain dev machine) still fails
+  # loudly when a driver it's supposed to have goes missing.
   module DriverCoverage
     ALL_DRIVERS = %i[chunky_png vips].freeze
 
