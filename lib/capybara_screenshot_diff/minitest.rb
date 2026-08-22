@@ -36,15 +36,26 @@ module CapybaraScreenshotDiff
         super
         CapybaraScreenshotDiff.verify
 
-        if (msg = CapybaraScreenshotDiff.pending_screenshots_message)
-          skip(msg)
-        end
+        # Computed here (before teardown/reset), but the actual `skip` is
+        # deferred to `after_teardown` so a real error raised by the user's
+        # `teardown` isn't masked by a pending skip recorded before it ran.
+        @capybara_screenshot_diff_pending_message = CapybaraScreenshotDiff.pending_screenshots_message
       rescue CapybaraScreenshotDiff::ExpectationNotMet => e
         assertion = ::Minitest::Assertion.new(e)
         assertion.set_backtrace(e.backtrace)
         failures << assertion
       ensure
         CapybaraScreenshotDiff.reset
+      end
+
+      def after_teardown
+        super
+
+        # Never mask a real failure (from `verify` above or from the user's
+        # own `teardown`) with a pending marker.
+        if failures.empty? && (msg = @capybara_screenshot_diff_pending_message)
+          skip(msg)
+        end
       end
     end
   end

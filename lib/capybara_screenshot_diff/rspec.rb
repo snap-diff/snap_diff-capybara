@@ -30,12 +30,24 @@ RSpec.configure do |config|
     end
   end
 
-  config.after do |example|
+  # `append_after` (as opposed to the default `after`, which prepends) adds
+  # this hook to the *end* of the after-hook chain regardless of when it's
+  # registered relative to the user's own `after`/`config.after` hooks. RSpec
+  # runs `after(:each)` hooks in reverse registration order, so a plain
+  # `config.after` here would run BEFORE a user hook registered earlier in
+  # their own spec_helper (before this file was required) -- and if that
+  # later-running user hook raises, its exception gets folded into
+  # `pending_exception` instead of `example.exception`, silently masking the
+  # failure behind our pending skip. `append_after` runs after the full user
+  # after-chain no matter the registration order, closing that gap.
+  config.append_after do |example|
     if self.class.include?(CapybaraScreenshotDiff::DSL)
       begin
         CapybaraScreenshotDiff.verify
 
-        # Never mask a real failure with a pending marker.
+        # Never mask a real failure with a pending marker. Kept as
+        # defense-in-depth even though `append_after` should already
+        # guarantee this hook observes any failure raised by user hooks.
         if example.exception.nil? && (msg = CapybaraScreenshotDiff.pending_screenshots_message)
           skip(msg)
         end
