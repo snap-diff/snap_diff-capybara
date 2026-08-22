@@ -2,6 +2,8 @@
 
 This document describes the internal architecture of `capybara-screenshot-diff` — how screenshots are captured, compared, and reported, and how the components fit together.
 
+Since the v2 namespace move (ADR-004), the implementation lives in `lib/snap_diff/` under the `SnapDiff` namespace. The old file paths (`lib/capybara/screenshot/diff/`, `lib/capybara_screenshot_diff/`) remain as thin forwarders, and the old constants resolve to the same objects via `lib/snap_diff/legacy_shims.rb` with a one-time deprecation warning. Class names below use the canonical `SnapDiff::` names, with legacy names noted where they differ.
+
 ## Overview
 
 ```
@@ -31,7 +33,7 @@ This document describes the internal architecture of `capybara-screenshot-diff` 
       │
       ▼
 ┌──────────────────────────────────────────┐
-│  ImageCompare (layered comparison)       │
+│  SnapDiff::Comparison (layered compare)  │
 │  ┌──────────┐ ┌──────────┐ ┌──────────┐  │
 │  │1. Byte   │ │2. Pixel  │ │3. Region │  │
 │  │  compare │ │  compare │ │  analyze │  │
@@ -50,7 +52,9 @@ This document describes the internal architecture of `capybara-screenshot-diff` 
 
 ## Component Breakdown
 
-### 1. DSL Layer (`lib/capybara_screenshot_diff/dsl.rb`)
+### 1. DSL Layer (`lib/snap_diff/dsl.rb`)
+
+`SnapDiff::DSL` — `CapybaraScreenshotDiff::DSL` remains an eager same-object alias.
 
 The entry point for test code. `assert_matches_screenshot` is the primary assertion method (captures and compares). `screenshot` is a convenience wrapper with a `compare:` option — `compare: true` (default) delegates to `assert_matches_screenshot`, while `compare: false` delegates to the new `capture_screenshot` method. `capture_screenshot` takes screenshots without assertions. `assert_no_screenshot_changes` keeps its behavior but now delegates to `assert_matches_screenshot` (that redirect is part of the #191 fix). Users can safely override `screenshot` in their test classes without affecting internal gem flow.
 
@@ -60,20 +64,20 @@ The entry point for test code. `assert_matches_screenshot` is the primary assert
 3. Delegates to `ScreenshotMatcher` to capture and prepare comparison
 4. Creates a `ScreenshotAssertion` — either adds it to the thread-local registry (delayed validation) or validates immediately
 
-### 2. ScreenshotMatcher (`lib/capybara/screenshot/diff/screenshot_matcher.rb`)
+### 2. ScreenshotMatcher (`lib/snap_diff/screenshot_matcher.rb`)
 
 The orchestrator that coordinates capture and comparison:
 
-1. **Window size check** — verifies browser window is the expected size
+1. **Viewport preparation** — `SnapDiff::Capture::Viewport.prepare!` (`lib/snap_diff/capture/viewport.rb`) verifies the browser window is the expected size (raise-only, never resizes); runs once per capture, outside any stability retry loop
 2. **Area calculation** — resolves crop regions and skip areas (supports CSS selectors and coordinates)
 3. **Base screenshot checkout** — retrieves the committed baseline from git via `Vcs.checkout_vcs`
 4. **Capture** — delegates to `Screenshoter` or `StableScreenshoter` depending on `stability_time_limit`
-5. **Comparison** — creates an `ImageCompare` object (lazy — actual comparison happens on first access)
+5. **Comparison** — creates a `SnapDiff::Comparison` object (lazy — actual comparison happens on first access)
 6. **Assertion** — returns a `ScreenshotAssertion` with the comparison attached
 
 **Key design decision:** The "new" screenshot is taken *first*, then compared against the baseline. This means if no baseline exists (first run), we skip comparison entirely and the test passes.
 
-### 3. Screenshoter & StableScreenshoter (`lib/capybara/screenshot/diff/screenshoter.rb`, `lib/capybara/screenshot/diff/stable_screenshoter.rb`)
+### 3. Screenshoter & StableScreenshoter (`lib/snap_diff/screenshoter.rb`, `lib/snap_diff/stable_screenshoter.rb`)
 
 **Screenshoter:** The basic capture flow:
 1. Prepares the page (blur active element, hide caret, disable animations, wait for images)
@@ -86,7 +90,9 @@ The orchestrator that coordinates capture and comparison:
 3. Returns once two consecutive screenshots are identical
 4. Fails with `UnstableImage` if timeout (`wait`) is reached, generating annotated attempt images for debugging
 
-### 4. ImageCompare (`lib/capybara/screenshot/diff/image_compare.rb`)
+### 4. Comparison (`lib/snap_diff/comparison.rb`)
+
+`SnapDiff::Comparison` (legacy name: `ImageCompare`); its result value object is `SnapDiff::ComparisonResult` (`lib/snap_diff/comparison_result.rb`, legacy name: `Difference`).
 
 The comparison engine uses a **layered optimization strategy** to balance speed and accuracy:
 
@@ -100,11 +106,11 @@ The comparison engine uses a **layered optimization strategy** to balance speed 
 - `quick_equal?` is designed for fast rejection — it early-returns as soon as a difference is found
 - `different?` triggers the full comparison if not already processed
 - `processed` guarantees the comparison is complete and returns the result with all metadata
-- `ImageCompare#analyze_difference` handles the actual pixel analysis, delegating to the driver
+- `Comparison#analyze_difference` handles the actual pixel analysis, delegating to the driver
 
-### 5. Drivers (`lib/capybara/screenshot/diff/drivers/`)
+### 5. Drivers (`lib/snap_diff/drivers/`)
 
-Drivers abstract image processing operations. Each driver implements:
+Drivers abstract image processing operations. Shared default behavior lives in the `SnapDiff::Driver` mixin (`lib/snap_diff/driver.rb`) — it replaced the old `Drivers::BaseDriver` superclass, so concrete drivers `include SnapDiff::Driver` instead of inheriting. Each driver implements:
 
 | Operation | VipsDriver | ChunkyPNGDriver |
 |-----------|-----------|-----------------|
@@ -135,7 +141,7 @@ Drivers abstract image processing operations. Each driver implements:
 3. Extend bottom boundary to cover all differing rows
 4. Supports shift detection (expensive neighbor pixel search)
 
-### 7. SnapManager & Snap (`lib/capybara_screenshot_diff/snap_manager.rb`, `lib/capybara_screenshot_diff/snap.rb`)
+### 7. SnapManager & Snap (`lib/snap_diff/snap_manager.rb`, `lib/snap_diff/snap.rb`)
 
 **Snap** represents a single screenshot file with path management:
 - `path` — the actual screenshot file
@@ -148,11 +154,11 @@ Drivers abstract image processing operations. Each driver implements:
 - Handles VCS checkout of baselines
 - Manages file operations (copy, move, cleanup)
 
-### 8. VCS (`lib/capybara/screenshot/diff/vcs.rb`)
+### 8. VCS (`lib/snap_diff/vcs.rb`)
 
 Handles baseline retrieval from git. Uses `git show HEAD:<path>` to extract the committed version. Supports Git LFS via `git lfs smudge`. Returns `false` if the file doesn't exist in VCS (first-run scenario).
 
-### 9. Reporters (`lib/capybara/screenshot/diff/reporters/`)
+### 9. Reporters (`lib/capybara/screenshot/diff/reporters/default.rb`, `lib/snap_diff/reporters/html.rb`)
 
 **Default reporter:** Generates annotated diff images:
 - `image.diff.png` — new screenshot with diff region outlined in red
@@ -167,7 +173,7 @@ Handles baseline retrieval from git. Uses `git show HEAD:<path>` to extract the 
 - Keyboard navigation and shortcuts
 - Responsive layout for mobile
 
-**Custom reporters:** Implement `record(assertions)` and `finalize` methods, then add to `CapybaraScreenshotDiff.reporters`.
+**Custom reporters:** Implement `record(assertions)` and `finalize` methods, then add to `CapybaraScreenshotDiff.reporters`. The process-global reporter lifecycle (registration, notification, finalization) is owned by `SnapDiff::Reporting` (`lib/snap_diff/reporting.rb`); `CapybaraScreenshotDiff.reporters` / `.finalize_reporters!` are thin public shims over it.
 
 ### 10. Assertion Lifecycle
 
@@ -208,7 +214,7 @@ Test begins
 
 ### 12. Configuration System
 
-Configuration uses Ruby's `mattr_accessor` (from ActiveSupport, or pure Ruby fallback) and is organized into two namespaces:
+Configuration uses Ruby's `mattr_accessor` (pure Ruby implementation in `lib/capybara/screenshot/diff/config_legacy.rb`, deliberately kept at the old path as the single source of truth for settings storage) and is organized into two namespaces:
 
 **`Capybara::Screenshot`** — capture settings:
 - `window_size`, `stability_time_limit`, `blur_active_element`, `hide_caret`, `disable_animations`
@@ -219,49 +225,65 @@ Configuration uses Ruby's `mattr_accessor` (from ActiveSupport, or pure Ruby fal
 - `driver`, `tolerance`, `color_distance_limit`, `perceptual_threshold`, `shift_distance_limit`
 - `area_size_limit`, `skip_area`, `fail_if_new`, `fail_on_difference`, `delayed`
 
-The `Diff.configure` block helper provides a convenient way to set both namespaces at once.
+The `Diff.configure` block helper provides a convenient way to set both namespaces at once. Since v2, `SnapDiff::Config` (`lib/snap_diff/config.rb`) additionally exposes all 27 settings as one flat object via `SnapDiff.config` / `SnapDiff.configure { |config| ... }` — it holds no state of its own, every accessor forwards to the legacy `mattr_accessor` storage, so both views stay consistent.
 
 ## File Layout
 
 ```
 lib/
-  capybara_screenshot_diff.rb                  # Core module, mattr_accessor definitions
-  capybara/screenshot/diff.rb                  # Convenience require (loads minitest)
-  capybara_screenshot_diff/
+  snap_diff.rb                                 # SnapDiff module: compare/start/configure/config
+  snap_diff/                                   # Canonical implementation (v2)
     dsl.rb                                     # screenshot(), screenshot_group(), etc.
-    minitest.rb                                # Minitest assertions integration
-    rspec.rb                                   # RSpec matcher integration
-    cucumber.rb                                # Cucumber World integration
-    static.rb                                  # Non-Rails static site serving
-    snap_manager.rb                            # Screenshot file management
-    snap.rb                                    # Single screenshot file abstraction
-    screenshot_namer.rb                        # Name/path generation with sections/groups
-    screenshot_assertion.rb                    # Assertion + registry objects
-    attempts_reporter.rb                       # Debug reporting for unstable captures
-    error_with_filtered_backtrace.rb           # Error with filtered stack
-    reporters/
-      html.rb                                  # Interactive HTML report reporter
-      templates/report.html.erb                # HTML report template
-  capybara/screenshot/diff/
-    version.rb                                 # VERSION constant
-    utils.rb                                   # Driver detection
+    config.rb                                  # SnapDiff::Config — flat view over all 27 settings
+    deprecation.rb                             # Warn-once-per-constant machinery
+    legacy_shims.rb                            # const_missing forwarders for the old namespaces
+    comparison.rb                              # Layered comparison engine (ex-ImageCompare)
+    comparison_result.rb                       # Comparison result value object (ex-Difference)
+    driver.rb                                  # SnapDiff::Driver mixin (ex-BaseDriver superclass)
     drivers.rb                                 # Driver factory
     drivers/
-      base_driver.rb                           # Abstract base driver
       vips_driver.rb                           # VIPS image processing
       chunky_png_driver.rb                     # ChunkyPNG image processing
+    capture/
+      viewport.rb                              # Per-capture viewport preparation seam
     screenshoter.rb                            # Basic browser screenshot capture
     stable_screenshoter.rb                     # Stability detection wrapper
     screenshot_matcher.rb                      # Orchestrator for capture + compare
-    image_compare.rb                           # Layered comparison engine
-    difference.rb                              # Difference result value object
+    screenshot_assertion.rb                    # Assertion + registry objects
+    screenshot_namer.rb                        # Name/path generation with sections/groups
+    snap_manager.rb                            # Screenshot file management
+    snap.rb                                    # Single screenshot file abstraction
+    reporting.rb                               # Process-global reporter lifecycle
+    reporters/
+      html.rb                                  # Interactive HTML report reporter
+      templates/report.html.erb                # HTML report template
+    annotation_service.rb                      # Diff-image annotation (RED_RGBA / ORANGE_RGBA)
     image_preprocessor.rb                      # Pre-processing (skip areas, median filter)
     area_calculator.rb                         # Crop/skip area coordinate resolution
-    region.rb                                  # Bounding box region value object
     browser_helpers.rb                         # DOM manipulation helpers
+    attempts_reporter.rb                       # Debug reporting for unstable captures
+    error_with_filtered_backtrace.rb           # Error with filtered stack
     vcs.rb                                     # Git baseline checkout
+    utils.rb                                   # Driver detection
     os.rb                                      # OS detection
-    cucumber.rb                                # Deprecated Cucumber entry point
-    reporters/
-      default.rb                               # Default annotated-image reporter
+    static.rb                                  # Non-Rails static site serving
+    version.rb                                 # Gem version
+    integrations/
+      minitest.rb                              # Minitest assertions integration
+      rspec.rb                                 # RSpec matcher integration
+      cucumber.rb                              # Cucumber World integration
+  capybara_screenshot_diff.rb                  # Umbrella entry point + error classes
+  capybara_screenshot_diff/                    # Legacy paths — mostly thin forwarders
+    minitest.rb / rspec.rb / cucumber.rb       # Legacy entry points (load the full gem)
+    screenshot_assertion.rb                    # CapybaraScreenshotDiff session/reporter shims
+    ...                                        # Everything else forwards to snap_diff/
+  capybara/screenshot/diff.rb                  # Convenience require (loads minitest)
+  capybara/screenshot/diff/
+    config_legacy.rb                           # mattr_accessor settings storage (source of truth)
+    region.rb                                  # Bounding box region value object (top-level Region)
+    reporters/default.rb                       # Default annotated-image reporter
+    version.rb                                 # Capybara::Screenshot::Diff::VERSION (gemspec reads it)
+    ...                                        # Everything else forwards to snap_diff/
 ```
+
+The legacy `Capybara::Screenshot::Diff::*` and `CapybaraScreenshotDiff::*` constants resolve lazily via `snap_diff/legacy_shims.rb` (`const_missing`), pointing at the same objects with a one-time deprecation warning. See [UPGRADING.md](UPGRADING.md) for the migration guide.

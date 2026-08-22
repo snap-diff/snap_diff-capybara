@@ -1,5 +1,232 @@
 # Upgrading
 
+## Upgrading to v2.0 (alpha)
+
+### Overview
+
+Version 2.0 introduces a new canonical namespace (`SnapDiff`) for cleaner, more discoverable code. The public DSL remains unchanged — your existing `screenshot` and `assert_matches_screenshot` calls work without modification. This guide covers the optional migration path for settings and the new namespace.
+
+**Status:** `2.0.0.alpha1` is an opt-in prerelease. RubyGems never installs prereleases by default resolution — normal `bundle update` keeps you on the 1.x line. The final 2.0.0 ships only after adopter feedback; please report anything surprising on [#166](https://github.com/snap-diff/snap_diff-capybara/issues/166).
+
+**Estimated upgrade time:** 5–15 minutes (most users need only the Gemfile pin)
+
+**Breaking changes:** None for the DSL; deprecation warnings if you reference legacy constants (suppressible), plus two known alpha caveats (see below)
+
+---
+
+### The Short Version (Most Users)
+
+```ruby
+# In your Gemfile — the exact prerelease version is required to opt in
+gem "capybara-screenshot-diff", "2.0.0.alpha1"
+```
+
+```bash
+bundle install
+bundle exec rake test
+```
+
+**That's it.** Your existing code works unchanged. The old namespaces (`Capybara::Screenshot::Diff`, `CapybaraScreenshotDiff`) are shimmed with deprecation warnings; the new one (`SnapDiff`) is available if you want to modernize.
+
+---
+
+### What Changed
+
+#### 1. New Canonical Namespace: `SnapDiff`
+
+The implementation now lives in `lib/snap_diff/` under the `SnapDiff` namespace. Every legacy constant still resolves — lazily, to the *same object* — but emits a one-time-per-constant deprecation warning. The main renames:
+
+| Legacy name | v2 canonical name |
+|-------------|-------------------|
+| `Capybara::Screenshot::Diff::ImageCompare` | `SnapDiff::Comparison` |
+| `Capybara::Screenshot::Diff::Difference` | `SnapDiff::ComparisonResult` |
+| `Capybara::Screenshot::Diff::Drivers::BaseDriver` | `SnapDiff::Driver` (now a mixin — see below) |
+| `CapybaraScreenshotDiff::SnapManager` / `::Snap` | `SnapDiff::SnapManager` / `SnapDiff::Snap` |
+| `CapybaraScreenshotDiff::RED_RGBA` / `::ORANGE_RGBA` | `SnapDiff::RED_RGBA` / `SnapDiff::ORANGE_RGBA` |
+
+**What stays the same:**
+- `screenshot(name)` — still works
+- `assert_matches_screenshot(name)` — still works, still the recommended form
+- `capture_screenshot(name)` — still works
+- All `compare: false/true` flags and overrides work identically
+
+**What's new (optional):**
+
+```ruby
+# Old (still works; constant access now warns once per process)
+Capybara::Screenshot::Diff.compare("baseline.png", "current.png")
+Capybara::Screenshot::Diff.configure { |screenshot, diff| ... }
+
+# New (recommended for new code)
+SnapDiff.compare("baseline.png", "current.png")
+SnapDiff.start { |screenshot, diff| ... }         # same shape as old configure
+SnapDiff.configure { |config| ... }               # consolidated config object
+```
+
+#### 2. Consolidated Configuration: `SnapDiff.config`
+
+Instead of scattering settings across `Capybara::Screenshot` and `Capybara::Screenshot::Diff`, v2.0 offers a single `SnapDiff::Config` object. Both the old and new paths read and write the same underlying storage — writes through either are visible through the other.
+
+**The DSL never changes.** `screenshot` and `assert_matches_screenshot` work exactly as before.
+
+---
+
+### Settings Migration Table
+
+The most commonly-used settings and how to update them:
+
+| Setting | v1.x (still works in v2) | v2.0 (recommended) | What it does |
+|---------|----------------------|------------------|------|
+| `blur_active_element` | `Capybara::Screenshot.blur_active_element = true` | `SnapDiff.config.blur_active_element = true` | Hide cursor/focus indicator in screenshots (default: `true`) |
+| `hide_caret` | `Capybara::Screenshot.hide_caret = true` | `SnapDiff.config.hide_caret = true` | Make input caret transparent for stable comparisons (default: `true`) |
+| `tolerance` | `Capybara::Screenshot::Diff.tolerance = 0.0005` | `SnapDiff.config.tolerance = 0.0005` | Pixel-level color difference threshold (higher = less strict) |
+| `save_path` | `Capybara::Screenshot.save_path = "doc/screenshots"` | `SnapDiff.config.save_path = "doc/screenshots"` | Where baseline screenshots are stored |
+| `window_size` | `Capybara::Screenshot.window_size = [1280, 1024]` | `SnapDiff.config.window_size = [1280, 1024]` | Browser viewport size for consistent screenshots |
+
+**All 27 settings** from both legacy namespaces are available via `SnapDiff.config.<attr_name>` — see the [Configuration Reference](configuration.md) for the full list. One rename to note: `Capybara::Screenshot.enabled` becomes `SnapDiff.config.screenshot_enabled` (it would otherwise collide with `Capybara::Screenshot::Diff.enabled`, which keeps the bare `enabled` name).
+
+---
+
+### Three Ways to Configure
+
+All three are equivalent and use the same underlying storage. Pick the one that fits your style.
+
+#### Option 1: Traditional block (v1 shape, still works)
+
+```ruby
+# In test_helper.rb or spec_helper.rb
+Capybara::Screenshot::Diff.configure do |screenshot, diff|
+  screenshot.window_size = [1280, 1024]
+  screenshot.blur_active_element = false
+  diff.tolerance = 0.0005
+  diff.driver = :vips
+end
+```
+
+#### Option 2: SnapDiff block with old shape (backward-compatible)
+
+```ruby
+SnapDiff.start do |screenshot, diff|
+  screenshot.window_size = [1280, 1024]
+  screenshot.blur_active_element = false
+  diff.tolerance = 0.0005
+  diff.driver = :vips
+end
+```
+
+#### Option 3: Consolidated config (cleanest)
+
+```ruby
+SnapDiff.configure do |config|
+  config.window_size = [1280, 1024]
+  config.blur_active_element = false
+  config.tolerance = 0.0005
+  config.driver = :vips
+end
+```
+
+---
+
+### Prepare Today on v1.x (Zero Risk)
+
+You don't have to wait for v2.0 to start using the new namespace. `SnapDiff.compare` and `SnapDiff.start` were added in v1.14; `SnapDiff.config` / `SnapDiff.configure` in v1.15. All of them work on the current 1.x line:
+
+```ruby
+# Works TODAY on v1.15+, zero risk
+SnapDiff.compare("baseline.png", "current.png")
+SnapDiff.start { |screenshot, diff| ... }
+SnapDiff.configure { |config| ... }
+```
+
+This means you can migrate your codebase incrementally **now**, before opting into 2.0.
+
+---
+
+### Deprecation Warnings
+
+In v2.0, resolving a legacy *constant* emits one deprecation warning per constant per process:
+
+```
+[snap_diff deprecation] `Capybara::Screenshot::Diff::ImageCompare` is deprecated (constant); use `SnapDiff::Comparison` instead.
+```
+
+**Warnings appear for:** legacy constant access — `Capybara::Screenshot::Diff::ImageCompare`, `::Difference`, `::Drivers`, `CapybaraScreenshotDiff::SnapManager`, etc.
+
+**Warnings do NOT appear for:**
+- Requiring the gem: `require "capybara_screenshot_diff/minitest"` etc. is not deprecated
+- The DSL: `screenshot`, `assert_matches_screenshot`, `capture_screenshot` are never deprecated
+- Settings access: `Capybara::Screenshot.blur_active_element`, `Capybara::Screenshot::Diff.tolerance=`, and the `Diff.configure` block stay silent — they remain the canonical storage that `SnapDiff.config` forwards to
+- A few advertised entry-point constants that stay eagerly defined by design: `Capybara::Screenshot::Os`, `CapybaraScreenshotDiff::DSL`, `Capybara::Screenshot::Diff::VERSION`, and the driver leaf classes (`Drivers::VipsDriver`, `Drivers::ChunkyPNGDriver`)
+
+Warnings go through `Kernel#warn`, so test suites that hook `Warning.warn` (e.g. raise-on-warning setups) see them like any other Ruby warning.
+
+#### Silencing Warnings
+
+If warnings appear in a test run and you're not ready to migrate yet:
+
+```ruby
+# In test_helper.rb, before running tests
+SnapDiff.silence_deprecations = true
+```
+
+```bash
+# Or as an environment variable
+export SNAP_DIFF_SILENCE_DEPRECATIONS=1
+```
+
+---
+
+### Known Alpha Caveats
+
+Two deliberate consequences of the lazy shim design — both flagged for feedback on [#166](https://github.com/snap-diff/snap_diff-capybara/issues/166):
+
+1. **`defined?` / `const_defined?` on lazily-shimmed legacy names returns `false`/`nil`.** The shims resolve via `const_missing`, which those checks never trigger. Feature detection like `defined?(Capybara::Screenshot::Diff::ImageCompare)` must move to the `SnapDiff::` name. Rescuing legacy *error classes* is unaffected — they remain eagerly defined.
+
+2. **Reopening `module Capybara::Screenshot::Diff::Drivers` shadows the shim.** The historical custom-driver monkey-patch pattern defines a fresh, empty `Drivers` module instead of reaching the real one. Define custom drivers under `SnapDiff::Drivers` instead — and note `BaseDriver` is gone as a superclass: `class MyDriver < BaseDriver` becomes `include SnapDiff::Driver` (it's a mixin now).
+
+---
+
+### FAQ
+
+#### "My tests pass but I see warnings. Should I worry?"
+
+No. Warnings are informational and fully suppressible. They're designed to catch legacy namespace references, not break existing CI. If silence is preferable for now, set `SNAP_DIFF_SILENCE_DEPRECATIONS=1` and migrate at your pace.
+
+#### "Does the DSL change at all?"
+
+No. `screenshot`, `assert_matches_screenshot`, and `capture_screenshot` are stable and unchanged. All overrides (`:compare`, `:tolerance`, etc.) work identically.
+
+#### "Can I mix old and new config in the same suite?"
+
+Yes. Both paths write to the same underlying storage:
+
+```ruby
+Capybara::Screenshot::Diff.configure do |screenshot, diff|
+  screenshot.window_size = [1280, 1024]
+end
+
+SnapDiff.configure do |config|
+  config.tolerance = 0.0005  # Same storage, visible to the old path too
+end
+```
+
+#### "What if I need to roll back?"
+
+All settings and baselines are compatible with v1.x. Simply pin your Gemfile back to `"~> 1.15"` and `bundle update capybara-screenshot-diff`.
+
+---
+
+### Summary Checklist
+
+- [ ] Pin `gem "capybara-screenshot-diff", "2.0.0.alpha1"` in your Gemfile
+- [ ] Run `bundle install`
+- [ ] Run your test suite to verify no regressions
+- [ ] (Optional) Migrate config to the `SnapDiff` namespace
+- [ ] (Optional) Silence deprecation warnings if not ready to migrate
+- [ ] Report anything surprising on [#166](https://github.com/snap-diff/snap_diff-capybara/issues/166)
+
+---
+
 ## Upgrading to v1.13.0
 
 ### Overview
