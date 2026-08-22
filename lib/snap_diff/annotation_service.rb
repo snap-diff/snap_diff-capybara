@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-module Capybara::Screenshot::Diff
+module SnapDiff
   # Draws diff/skip-area rectangles and the heatmap overlay for a Difference,
   # and saves the resulting images to their `.diff.*` / `.heatmap.diff.*` paths.
   #

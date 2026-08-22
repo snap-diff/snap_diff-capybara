@@ -3,127 +3,125 @@
 require_relative "os"
 require_relative "browser_helpers"
 
-module Capybara
-  module Screenshot
-    class Screenshoter
-      attr_reader :capture_options, :driver
+module SnapDiff
+  class Screenshoter
+    attr_reader :capture_options, :driver
 
-      # @param capture_options [Hash] Options for capturing (window_size, wait, etc.)
-      # @param comparison_options [Hash] Options for image comparison (driver, tolerance, etc.)
-      def initialize(capture_options, comparison_options = {})
-        @capture_options = capture_options
-        @driver = Diff::Drivers.for(comparison_options)
+    # @param capture_options [Hash] Options for capturing (window_size, wait, etc.)
+    # @param comparison_options [Hash] Options for image comparison (driver, tolerance, etc.)
+    def initialize(capture_options, comparison_options = {})
+      @capture_options = capture_options
+      @driver = Capybara::Screenshot::Diff::Drivers.for(comparison_options)
+    end
+
+    def crop
+      @capture_options[:crop]
+    end
+
+    def wait
+      @capture_options[:wait]
+    end
+
+    def capybara_screenshot_options
+      @capture_options[:capybara_screenshot_options] || {}
+    end
+
+    # Try to get screenshot from browser.
+    # On `stability_time_limit` it checks that page stop updating by comparison several screenshot attempts
+    # On reaching `wait` limit then it has been failed. On failing we annotate screenshot attempts to help to debug
+    def take_comparison_screenshot(snapshot)
+      capture_screenshot_at(snapshot)
+      snapshot.cleanup_attempts!
+    end
+
+    PNG_EXTENSION = ".png"
+
+    def take_screenshot(screenshot_path)
+      blurred_input = prepare_page_for_screenshot(timeout: wait)
+
+      # Take browser screenshot and save
+      save_and_process_screenshot(screenshot_path)
+
+      blurred_input&.click
+    end
+
+    def process_screenshot(stored_path, screenshot_path)
+      screenshot_image = driver.from_file(stored_path)
+
+      # TODO(uwe): Remove when chromedriver takes right size screenshots
+      # TODO: Adds tests when this case is true
+      screenshot_image = resize_if_needed(screenshot_image) if selenium_with_retina_screen?
+      # ODOT
+
+      screenshot_image = driver.crop(crop, screenshot_image) if crop
+
+      driver.save_image_to(screenshot_image, screenshot_path)
+    end
+
+    def notice_how_to_avoid_this
+      unless defined?(@_csd_retina_warned)
+        warn "Halving retina screenshot.  " \
+               'You should add "force-device-scale-factor=1" to your Chrome chromeOptions args.'
+        @_csd_retina_warned = true
       end
+    end
 
-      def crop
-        @capture_options[:crop]
-      end
+    def prepare_page_for_screenshot(timeout:)
+      wait_images_loaded(timeout: timeout) if timeout
 
-      def wait
-        @capture_options[:wait]
-      end
+      blurred_input = BrowserHelpers.blur_from_focused_element if Capybara::Screenshot.blur_active_element
 
-      def capybara_screenshot_options
-        @capture_options[:capybara_screenshot_options] || {}
-      end
+      BrowserHelpers.hide_caret if Capybara::Screenshot.hide_caret
+      BrowserHelpers.disable_animations if Capybara::Screenshot.disable_animations
 
-      # Try to get screenshot from browser.
-      # On `stability_time_limit` it checks that page stop updating by comparison several screenshot attempts
-      # On reaching `wait` limit then it has been failed. On failing we annotate screenshot attempts to help to debug
-      def take_comparison_screenshot(snapshot)
-        capture_screenshot_at(snapshot)
-        snapshot.cleanup_attempts!
-      end
+      blurred_input
+    end
 
-      PNG_EXTENSION = ".png"
+    def wait_images_loaded(timeout:)
+      return unless timeout
 
-      def take_screenshot(screenshot_path)
-        blurred_input = prepare_page_for_screenshot(timeout: wait)
+      deadline_at = Process.clock_gettime(Process::CLOCK_MONOTONIC) + timeout
+      loop do
+        pending_image = BrowserHelpers.pending_image_to_load
+        break unless pending_image
 
-        # Take browser screenshot and save
-        save_and_process_screenshot(screenshot_path)
-
-        blurred_input&.click
-      end
-
-      def process_screenshot(stored_path, screenshot_path)
-        screenshot_image = driver.from_file(stored_path)
-
-        # TODO(uwe): Remove when chromedriver takes right size screenshots
-        # TODO: Adds tests when this case is true
-        screenshot_image = resize_if_needed(screenshot_image) if selenium_with_retina_screen?
-        # ODOT
-
-        screenshot_image = driver.crop(crop, screenshot_image) if crop
-
-        driver.save_image_to(screenshot_image, screenshot_path)
-      end
-
-      def notice_how_to_avoid_this
-        unless defined?(@_csd_retina_warned)
-          warn "Halving retina screenshot.  " \
-                 'You should add "force-device-scale-factor=1" to your Chrome chromeOptions args.'
-          @_csd_retina_warned = true
+        if Process.clock_gettime(Process::CLOCK_MONOTONIC) > deadline_at
+          raise CapybaraScreenshotDiff::ExpectationNotMet.new("Images have not been loaded after #{timeout}s: #{pending_image.inspect}", caller)
         end
+
+        sleep 0.025
       end
+    end
 
-      def prepare_page_for_screenshot(timeout:)
-        wait_images_loaded(timeout: timeout) if timeout
+    private
 
-        blurred_input = BrowserHelpers.blur_from_focused_element if Screenshot.blur_active_element
+    def save_and_process_screenshot(screenshot_path)
+      tmpfile = Tempfile.new([screenshot_path.basename.to_s, PNG_EXTENSION])
+      BrowserHelpers.session.save_screenshot(tmpfile.path, **capybara_screenshot_options)
+      # Load saved screenshot and pre-process it
+      process_screenshot(tmpfile.path, screenshot_path)
+    ensure
+      tmpfile&.close!
+    end
 
-        BrowserHelpers.hide_caret if Screenshot.hide_caret
-        BrowserHelpers.disable_animations if Screenshot.disable_animations
+    def capture_screenshot_at(snapshot)
+      take_screenshot(snapshot.next_attempt_path!)
 
-        blurred_input
-      end
+      snapshot.commit_last_attempt
+    end
 
-      def wait_images_loaded(timeout:)
-        return unless timeout
+    def resize_if_needed(saved_image)
+      expected_image_width = Capybara::Screenshot.window_size[0]
+      return saved_image if driver.width_for(saved_image) < expected_image_width * 2
 
-        deadline_at = Process.clock_gettime(Process::CLOCK_MONOTONIC) + timeout
-        loop do
-          pending_image = BrowserHelpers.pending_image_to_load
-          break unless pending_image
+      notice_how_to_avoid_this
 
-          if Process.clock_gettime(Process::CLOCK_MONOTONIC) > deadline_at
-            raise CapybaraScreenshotDiff::ExpectationNotMet.new("Images have not been loaded after #{timeout}s: #{pending_image.inspect}", caller)
-          end
+      new_height = expected_image_width * driver.height_for(saved_image) / driver.width_for(saved_image)
+      driver.resize_image_to(saved_image, expected_image_width, new_height)
+    end
 
-          sleep 0.025
-        end
-      end
-
-      private
-
-      def save_and_process_screenshot(screenshot_path)
-        tmpfile = Tempfile.new([screenshot_path.basename.to_s, PNG_EXTENSION])
-        BrowserHelpers.session.save_screenshot(tmpfile.path, **capybara_screenshot_options)
-        # Load saved screenshot and pre-process it
-        process_screenshot(tmpfile.path, screenshot_path)
-      ensure
-        tmpfile&.close!
-      end
-
-      def capture_screenshot_at(snapshot)
-        take_screenshot(snapshot.next_attempt_path!)
-
-        snapshot.commit_last_attempt
-      end
-
-      def resize_if_needed(saved_image)
-        expected_image_width = Screenshot.window_size[0]
-        return saved_image if driver.width_for(saved_image) < expected_image_width * 2
-
-        notice_how_to_avoid_this
-
-        new_height = expected_image_width * driver.height_for(saved_image) / driver.width_for(saved_image)
-        driver.resize_image_to(saved_image, expected_image_width, new_height)
-      end
-
-      def selenium_with_retina_screen?
-        Os::ON_MAC && BrowserHelpers.selenium? && Screenshot.window_size
-      end
+    def selenium_with_retina_screen?
+      Os::ON_MAC && BrowserHelpers.selenium? && Capybara::Screenshot.window_size
     end
   end
 end
