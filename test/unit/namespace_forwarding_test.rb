@@ -51,6 +51,7 @@ class NamespaceForwardingTest < ActiveSupport::TestCase
     "Capybara::Screenshot::Diff::Drivers::VipsDriver" => "SnapDiff::Drivers::VipsDriver",
     "Capybara::Screenshot::Diff::Reporters::Default" => "SnapDiff::Reporters::Default",
     "Capybara::Screenshot::Diff::ImageCompare" => "SnapDiff::Comparison",
+    "Capybara::Screenshot::Diff::Comparison" => "SnapDiff::Comparison::Images",
     "Capybara::Screenshot::Diff::Difference" => "SnapDiff::ComparisonResult",
     "CapybaraScreenshotDiff::RED_RGBA" => "SnapDiff::RED_RGBA",
     "CapybaraScreenshotDiff::ORANGE_RGBA" => "SnapDiff::ORANGE_RGBA"
@@ -107,7 +108,7 @@ class NamespaceForwardingTest < ActiveSupport::TestCase
     end
   end
 
-  test "MAPPING covers all 30 documented forwarders" do
-    assert_equal 30, MAPPING.size
+  test "MAPPING covers all 31 documented forwarders" do
+    assert_equal 31, MAPPING.size
   end
 end

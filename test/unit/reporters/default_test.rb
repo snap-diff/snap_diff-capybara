@@ -47,7 +47,7 @@ module Capybara::Screenshot::Diff
       new_image = driver.from_file(TEST_IMAGES_DIR.join(images.first))
       base_image = driver.from_file(TEST_IMAGES_DIR.join(images.last))
 
-      Comparison.new(new_image, base_image, {}, driver, @_tmpdir / images.first, @_tmpdir / images.last)
+      SnapDiff::Comparison::Images.new(new_image, base_image, {}, driver, @_tmpdir / images.first, @_tmpdir / images.last)
     end
   end
 end

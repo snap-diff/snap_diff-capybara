@@ -73,6 +73,7 @@ SnapDiff::LegacyShims.install(Capybara::Screenshot::Diff, "Capybara::Screenshot:
   ScreenshotMatcher: "SnapDiff::ScreenshotMatcher",
   Drivers: "SnapDiff::Drivers",
   ImageCompare: "SnapDiff::Comparison",
+  Comparison: "SnapDiff::Comparison::Images",
   Difference: "SnapDiff::ComparisonResult"
 }.freeze)
 

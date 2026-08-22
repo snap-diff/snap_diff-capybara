@@ -103,7 +103,7 @@ module DriverContractTests
     test "[contract] #same_dimension? returns true when images share dimensions" do
       driver = make_comparison(:a, :a).driver
       old_image, new_image = driver.load_images(TEST_IMAGES_DIR / "a.png", TEST_IMAGES_DIR / "b.png")
-      comparison = Capybara::Screenshot::Diff::Comparison.new(new_image, old_image, {}, driver)
+      comparison = SnapDiff::Comparison::Images.new(new_image, old_image, {}, driver)
 
       assert driver.same_dimension?(comparison)
     end
@@ -111,7 +111,7 @@ module DriverContractTests
     test "[contract] #same_dimension? returns false when images differ in dimensions" do
       driver = make_comparison(:a, :a).driver
       old_image, new_image = driver.load_images(TEST_IMAGES_DIR / "a.png", TEST_IMAGES_DIR / "a_cropped.png")
-      comparison = Capybara::Screenshot::Diff::Comparison.new(new_image, old_image, {}, driver)
+      comparison = SnapDiff::Comparison::Images.new(new_image, old_image, {}, driver)
 
       assert_not driver.same_dimension?(comparison)
     end
@@ -130,11 +130,11 @@ module DriverContractTests
       driver = make_comparison(:a, :a).driver
 
       old_image, new_image = driver.load_images(TEST_IMAGES_DIR / "a.png", TEST_IMAGES_DIR / "a.png")
-      same_comparison = Capybara::Screenshot::Diff::Comparison.new(new_image, old_image, {}, driver)
+      same_comparison = SnapDiff::Comparison::Images.new(new_image, old_image, {}, driver)
       assert driver.same_pixels?(same_comparison)
 
       other_old_image, other_new_image = driver.load_images(TEST_IMAGES_DIR / "a.png", TEST_IMAGES_DIR / "c.png")
-      different_comparison = Capybara::Screenshot::Diff::Comparison.new(other_new_image, other_old_image, {}, driver)
+      different_comparison = SnapDiff::Comparison::Images.new(other_new_image, other_old_image, {}, driver)
       assert_not driver.same_pixels?(different_comparison)
     end
 
