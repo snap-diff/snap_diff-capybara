@@ -34,7 +34,7 @@ module SnapDiff
     #
     # @param snapshot Snap The snapshot details to take a stable screenshot of.
     # @return [void]
-    # @raise [CapybaraScreenshotDiff::UnstableImage] If a stable screenshot cannot be obtained within the specified `:wait` time.
+    # @raise [SnapDiff::UnstableImage] If a stable screenshot cannot be obtained within the specified `:wait` time.
     def take_comparison_screenshot(snapshot)
       result = take_stable_screenshot(snapshot)
 
@@ -43,7 +43,7 @@ module SnapDiff
         # The failed-stability outcome is data (the annotated attempts report); raising is this
         # boundary's decision, not the reporter's.
         # FIXME(uwe): Hand the failure to the verify path so it only reports after the test's own assertions run.
-        raise CapybaraScreenshotDiff::UnstableImage.new(stability_failure_report(snapshot), caller)
+        raise SnapDiff::UnstableImage.new(stability_failure_report(snapshot), caller)
       end
 
       # store success attempt as actual screenshot

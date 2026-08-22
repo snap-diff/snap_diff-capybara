@@ -22,19 +22,25 @@ require "capybara/screenshot/diff/screenshot_matcher"
 require "capybara/screenshot/diff/reporters/default"
 
 require "capybara_screenshot_diff/error_with_filtered_backtrace"
+require "snap_diff/errors"
 
 module CapybaraScreenshotDiff
   # RED_RGBA / ORANGE_RGBA moved to SnapDiff (snap_diff/annotation_service)
   # so the bare "snap_diff" entry gets them too; the old names resolve via
   # snap_diff/legacy_shims with a deprecation warning.
 
-  class CapybaraScreenshotDiffError < SnapDiff::ErrorWithFilteredBacktrace; end
+  # ADR-008 step 2: the error classes moved to SnapDiff (snap_diff/errors).
+  # These are EAGER same-object aliases -- deliberately not const_missing
+  # shims -- so rescue-by-old-name and defined?/const_defined? feature
+  # detection keep working exactly as before (const_defined? never
+  # triggers const_missing).
+  CapybaraScreenshotDiffError = SnapDiff::Error
 
-  class ExpectationNotMet < CapybaraScreenshotDiffError; end
+  ExpectationNotMet = SnapDiff::ExpectationNotMet
 
-  class UnstableImage < CapybaraScreenshotDiffError; end
+  UnstableImage = SnapDiff::UnstableImage
 
-  class WindowSizeMismatchError < SnapDiff::ErrorWithFilteredBacktrace; end
+  WindowSizeMismatchError = SnapDiff::WindowSizeMismatchError
 end
 
 require "capybara_screenshot_diff/dsl"

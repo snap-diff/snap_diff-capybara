@@ -68,7 +68,7 @@ module SnapDiff
       @snapshot.checkout_base_screenshot
 
       if Capybara::Screenshot::Diff.fail_if_new && !@snapshot.base_path.exist?
-        raise CapybaraScreenshotDiff::ExpectationNotMet.new(<<~ERROR.chomp, caller)
+        raise SnapDiff::ExpectationNotMet.new(<<~ERROR.chomp, caller)
           No existing screenshot found for #{@snapshot.base_path}!
           To record baselines: RECORD_SCREENSHOTS=1 bundle exec rake test
           To allow new screenshots: Capybara::Screenshot::Diff.fail_if_new = false

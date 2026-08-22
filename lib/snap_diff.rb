@@ -38,6 +38,7 @@ SnapDiff.assert_single_gem!
 require "capybara/dsl"
 require "capybara/screenshot/diff/config_legacy"
 require "capybara/screenshot/diff/image_compare"
+require "snap_diff/errors"
 require "snap_diff/config"
 
 # Forward-looking namespace for the gem, per ADR-004.

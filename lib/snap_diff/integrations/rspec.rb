@@ -56,7 +56,7 @@ RSpec.configure do |config|
         if example.exception.nil? && (msg = CapybaraScreenshotDiff.pending_screenshots_message)
           skip(msg)
         end
-      rescue CapybaraScreenshotDiff::ExpectationNotMet => e
+      rescue SnapDiff::ExpectationNotMet => e
         raise RSpec::Expectations::ExpectationNotMetError.new(e.message).tap { |ex| ex.set_backtrace(e.backtrace) }
       ensure
         CapybaraScreenshotDiff.reset

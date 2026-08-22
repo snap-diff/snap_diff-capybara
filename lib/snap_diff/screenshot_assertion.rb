@@ -52,7 +52,7 @@ module SnapDiff
       error_msg = validate
 
       if error_msg
-        raise CapybaraScreenshotDiff::ExpectationNotMet.new(error_msg, caller)
+        raise SnapDiff::ExpectationNotMet.new(error_msg, caller)
       end
     end
 
@@ -126,7 +126,7 @@ module SnapDiff
       result = ScreenshotAssertion.verify_screenshots!(screenshots)
 
       if result
-        raise CapybaraScreenshotDiff::ExpectationNotMet.new(result.join("\n\n"), failed_screenshot.caller)
+        raise SnapDiff::ExpectationNotMet.new(result.join("\n\n"), failed_screenshot.caller)
       end
     end
 
