@@ -1,46 +1,27 @@
 # frozen_string_literal: true
 
-# Legacy Capybara::Screenshot / Capybara::Screenshot::Diff mattr_accessor
-# config module, extracted out of capybara_screenshot_diff.rb so it is a
-# leaf: it can be required by both capybara_screenshot_diff.rb (the old
-# umbrella entry point) and snap_diff.rb (the canonical entry point)
-# without either of *those* requiring the other back.
+# Legacy Capybara::Screenshot / Capybara::Screenshot::Diff config surface.
 #
-# Why this file has to exist at all: several lib/snap_diff/* units
-# (Screenshoter, SnapManager, Utils) are referenced here at class-body
-# eval time (mattr_accessor default blocks, AVAILABLE_DRIVERS) rather
-# than at call time, so they must be real, already-loaded classes before
-# this module body runs. Since v2 step 6 they are pulled in and referenced
-# under their canonical SnapDiff names: the old-name aliases are lazy
-# const_missing shims that emit deprecation warnings, and the gem's own
-# code must stay warning-free. Everything else this module references
-# (Os, Comparison) is referenced only inside method bodies, resolved
-# lazily at call time by whichever entry point loaded them.
-require "snap_diff/screenshoter"
-require "snap_diff/snap_manager"
+# Since ADR-008 step 1 the storage lives in SnapDiff::Config -- the require
+# leaf of the config graph (see its own header) -- and this file installs
+# the old accessor names as thin delegators onto SnapDiff.config, generated
+# from SnapDiff::Config::MAPPING. The v1 write surface
+# (Capybara::Screenshot.window_size = ..., Diff.configure { ... }) keeps
+# working unchanged: one storage, two views.
+#
+# Load order: requiring snap_diff/config first also eagerly evaluates the
+# require-time defaults (ENV["CI"] for fail_if_new, Rails.root/pwd for
+# root) at this same load moment, exactly when the old mattr_accessor
+# default blocks used to run. snap_diff/config never requires back here,
+# so the graph stays acyclic.
+require "snap_diff/config"
+# AVAILABLE_DRIVERS below is evaluated at class-body eval time, so Utils
+# must be a real, already-loaded module before this module body runs.
 require "snap_diff/utils"
 
 module Capybara
   module Screenshot
-    mattr_accessor :add_driver_path
-    mattr_accessor :add_os_path
-    mattr_accessor(:blur_active_element) { true }
-    mattr_accessor :enabled
-    mattr_accessor(:hide_caret) { true }
-    mattr_accessor :disable_animations
-    mattr_reader(:root) { (defined?(Rails) && defined?(Rails.root) && Rails.root) || Pathname(".").expand_path }
-    mattr_accessor :stability_time_limit
-    mattr_accessor :window_size
-    mattr_accessor(:save_path) { "doc/screenshots" }
-    mattr_accessor(:use_lfs)
-    mattr_accessor(:screenshot_format) { "png" }
-    mattr_accessor(:capybara_screenshot_options) { {} }
-
     class << self
-      def root=(path)
-        @@root = Pathname(path).expand_path
-      end
-
       def active?
         enabled || (enabled.nil? && Diff.enabled)
       end
@@ -59,22 +40,6 @@ module Capybara
 
     # Module to track screenshot changes
     module Diff
-      mattr_accessor(:delayed) { true }
-      mattr_accessor :area_size_limit
-      mattr_accessor(:fail_if_new) { !ENV["CI"].nil? && !ENV["CI"].empty? }
-      mattr_accessor(:pending_if_new) { false }
-      mattr_accessor(:fail_on_difference) { true }
-      mattr_accessor :color_distance_limit
-      mattr_accessor(:enabled) { true }
-      mattr_accessor :shift_distance_limit
-      mattr_accessor :skip_area
-      mattr_accessor(:driver) { :auto }
-      mattr_accessor :tolerance
-      mattr_accessor :perceptual_threshold
-
-      mattr_accessor(:screenshoter) { SnapDiff::Screenshoter }
-      mattr_accessor(:manager) { SnapDiff::SnapManager }
-
       AVAILABLE_DRIVERS = SnapDiff::Utils.detect_available_drivers.freeze
 
       # Configure screenshot and diff settings in one block.
@@ -105,8 +70,26 @@ module Capybara
           skip_area: skip_area,
           stability_time_limit: Screenshot.stability_time_limit,
           tolerance: tolerance || ((driver == :vips) ? 0.001 : nil),
+          # Deliberately LIVE (pinned by config_default_timing_test.rb):
+          # read at call time, never frozen into storage.
           wait: Capybara.default_max_wait_time
         }
+      end
+    end
+
+    # The old mattr_accessor surface, now delegating to the single storage.
+    # mattr_accessor used to define both singleton and instance accessors
+    # (the instance ones are what `include Capybara::Screenshot::Diff`
+    # picks up), so both are installed. root keeps its historical
+    # asymmetry -- readable everywhere, writable only at module level
+    # (it was mattr_reader plus a custom module-level writer) -- with the
+    # Pathname coercion now living in Config#root=.
+    SnapDiff::Config::MAPPING.each do |name, (mod, mattr)|
+      [mod, mod.singleton_class].each do |target|
+        target.define_method(mattr) { SnapDiff.config.public_send(name) }
+        next if name == :root && target == mod
+
+        target.define_method(:"#{mattr}=") { |value| SnapDiff.config.public_send(:"#{name}=", value) }
       end
     end
   end

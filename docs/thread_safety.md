@@ -100,9 +100,10 @@ Do not:
 
 Runtime state is thread-local (above), but *loading* the gem is a separate
 concern. The require graph is deliberately acyclic: `lib/snap_diff/*` units
-depend only on the legacy-config leaf
-(`capybara/screenshot/diff/config_legacy`) and specific sibling units, the
-umbrella files depend on the units, and nothing requires back up the chain.
+depend only on the config-storage leaf (`snap_diff/config`, which the legacy
+view `capybara/screenshot/diff/config_legacy` requires) and specific sibling
+units, the umbrella files depend on the units, and nothing requires back up
+the chain.
 
 Eager mutual requires between entry points are forbidden, even guarded ones:
 per-thread "loading" flags cannot serialize Ruby's process-global per-file
