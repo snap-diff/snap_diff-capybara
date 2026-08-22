@@ -1,8 +1,6 @@
 # frozen_string_literal: true
 
-# Region has not moved yet (ADR-004 v2 scoping: it's already unnamespaced,
-# no v2.0 move needed).
-require "capybara/screenshot/diff/region"
+require "snap_diff/region"
 
 module SnapDiff
   class AreaCalculator
