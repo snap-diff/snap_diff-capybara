@@ -118,6 +118,41 @@ class SnapDiffConfigTest < ActiveSupport::TestCase
     end
   end
 
+  # ADR-008 step 7b moved this precedence rule from
+  # Capybara::Screenshot.active? into Config#active?, and found it had no
+  # test at all: replacing the whole expression with a bare `enabled` kept
+  # all 529 unit tests green. The full truth table is pinned here, through
+  # both the canonical method and the legacy forwarder, so it cannot move
+  # again unnoticed.
+  #
+  # The rule: the Screenshot-side flag wins whenever it was set to anything
+  # at all; only a nil there falls through to the Diff-side flag.
+  ACTIVE_TRUTH_TABLE = [
+    [true, true, true],
+    [true, false, true],
+    [false, true, false],
+    [false, false, false],
+    [nil, true, true],
+    [nil, false, false]
+  ].freeze
+
+  test "active? gives Screenshot.enabled precedence and only falls through on nil" do
+    original_screenshot = Capybara::Screenshot.enabled
+    original_diff = Capybara::Screenshot::Diff.enabled
+
+    ACTIVE_TRUTH_TABLE.each do |screenshot_enabled, enabled, expected|
+      config.screenshot_enabled = screenshot_enabled
+      config.enabled = enabled
+      context = "screenshot_enabled=#{screenshot_enabled.inspect}, enabled=#{enabled.inspect}"
+
+      assert_equal expected, !!config.active?, "Config#active? with #{context}"
+      assert_equal expected, !!Capybara::Screenshot.active?, "Capybara::Screenshot.active? with #{context}"
+    end
+  ensure
+    Capybara::Screenshot.enabled = original_screenshot
+    Capybara::Screenshot::Diff.enabled = original_diff
+  end
+
   test "writing root through config round-trips through the same Pathname coercion" do
     original = Capybara::Screenshot.root
 

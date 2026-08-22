@@ -3,11 +3,13 @@
 # Legacy Capybara::Screenshot / Capybara::Screenshot::Diff config surface.
 #
 # Since ADR-008 step 1 the storage lives in SnapDiff::Config -- the require
-# leaf of the config graph (see its own header) -- and this file installs
-# the old accessor names as thin delegators onto SnapDiff.config, generated
-# from SnapDiff::Config::MAPPING. The v1 write surface
-# (Capybara::Screenshot.window_size = ..., Diff.configure { ... }) keeps
-# working unchanged: one storage, two views.
+# leaf of the config graph (see its own header) -- and since step 7b the
+# DERIVED values (active?, screenshot_area, default_options) live there
+# too. snap_diff/config.rb also generates the old accessor names as thin
+# delegators from SnapDiff::Config::MAPPING, so nothing but forwarders is
+# left here. The v1 surface (Capybara::Screenshot.window_size = ...,
+# Diff.configure { ... }, Diff.compare) keeps working unchanged: one
+# storage, two views.
 #
 # Load order: requiring snap_diff/config first also eagerly evaluates the
 # require-time defaults (ENV["CI"] for fail_if_new, Rails.root/pwd for
@@ -23,18 +25,15 @@ module Capybara
   module Screenshot
     class << self
       def active?
-        enabled || (enabled.nil? && Diff.enabled)
+        SnapDiff.config.active?
       end
 
       def screenshot_area
-        parts = [Screenshot.save_path]
-        parts << SnapDiff::Os.name if Screenshot.add_os_path
-        parts << Capybara.current_driver.to_s if Screenshot.add_driver_path
-        File.join(*parts)
+        SnapDiff.config.screenshot_area
       end
 
       def screenshot_area_abs
-        root / screenshot_area
+        SnapDiff.config.screenshot_area_abs
       end
     end
 
@@ -50,46 +49,18 @@ module Capybara
       #     diff.driver = :vips
       #     diff.tolerance = 0.0005
       #   end
+      # The bare `yield` (rather than an explicit &block) keeps this
+      # method's published arity byte-identical to what it always had.
       def self.configure
-        yield Screenshot, self
+        SnapDiff.start { |screenshot, diff| yield screenshot, diff }
       end
 
       def self.compare(baseline_path, current_path, **options)
-        SnapDiff::Comparison.new(current_path, baseline_path, default_options.merge(options))
+        SnapDiff.compare(baseline_path, current_path, **options)
       end
 
       def self.default_options
-        {
-          area_size_limit: area_size_limit,
-          color_distance_limit: color_distance_limit,
-          driver: driver,
-          screenshot_format: Screenshot.screenshot_format,
-          capybara_screenshot_options: Screenshot.capybara_screenshot_options,
-          perceptual_threshold: perceptual_threshold,
-          shift_distance_limit: shift_distance_limit,
-          skip_area: skip_area,
-          stability_time_limit: Screenshot.stability_time_limit,
-          tolerance: tolerance || ((driver == :vips) ? 0.001 : nil),
-          # Deliberately LIVE (pinned by config_default_timing_test.rb):
-          # read at call time, never frozen into storage.
-          wait: Capybara.default_max_wait_time
-        }
-      end
-    end
-
-    # The old mattr_accessor surface, now delegating to the single storage.
-    # mattr_accessor used to define both singleton and instance accessors
-    # (the instance ones are what `include Capybara::Screenshot::Diff`
-    # picks up), so both are installed. root keeps its historical
-    # asymmetry -- readable everywhere, writable only at module level
-    # (it was mattr_reader plus a custom module-level writer) -- with the
-    # Pathname coercion now living in Config#root=.
-    SnapDiff::Config::MAPPING.each do |name, (mod, mattr)|
-      [mod, mod.singleton_class].each do |target|
-        target.define_method(mattr) { SnapDiff.config.public_send(name) }
-        next if name == :root && target == mod
-
-        target.define_method(:"#{mattr}=") { |value| SnapDiff.config.public_send(:"#{name}=", value) }
+        SnapDiff.config.default_options
       end
     end
   end

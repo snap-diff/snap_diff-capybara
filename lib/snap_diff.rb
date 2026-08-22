@@ -34,7 +34,7 @@ SnapDiff.assert_single_gem!
 # stay resolvable (now with deprecation warnings) even in processes that
 # only ever require "snap_diff".
 # "capybara/dsl" is needed directly (not just transitively) so
-# `Capybara.default_max_wait_time` in Diff.default_options resolves even
+# `Capybara.default_max_wait_time` in Config#default_options resolves even
 # when "snap_diff" is required standalone (SnapDiffTest's
 # "standalone-loadable in a fresh process" regression test).
 require "capybara/dsl"
@@ -51,22 +51,28 @@ require "snap_diff/config"
 # shims (snap_diff/legacy_shims) that emit a deprecation warning once per
 # constant per process. See ADR-004 for the full migration plan.
 module SnapDiff
-  def self.compare(...)
-    Capybara::Screenshot::Diff.compare(...)
+  # Compare two images on disk with the configured defaults. Canonical home
+  # since ADR-008 step 7b; +Capybara::Screenshot::Diff.compare+ now forwards
+  # here rather than the other way round.
+  #
+  # Note the argument order swap: callers pass baseline first (reading
+  # "compare baseline against current"), Comparison takes current first.
+  def self.compare(baseline_path, current_path, **options)
+    Comparison.new(current_path, baseline_path, config.default_options.merge(options))
   end
 
-  # v1-style configuration: yields the two existing mattr_accessor holders
+  # v1-style configuration: yields the two legacy accessor holders
   # (+Capybara::Screenshot+, +Capybara::Screenshot::Diff+) exactly as
-  # +Capybara::Screenshot::Diff.configure+ always has. Kept byte-for-byte
-  # identical to +Diff.configure+ for existing callers migrating namespaces
-  # without changing call shape.
+  # +Capybara::Screenshot::Diff.configure+ always has -- and, since ADR-008
+  # step 7b, this is where that yield actually happens; Diff.configure
+  # forwards here. Both names stay identical in call shape.
   #
   #   SnapDiff.start do |screenshot, diff|
   #     screenshot.window_size = [1280, 1024]
   #     diff.tolerance = 0.0005
   #   end
-  def self.start(&block)
-    Capybara::Screenshot::Diff.configure(&block)
+  def self.start
+    yield Capybara::Screenshot, Capybara::Screenshot::Diff
   end
 
   # Forward-looking configuration: yields the single consolidated
