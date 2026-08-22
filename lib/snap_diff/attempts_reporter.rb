@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require "fileutils"
+
 require "capybara/screenshot/diff/image_compare"
 
 module SnapDiff

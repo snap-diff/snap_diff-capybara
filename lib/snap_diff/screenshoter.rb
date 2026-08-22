@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require "tempfile"
+
 require_relative "os"
 require_relative "browser_helpers"
 

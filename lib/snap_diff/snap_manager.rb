@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require "fileutils"
+
 require_relative "vcs"
 require "active_support/core_ext/module/attribute_accessors"
 
