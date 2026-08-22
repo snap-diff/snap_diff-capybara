@@ -5,12 +5,16 @@ module SnapDiff
   #
   # Internal until the v2 namespace transition; not a public contract.
   #
-  # Warn-once-per-subject deprecation helper. Dormant: nothing in the
-  # current codebase calls this yet -- it exists so the gated v2 shim layer
-  # (ADR-004's +const_missing+-based legacy constant shim and the
-  # mattr_accessor-to-Config method shims) has pre-tested warning
-  # machinery to call into once it lands.
+  # Warn-once-per-subject deprecation engine for the legacy-namespace
+  # shims: snap_diff/legacy_shims routes every +const_missing+ hit on an
+  # old +Capybara::Screenshot::Diff+ / +CapybaraScreenshotDiff+ constant
+  # through {.warn}, so each deprecated name warns exactly once per
+  # process (ADR-004's v2 namespace transition).
   module Deprecation
+    # Everything under lib/ is "the gem"; the first caller frame outside
+    # it is the user code that referenced the deprecated name (same
+    # filtering idea as BacktraceFilter in error_with_filtered_backtrace).
+    GEM_LIB_DIR = File.expand_path("..", __dir__) + File::SEPARATOR
     # Emission channel: Kernel#warn, not a direct +$stderr.puts+.
     #
     # Kernel#warn delegates to +Warning.warn+ (Ruby >= 2.4), so anything
@@ -40,7 +44,7 @@ module SnapDiff
         end
         return unless first_time
 
-        Kernel.warn(message_for(subject, replacement, category))
+        Kernel.warn(message_for(subject, replacement, category, caller_locations(1)))
       end
 
       # @api private
@@ -55,9 +59,23 @@ module SnapDiff
 
       private
 
-      def message_for(subject, replacement, category)
-        "[snap_diff deprecation] `#{subject}` is deprecated (#{category}); " \
+      def message_for(subject, replacement, category, locations)
+        message = "[snap_diff deprecation] `#{subject}` is deprecated (#{category}); " \
           "use `#{replacement}` instead."
+        origin = origin_for(locations)
+        origin ? "#{message} (called from #{origin})" : message
+      end
+
+      # First frame outside the gem's lib dir, formatted "file:line";
+      # nil when every frame is internal (or paths are unavailable).
+      def origin_for(locations)
+        (locations || []).each do |location|
+          path = location.absolute_path || location.path
+          next if path.nil? || path.start_with?(GEM_LIB_DIR)
+
+          return "#{path}:#{location.lineno}"
+        end
+        nil
       end
     end
   end

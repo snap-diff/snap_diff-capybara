@@ -38,12 +38,27 @@ jobs:
       - name: Test
         run: bundle exec rake test:unit
 
+      # Idempotent so a failed run can be re-dispatched (bit us at beta1):
+      # skip when the tag already exists at HEAD, fail loudly if it exists
+      # at a different commit -- never retag.
       - name: Create tag
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git tag -a "v${{ github.event.inputs.version }}" -m "v${{ github.event.inputs.version }}"
-          git push origin "v${{ github.event.inputs.version }}"
+          TAG="v${{ github.event.inputs.version }}"
+          # checkout doesn't fetch tags; pull this one if it exists remotely.
+          git fetch --force origin "refs/tags/$TAG:refs/tags/$TAG" 2>/dev/null || true
+          if EXISTING=$(git rev-parse -q --verify "refs/tags/$TAG^{commit}"); then
+            if [ "$EXISTING" = "$(git rev-parse HEAD)" ]; then
+              echo "Tag $TAG already exists at HEAD; skipping tag creation."
+            else
+              echo "::error::Tag $TAG already exists at $EXISTING, but HEAD is $(git rev-parse HEAD). Refusing to retag."
+              exit 1
+            fi
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git tag -a "$TAG" -m "$TAG"
+            git push origin "$TAG"
+          fi
 
       - name: Publish to RubyGems
         uses: rubygems/release-gem@v1
