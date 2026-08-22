@@ -1,60 +1,43 @@
 # frozen_string_literal: true
 
 require "snap_diff/screenshot_assertion"
+require "snap_diff/reporting"
 
 module CapybaraScreenshotDiff
   ScreenshotAssertion = SnapDiff::ScreenshotAssertion
   AssertionRegistry = SnapDiff::AssertionRegistry
 end
 
-# The registry/reporters module-level machinery below is deliberately NOT
-# moved in this PR. It's global per-thread state plumbing (the assertion
-# registry, reporter list, verify/reset/finalize_reporters! lifecycle) in
-# the same category as Config's old mattr_accessors -- an "ownership"
-# change, not a mechanical move, and out of scope here (see the v2
-# file-tree-move PR description). It stays attached to
-# CapybaraScreenshotDiff, just updated to reference the two classes
-# above at their new SnapDiff:: names.
+# CapybaraScreenshotDiff's module methods cover two lifecycles with
+# different scopes, kept separate below:
+#
+# - Session lifecycle: thread-local, per-test. The AssertionRegistry holds
+#   the assertions and screenshot names of the test running on this thread;
+#   `reset` clears it between tests.
+# - Reporter lifecycle: process-global, suite-long. Owned by
+#   SnapDiff::Reporting; the methods here are thin public shims over it.
+#
+# `reset` is the one deliberate bridge between the two: a finished test's
+# assertions are handed to the reporters before the registry is cleared.
 module CapybaraScreenshotDiff
   class << self
     require "forwardable"
     extend Forwardable
 
+    # --- Session lifecycle (thread-local, per-test) ---
+
     def registry
       Thread.current[:capybara_screenshot_diff_registry] ||= AssertionRegistry.new
     end
 
-    def_delegator :registry, :add_assertion
-    def_delegator :registry, :assertions
-    def_delegator :registry, :assertions_present?
-    def_delegator :registry, :failed_assertions
-    def_delegator :registry, :record_new_screenshot
-    def_delegator :registry, :new_screenshots
-    def_delegator :registry, :new_screenshots_present?
+    def_delegators :registry, :add_assertion, :assertions, :assertions_present?,
+      :failed_assertions, :record_new_screenshot, :new_screenshots,
+      :new_screenshots_present?, :screenshot_namer, :verify
+
     def reset
       notify_reporters(registry.assertions)
       registry.reset
     end
-
-    def reporters
-      @reporters ||= []
-    end
-
-    attr_reader :reporters_mutex
-
-    def finalize_reporters!
-      reporters_mutex.synchronize { reporters.dup }.each do |reporter|
-        reporter.finalize
-        if (msg = reporter.summary)
-          $stdout.puts msg
-        end
-      rescue => e
-        warn "[snap_diff] Reporter #{reporter.class} failed (#{e.class}: #{e.message})"
-      end
-    end
-
-    def_delegator :registry, :screenshot_namer
-    def_delegator :registry, :verify
 
     # Message to skip the test with when a new screenshot has no baseline yet
     # and `pending_if_new` is enabled. Adapters call this after verifying
@@ -67,21 +50,24 @@ module CapybaraScreenshotDiff
       "No baseline for: #{new_screenshots.join(", ")}. Commit the captured screenshots to record them."
     end
 
+    # --- Reporter lifecycle (process-global, suite-long) ---
+
+    def reporters
+      SnapDiff::Reporting.reporters
+    end
+
+    def reporters_mutex
+      SnapDiff::Reporting.mutex
+    end
+
+    def finalize_reporters!
+      SnapDiff::Reporting.finalize!
+    end
+
     private
 
     def notify_reporters(assertions)
-      return if assertions.nil? || assertions.empty?
-
-      reporters_snapshot = reporters_mutex.synchronize { reporters.dup }
-      return if reporters_snapshot.empty?
-
-      reporters_snapshot.each do |reporter|
-        reporter.record(assertions)
-      rescue => e
-        warn "[capybara-screenshot-diff] Reporter failed: #{e.message}"
-      end
+      SnapDiff::Reporting.notify(assertions)
     end
   end
-
-  @reporters_mutex = Mutex.new
 end

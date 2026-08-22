@@ -83,5 +83,40 @@ module CapybaraScreenshotDiff
 
       assert @spy.finalized
     end
+
+    class RaisingReporter
+      def record(_assertions) = raise "record boom"
+
+      def finalize = raise "finalize boom"
+
+      def summary = nil
+    end
+
+    test "a raising reporter during reset warns and does not stop other reporters" do
+      CapybaraScreenshotDiff.reporters_mutex.synchronize do
+        CapybaraScreenshotDiff.reporters.unshift(RaisingReporter.new)
+      end
+
+      Capybara::Screenshot::Diff::Vcs.stub(:checkout_vcs, true) do
+        snap = create_snapshot_for(:a, :a)
+        assert_matches_screenshot(snap.full_name)
+
+        _out, err = capture_io { CapybaraScreenshotDiff.reset }
+
+        assert_match(/Reporter failed: record boom/, err)
+        assert_equal 1, @spy.recorded.size, "reporters after the raising one must still be notified"
+      end
+    end
+
+    test "a raising reporter during finalize_reporters! warns and does not stop other reporters" do
+      CapybaraScreenshotDiff.reporters_mutex.synchronize do
+        CapybaraScreenshotDiff.reporters.unshift(RaisingReporter.new)
+      end
+
+      _out, err = capture_io { CapybaraScreenshotDiff.finalize_reporters! }
+
+      assert_match(/RaisingReporter failed \(RuntimeError: finalize boom\)/, err)
+      assert @spy.finalized, "reporters after the raising one must still be finalized"
+    end
   end
 end
