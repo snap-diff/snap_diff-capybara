@@ -6,8 +6,7 @@ require "capybara_screenshot_diff"
 module SnapDiff
   module Capture
     # Direct coverage for the per-capture viewport preparation seam
-    # (5.5-lite item 6): raise-only window-size guard, plus the anchor:
-    # parameter reserved for v3 scroll preservation.
+    # (5.5-lite item 6): a raise-only window-size guard.
     class ViewportTest < ActiveSupport::TestCase
       test "prepare! is a no-op when the window size matches" do
         BrowserHelpers.stub(:window_size_is_wrong?, false) do
@@ -23,12 +22,6 @@ module SnapDiff
             end
             assert_includes error.message, "[800, 600]"
           end
-        end
-      end
-
-      test "prepare! accepts the v3 anchor seam parameter without acting on it" do
-        BrowserHelpers.stub(:window_size_is_wrong?, false) do
-          assert_nil Viewport.prepare!([800, 600], anchor: "#some-element")
         end
       end
     end
