@@ -68,7 +68,7 @@ class NamespaceForwardingTest < ActiveSupport::TestCase
   require "capybara/screenshot/diff/drivers/chunky_png_driver"
   begin
     require "capybara/screenshot/diff/drivers/vips_driver"
-  rescue LoadError
+  rescue LoadError, RuntimeError # vips_driver.rb re-raises missing-gem LoadError as RuntimeError
     # vips-less runner: the VipsDriver pair reports as a skip below,
     # mirroring test/unit/drivers/vips_driver_test.rb.
   end
