@@ -239,7 +239,6 @@ lib/
     screenshot_assertion.rb                    # Assertion + registry objects
     attempts_reporter.rb                       # Debug reporting for unstable captures
     error_with_filtered_backtrace.rb           # Error with filtered stack
-    backtrace_filter.rb                        # Library/gem frame filtering
     reporters/
       html.rb                                  # Interactive HTML report reporter
       templates/report.html.erb                # HTML report template
@@ -255,7 +254,6 @@ lib/
     stable_screenshoter.rb                     # Stability detection wrapper
     screenshot_matcher.rb                      # Orchestrator for capture + compare
     image_compare.rb                           # Layered comparison engine
-    comparison.rb                              # Comparison value object
     difference.rb                              # Difference result value object
     image_preprocessor.rb                      # Pre-processing (skip areas, median filter)
     area_calculator.rb                         # Crop/skip area coordinate resolution
