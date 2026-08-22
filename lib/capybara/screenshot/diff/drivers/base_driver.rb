@@ -1,41 +1,10 @@
 # frozen_string_literal: true
 
-require "capybara/screenshot/diff/difference"
+require "capybara/screenshot/diff/drivers"
+require "snap_diff/driver"
 
-module Capybara
-  module Screenshot
-    module Diff
-      # Compare two images and determine if they are equal, different, or within some comparison
-      # range considering color values and difference area size.
-      module Drivers
-        class BaseDriver
-          PNG_EXTENSION = ".png"
-
-          def same_dimension?(comparison)
-            dimension(comparison.base_image) == dimension(comparison.new_image)
-          end
-
-          def height_for(image)
-            image.height
-          end
-
-          def width_for(image)
-            image.width
-          end
-
-          def image_area_size(image)
-            width_for(image) * height_for(image)
-          end
-
-          def dimension(image)
-            [width_for(image), height_for(image)]
-          end
-
-          def supports?(feature)
-            respond_to?(feature)
-          end
-        end
-      end
-    end
-  end
-end
+# BaseDriver was dissolved into the SnapDiff::Driver mixin (ADR-004 v2
+# step 4). Alias kept so existing requires of this file keep resolving;
+# note it is now a module — `class MyDriver < BaseDriver` becomes
+# `include SnapDiff::Driver`.
+Capybara::Screenshot::Diff::Drivers::BaseDriver = SnapDiff::Driver

@@ -31,13 +31,17 @@ class NamespaceForwardingTest < ActiveSupport::TestCase
     "CapybaraScreenshotDiff::ErrorWithFilteredBacktrace" => "SnapDiff::ErrorWithFilteredBacktrace",
     "CapybaraScreenshotDiff::Reporters::HTML" => "SnapDiff::Reporters::HTML",
     "CapybaraScreenshotDiff::ScreenshotAssertion" => "SnapDiff::ScreenshotAssertion",
-    "CapybaraScreenshotDiff::AssertionRegistry" => "SnapDiff::AssertionRegistry"
+    "CapybaraScreenshotDiff::AssertionRegistry" => "SnapDiff::AssertionRegistry",
+    "Capybara::Screenshot::Diff::Drivers" => "SnapDiff::Drivers",
+    "Capybara::Screenshot::Diff::Drivers::BaseDriver" => "SnapDiff::Driver",
+    "Capybara::Screenshot::Diff::Drivers::ChunkyPNGDriver" => "SnapDiff::Drivers::ChunkyPNGDriver",
+    "Capybara::Screenshot::Diff::Drivers::VipsDriver" => "SnapDiff::Drivers::VipsDriver"
   }.freeze
 
   # Explicit requires: a dedicated forwarder-identity test shouldn't rely
   # on incidental transitive loads from other test files (or on rake's
   # file-load order within a single process) to make every one of these
-  # 21 constants resolvable. Most of these are already pulled in by
+  # 25 constants resolvable. Most of these are already pulled in by
   # test_helper's own "capybara_screenshot_diff/minitest" require; listed
   # here anyway so this file passes standalone.
   require "capybara/screenshot/diff/os"
@@ -59,9 +63,20 @@ class NamespaceForwardingTest < ActiveSupport::TestCase
   require "capybara_screenshot_diff/error_with_filtered_backtrace"
   require "capybara_screenshot_diff/reporters/html"
   require "capybara_screenshot_diff/screenshot_assertion"
+  require "capybara/screenshot/diff/drivers"
+  require "capybara/screenshot/diff/drivers/base_driver"
+  require "capybara/screenshot/diff/drivers/chunky_png_driver"
+  begin
+    require "capybara/screenshot/diff/drivers/vips_driver"
+  rescue LoadError, RuntimeError # vips_driver.rb re-raises missing-gem LoadError as RuntimeError
+    # vips-less runner: the VipsDriver pair reports as a skip below,
+    # mirroring test/unit/drivers/vips_driver_test.rb.
+  end
 
   MAPPING.each do |old_name, new_name|
     define_method(:"test_#{old_name}_forwards_to_#{new_name}") do
+      skip "vips not available on this runner" if new_name.include?("Vips") && !defined?(SnapDiff::Drivers::VipsDriver)
+
       old_const = Object.const_get(old_name)
       new_const = Object.const_get(new_name)
 
@@ -71,7 +86,7 @@ class NamespaceForwardingTest < ActiveSupport::TestCase
     end
   end
 
-  test "MAPPING covers all 21 documented forwarders" do
-    assert_equal 21, MAPPING.size
+  test "MAPPING covers all 25 documented forwarders" do
+    assert_equal 25, MAPPING.size
   end
 end

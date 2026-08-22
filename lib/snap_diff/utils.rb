@@ -25,11 +25,11 @@ module SnapDiff
       Capybara::Screenshot::Diff::LOADED_DRIVERS[driver] ||=
         case driver
         when :chunky_png
-          require "capybara/screenshot/diff/drivers/chunky_png_driver"
-          Capybara::Screenshot::Diff::Drivers::ChunkyPNGDriver
+          require "snap_diff/drivers/chunky_png_driver"
+          SnapDiff::Drivers::ChunkyPNGDriver
         when :vips
-          require "capybara/screenshot/diff/drivers/vips_driver"
-          Capybara::Screenshot::Diff::Drivers::VipsDriver
+          require "snap_diff/drivers/vips_driver"
+          SnapDiff::Drivers::VipsDriver
         else
           fail "Wrong adapter #{driver.inspect}. Available adapters: #{Capybara::Screenshot::Diff::AVAILABLE_DRIVERS.inspect}"
         end
