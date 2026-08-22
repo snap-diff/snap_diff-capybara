@@ -1,7 +1,11 @@
 # frozen_string_literal: true
 
-# The MAPPING below references the legacy modules, so they must be loaded first.
-require "capybara_screenshot_diff"
+# The MAPPING below references the legacy modules, so they must be loaded
+# first. Requires config_legacy directly (a leaf, see its own header
+# comment), not the capybara_screenshot_diff umbrella -- config.rb is
+# required by both snap_diff.rb and (indirectly) capybara_screenshot_diff.rb,
+# and neither of those may lead back here.
+require "capybara/screenshot/diff/config_legacy"
 
 module SnapDiff
   # Flat, additive consolidation of every existing

@@ -2,6 +2,8 @@
 
 require "rspec/core"
 require_relative "../dsl"
+# See the matching comment in integrations/minitest.rb.
+require "capybara_screenshot_diff/screenshot_assertion"
 
 RSpec::Matchers.define :match_screenshot do |name, **options|
   description { "match screenshot '#{name}'" }

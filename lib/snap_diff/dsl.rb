@@ -1,6 +1,15 @@
 # frozen_string_literal: true
 
-require "capybara_screenshot_diff"
+# No require of "capybara_screenshot_diff" here: every Capybara::Screenshot
+# / CapybaraScreenshotDiff reference below is inside a method body, resolved
+# lazily at call time, not at this file's own load time -- so this unit has
+# no eager dependency on the umbrella entry point, and requiring it here
+# would create a require cycle back to capybara_screenshot_diff.rb (which
+# requires this file's old-path forwarder).
+# DSL includes Capybara::DSL directly below, so it needs the base gem
+# loaded regardless of what pulled this file in.
+require "capybara/dsl"
+require "capybara/screenshot/diff/config_legacy"
 require "capybara/screenshot/diff/drivers"
 require "capybara/screenshot/diff/image_compare"
 require "capybara/screenshot/diff/screenshot_matcher"

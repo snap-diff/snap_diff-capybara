@@ -1,6 +1,17 @@
 # frozen_string_literal: true
 
-require "capybara_screenshot_diff"
+# None of these requires ever leads back to this file: config_legacy is a
+# leaf (see its own header comment), image_compare.rb's own require chain
+# only touches other not-yet-moved lib/capybara/screenshot/diff files, and
+# "capybara/dsl" is the base gem. That keeps this file's require graph
+# acyclic -- it never requires "capybara_screenshot_diff" back, unlike the
+# old autoload-based wiring this replaced. "capybara/dsl" is needed
+# directly (not just transitively) so `Capybara.default_max_wait_time` in
+# Diff.default_options resolves even when "snap_diff" is required standalone
+# (SnapDiffTest's "standalone-loadable in a fresh process" regression test).
+require "capybara/dsl"
+require "capybara/screenshot/diff/config_legacy"
+require "capybara/screenshot/diff/image_compare"
 require "snap_diff/config"
 
 # Forward-looking namespace for the gem, per ADR-004.

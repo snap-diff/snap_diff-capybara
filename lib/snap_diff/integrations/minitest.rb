@@ -2,6 +2,12 @@
 
 require "minitest"
 require_relative "../dsl"
+# The CapybaraScreenshotDiff.verify/.reset/.pending_screenshots_message/
+# .finalize_reporters! calls below need the registry singleton machinery,
+# which lives in the *old* capybara_screenshot_diff/screenshot_assertion.rb
+# file (deliberately not moved -- see that file's own comment) and is no
+# longer pulled in transitively by requiring dsl.rb alone.
+require "capybara_screenshot_diff/screenshot_assertion"
 
 used_deprecated_entrypoint = caller.any? do |path|
   path.include?("capybara-screenshot-diff.rb") || path.include?("capybara/screenshot/diff.rb")

@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
+# See the matching comment in integrations/minitest.rb.
 require_relative "../dsl"
+require "capybara_screenshot_diff/screenshot_assertion"
 
 World(::SnapDiff::DSL)
 
