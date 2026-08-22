@@ -61,6 +61,18 @@ module CapybaraScreenshotDiff
       assert_includes snap.next_attempt_path!.to_s, "test_image.attempt_00.png"
     end
 
+    # With a per-thread long-lived manager, cleanup! must also empty the
+    # tracked set — otherwise it grows for the whole run and a later cleanup!
+    # can delete a path an earlier test tracked but this test re-provisioned.
+    test "#cleanup! empties the tracked set" do
+      snap = @manager.snapshot("tracked_then_cleaned")
+      @manager.provision_snap_with(snap, fixture_image_path_from("a"))
+
+      @manager.cleanup!
+
+      assert_empty @manager.snapshots
+    end
+
     # Store-API split guard (v2 amendment item 1): #path_for is the pure
     # lookup half of what #snapshot used to be used for. Callers that only
     # need paths (e.g. dsl_test's post-capture assertions) must be able to

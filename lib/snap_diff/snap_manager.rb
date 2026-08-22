@@ -62,6 +62,10 @@ module SnapDiff
         cleanup_attempts!(snapshot)
         snapshot.delete!
       end
+      # With the manager memoized per thread the set would otherwise grow for
+      # the whole run, and a later cleanup! could delete a path an earlier
+      # test tracked but the current test re-provisioned.
+      snapshots.clear
     end
 
     def self.cleanup!
@@ -94,6 +98,19 @@ module SnapDiff
     # class-method path and class-method cleanup! now share one instance, so
     # cleanup! actually deletes what was tracked. Rebuilt when the configured
     # manager class or screenshot root changes (tests re-root per example).
+    #
+    # Thread.current[] is fiber-local — same construct as
+    # CapybaraScreenshotDiff.registry; both split per fiber and must migrate
+    # together if async support ever lands.
+    #
+    # Scope of the fix: default-root unit tests and before_setup re-rooters
+    # get working cleanup. System tests do NOT — system_test_case.rb re-roots
+    # in `setup do`, and LIFO teardown restores the root BEFORE test_helper's
+    # cleanup! runs, so the root-mismatch check below rebuilds an empty
+    # manager there. That miss is protective: firing cleanup on the restored
+    # instance would delete committed baselines under
+    # test/fixtures/app/doc/screenshots/ that VCS rollback just restored.
+    # Do not reorder those teardowns without revisiting this.
     def self.instance
       manager_class = Capybara::Screenshot::Diff.manager
       root = Pathname.new(Capybara::Screenshot.screenshot_area_abs)
