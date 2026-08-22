@@ -32,10 +32,6 @@ module Capybara::Screenshot::Diff
       save_heatmap_diff if difference.diff_mask
     end
 
-    private
-
-    attr_reader :difference
-
     def save_annotation_for(image, image_path)
       image = annotate_difference(image, difference.region)
       image = annotate_skip_areas(image, difference.comparison.skip_area) if difference.comparison.skip_area
@@ -57,6 +53,10 @@ module Capybara::Screenshot::Diff
       driver.save_image_to(image, image_path.to_s)
     end
 
+    private
+
+    attr_reader :difference
+
     def save_heatmap_diff
       merged_image = driver.merge(new_image, base_image)
       highlighted_mask = driver.highlight_mask(difference.diff_mask, merged_image, color: CapybaraScreenshotDiff::RED_RGBA)
@@ -73,7 +73,7 @@ module Capybara::Screenshot::Diff
     end
 
     def driver
-      difference.comparison.driver
+      @_driver ||= difference.comparison.driver
     end
   end
 end

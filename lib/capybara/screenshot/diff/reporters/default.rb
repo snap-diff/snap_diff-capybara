@@ -35,12 +35,32 @@ module Capybara::Screenshot::Diff
           return build_error_for_different_dimensions
         end
 
-        annotation_service.annotate_and_save_images
+        annotate_and_save_images
         build_error_message
       end
 
       def clean_tmp_files
         annotation_service.clean_tmp_files
+      end
+
+      def annotate_and_save_images
+        annotation_service.annotate_and_save_images
+      end
+
+      def save_annotation_for(image, image_path)
+        annotation_service.save_annotation_for(image, image_path)
+      end
+
+      def annotate_difference(image, region)
+        annotation_service.annotate_difference(image, region)
+      end
+
+      def annotate_skip_areas(image, skip_areas)
+        annotation_service.annotate_skip_areas(image, skip_areas)
+      end
+
+      def save(image, image_path)
+        annotation_service.save(image, image_path)
       end
 
       def build_error_for_different_dimensions
