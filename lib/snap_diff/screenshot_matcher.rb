@@ -21,7 +21,7 @@ module SnapDiff
     end
 
     def build_screenshot_assertion(skip_stack_frames: 0)
-      Capture::Viewport.prepare!(Capybara::Screenshot.window_size, anchor: nil)
+      Capture::Viewport.prepare!(Capybara::Screenshot.window_size)
       prepare_screenshot_options
       check_base_screenshot
 
@@ -41,7 +41,7 @@ module SnapDiff
 
     # Captures a screenshot without comparing it to a baseline.
     def capture
-      Capture::Viewport.prepare!(Capybara::Screenshot.window_size, anchor: nil)
+      Capture::Viewport.prepare!(Capybara::Screenshot.window_size)
       prepare_screenshot_options
 
       capture_options, comparison_options = extract_capture_and_comparison_options(driver_options)
