@@ -114,3 +114,5 @@ module Capybara
     end
   end
 end
+
+require "snap_diff"
