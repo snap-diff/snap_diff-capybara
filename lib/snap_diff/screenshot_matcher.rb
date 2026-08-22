@@ -109,7 +109,8 @@ module SnapDiff
     end
 
     # Pure partition of one options hash into [capture_options,
-    # comparison_options]. The input is not mutated (frozen-safe).
+    # comparison_options]. Unlike the previous delete-based carve, this
+    # method itself does not mutate its input hash.
     def extract_capture_and_comparison_options(driver_options = {})
       capture_options = {
         # screenshot options
