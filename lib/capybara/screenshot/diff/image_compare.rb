@@ -5,6 +5,7 @@ require "fileutils"
 
 require "capybara/screenshot/diff/comparison"
 require "capybara/screenshot/diff/difference"
+require "capybara/screenshot/diff/drivers"
 require "capybara/screenshot/diff/image_preprocessor"
 require "capybara/screenshot/diff/reporters/default"
 

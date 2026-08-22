@@ -1,5 +1,10 @@
 # frozen_string_literal: true
 
+# Lazy load: snap_diff.rb requires this file, so eagerly `require`-ing it
+# here would be circular. `autoload` defers the load until SnapDiff is
+# first referenced, by which point this file has already finished loading.
+autoload :SnapDiff, "snap_diff"
+
 require "capybara/dsl"
 require "capybara/screenshot/diff/version"
 require "capybara/screenshot/diff/utils"
@@ -114,5 +119,3 @@ module Capybara
     end
   end
 end
-
-require "snap_diff"
