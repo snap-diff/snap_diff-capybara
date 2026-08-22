@@ -34,14 +34,16 @@ module SnapDiff
     #
     # @param snapshot Snap The snapshot details to take a stable screenshot of.
     # @return [void]
-    # @raise [RuntimeError] If a stable screenshot cannot be obtained within the specified `:wait` time.
+    # @raise [CapybaraScreenshotDiff::UnstableImage] If a stable screenshot cannot be obtained within the specified `:wait` time.
     def take_comparison_screenshot(snapshot)
       result = take_stable_screenshot(snapshot)
 
       # We failed to get stable browser state! Generate difference between attempts to overview moving parts!
       unless result
-        # FIXME(uwe): Change to store the failure and only report if the test succeeds functionally.
-        annotate_attempts_and_fail!(snapshot)
+        # The failed-stability outcome is data (the annotated attempts report); raising is this
+        # boundary's decision, not the reporter's.
+        # FIXME(uwe): Hand the failure to the verify path so it only reports after the test's own assertions run.
+        raise CapybaraScreenshotDiff::UnstableImage.new(stability_failure_report(snapshot), caller)
       end
 
       # store success attempt as actual screenshot
@@ -90,13 +92,12 @@ module SnapDiff
       Comparison.new(snapshot.attempt_path, snapshot.prev_attempt_path, @comparison_options)
     end
 
-    # TODO: Move to the HistoricalReporter
-    def annotate_attempts_and_fail!(snapshot)
+    # Builds the failed-stability outcome as data: annotates the attempt artifacts on disk
+    # and returns the report message. Does not raise.
+    # @return [String] the annotated attempts report
+    def stability_failure_report(snapshot)
       require_relative "attempts_reporter"
-      attempts_reporter = SnapDiff::AttemptsReporter.new(snapshot, @comparison_options, {wait: wait, stability_time_limit: stability_time_limit})
-
-      # TODO: Move fail to the queue after tests passed
-      raise CapybaraScreenshotDiff::UnstableImage.new(attempts_reporter.generate, caller)
+      SnapDiff::AttemptsReporter.new(snapshot, @comparison_options, {wait: wait, stability_time_limit: stability_time_limit}).generate
     end
   end
 end
