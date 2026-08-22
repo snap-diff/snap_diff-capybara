@@ -47,6 +47,7 @@ module Capybara
 
           capture_options, comparison_options = extract_capture_and_comparison_options!(driver_options)
 
+          @snapshot.manager.create_output_directory_for(@snapshot.path)
           capture_screenshot(capture_options, comparison_options)
         end
 

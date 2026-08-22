@@ -206,6 +206,23 @@ module CapybaraScreenshotDiff
       end
     end
 
+    test "#capture_screenshot creates the destination directory for nested names" do
+      naive_screenshoter = Class.new do
+        def initialize(_capture_options, _comparison_options)
+        end
+
+        def take_comparison_screenshot(snapshot)
+          File.binwrite(snapshot.path, "png")
+        end
+      end
+
+      Capybara::Screenshot::Diff.stub(:screenshoter, naive_screenshoter) do
+        capture_screenshot("nested/dir/example")
+
+        assert_predicate CapybaraScreenshotDiff::SnapManager.snapshot("nested/dir/example").path, :exist?
+      end
+    end
+
     test "#capture_screenshot does not raise even when a differing baseline exists" do
       Capybara::Screenshot::Diff::Vcs.stub(:checkout_vcs, true) do
         snap = create_snapshot_for(:a, :c)

@@ -171,6 +171,9 @@ To mark tests as pending (skipped) if a new screenshot is taken without a baseli
 
 ```ruby
 Capybara::Screenshot::Diff.pending_if_new = true
+# Required in CI, because fail_if_new defaults to true there and raises before
+# the pending marker is applied.
+Capybara::Screenshot::Diff.fail_if_new = false
 ```
 
 If `pending_if_new` is set to `true`, the test will be marked as skipped in teardown

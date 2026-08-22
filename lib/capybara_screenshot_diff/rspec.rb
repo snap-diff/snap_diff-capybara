@@ -30,12 +30,13 @@ RSpec.configure do |config|
     end
   end
 
-  config.after do
+  config.after do |example|
     if self.class.include?(CapybaraScreenshotDiff::DSL)
       begin
         CapybaraScreenshotDiff.verify
 
-        if Capybara::Screenshot::Diff.pending_if_new && CapybaraScreenshotDiff.new_screenshots_present?
+        # Never mask a real failure with a pending marker.
+        if example.exception.nil? && Capybara::Screenshot::Diff.pending_if_new && CapybaraScreenshotDiff.new_screenshots_present?
           names = CapybaraScreenshotDiff.new_screenshots
           skip "No baseline for: #{names.join(", ")}. Commit the captured screenshots to record them."
         end
