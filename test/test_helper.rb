@@ -27,9 +27,19 @@ require "capybara_screenshot_diff/minitest"
 require "support/stub_test_methods"
 require "support/setup_capybara_drivers"
 require "support/test_helpers"
+require "support/driver_coverage"
 
 Capybara::Screenshot.root = Rails.root
 Capybara::Screenshot.save_path = "./doc/screenshots"
+
+puts CapybaraScreenshotDiff::DriverCoverage.banner(Capybara::Screenshot::Diff::AVAILABLE_DRIVERS)
+
+missing_drivers = CapybaraScreenshotDiff::DriverCoverage.missing_for_ci(
+  Capybara::Screenshot::Diff::AVAILABLE_DRIVERS,
+  ci: ENV["CI"],
+  exclude: ENV["CI_EXPECTED_DRIVERS_EXCLUDE"]&.split(",")&.map(&:to_sym)
+)
+abort("[capybara-screenshot-diff] CI is missing expected driver(s): #{missing_drivers.join(", ")}") if missing_drivers.any?
 
 class ActiveSupport::TestCase
   include TestHelpers::Assertions
