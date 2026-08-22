@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v2.0.0.beta1] - 2026-08-22
+
+Second prerelease of the 2.0 opt-in experiment (see the v2.0.0.alpha1 notes
+below for the namespace change, deprecation warnings, and caveats). Final
+2.0.0 remains gated on adopter feedback — [#166](https://github.com/snap-diff/snap_diff-capybara/issues/166).
+
+### Added
+- **Dual gem names** — releases now also publish as
+  [`snap_diff-capybara`](https://rubygems.org/gems/snap_diff-capybara):
+  identical content and versions under the forward-looking name matching this
+  repository (the alpha1 mirror was backfilled). Install either, not both.
+- **Migration guide** — [docs/UPGRADING.md](docs/UPGRADING.md) covers the v2
+  namespace move, every renamed constant, silencing, and the alpha caveats
+  ([#220](https://github.com/snap-diff/snap_diff-capybara/pull/220))
+
+### Internal
+- Test suite exercises the canonical `SnapDiff` names; legacy names remain
+  covered by dedicated forwarding/deprecation tests, and a strict warning
+  guard now fails the suite on any accidental legacy-name use
+  ([#221](https://github.com/snap-diff/snap_diff-capybara/pull/221))
+
+---
+
 ## [v2.0.0.alpha1] - 2026-08-22
 
 **Opt-in experiment prerelease.** RubyGems never installs prereleases by default
