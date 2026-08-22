@@ -38,10 +38,12 @@ end
 class HomepageTest < ApplicationSystemTestCase
   test "homepage" do
     visit "/"
-    screenshot "homepage"
+    assert_matches_screenshot "homepage"
   end
 end
 ```
+
+(`screenshot` still works as a shorthand, and is safe to override in your own helpers — the gem no longer calls it internally.)
 
 Then run these steps in order:
 
