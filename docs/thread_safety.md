@@ -95,3 +95,18 @@ Do not:
 - Paths are unique per screenshot name and counter
 - `FileUtils.mv` is atomic on most file systems
 - Directory creation uses `mkpath`
+
+## Load-time thread safety
+
+Runtime state is thread-local (above), but *loading* the gem is a separate
+concern. The require graph is deliberately acyclic: `lib/snap_diff/*` units
+depend only on the legacy-config leaf
+(`capybara/screenshot/diff/config_legacy`) and specific sibling units, the
+umbrella files depend on the units, and nothing requires back up the chain.
+
+Eager mutual requires between entry points are forbidden, even guarded ones:
+per-thread "loading" flags cannot serialize Ruby's process-global per-file
+require locks, so two threads requiring opposite entry points first can
+deadlock (lock-order inversion — observed deterministically before this
+design). If two files ever need each other, extract the shared piece into a
+leaf both can require instead.
