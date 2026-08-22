@@ -1,9 +1,5 @@
 # frozen_string_literal: true
 
-module Capybara
-  module Screenshot
-    module Diff
-      VERSION = "1.15.1"
-    end
-  end
+module SnapDiff
+  VERSION = "1.15.1"
 end
