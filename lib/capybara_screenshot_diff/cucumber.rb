@@ -10,9 +10,8 @@ Before do
 end
 
 After do |scenario|
-  if !scenario.failed? && Capybara::Screenshot::Diff.pending_if_new && CapybaraScreenshotDiff.new_screenshots_present?
-    names = CapybaraScreenshotDiff.new_screenshots
-    skip_this_scenario("No baseline for: #{names.join(", ")}. Commit the captured screenshots to record them.")
+  if !scenario.failed? && (msg = CapybaraScreenshotDiff.pending_screenshots_message)
+    skip_this_scenario(msg)
   end
 ensure
   CapybaraScreenshotDiff.reset

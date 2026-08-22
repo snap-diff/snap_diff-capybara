@@ -36,9 +36,8 @@ RSpec.configure do |config|
         CapybaraScreenshotDiff.verify
 
         # Never mask a real failure with a pending marker.
-        if example.exception.nil? && Capybara::Screenshot::Diff.pending_if_new && CapybaraScreenshotDiff.new_screenshots_present?
-          names = CapybaraScreenshotDiff.new_screenshots
-          skip "No baseline for: #{names.join(", ")}. Commit the captured screenshots to record them."
+        if example.exception.nil? && (msg = CapybaraScreenshotDiff.pending_screenshots_message)
+          skip(msg)
         end
       rescue CapybaraScreenshotDiff::ExpectationNotMet => e
         raise RSpec::Expectations::ExpectationNotMetError.new(e.message).tap { |ex| ex.set_backtrace(e.backtrace) }
