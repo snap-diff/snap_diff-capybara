@@ -23,6 +23,10 @@ module CapybaraScreenshotDiff
           result = run_inner_test { screenshot("a") }
 
           assert_predicate result, :skipped?
+          assert_equal(
+            "No baseline for: a. Commit the captured screenshots to record them.",
+            result.failures.first.message
+          )
         end
       end
     end
