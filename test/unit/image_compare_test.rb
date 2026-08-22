@@ -88,6 +88,29 @@ module Capybara
         end
       end
 
+      # Guards the regression killed twice during ADR-004 review (migration-plan PR 5): skip_area
+      # masking must run at *comparison* time, against whatever base image is on disk (including a
+      # baseline checked out from VCS), not baked in at *capture* time. Capture-time masking would
+      # only ever touch the freshly-taken screenshot; a VCS-checked-out baseline predates that
+      # capture and would never get masked, so a masked new image compared against an unmasked
+      # baseline would still report a difference in the skip area.
+      #
+      # `make_comparison(:a, :c)` stands in for that scenario: `:a` plays the already-on-disk
+      # baseline (as if checked out from VCS), `:c` plays the freshly captured screenshot. The two
+      # fixtures are known to differ only within [11,3,48,20] (see ChunkyPNGDriverTest above).
+      class SkipAreaMasksVcsBaselineTest < ActiveSupport::TestCase
+        include CapybaraScreenshotDiff::DSLStub
+
+        test "#different? masks the VCS-checked-out baseline, not just the new screenshot" do
+          skip "VIPS not present. Skipping VIPS driver tests." unless defined?(Vips)
+
+          full_image_region = Region.from_edge_coordinates(0, 0, 80, 80)
+          comparison = make_comparison(:a, :c, destination: "skip_area_vcs_baseline", driver: :vips, skip_area: [full_image_region])
+
+          refute_predicate comparison, :different?
+        end
+      end
+
       class IntegrationRegressionTest < ActiveSupport::TestCase
         include CapybaraScreenshotDiff::DSLStub
 
