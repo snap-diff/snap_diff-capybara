@@ -6,13 +6,13 @@ module CapybaraScreenshotDiff
 
     def setup
       super
-      @manager = CapybaraScreenshotDiff::SnapManager.new(Capybara::Screenshot.root / "doc/screenshots")
+      @manager = SnapDiff::SnapManager.new(Capybara::Screenshot.root / "doc/screenshots")
       Capybara::Screenshot::Diff.screenshoter = Capybara::Screenshot::ScreenshoterStub
     end
 
     def teardown
       @manager.cleanup!
-      Capybara::Screenshot::Diff.screenshoter = Capybara::Screenshot::Screenshoter
+      Capybara::Screenshot::Diff.screenshoter = SnapDiff::Screenshoter
       CapybaraScreenshotDiff.reset
       super
     end
@@ -21,12 +21,12 @@ module CapybaraScreenshotDiff
     def make_comparison(fixture_base_image, fixture_new_image = nil, destination: "screenshot", **options)
       fixture_new_image ||= fixture_base_image
       snap = create_snapshot_for(fixture_base_image, fixture_new_image, name: destination)
-      Capybara::Screenshot::Diff::ImageCompare.new(snap.path, snap.base_path, **options)
+      SnapDiff::Comparison.new(snap.path, snap.base_path, **options)
     end
 
     # Prepare images for comparison in a test
     #
-    # @param snap [CapybaraScreenshotDiff::Snap] the snapshot to prepare
+    # @param snap [SnapDiff::Snap] the snapshot to prepare
     # @param expected [String] the base name of the original base image
     # @param actual [String] the base name of the original new image
     def set_test_images(snap, expected, actual)
@@ -50,7 +50,7 @@ module CapybaraScreenshotDiff
     end
 
     def take_stable_screenshot_with(snap, stability_time_limit: 0.01, wait: 10)
-      screenshoter = Capybara::Screenshot::Diff::StableScreenshoter.new({stability_time_limit: stability_time_limit, wait: wait})
+      screenshoter = SnapDiff::StableScreenshoter.new({stability_time_limit: stability_time_limit, wait: wait})
       screenshoter.take_stable_screenshot(snap)
     end
 

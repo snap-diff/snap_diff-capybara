@@ -15,18 +15,19 @@ module CapybaraScreenshotDiff
     end
 
     test ".serve sets Capybara.app to serve the directory" do
-      CapybaraScreenshotDiff.serve("test/fixtures")
+      SnapDiff.serve("test/fixtures")
 
       assert_kind_of Rack::Files, Capybara.app
     end
 
     test ".serve sets Screenshot.root to pwd" do
-      CapybaraScreenshotDiff.serve("test/fixtures")
+      SnapDiff.serve("test/fixtures")
 
       assert_equal Pathname(Dir.pwd), Capybara::Screenshot.root
     end
 
-    test ".serve accepts custom root" do
+    test ".serve accepts custom root (via the legacy CapybaraScreenshotDiff.serve forwarder)" do
+      # Deliberate legacy-surface use: pins that the old entry still forwards.
       CapybaraScreenshotDiff.serve("test/fixtures", root: "/tmp")
 
       assert_equal Pathname("/tmp"), Capybara::Screenshot.root

@@ -41,7 +41,7 @@ module Capybara
 
             assert_nil assertion
             assert_includes CapybaraScreenshotDiff.new_screenshots, name
-            assert_predicate CapybaraScreenshotDiff::SnapManager.path_for(name).path, :exist?,
+            assert_predicate SnapDiff::SnapManager.path_for(name).path, :exist?,
               "the screenshot is still captured on the new-screenshot path"
           end
         end
@@ -53,7 +53,7 @@ module Capybara
 
             assertion = SnapDiff::ScreenshotMatcher.new(snap.full_name).build_screenshot_assertion
 
-            assert_instance_of CapybaraScreenshotDiff::ScreenshotAssertion, assertion
+            assert_instance_of SnapDiff::ScreenshotAssertion, assertion
             assert_equal snap.full_name, assertion.name
             assert_kind_of Array, assertion.caller
             assert_match(/screenshot_matcher_test\.rb/, assertion.caller.first)
@@ -212,7 +212,7 @@ module Capybara
           SnapDiff::Vcs.stub(:checkout_vcs, true) do
             SnapDiff::ScreenshotMatcher.new(name).capture
 
-            assert_predicate CapybaraScreenshotDiff::SnapManager.path_for(name).path, :exist?
+            assert_predicate SnapDiff::SnapManager.path_for(name).path, :exist?
             assert_not_predicate CapybaraScreenshotDiff.registry, :assertions_present?
             assert_empty CapybaraScreenshotDiff.new_screenshots
           end

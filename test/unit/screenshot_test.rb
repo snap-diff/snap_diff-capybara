@@ -6,7 +6,7 @@ require "minitest/mock"
 module Capybara
   class ScreenshotTest < ActiveSupport::TestCase
     test "SnapManager.root returns an absolute path" do
-      assert CapybaraScreenshotDiff::SnapManager.root.absolute?
+      assert SnapDiff::SnapManager.root.absolute?
     end
 
     test "Screenshot.root returns a Pathname when Rails.root is a Pathname" do

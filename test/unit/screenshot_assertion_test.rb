@@ -10,7 +10,7 @@ module SnapDiff
   # These guards protect the file-level behavior while the mutation is
   # extracted from the read path into an explicit archive step.
   class ScreenshotAssertionTest < ActiveSupport::TestCase
-    include CapybaraScreenshotDiff::DSL
+    include SnapDiff::DSL
     include CapybaraScreenshotDiff::DSLStub
 
     test "#validate! archives the baseline when the comparison passes" do
@@ -33,7 +33,7 @@ module SnapDiff
     end
 
     test "verify archives baselines of passing delayed assertions end-to-end" do
-      Capybara::Screenshot::Diff::Vcs.stub(:checkout_vcs, true) do
+      SnapDiff::Vcs.stub(:checkout_vcs, true) do
         snap = create_snapshot_for(:a, :a)
 
         assert_matches_screenshot(snap.full_name) # delayed by default
@@ -47,7 +47,7 @@ module SnapDiff
     end
 
     test "verify keeps baselines of failing delayed assertions end-to-end" do
-      Capybara::Screenshot::Diff::Vcs.stub(:checkout_vcs, true) do
+      SnapDiff::Vcs.stub(:checkout_vcs, true) do
         snap = create_snapshot_for(:a, :b)
 
         assert_matches_screenshot(snap.full_name) # delayed by default

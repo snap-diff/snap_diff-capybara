@@ -60,6 +60,6 @@ RSpec.describe "capybara_screenshot_diff/rspec after-hook ordering masking guard
     visit "/"
     screenshot name
   ensure
-    FileUtils.rm_f(CapybaraScreenshotDiff::SnapManager.snapshot(name).path)
+    FileUtils.rm_f(SnapDiff::SnapManager.snapshot(name).path)
   end
 end

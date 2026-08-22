@@ -92,7 +92,7 @@ module DriverContractTests
       assert comp.different?
 
       difference = comp.difference
-      assert_kind_of Capybara::Screenshot::Diff::Difference, difference
+      assert_kind_of SnapDiff::ComparisonResult, difference
       assert_not_nil difference.region
       assert_kind_of Hash, difference.meta
       assert_equal comp.driver, difference.comparison.driver
@@ -191,14 +191,14 @@ module DriverContractTests
 
     test "[contract] raises ArgumentError when the base (original) image is missing" do
       error = assert_raises(ArgumentError) do
-        Capybara::Screenshot::Diff::ImageCompare.new(TEST_IMAGES_DIR / "a.png", TEST_IMAGES_DIR / "does_not_exist.png")
+        SnapDiff::Comparison.new(TEST_IMAGES_DIR / "a.png", TEST_IMAGES_DIR / "does_not_exist.png")
       end
       assert_match(/no original \(base\) screenshot/, error.message)
     end
 
     test "[contract] raises ArgumentError when the new image is missing" do
       error = assert_raises(ArgumentError) do
-        Capybara::Screenshot::Diff::ImageCompare.new(TEST_IMAGES_DIR / "does_not_exist.png", TEST_IMAGES_DIR / "a.png")
+        SnapDiff::Comparison.new(TEST_IMAGES_DIR / "does_not_exist.png", TEST_IMAGES_DIR / "a.png")
       end
       assert_match(/no new screenshot/, error.message)
     end

@@ -2,7 +2,7 @@
 
 require "capybara/screenshot/diff/screenshoter"
 
-class Capybara::Screenshot::ScreenshoterStub < Capybara::Screenshot::Screenshoter
+class Capybara::Screenshot::ScreenshoterStub < SnapDiff::Screenshoter
   def pending_image_to_load
   end
 

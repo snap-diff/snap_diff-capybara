@@ -13,7 +13,7 @@ module SnapDiff
   # data raised later at verify time.
   class AttemptsReporterTest < ActiveSupport::TestCase
     setup do
-      @manager = CapybaraScreenshotDiff::SnapManager.new(Capybara::Screenshot.root / "attempts_reporter_test")
+      @manager = SnapDiff::SnapManager.new(Capybara::Screenshot.root / "attempts_reporter_test")
       @manager.create_output_directory_for
     end
 
@@ -48,7 +48,7 @@ module SnapDiff
     # (every attempt differs from the previous one) times out, raises
     # UnstableImage from inside capture, and leaves annotated attempts behind.
     test "StableScreenshoter raises UnstableImage with annotated attempts when the page never stabilizes" do
-      alternating_screenshoter = Class.new(Capybara::Screenshot::Screenshoter) do
+      alternating_screenshoter = Class.new(SnapDiff::Screenshoter) do
         def take_screenshot(screenshot_path)
           @flip = !@flip
           FileUtils.mkdir_p(screenshot_path.dirname)

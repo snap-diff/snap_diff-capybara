@@ -23,7 +23,7 @@ module CapybaraScreenshotDiff
     end
 
     test "#before_teardown skips the test when pending_if_new is enabled and a screenshot has no baseline" do
-      Capybara::Screenshot::Diff::Vcs.stub(:checkout_vcs, false) do
+      SnapDiff::Vcs.stub(:checkout_vcs, false) do
         Capybara::Screenshot::Diff.stub(:pending_if_new, true) do
           result = run_inner_test { screenshot("a") }
 
@@ -37,7 +37,7 @@ module CapybaraScreenshotDiff
     end
 
     test "#screenshot and #assert_no_screenshot_changes count Minitest assertions" do
-      Capybara::Screenshot::Diff::Vcs.stub(:checkout_vcs, false) do
+      SnapDiff::Vcs.stub(:checkout_vcs, false) do
         result = run_inner_test do
           screenshot("a")
           assert_no_screenshot_changes("b")
@@ -49,7 +49,7 @@ module CapybaraScreenshotDiff
     end
 
     test "#before_teardown does not mask a real teardown error behind a pending skip" do
-      Capybara::Screenshot::Diff::Vcs.stub(:checkout_vcs, false) do
+      SnapDiff::Vcs.stub(:checkout_vcs, false) do
         Capybara::Screenshot::Diff.stub(:pending_if_new, true) do
           result = run_inner_test(teardown: proc {
             super()
@@ -63,7 +63,7 @@ module CapybaraScreenshotDiff
     end
 
     test "#before_teardown does not skip the test when pending_if_new is disabled" do
-      Capybara::Screenshot::Diff::Vcs.stub(:checkout_vcs, false) do
+      SnapDiff::Vcs.stub(:checkout_vcs, false) do
         Capybara::Screenshot::Diff.stub(:pending_if_new, false) do
           result = run_inner_test { screenshot("a") }
 

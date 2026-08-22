@@ -49,6 +49,6 @@ RSpec.describe "capybara_screenshot_diff/rspec pending_if_new masking guard", ty
 
     raise "deliberate failure: pending_if_new must never mask this"
   ensure
-    FileUtils.rm_f(CapybaraScreenshotDiff::SnapManager.snapshot(name).path)
+    FileUtils.rm_f(SnapDiff::SnapManager.snapshot(name).path)
   end
 end

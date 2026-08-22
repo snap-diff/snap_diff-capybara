@@ -6,10 +6,10 @@ module CapybaraScreenshotDiff
   module NonMinitest
     module Assertions
       def self.included(klass)
-        klass.include CapybaraScreenshotDiff::DSL
+        klass.include SnapDiff::DSL
 
         klass.setup do
-          Capybara::Screenshot::BrowserHelpers.resize_window_if_needed
+          SnapDiff::BrowserHelpers.resize_window_if_needed
         end
 
         klass.teardown do

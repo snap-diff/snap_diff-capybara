@@ -24,12 +24,27 @@ require "support/setup_capybara"
 
 require "capybara_screenshot_diff/minitest"
 
-# Many tests deliberately exercise the old (pre-v2) constant names, which
-# warn once per constant per process since v2 step 6. Silence them globally
-# so suite output stays clean; the deprecation behavior itself is pinned by
-# unit/legacy_namespace_deprecation_test.rb (which flips this flag off per
-# test) and by its unsilenced subprocess probes.
-SnapDiff.silence_deprecations = true
+# v2 step 8: the suite exercises only canonical SnapDiff:: names, so any
+# legacy-shim deprecation warning during a test run is a bug in the
+# referencing test -- fail loud at the resolution site instead of letting
+# it scroll by on stderr. Tests that exercise the legacy surface on purpose
+# opt out per test: namespace_forwarding_test silences deprecations in its
+# own setup; the deprecation-machinery tests set `expected = true` around
+# the warnings they capture and assert on. A plain module flag (not a
+# thread-local) so warnings emitted from threads a test spawns are covered
+# too; tests run serially, so there is no cross-test race.
+module SnapDiffDeprecationGuard
+  singleton_class.attr_accessor :expected
+
+  def warn(message, ...)
+    if message.to_s.include?("[snap_diff deprecation]") && !SnapDiffDeprecationGuard.expected
+      raise "old-namespace constant resolved inside the test suite: #{message}"
+    end
+
+    super
+  end
+end
+Warning.extend(SnapDiffDeprecationGuard)
 
 require "support/stub_test_methods"
 require "support/setup_capybara_drivers"
@@ -84,7 +99,7 @@ class ActiveSupport::TestCase
     end
     Dir.chdir(@_orig_cwd) if @_orig_cwd && Dir.pwd != @_orig_cwd
     Capybara.app = @_orig_capybara_app if @_orig_capybara_app
-    CapybaraScreenshotDiff::SnapManager.cleanup! unless persist_comparisons?
+    SnapDiff::SnapManager.cleanup! unless persist_comparisons?
   end
 
   def persist_comparisons?
@@ -105,14 +120,14 @@ class ActiveSupport::TestCase
 
   def assert_same_images(expected_image_name, image_path)
     expected_image_path = file_fixture("comparisons/#{expected_image_name}")
-    assert_predicate(Capybara::Screenshot::Diff::ImageCompare.new(image_path, expected_image_path), :quick_equal?)
+    assert_predicate(SnapDiff::Comparison.new(image_path, expected_image_path), :quick_equal?)
   end
 
   def assert_stored_screenshot(filename)
     assert_includes(
-      CapybaraScreenshotDiff::SnapManager.screenshots,
+      SnapDiff::SnapManager.screenshots,
       filename,
-      "Screenshot #{filename} not found in #{CapybaraScreenshotDiff::SnapManager.instance.root}"
+      "Screenshot #{filename} not found in #{SnapDiff::SnapManager.instance.root}"
     )
   end
 end
