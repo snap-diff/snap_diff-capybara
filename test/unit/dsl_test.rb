@@ -63,7 +63,7 @@ module CapybaraScreenshotDiff
     end
 
     test "#screenshot supports driver options for image comparison" do
-      skip "vips is disabled" unless defined?(Capybara::Screenshot::Diff::Drivers::VipsDriverTest)
+      skip "vips is disabled" unless defined?(Vips)
       assert_not screenshot("a", driver: :vips)
     end
 

@@ -3,12 +3,7 @@
 require "test_helper"
 require "support/driver_contract_tests"
 
-unless defined?(Vips)
-  warn "VIPS not present. Skipping VIPS driver tests."
-  return
-end
-
-require "capybara/screenshot/diff/drivers/vips_driver"
+require "capybara/screenshot/diff/drivers/vips_driver" if defined?(Vips)
 
 module Capybara
   module Screenshot
@@ -19,6 +14,7 @@ module Capybara
           include DriverContractTests
 
           setup do
+            skip "VIPS not present. Skipping VIPS driver tests." unless defined?(Vips)
             @new_screenshot_result = Tempfile.new(%w[screenshot .png], Rails.root)
           end
 
@@ -28,8 +24,10 @@ module Capybara
               @new_screenshot_result.unlink
             end
 
-            Vips.cache_set_max(0)
-            Vips.cache_set_max(1000)
+            if defined?(Vips)
+              Vips.cache_set_max(0)
+              Vips.cache_set_max(1000)
+            end
           end
 
           test "#different? returns false when comparing identical images" do
@@ -179,6 +177,10 @@ module Capybara
         end
 
         class VipsDriverClassMethodsTest < ActiveSupport::TestCase
+          setup do
+            skip "VIPS not present. Skipping VIPS driver tests." unless defined?(Vips)
+          end
+
           test "VipsDriver.difference_region_by detects difference regions without color threshold" do
             old_image = Vips::Image.new_from_file("#{TEST_IMAGES_DIR}/a.png")
             new_image = Vips::Image.new_from_file("#{TEST_IMAGES_DIR}/b.png")
