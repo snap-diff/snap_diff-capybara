@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require "snap_diff/drivers"
+
 module SnapDiff
   module Utils
     def self.detect_available_drivers
@@ -20,9 +22,9 @@ module SnapDiff
     end
 
     def self.find_driver_class_for(driver)
-      driver = Capybara::Screenshot::Diff::AVAILABLE_DRIVERS.first if driver == :auto
+      driver = Drivers.available.first if driver == :auto
 
-      Capybara::Screenshot::Diff::LOADED_DRIVERS[driver] ||=
+      Drivers.loaded[driver] ||=
         case driver
         when :chunky_png
           require "snap_diff/drivers/chunky_png_driver"
@@ -31,7 +33,7 @@ module SnapDiff
           require "snap_diff/drivers/vips_driver"
           SnapDiff::Drivers::VipsDriver
         else
-          fail "Wrong adapter #{driver.inspect}. Available adapters: #{Capybara::Screenshot::Diff::AVAILABLE_DRIVERS.inspect}"
+          fail "Wrong adapter #{driver.inspect}. Available adapters: #{Drivers.available.inspect}"
         end
     end
   end

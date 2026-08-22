@@ -6,28 +6,7 @@ require "fileutils"
 require "snap_diff/comparison_result"
 require "snap_diff/drivers"
 require "snap_diff/image_preprocessor"
-require "capybara/screenshot/diff/reporters/default"
-
-# The internal images-holder struct and the driver cache keep their legacy
-# Capybara::Screenshot::Diff homes for now: SnapDiff::Comparison is the
-# comparison class below (ex-ImageCompare), so the struct cannot take the
-# same name. Its SnapDiff home arrives only when it is folded into
-# Comparison as a nested value (v2 design section 2) -- renaming it here
-# would exceed step 5's two approved renames.
-module Capybara
-  module Screenshot
-    module Diff
-      LOADED_DRIVERS = {}
-
-      # Holds the two images (and their paths/options/driver) being compared.
-      class Comparison < Struct.new(:new_image, :base_image, :options, :driver, :new_image_path, :base_image_path)
-        def skip_area
-          options[:skip_area]
-        end
-      end
-    end
-  end
-end
+require "snap_diff/reporters/default"
 
 module SnapDiff
   # Handles comparison of two images with a focus on performance and accuracy.
@@ -53,6 +32,14 @@ module SnapDiff
   # - Only performing expensive operations when absolutely necessary
   # - Maintaining high accuracy for complex comparisons
   class Comparison
+    # Holds the two images (and their paths/options/driver) being compared
+    # (ADR-008 step 5: ex-Capybara::Screenshot::Diff::Comparison struct).
+    Images = Struct.new(:new_image, :base_image, :options, :driver, :new_image_path, :base_image_path) do
+      def skip_area
+        options[:skip_area]
+      end
+    end
+
     TOLERABLE_OPTIONS = [:tolerance, :color_distance_limit, :shift_distance_limit, :area_size_limit].freeze
 
     attr_reader :driver, :driver_options
@@ -136,7 +123,7 @@ module SnapDiff
 
     def load_images_and_build_comparison(base_path, new_path, options)
       base_img, new_img = driver.load_images(base_path, new_path)
-      Capybara::Screenshot::Diff::Comparison.new(new_img, base_img, options, driver, new_path, base_path)
+      Images.new(new_img, base_img, options, driver, new_path, base_path)
     end
 
     def image_preprocessor
@@ -155,7 +142,7 @@ module SnapDiff
 
     # Analyzes the comparison and determines if images are different.
     #
-    # @param comparison [Capybara::Screenshot::Diff::Comparison] The comparison object containing images to analyze.
+    # @param comparison [Comparison::Images] The comparison object containing images to analyze.
     # @param quick_mode [Boolean] When true, performs minimal checks and returns early.
     #   In quick mode, returns [is_equal, difference] where:
     #   - is_equal is true if images are considered equal
@@ -195,7 +182,7 @@ module SnapDiff
 
     def build_reporter
       current_difference = difference || build_null_difference
-      Capybara::Screenshot::Diff::Reporters::Default.new(current_difference)
+      Reporters::Default.new(current_difference)
     end
 
     # Loads and preprocesses images for detailed comparison.
@@ -203,7 +190,7 @@ module SnapDiff
     # This method is responsible for:
     # 1. Loading both images using the configured driver
     # 2. Applying any necessary preprocessing (cropping, normalization)
-    # 3. Creating a Capybara::Screenshot::Diff::Comparison object that holds the image data
+    # 3. Creating a Comparison::Images object that holds the image data
     #
     # @param base_path [String,Pathname] Path to the baseline/reference image
     # @param new_path [String,Pathname] Path to the new/candidate image
@@ -211,7 +198,7 @@ module SnapDiff
     #   - :crop [Array<Integer>] Optional crop area [x, y, width, height]
     #   - :skip_area [Array<Array>] Areas to exclude from comparison
     #   - :tolerance [Numeric] Color tolerance threshold
-    # @return [Capybara::Screenshot::Diff::Comparison] Prepared comparison object ready for analysis
+    # @return [Comparison::Images] Prepared comparison object ready for analysis
     # @raise [ArgumentError] If image files are invalid or unreadable
     def load_comparison(base_path, new_path, options)
       comparison = load_images_and_build_comparison(base_path, new_path, options)
@@ -219,7 +206,7 @@ module SnapDiff
     end
 
     def build_null_difference(failed_by = nil)
-      comparison = Capybara::Screenshot::Diff::Comparison.new(nil, nil, driver_options, driver, image_path, base_image_path).freeze
+      comparison = Images.new(nil, nil, driver_options, driver, image_path, base_image_path).freeze
       ComparisonResult.build_null(comparison, base_image_path, image_path, failed_by)
     end
 

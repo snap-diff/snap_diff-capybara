@@ -52,9 +52,9 @@ module Capybara::Screenshot::Diff
       new_image = driver.from_file(TEST_IMAGES_DIR.join("a.png"))
       base_image = driver.from_file(TEST_IMAGES_DIR.join("b.png"))
 
-      with_skip_area = Comparison.new(new_image, base_image, {skip_area: [Region.new(0, 0, 10, 10)]}, driver,
+      with_skip_area = SnapDiff::Comparison::Images.new(new_image, base_image, {skip_area: [Region.new(0, 0, 10, 10)]}, driver,
         @_tmpdir / "with_skip_area.png", @_tmpdir / "with_skip_area_base.png")
-      without_skip_area = Comparison.new(new_image, base_image, {}, driver,
+      without_skip_area = SnapDiff::Comparison::Images.new(new_image, base_image, {}, driver,
         @_tmpdir / "without_skip_area.png", @_tmpdir / "without_skip_area_base.png")
 
       service_with = SnapDiff::AnnotationService.new(driver.find_difference_region(with_skip_area))
@@ -72,7 +72,7 @@ module Capybara::Screenshot::Diff
       new_image = driver.from_file(TEST_IMAGES_DIR.join(images.first))
       base_image = driver.from_file(TEST_IMAGES_DIR.join(images.last))
 
-      Comparison.new(new_image, base_image, {}, driver, @_tmpdir / images.first, @_tmpdir / images.last)
+      SnapDiff::Comparison::Images.new(new_image, base_image, {}, driver, @_tmpdir / images.first, @_tmpdir / images.last)
     end
   end
 end

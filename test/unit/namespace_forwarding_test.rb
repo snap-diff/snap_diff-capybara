@@ -49,7 +49,9 @@ class NamespaceForwardingTest < ActiveSupport::TestCase
     "Capybara::Screenshot::Diff::Drivers::BaseDriver" => "SnapDiff::Driver",
     "Capybara::Screenshot::Diff::Drivers::ChunkyPNGDriver" => "SnapDiff::Drivers::ChunkyPNGDriver",
     "Capybara::Screenshot::Diff::Drivers::VipsDriver" => "SnapDiff::Drivers::VipsDriver",
+    "Capybara::Screenshot::Diff::Reporters::Default" => "SnapDiff::Reporters::Default",
     "Capybara::Screenshot::Diff::ImageCompare" => "SnapDiff::Comparison",
+    "Capybara::Screenshot::Diff::Comparison" => "SnapDiff::Comparison::Images",
     "Capybara::Screenshot::Diff::Difference" => "SnapDiff::ComparisonResult",
     "CapybaraScreenshotDiff::RED_RGBA" => "SnapDiff::RED_RGBA",
     "CapybaraScreenshotDiff::ORANGE_RGBA" => "SnapDiff::ORANGE_RGBA"
@@ -58,7 +60,7 @@ class NamespaceForwardingTest < ActiveSupport::TestCase
   # Explicit requires: a dedicated forwarder-identity test shouldn't rely
   # on incidental transitive loads from other test files (or on rake's
   # file-load order within a single process) to make every one of these
-  # 29 constants resolvable. Most of these are already pulled in by
+  # constants resolvable. Most of these are already pulled in by
   # test_helper's own "capybara_screenshot_diff/minitest" require; listed
   # here anyway so this file passes standalone.
   require "capybara/screenshot/diff/os"
@@ -80,6 +82,7 @@ class NamespaceForwardingTest < ActiveSupport::TestCase
   require "capybara_screenshot_diff/error_with_filtered_backtrace"
   require "capybara_screenshot_diff/reporters/html"
   require "capybara_screenshot_diff/screenshot_assertion"
+  require "capybara/screenshot/diff/reporters/default"
   require "capybara/screenshot/diff/drivers"
   require "capybara/screenshot/diff/drivers/base_driver"
   require "capybara/screenshot/diff/drivers/chunky_png_driver"
@@ -105,7 +108,24 @@ class NamespaceForwardingTest < ActiveSupport::TestCase
     end
   end
 
-  test "MAPPING covers all 29 documented forwarders" do
-    assert_equal 29, MAPPING.size
+  test "MAPPING covers all 31 documented forwarders" do
+    assert_equal 31, MAPPING.size
+  end
+
+  # Driver registries (ADR-008 step 5b): not part of MAPPING because the
+  # old names are EAGER aliases (never warn) of the canonical
+  # SnapDiff::Drivers accessors -- LOADED_DRIVERS is mutated in place by
+  # user driver registration, so it must stay the exact same object.
+  test "driver registries are the same object under old and canonical names" do
+    assert_same SnapDiff::Drivers.loaded, Capybara::Screenshot::Diff::LOADED_DRIVERS
+    assert_same SnapDiff::Drivers.available, Capybara::Screenshot::Diff::AVAILABLE_DRIVERS
+  end
+
+  test "driver registration through the legacy LOADED_DRIVERS constant is visible canonically" do
+    Capybara::Screenshot::Diff::LOADED_DRIVERS[:forwarding_probe] = :probe_driver
+
+    assert_equal :probe_driver, SnapDiff::Drivers.loaded[:forwarding_probe]
+  ensure
+    SnapDiff::Drivers.loaded.delete(:forwarding_probe)
   end
 end

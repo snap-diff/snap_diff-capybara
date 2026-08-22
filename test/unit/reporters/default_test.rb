@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require "test_helper"
-require "capybara/screenshot/diff/reporters/default"
+require "snap_diff/reporters/default"
 
 require "capybara/screenshot/diff/drivers/vips_driver" if defined?(Vips)
 
@@ -19,7 +19,7 @@ module Capybara::Screenshot::Diff
     test "for vips driver generates heatmap diff file" do
       driver = SnapDiff::Drivers::VipsDriver.new
       comparison = build_comparison_for(driver, "a.png", "b.png")
-      reporter = Reporters::Default.new(driver.find_difference_region(comparison))
+      reporter = SnapDiff::Reporters::Default.new(driver.find_difference_region(comparison))
 
       reporter.generate
 
@@ -29,7 +29,7 @@ module Capybara::Screenshot::Diff
     test "#clean_tmp_files removes heatmap diff along with other diff artifacts" do
       driver = SnapDiff::Drivers::VipsDriver.new
       comparison = build_comparison_for(driver, "a.png", "b.png")
-      reporter = Reporters::Default.new(driver.find_difference_region(comparison))
+      reporter = SnapDiff::Reporters::Default.new(driver.find_difference_region(comparison))
       reporter.generate
 
       assert_predicate reporter.heatmap_diff_path, :exist?
@@ -47,7 +47,7 @@ module Capybara::Screenshot::Diff
       new_image = driver.from_file(TEST_IMAGES_DIR.join(images.first))
       base_image = driver.from_file(TEST_IMAGES_DIR.join(images.last))
 
-      Comparison.new(new_image, base_image, {}, driver, @_tmpdir / images.first, @_tmpdir / images.last)
+      SnapDiff::Comparison::Images.new(new_image, base_image, {}, driver, @_tmpdir / images.first, @_tmpdir / images.last)
     end
   end
 end
