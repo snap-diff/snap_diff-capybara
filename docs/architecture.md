@@ -100,7 +100,7 @@ The comparison engine uses a **layered optimization strategy** to balance speed 
 - `quick_equal?` is designed for fast rejection — it early-returns as soon as a difference is found
 - `different?` triggers the full comparison if not already processed
 - `processed` guarantees the comparison is complete and returns the result with all metadata
-- The `DifferenceFinder` handles the actual pixel analysis, delegating to the driver
+- `ImageCompare#analyze_difference` handles the actual pixel analysis, delegating to the driver
 
 ### 5. Drivers (`lib/capybara/screenshot/diff/drivers/`)
 
@@ -257,7 +257,6 @@ lib/
     image_compare.rb                           # Layered comparison engine
     comparison.rb                              # Comparison value object
     difference.rb                              # Difference result value object
-    difference_finder.rb                       # Core diff analysis logic
     image_preprocessor.rb                      # Pre-processing (skip areas, median filter)
     area_calculator.rb                         # Crop/skip area coordinate resolution
     region.rb                                  # Bounding box region value object

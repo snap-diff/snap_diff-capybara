@@ -63,6 +63,7 @@ module Capybara
           comp = make_comparison(:a, :b, driver: :chunky_png, tolerance: 0.02)
           assert comp.quick_equal?
           assert_not comp.different?
+          assert_equal 0.02, comp.driver_options[:tolerance]
         end
 
         test "#initialize with dimensions creates valid comparison" do
@@ -151,6 +152,19 @@ module Capybara
         test "#quick_equal? returns false when comparing different images" do
           comparison = make_comparison(:a, :b)
           refute_predicate comparison, :quick_equal?
+        end
+
+        test "#quick_equal? skips the expensive region scan when pixels differ and no tolerance options are set" do
+          comparison = make_comparison(:a, :b)
+          region_scan_calls = 0
+          comparison.driver.define_singleton_method(:find_difference_region) do |*args|
+            region_scan_calls += 1
+            Capybara::Screenshot::Diff::TestDoubles::TestDifference.new(true)
+          end
+
+          comparison.quick_equal?
+
+          assert_equal 0, region_scan_calls, "find_difference_region should not run when no tolerance options are configured"
         end
 
         # Test #different? method

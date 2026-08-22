@@ -4,8 +4,8 @@ require "pathname"
 require "fileutils"
 
 require "capybara/screenshot/diff/comparison"
+require "capybara/screenshot/diff/difference"
 require "capybara/screenshot/diff/image_preprocessor"
-require "capybara/screenshot/diff/difference_finder"
 require "capybara/screenshot/diff/reporters/default"
 
 module Capybara
@@ -36,6 +36,8 @@ module Capybara
       # - Only performing expensive operations when absolutely necessary
       # - Maintaining high accuracy for complex comparisons
       class ImageCompare
+        TOLERABLE_OPTIONS = [:tolerance, :color_distance_limit, :shift_distance_limit, :area_size_limit].freeze
+
         attr_reader :driver, :driver_options
         attr_reader :image_path, :base_image_path
         attr_reader :difference, :error_message
@@ -48,6 +50,7 @@ module Capybara
 
           @driver_options = options.freeze
           @driver = Drivers.for(@driver_options)
+          @without_tolerable_options = (driver_options.keys & TOLERABLE_OPTIONS).empty?
         end
 
         # Performs a quick comparison of two image files.
@@ -85,7 +88,7 @@ module Capybara
         #   - `false` if the images are considered identical
         #
         # @see #processed
-        # @see DifferenceFinder
+        # @see #analyze_difference
         def different?
           processed.difference.different?
         end
@@ -110,8 +113,8 @@ module Capybara
 
         private
 
-        def difference_finder
-          @difference_finder ||= DifferenceFinder.new(driver, driver_options)
+        def without_tolerable_options?
+          @without_tolerable_options
         end
 
         def load_images_and_build_comparison(base_path, new_path, options)
@@ -130,8 +133,41 @@ module Capybara
           # Create comparison with preprocessed images
           comparison = load_comparison(base_image_path, image_path, driver_options)
 
-          # Use difference finder to analyze the comparison
-          difference_finder.call(comparison, quick_mode: quick_mode)
+          analyze_difference(comparison, quick_mode: quick_mode)
+        end
+
+        # Analyzes the comparison and determines if images are different.
+        #
+        # @param comparison [Comparison] The comparison object containing images to analyze.
+        # @param quick_mode [Boolean] When true, performs minimal checks and returns early.
+        #   In quick mode, returns [is_equal, difference] where:
+        #   - is_equal is true if images are considered equal
+        #   - difference is a Difference object or nil
+        #   When false, returns a Difference object directly.
+        # @return [Array, Difference] Result format depends on quick_mode parameter.
+        def analyze_difference(comparison, quick_mode: true)
+          # Handle dimension differences
+          unless driver.same_dimension?(comparison)
+            result = Difference.build_null(comparison, comparison.base_image_path, comparison.new_image_path, {different_dimensions: true})
+            return quick_mode ? [false, result] : result
+          end
+
+          # Handle identical pixels
+          if driver.same_pixels?(comparison)
+            result = Difference.build_null(comparison, comparison.base_image_path, comparison.new_image_path)
+            return quick_mode ? [true, result] : result
+          end
+
+          # Handle early return for non-tolerable options
+          if quick_mode && without_tolerable_options?
+            return [false, nil]
+          end
+
+          # Process difference region
+          region = driver.find_difference_region(comparison)
+
+          # Only create a proper difference object if we've completed the comparison
+          quick_mode ? [!region.different?, region] : region
         end
 
         def difference=(new_difference)
