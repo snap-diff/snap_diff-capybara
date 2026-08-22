@@ -111,4 +111,21 @@ class NamespaceForwardingTest < ActiveSupport::TestCase
   test "MAPPING covers all 31 documented forwarders" do
     assert_equal 31, MAPPING.size
   end
+
+  # Driver registries (ADR-008 step 5b): not part of MAPPING because the
+  # old names are EAGER aliases (never warn) of the canonical
+  # SnapDiff::Drivers accessors -- LOADED_DRIVERS is mutated in place by
+  # user driver registration, so it must stay the exact same object.
+  test "driver registries are the same object under old and canonical names" do
+    assert_same SnapDiff::Drivers.loaded, Capybara::Screenshot::Diff::LOADED_DRIVERS
+    assert_same SnapDiff::Drivers.available, Capybara::Screenshot::Diff::AVAILABLE_DRIVERS
+  end
+
+  test "driver registration through the legacy LOADED_DRIVERS constant is visible canonically" do
+    Capybara::Screenshot::Diff::LOADED_DRIVERS[:forwarding_probe] = :probe_driver
+
+    assert_equal :probe_driver, SnapDiff::Drivers.loaded[:forwarding_probe]
+  ensure
+    SnapDiff::Drivers.loaded.delete(:forwarding_probe)
+  end
 end

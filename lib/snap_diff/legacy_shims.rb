@@ -24,6 +24,14 @@ require "snap_diff/drivers"
 #   shared SnapDiff::Drivers module (the Drivers alias is same-object by
 #   contract), so const_missing can never fire for the leaf names;
 #   resolving them through the old path still warns for ...::Drivers.
+# - Diff::LOADED_DRIVERS: user code registers custom drivers by mutating
+#   this hash in place, so it must be the exact same object as the
+#   canonical SnapDiff::Drivers.loaded -- a lazy warn-once shim could not
+#   keep a mutable alias, and warning on a supported registration surface
+#   would be noise. Assigned eagerly below.
+# - Diff::AVAILABLE_DRIVERS: stays a real constant defined by
+#   config_legacy.rb (detection runs at that load moment);
+#   SnapDiff::Drivers.available is the canonical reader.
 module SnapDiff
   # @api private
   module LegacyShims
@@ -47,6 +55,9 @@ end
 module Capybara
   module Screenshot
     module Diff
+      # EAGER same-object alias of the canonical driver cache (see header).
+      LOADED_DRIVERS = SnapDiff::Drivers.loaded
+
       module Reporters
       end
     end

@@ -8,16 +8,6 @@ require "snap_diff/drivers"
 require "snap_diff/image_preprocessor"
 require "snap_diff/reporters/default"
 
-# The driver cache keeps its legacy Capybara::Screenshot::Diff home for
-# now; it moves in ADR-008 step 5b.
-module Capybara
-  module Screenshot
-    module Diff
-      LOADED_DRIVERS = {}
-    end
-  end
-end
-
 module SnapDiff
   # Handles comparison of two images with a focus on performance and accuracy.
   #
