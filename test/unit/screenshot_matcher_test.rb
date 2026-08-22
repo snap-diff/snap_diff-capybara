@@ -153,6 +153,9 @@ module Capybara
               end
             end
           end
+
+          refute SnapDiff::SnapManager.path_for("matcher_window_size").path.exist?,
+            "no screenshot may be written when the window size is wrong"
         end
 
         # Same guard on the compare-free #capture path.
@@ -164,11 +167,16 @@ module Capybara
               end
             end
           end
+
+          refute SnapDiff::SnapManager.path_for("matcher_window_size").path.exist?,
+            "no screenshot may be written when the window size is wrong"
         end
 
-        # Pins the viewport-preparation cadence the Capture::Viewport seam must
-        # preserve: the window-size check runs exactly once per capture, before
-        # the screenshoter — never re-run per stability retry.
+        # Pins ScreenshotMatcher's viewport-preparation cadence: exactly one
+        # window-size check per capture, before the screenshoter runs. The
+        # stable screenshoter is stubbed here, so this guard does not police
+        # the real retry loop — that it stays check-free is verified by
+        # reading (no window-size calls in stable_screenshoter.rb).
         test "window size is checked exactly once per capture even when stability retries happen" do
           checks = 0
           fake_stable = Object.new
