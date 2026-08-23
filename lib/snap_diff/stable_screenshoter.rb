@@ -12,7 +12,7 @@ module SnapDiff
     # `:stability_time_limit` and `:wait` in capture options and ensures that `:stability_time_limit` is less than or equal to `:wait`.
     #
     # @param capture_options [Hash] The options for capturing screenshots, must include `:stability_time_limit` and `:wait`.
-    # @param comparison_options [Hash] The options for comparing screenshots, defaults to `{}`. Same signature as {Capybara::Screenshot::Screenshoter#initialize}.
+    # @param comparison_options [Hash] The options for comparing screenshots, defaults to `{}`. Same signature as {SnapDiff::Screenshoter#initialize}.
     # @raise [ArgumentError] If `:wait` or `:stability_time_limit` are not provided, or if `:stability_time_limit` is greater than `:wait`.
     def initialize(capture_options, comparison_options = {})
       @stability_time_limit, @wait = capture_options.fetch_values(*STABILITY_OPTIONS)
@@ -23,7 +23,7 @@ module SnapDiff
 
       @comparison_options = comparison_options
 
-      @screenshoter = Capybara::Screenshot::Diff.screenshoter.new(capture_options.except(:stability_time_limit), @comparison_options)
+      @screenshoter = SnapDiff.config.screenshoter.new(capture_options.except(:stability_time_limit), @comparison_options)
     end
 
     # Takes a comparison screenshot ensuring page stability

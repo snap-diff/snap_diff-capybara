@@ -69,10 +69,10 @@ module SnapDiff
     def prepare_page_for_screenshot(timeout:)
       wait_images_loaded(timeout: timeout) if timeout
 
-      blurred_input = BrowserHelpers.blur_from_focused_element if Capybara::Screenshot.blur_active_element
+      blurred_input = BrowserHelpers.blur_from_focused_element if SnapDiff.config.blur_active_element
 
-      BrowserHelpers.hide_caret if Capybara::Screenshot.hide_caret
-      BrowserHelpers.disable_animations if Capybara::Screenshot.disable_animations
+      BrowserHelpers.hide_caret if SnapDiff.config.hide_caret
+      BrowserHelpers.disable_animations if SnapDiff.config.disable_animations
 
       blurred_input
     end
@@ -111,7 +111,7 @@ module SnapDiff
     end
 
     def resize_if_needed(saved_image)
-      expected_image_width = Capybara::Screenshot.window_size[0]
+      expected_image_width = SnapDiff.config.window_size[0]
       return saved_image if driver.width_for(saved_image) < expected_image_width * 2
 
       notice_how_to_avoid_this
@@ -121,7 +121,7 @@ module SnapDiff
     end
 
     def selenium_with_retina_screen?
-      Os::ON_MAC && BrowserHelpers.selenium? && Capybara::Screenshot.window_size
+      Os::ON_MAC && BrowserHelpers.selenium? && SnapDiff.config.window_size
     end
   end
 end

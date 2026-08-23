@@ -64,10 +64,6 @@ class CoreTreeHasNoLegacyDepsTest < ActiveSupport::TestCase
       "require \"capybara/screenshot/diff/image_compare\"",
       "yield Capybara::Screenshot, Capybara::Screenshot::Diff"
     ],
-    "snap_diff/browser_helpers.rb" => [
-      "if ::Capybara::Screenshot.respond_to?(:window_size) && ::Capybara::Screenshot.window_size",
-      "resize_to(::Capybara::Screenshot.window_size)"
-    ],
     "snap_diff/config.rb" => [
       "add_driver_path: [Capybara::Screenshot, :add_driver_path],",
       "add_os_path: [Capybara::Screenshot, :add_os_path],",
@@ -100,55 +96,13 @@ class CoreTreeHasNoLegacyDepsTest < ActiveSupport::TestCase
     "snap_diff/dsl.rb" => [
       "require \"capybara/screenshot/diff/config_legacy\"",
       "require \"capybara/screenshot/diff/drivers\"",
-      "require \"capybara/screenshot/diff/screenshot_matcher\"",
-      "return false unless Capybara::Screenshot.active?",
-      "delayed = options.fetch(:delayed, Capybara::Screenshot::Diff.delayed)",
-      "return false unless Capybara::Screenshot.active?"
-    ],
-    "snap_diff/integrations/cucumber.rb" => [
-      "Capybara::Screenshot::Diff.delayed = false"
+      "require \"capybara/screenshot/diff/screenshot_matcher\""
     ],
     "snap_diff/reporters/html.rb" => [
-      "require \"capybara/screenshot/diff/config_legacy\"",
-      "root = Capybara::Screenshot.root || Pathname.pwd",
-      "root / Capybara::Screenshot.save_path / \"snap_diff_report.html\""
-    ],
-    "snap_diff/screenshot_assertion.rb" => [
-      "return unless ::Capybara::Screenshot::Diff.pending_if_new && session.new_screenshots_present?",
-      "return unless ::Capybara::Screenshot.active? && ::Capybara::Screenshot::Diff.fail_on_difference",
-      "return unless ::Capybara::Screenshot.active? && ::Capybara::Screenshot::Diff.fail_on_difference"
+      "require \"capybara/screenshot/diff/config_legacy\""
     ],
     "snap_diff/screenshot_matcher.rb" => [
-      "require \"capybara_screenshot_diff/snap_manager\"",
-      "@driver_options = Capybara::Screenshot::Diff.default_options.merge(options)",
-      "Capture::Viewport.prepare!(Capybara::Screenshot.window_size)",
-      "Capture::Viewport.prepare!(Capybara::Screenshot.window_size)",
-      "if Capybara::Screenshot::Diff.fail_if_new && !@snapshot.base_path.exist?",
-      "To allow new screenshots: Capybara::Screenshot::Diff.fail_if_new = false",
-      "Capybara::Screenshot::Diff.screenshoter.new(capture_options, comparison_options)"
-    ],
-    "snap_diff/screenshot_namer.rb" => [
-      "@screenshot_area ||= Capybara::Screenshot.screenshot_area"
-    ],
-    "snap_diff/screenshoter.rb" => [
-      "blurred_input = BrowserHelpers.blur_from_focused_element if Capybara::Screenshot.blur_active_element",
-      "BrowserHelpers.hide_caret if Capybara::Screenshot.hide_caret",
-      "BrowserHelpers.disable_animations if Capybara::Screenshot.disable_animations",
-      "expected_image_width = Capybara::Screenshot.window_size[0]",
-      "Os::ON_MAC && BrowserHelpers.selenium? && Capybara::Screenshot.window_size"
-    ],
-    "snap_diff/snap_manager.rb" => [
-      "manager_class = Capybara::Screenshot::Diff.manager",
-      "root = Pathname.new(Capybara::Screenshot.screenshot_area_abs)"
-    ],
-    "snap_diff/stable_screenshoter.rb" => [
-      "@screenshoter = Capybara::Screenshot::Diff.screenshoter.new(capture_options.except(:stability_time_limit), @comparison_options)"
-    ],
-    "snap_diff/static.rb" => [
-      "Capybara::Screenshot.root = root"
-    ],
-    "snap_diff/vcs.rb" => [
-      "if Capybara::Screenshot.use_lfs"
+      "require \"capybara_screenshot_diff/snap_manager\""
     ]
   }.freeze
 

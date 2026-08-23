@@ -69,7 +69,7 @@ module Capybara
           calls = []
 
           SnapDiff::Vcs.stub(:checkout_vcs, true) do
-            Capybara::Screenshot::Diff.stub(:screenshoter, recording_screenshoter(calls)) do
+            SnapDiff.config.stub(:screenshoter, recording_screenshoter(calls)) do
               snap = create_snapshot_for(:a, :c)
 
               SnapDiff::ScreenshotMatcher.new(snap.full_name, tolerance: 0.03, wait: 5).build_screenshot_assertion
@@ -110,7 +110,7 @@ module Capybara
           calls = []
 
           SnapDiff::Vcs.stub(:checkout_vcs, true) do
-            Capybara::Screenshot::Diff.stub(:screenshoter, recording_screenshoter(calls)) do
+            SnapDiff.config.stub(:screenshoter, recording_screenshoter(calls)) do
               snap = create_snapshot_for(:a, :c)
               SnapDiff::ScreenshotMatcher.new(snap.full_name).build_screenshot_assertion
             end

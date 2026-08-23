@@ -50,7 +50,7 @@ module SnapDiff
     # @param name [String] The base name of the screenshot, used to generate the filename.
     # @param skip_stack_frames [Integer] The number of stack frames to skip when reporting errors.
     # @param options [Hash] Additional options for taking the screenshot and comparison.
-    # @option options [Boolean] :delayed (Capybara::Screenshot::Diff.delayed)
+    # @option options [Boolean] :delayed (SnapDiff.config.delayed)
     #   Whether to validate the screenshot immediately or delay validation.
     # @option options [Array<Integer>] :crop [left, top, right, bottom] Edge coordinates to crop the screenshot to.
     # @option options [Array<Array<Integer>>] :skip_area Array of [left, top, right, bottom] edge coordinates to ignore.
@@ -68,7 +68,7 @@ module SnapDiff
     # @raise [SnapDiff::UnstableImage] If the image comparison is unstable.
     # @raise [SnapDiff::WindowSizeMismatchError] If the window size doesn't match expectations.
     def assert_matches_screenshot(name, skip_stack_frames: 0, **options)
-      return false unless Capybara::Screenshot.active?
+      return false unless SnapDiff.config.active?
 
       # Get the full name with section and group information
       full_name = SnapDiff.session.screenshot_namer.full_name(name)
@@ -82,7 +82,7 @@ module SnapDiff
       return false unless assertion
 
       # Determine if validation should be delayed or immediate
-      delayed = options.fetch(:delayed, Capybara::Screenshot::Diff.delayed)
+      delayed = options.fetch(:delayed, SnapDiff.config.delayed)
 
       if delayed
         SnapDiff.session.add_assertion(assertion)
@@ -110,7 +110,7 @@ module SnapDiff
     # @param options [Hash] Additional options for taking the screenshot. See {#assert_matches_screenshot}.
     # @return [Boolean] True if the screenshot was successfully captured.
     def capture_screenshot(name, **options)
-      return false unless Capybara::Screenshot.active?
+      return false unless SnapDiff.config.active?
 
       full_name = SnapDiff.session.screenshot_namer.full_name(name)
       SnapDiff::ScreenshotMatcher.new(full_name, options).capture

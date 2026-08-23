@@ -53,7 +53,7 @@ module Capybara
         screenshoter = SnapDiff::Screenshoter.new({}, {driver: :vips})
         retina_image = Vips::Image.black(2560, 1600) # 2x window size, non-square
 
-        resized = Screenshot.stub(:window_size, [1280, 1024]) do
+        resized = SnapDiff.config.stub(:window_size, [1280, 1024]) do
           screenshoter.send(:resize_if_needed, retina_image)
         end
 

@@ -24,7 +24,7 @@ module CapybaraScreenshotDiff
 
     test "#screenshot raises error when screenshot is missing and fail_if_new is true" do
       SnapDiff::Vcs.stub(:checkout_vcs, false) do
-        Capybara::Screenshot::Diff.stub(:fail_if_new, true) do
+        SnapDiff.config.stub(:fail_if_new, true) do
           assert_raises CapybaraScreenshotDiff::ExpectationNotMet, match: /No existing screenshot found for/ do
             screenshot "not_existing_screenshot-name"
           end
@@ -117,7 +117,7 @@ module CapybaraScreenshotDiff
 
     test "#screenshot with delayed: false raises error when images differ" do
       SnapDiff::Vcs.stub(:checkout_vcs, true) do
-        Capybara::Screenshot::Diff.stub(:delayed, false) do
+        SnapDiff.config.stub(:delayed, false) do
           assert_raises(CapybaraScreenshotDiff::ExpectationNotMet) do
             snap = create_snapshot_for(:c, :a)
             screenshot(snap.full_name, delayed: false)
@@ -128,7 +128,7 @@ module CapybaraScreenshotDiff
 
     test "#screenshot with delayed: false succeeds when images match" do
       SnapDiff::Vcs.stub(:checkout_vcs, true) do
-        Capybara::Screenshot::Diff.stub(:delayed, false) do
+        SnapDiff.config.stub(:delayed, false) do
           snap = create_snapshot_for(:a)
           assert_nothing_raised { screenshot(snap.full_name, delayed: false) }
         end
@@ -216,7 +216,7 @@ module CapybaraScreenshotDiff
         end
       end
 
-      Capybara::Screenshot::Diff.stub(:screenshoter, naive_screenshoter) do
+      SnapDiff.config.stub(:screenshoter, naive_screenshoter) do
         capture_screenshot("nested/dir/example")
 
         assert_predicate SnapDiff::SnapManager.snapshot("nested/dir/example").path, :exist?

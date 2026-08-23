@@ -110,8 +110,8 @@ module SnapDiff
     # test/fixtures/app/doc/screenshots/ that VCS rollback just restored.
     # Do not reorder those teardowns without revisiting this.
     def self.instance
-      manager_class = Capybara::Screenshot::Diff.manager
-      root = Pathname.new(Capybara::Screenshot.screenshot_area_abs)
+      manager_class = SnapDiff.config.manager
+      root = Pathname.new(SnapDiff.config.screenshot_area_abs)
 
       current = Thread.current[:snap_diff_manager]
       unless current&.instance_of?(manager_class) && current.root == root

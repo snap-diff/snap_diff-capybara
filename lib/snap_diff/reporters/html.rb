@@ -89,8 +89,8 @@ module SnapDiff
       end
 
       def self.default_output_path
-        root = Capybara::Screenshot.root || Pathname.pwd
-        root / Capybara::Screenshot.save_path / "snap_diff_report.html"
+        root = SnapDiff.config.root || Pathname.pwd
+        root / SnapDiff.config.save_path / "snap_diff_report.html"
       end
 
       private

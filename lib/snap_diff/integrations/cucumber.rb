@@ -8,7 +8,7 @@ require "snap_diff/reporting"
 World(::SnapDiff::DSL)
 
 Before do
-  Capybara::Screenshot::Diff.delayed = false
+  SnapDiff.config.delayed = false
   SnapDiff::BrowserHelpers.resize_window_if_needed
 end
 

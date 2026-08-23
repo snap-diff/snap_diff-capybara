@@ -71,7 +71,7 @@ module Capybara
       end
 
       test "does not fail when fail_on_difference is false and screenshots differ" do
-        Capybara::Screenshot::Diff.stub(:fail_on_difference, false) do
+        SnapDiff.config.stub(:fail_on_difference, false) do
           test_case = SampleMiniTestCase.new(:_test_sample_screenshot_error)
           test_case.run
           assert_equal 0, test_case.failures.size
@@ -217,7 +217,7 @@ module Capybara
 
           set_test_images(snap, :a, :a)
 
-          Capybara::Screenshot.stub(:screenshot_format, "webp") do
+          SnapDiff.config.stub(:screenshot_format, "webp") do
             screenshot "a", driver: :vips
 
             assert_stored_screenshot("a.webp")
@@ -228,7 +228,7 @@ module Capybara
           snap = SnapDiff::SnapManager.snapshot("a", "png")
           set_test_images(snap, :a, :a)
 
-          Capybara::Screenshot.stub(:screenshot_format, "webp") do
+          SnapDiff.config.stub(:screenshot_format, "webp") do
             screenshot "a", screenshot_format: "png"
 
             assert_stored_screenshot("a.png")
