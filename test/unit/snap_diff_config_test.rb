@@ -23,14 +23,14 @@ class SnapDiffConfigTest < ActiveSupport::TestCase
   #     setting -- a future `mattr_accessor :foo` (active_support's ext is
   #     one require away) or hand-rolled writer would create unmapped
   #     storage invisible to SnapDiff.config;
-  # (b) SnapDiff.config stores exactly one ivar per MAPPING key -- catches
+  # (b) SnapDiff.config stores exactly one ivar per declared setting -- catches
   #     both an unmapped ivar sneaking into Config and a mapped setting
   #     whose ivar is missing (which would also silently escape
   #     test_helper's per-test ivar snapshot/restore).
   NON_CONFIG_WRITERS = [].freeze # currently no non-config writer API on the legacy modules
 
-  test "every legacy singleton writer is covered by SnapDiff::Config::MAPPING" do
-    covered = SnapDiff::Config::MAPPING.values
+  test "every legacy singleton writer is covered by SnapDiff::LegacyShims::CONFIG_MAPPING" do
+    covered = SnapDiff::LegacyShims::CONFIG_MAPPING.values
 
     [Capybara::Screenshot, Capybara::Screenshot::Diff].each do |mod|
       writers = mod.singleton_class.public_instance_methods(false).grep(/=\z/) - NON_CONFIG_WRITERS
@@ -41,20 +41,29 @@ class SnapDiffConfigTest < ActiveSupport::TestCase
 
         assert_includes covered, [mod, mattr],
           "#{mod}.#{writer} is a config writer with no SnapDiff::Config mapping. " \
-          "Add an entry to Config::MAPPING (rename the key if `#{mattr}` collides " \
+          "Add an entry to LegacyShims::CONFIG_MAPPING (rename the key if `#{mattr}` collides " \
           "with an existing one, as `enabled` does), or add it to NON_CONFIG_WRITERS " \
           "if it is deliberately not a config setting."
       end
     end
   end
 
-  test "SnapDiff.config stores exactly one ivar per MAPPING key" do
-    assert_equal SnapDiff::Config::MAPPING.keys.map { |k| :"@#{k}" }.sort,
+  # The two halves of the split are only safe while they agree: Config
+  # declares the settings and knows nothing about the legacy holders,
+  # LegacyShims says which holder each one is exposed on. A setting in one
+  # and not the other is either storage with no v1 accessor or a v1
+  # accessor delegating to a setting that does not exist.
+  test "LegacyShims::CONFIG_MAPPING covers exactly Config::SETTINGS" do
+    assert_equal SnapDiff::Config::SETTINGS, SnapDiff::LegacyShims::CONFIG_MAPPING.keys
+  end
+
+  test "SnapDiff.config stores exactly one ivar per declared setting" do
+    assert_equal SnapDiff::Config::SETTINGS.map { |k| :"@#{k}" }.sort,
       SnapDiff.config.instance_variables.sort
   end
 
   test "every mapped setting is readable via config and equal to its mattr_accessor's value" do
-    SnapDiff::Config::MAPPING.each do |name, (mod, mattr)|
+    SnapDiff::LegacyShims::CONFIG_MAPPING.each do |name, (mod, mattr)|
       expected = mod.public_send(mattr)
       actual = config.public_send(name)
 

@@ -63,7 +63,7 @@ class ConfigDefaultTimingTest < ActiveSupport::TestCase
     Dir.chdir(Dir.tmpdir)
 
     # 1) Every mapped setting reads the same through both surfaces.
-    SnapDiff::Config::MAPPING.each do |name, (mod, mattr)|
+    SnapDiff::LegacyShims::CONFIG_MAPPING.each do |name, (mod, mattr)|
       check("SnapDiff.config.#{name} vs #{mod}.#{mattr}", mod.public_send(mattr), SnapDiff.config.public_send(name))
     end
 

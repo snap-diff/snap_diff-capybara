@@ -52,48 +52,12 @@ class CoreTreeHasNoLegacyDepsTest < ActiveSupport::TestCase
   # file-level, on purpose: a file with one blessed line must still fail on
   # the second.
   #
-  # Seeded with every core->legacy edge that existed the day the gate was
-  # written (64 of them), so the gate lands green and every later commit can
-  # only take entries away. The target is an empty hash. It must never grow:
-  # a new entry is a decision to keep a core->legacy edge across the 3.0
-  # deletion, so it needs a written reason here AND an ADR-008 update --
-  # never just a red build turned green.
-  ALLOWED = {
-    "snap_diff.rb" => [
-      "require \"capybara/screenshot/diff/config_legacy\"",
-      "require \"capybara/screenshot/diff/image_compare\"",
-      "yield Capybara::Screenshot, Capybara::Screenshot::Diff"
-    ],
-    "snap_diff/config.rb" => [
-      "add_driver_path: [Capybara::Screenshot, :add_driver_path],",
-      "add_os_path: [Capybara::Screenshot, :add_os_path],",
-      "blur_active_element: [Capybara::Screenshot, :blur_active_element],",
-      "screenshot_enabled: [Capybara::Screenshot, :enabled],",
-      "hide_caret: [Capybara::Screenshot, :hide_caret],",
-      "disable_animations: [Capybara::Screenshot, :disable_animations],",
-      "root: [Capybara::Screenshot, :root],",
-      "stability_time_limit: [Capybara::Screenshot, :stability_time_limit],",
-      "window_size: [Capybara::Screenshot, :window_size],",
-      "save_path: [Capybara::Screenshot, :save_path],",
-      "use_lfs: [Capybara::Screenshot, :use_lfs],",
-      "screenshot_format: [Capybara::Screenshot, :screenshot_format],",
-      "capybara_screenshot_options: [Capybara::Screenshot, :capybara_screenshot_options],",
-      "delayed: [Capybara::Screenshot::Diff, :delayed],",
-      "area_size_limit: [Capybara::Screenshot::Diff, :area_size_limit],",
-      "fail_if_new: [Capybara::Screenshot::Diff, :fail_if_new],",
-      "pending_if_new: [Capybara::Screenshot::Diff, :pending_if_new],",
-      "fail_on_difference: [Capybara::Screenshot::Diff, :fail_on_difference],",
-      "color_distance_limit: [Capybara::Screenshot::Diff, :color_distance_limit],",
-      "enabled: [Capybara::Screenshot::Diff, :enabled],",
-      "shift_distance_limit: [Capybara::Screenshot::Diff, :shift_distance_limit],",
-      "skip_area: [Capybara::Screenshot::Diff, :skip_area],",
-      "driver: [Capybara::Screenshot::Diff, :driver],",
-      "tolerance: [Capybara::Screenshot::Diff, :tolerance],",
-      "perceptual_threshold: [Capybara::Screenshot::Diff, :perceptual_threshold],",
-      "screenshoter: [Capybara::Screenshot::Diff, :screenshoter],",
-      "manager: [Capybara::Screenshot::Diff, :manager]"
-    ]
-  }.freeze
+  # EMPTY. It was seeded with all 64 core->legacy edges that existed the day
+  # the gate was written, and every one of them is gone. Keep it empty: an
+  # entry is a decision to keep a core->legacy edge across the 3.0 deletion,
+  # so it needs a written reason here AND an ADR-008 update -- never just a
+  # red build turned green.
+  ALLOWED = {}.freeze
 
   test "no core file requires or references the v1 namespaces" do
     refute_empty CORE_FILES, "core glob matched nothing -- the gate would pass vacuously"
