@@ -129,6 +129,12 @@ class LegacyNamespaceDeprecationTest < ActiveSupport::TestCase
   test "loading each entry point and running a trivial comparison emits no deprecation output" do
     failures = ENTRY_POINT_PROBES.filter_map do |entry, kind|
       body = "require #{entry.inspect}\n"
+      # The probe itself names chunky_png (the one driver present on every
+      # box, so the comparison below is deterministic), and naming it is a
+      # user choice that warns about the 2.1 removal by design. Silence THAT
+      # channel only -- the legacy-namespace warnings this test is actually
+      # about stay live.
+      body << "SnapDiff::Removal.suppress!\n"
       body << "raise \"compare failed\" unless SnapDiff.compare(#{FIXTURE_IMAGE.inspect}, #{FIXTURE_IMAGE.inspect}, driver: :chunky_png).quick_equal?\n"
       if kind == :legacy
         body << "CapybaraScreenshotDiff.assertions_present?\n"

@@ -61,8 +61,14 @@ class CanonicalSuiteHasNoLegacyRefsTest < ActiveSupport::TestCase
   # are deleted with the v1 trees (ADR-008 -- SnapDiff.configure is the
   # single config entry point). This is the shape of the first of the three
   # incidents: a canonical gate demanding SnapDiff.start.
+  #
+  # SnapDiff.silence_deprecations is deliberately NOT here: it moved to
+  # snap_diff/removal.rb, a file the deletion keeps, because it is the one
+  # switch that also silences the 2.1 removal warnings (chunky_png,
+  # shift_distance_limit, the driver abstraction) -- which are announced from
+  # core files and have nothing to do with the v1 namespaces.
   LEGACY_SHIM_SURFACE = /
-    SnapDiff\.(start|silence_deprecations)\b
+    SnapDiff\.start\b
     |SnapDiff::Deprecation\b
     |suppress_migration_notice
   /x

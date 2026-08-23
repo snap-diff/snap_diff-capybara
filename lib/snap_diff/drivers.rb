@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require "snap_diff/removal"
+
 module SnapDiff
   # utils.rb requires THIS file at its top. Requiring it back at load time
   # made Ruby shout "circular require considered harmful" under $VERBOSE --
@@ -19,14 +21,34 @@ module SnapDiff
       Utils.find_driver_class_for(driver_option).new
     end
 
+    # @api private
+    #
+    # The registry itself, unannounced: driver name => driver class, filled
+    # lazily by Utils.find_driver_class_for and mutated in place. The gem's
+    # own reads go through HERE rather than through .loaded, so the removal
+    # warning below stays a signal about USER code -- a gem that warns at
+    # itself teaches people to ignore its warnings.
+    def self.registry
+      @registry ||= {}
+    end
+
     # Canonical driver-class cache (ADR-008 step 5b, ex
     # Capybara::Screenshot::Diff::LOADED_DRIVERS): driver name => driver
-    # class, filled lazily by Utils.find_driver_class_for. Mutated in
-    # place -- including by user registration through the legacy constant,
-    # which legacy_shims pins as an EAGER same-object alias of this hash
-    # (a lazy copy would silently drop such registrations).
+    # class. Mutated in place -- including by user registration through the
+    # legacy constant, which legacy_shims pins as an EAGER same-object alias
+    # of this hash (a lazy copy would silently drop such registrations).
+    #
+    # THE documented custom-driver registration point (docs/snapdiff.md), so
+    # a custom-driver author has to hear that 2.1 takes it away.
     def self.loaded
-      @loaded ||= {}
+      Removal.warn_once(
+        :drivers_loaded,
+        "`SnapDiff::Drivers.loaded` is REMOVED in 2.1 together with the rest of the driver " \
+        "abstraction (`SnapDiff::Driver`, `SnapDiff::Drivers.available`, `driver: :auto`): " \
+        "libvips becomes the only backend and custom drivers are no longer supported. " \
+        "See docs/drivers.md."
+      )
+      registry
     end
 
     # Which image drivers this process can actually load, in preference
@@ -76,7 +98,18 @@ module SnapDiff
     # than caching, because the constant is the published stubbing point
     # (image_compare_test stubs it to [] to exercise the no-drivers error
     # path).
+    #
+    # Detection only exists because there is a choice of backend to detect;
+    # 2.1 removes the choice, so it warns. The gem's own callers read
+    # AVAILABLE_DRIVERS directly -- same value, same stubbing point, no
+    # warning at itself.
     def self.available
+      Removal.warn_once(
+        :drivers_available,
+        "`SnapDiff::Drivers.available` is REMOVED in 2.1: with libvips the only backend there " \
+        "is nothing left to detect. Require the `ruby-vips` gem instead of branching on this " \
+        "list. See docs/drivers.md."
+      )
       AVAILABLE_DRIVERS
     end
   end

@@ -122,7 +122,7 @@ Just `require 'snap_diff/integrations/minitest'` (legacy: `capybara_screenshot_d
 | Setting | When to use |
 |---------|-------------|
 | `perceptual_threshold` | Anti-aliasing false positives across OS/browser versions |
-| `shift_distance_limit` | Content shifts by a few pixels (ChunkyPNG only) |
+| `shift_distance_limit` | Content shifts by a few pixels (ChunkyPNG only — **removed in 2.1**) |
 | `area_size_limit` | Allow small diff regions below a pixel count |
 | `color_distance_limit` | Fine-tune raw RGB channel tolerance |
 | `median_filter_window_size` | Smooth noise before comparison (VIPS only) |
@@ -312,6 +312,15 @@ Capybara::Screenshot::Diff.color_distance_limit = 42
 
 
 ### Allowed shift distance
+
+> **Removed in 2.1.** `shift_distance_limit` is implemented only by the ChunkyPNG driver,
+> and 2.1 removes that driver — libvips becomes the only backend. Setting it anywhere
+> (`SnapDiff.config.shift_distance_limit =`, the legacy
+> `Capybara::Screenshot::Diff.shift_distance_limit =`, or `screenshot 'index',
+> shift_distance_limit: 2`) warns once per process in 2.0. There is no vips equivalent:
+> use `median_filter_window_size` (the faster answer to the same problem — see
+> [Drivers](drivers.md#median-filter-size-vips-only)), `tolerance`, or
+> `color_distance_limit`.
 
 Sometimes you want to allow small movements in the images.  For example, jquery-tablesorter
 renders the same table slightly differently sometimes.  You can set set the shift distance

@@ -6,6 +6,41 @@
 > [Custom drivers](snapdiff.md#custom-drivers) for the `SnapDiff::Driver` mixin and how
 > registration in `SnapDiff::Drivers.loaded` works.
 
+## Removed in 2.1: everything on this page except VIPS
+
+2.1 makes **libvips the only backend**. 2.0 is the transitional release — all of the
+following still works, and warns once per process naming 2.1. Silence the warnings with
+`SnapDiff.silence_deprecations = true` or `SNAP_DIFF_SILENCE_DEPRECATIONS=1`.
+
+| Removed in 2.1 | What to do in 2.0 |
+|---|---|
+| the `:chunky_png` driver | add `gem "ruby-vips"` to your Gemfile and drop `driver: :chunky_png` |
+| `driver: :auto` (and the `:auto` default) | with one backend there is nothing to choose; install `ruby-vips` and the default just works |
+| `shift_distance_limit` | ChunkyPNG-only. Use `median_filter_window_size`, `tolerance` or `color_distance_limit` — see [Configuration](configuration.md#allowed-shift-distance) |
+| `SnapDiff::Driver` (the custom-driver mixin) | nothing — see below |
+| `SnapDiff::Drivers.loaded` (the registry) | nothing — see below |
+| `SnapDiff::Drivers.available` (driver detection) | require `ruby-vips` instead of branching on a detected list |
+
+Three related names on the same chopping block stay **silent**, and deliberately so:
+`SnapDiff::Drivers.for` (the gem calls it for every comparison — warning there would fire on
+setups that nothing in this table affects), `SnapDiff::Drivers.detect_available` /
+`SnapDiff::Utils.detect_available_drivers` (run at load, before any user code), and the legacy
+`Capybara::Screenshot::Diff::LOADED_DRIVERS` / `::AVAILABLE_DRIVERS` constant aliases (plain
+constants, nothing to hook). Reach the same values through `.loaded` / `.available` and you
+will hear about them.
+
+**libvips becomes a hard requirement.** Install it with your system package manager
+(`brew install vips`, `apt-get install libvips`) and add `gem "ruby-vips"`. A 2.1 process
+without it cannot compare images at all.
+
+**Custom drivers: there is no migration path.** The driver abstraction is removed whole —
+the `SnapDiff::Driver` mixin, the `SnapDiff::Drivers.loaded` registry, and driver
+selection by name. Third-party drivers stop working in 2.1 and nothing replaces them
+(the decision was made deliberately: no measurable demand, and one backend is what keeps
+the comparison engine honest). If you maintain one, say so on
+[the issue tracker](https://github.com/snap-diff/snap_diff-capybara/issues) before 2.1
+ships — that is the only thing that can change this.
+
 ## Perceptual color comparison (VIPS only)
 
 By default, color differences are measured using raw RGB channel distance. This can produce
@@ -51,6 +86,10 @@ There are several options to setup active driver: `:auto`, `:chunky_png` and `:v
 
 * `:auto` - will try to load `:vips` if there is gem `ruby-vips`, in other cases will load `:chunky_png`
 * `:chunky_png` and `:vips` will load correspondent driver
+
+> **2.1 keeps only `:vips`.** `:auto` and `:chunky_png` are removed; each warns once per
+> process in 2.0. If `:auto` is quietly running you on ChunkyPNG today (no `ruby-vips`
+> installed), the warning says so — that is the setup 2.1 breaks.
 
 ## Enable VIPS image processing
 

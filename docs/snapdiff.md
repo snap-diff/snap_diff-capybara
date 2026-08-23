@@ -165,8 +165,8 @@ integration require; a few objects need their own require, noted below.
 | `SnapDiff::ExpectationNotMet` | A screenshot did not match its baseline |
 | `SnapDiff::UnstableImage` | No stable capture within `stability_time_limit` / `wait` |
 | `SnapDiff::WindowSizeMismatchError` | Browser window is not the configured `window_size` |
-| `SnapDiff::Driver` | Mixin with the shared driver defaults (`require "snap_diff/driver"`) |
-| `SnapDiff::Drivers` | Driver factory and registry — `.for`, `.loaded`, `.available` |
+| `SnapDiff::Driver` | Mixin with the shared driver defaults (`require "snap_diff/driver"`) — **removed in 2.1** |
+| `SnapDiff::Drivers` | Driver factory and registry — `.for`, `.loaded`, `.available` — **removed in 2.1** |
 | `SnapDiff::Reporting` | Process-global reporter lifecycle (`require "snap_diff/reporting"`) |
 | `SnapDiff::Reporters::HTML` | The interactive HTML report (`require "snap_diff/reporters/html"`) |
 | `SnapDiff::Reporters::Default` | Builds the annotated diff images and the failure message |
@@ -263,6 +263,14 @@ SnapDiff::Reporting.finalize!
 ```
 
 ## Custom drivers
+
+> **Removed in 2.1 — no replacement.** libvips becomes the only backend, and the driver
+> abstraction goes with the choice: the `SnapDiff::Driver` mixin, the
+> `SnapDiff::Drivers.loaded` registry, `SnapDiff::Drivers.available`, and selecting a driver
+> by name. In 2.0 all of it still works and warns once per process (silence with
+> `SnapDiff.silence_deprecations = true` or `SNAP_DIFF_SILENCE_DEPRECATIONS=1`). Nothing
+> here migrates to a 2.1 shape — there is no 2.1 shape. If you maintain a driver, say so on
+> [#166](https://github.com/snap-diff/snap_diff-capybara/issues/166) before 2.1 ships.
 
 A driver is a plain object that does the image work. Include `SnapDiff::Driver` for the shared
 defaults, then implement the operations the comparison engine calls:
