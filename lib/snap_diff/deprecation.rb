@@ -33,10 +33,8 @@ module SnapDiff
       # @param subject [String] the deprecated old-namespace name being
       #   referenced, e.g. "Capybara::Screenshot::Diff::ImageCompare"
       # @param replacement [String] the new-namespace name to use instead
-      # @param category [Symbol] what kind of thing moved, for the human
-      #   reading the message (e.g. :constant, :config)
       # @return [void]
-      def warn(subject, replacement, category:)
+      def warn(subject, replacement)
         return if SnapDiff.silence_deprecations?
 
         first_time = MUTEX.synchronize do
@@ -44,7 +42,7 @@ module SnapDiff
         end
         return unless first_time
 
-        Kernel.warn(message_for(subject, replacement, category, caller_locations(1)))
+        Kernel.warn(message_for(subject, replacement, caller_locations(1)))
       end
 
       # @api private
@@ -59,8 +57,8 @@ module SnapDiff
 
       private
 
-      def message_for(subject, replacement, category, locations)
-        message = "[snap_diff deprecation] `#{subject}` is deprecated (#{category}); " \
+      def message_for(subject, replacement, locations)
+        message = "[snap_diff deprecation] `#{subject}` is deprecated (constant); " \
           "use `#{replacement}` instead."
         origin = origin_for(locations)
         origin ? "#{message} (called from #{origin})" : message

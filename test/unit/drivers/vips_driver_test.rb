@@ -213,13 +213,6 @@ module SnapDiff
         assert_equal [20.0, 15.0, 30.0, 25.0], [left, top, right, bottom]
       end
 
-      test "VipsDriver.difference_area calculates correct area of difference" do
-        old_image = Vips::Image.new_from_file("#{TEST_IMAGES_DIR}/a.png")
-        new_image = Vips::Image.new_from_file("#{TEST_IMAGES_DIR}/d.png").bandjoin(255)
-
-        assert_equal 8, VipsDriver.difference_area(old_image, new_image, color_distance: 10)
-      end
-
       test "VipsDriver.perceptual_difference_mask returns nil region for identical images" do
         old_image = Vips::Image.new_from_file("#{TEST_IMAGES_DIR}/a.png")
         same_image = Vips::Image.new_from_file("#{TEST_IMAGES_DIR}/a.png")

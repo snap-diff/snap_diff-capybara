@@ -237,7 +237,7 @@ module Capybara
       end
 
       def screenshot_dir
-        screenshot_namer.current_group_directory
+        File.join(Capybara::Screenshot.screenshot_area, *screenshot_namer.directory_parts)
       end
 
       def screenshot_namer

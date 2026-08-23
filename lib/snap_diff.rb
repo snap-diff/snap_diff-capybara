@@ -27,18 +27,14 @@ module SnapDiff
 end
 SnapDiff.assert_single_gem!
 
-# None of these requires ever leads back to this file: config_legacy sits
-# just above the snap_diff/config leaf (see both headers -- since ADR-008
-# step 1 the storage leaf is snap_diff/config, which config_legacy
-# requires), the image_compare forwarder pulls in
-# snap_diff/comparison plus the legacy const_missing shims, and
-# "capybara/dsl" is the base gem. That keeps this file's require graph
-# acyclic -- it never requires "capybara_screenshot_diff" back, unlike the
-# old autoload-based wiring this replaced. The forwarder path (not
-# "snap_diff/comparison" directly) is deliberate: it installs
-# snap_diff/legacy_shims, so the old Capybara::Screenshot::Diff constants
-# stay resolvable (now with deprecation warnings) even in processes that
-# only ever require "snap_diff".
+# This lean entry must never load the umbrella "capybara_screenshot_diff"
+# -- snap_diff_test.rb's "bare require never loads the umbrella" guard
+# enforces it -- so nothing required below may reach back here.
+#
+# The image_compare forwarder (not "snap_diff/comparison" directly) is
+# deliberate: it installs snap_diff/legacy_shims, so the old
+# Capybara::Screenshot::Diff constants stay resolvable, with deprecation
+# warnings, in processes that only ever require "snap_diff".
 # "capybara/dsl" is needed directly (not just transitively) so
 # `Capybara.default_max_wait_time` in Config#default_options resolves even
 # when "snap_diff" is required standalone (SnapDiffTest's
@@ -54,17 +50,12 @@ require "snap_diff/version"
 # whichever integration happens to be loaded.
 require "snap_diff/screenshot_assertion"
 
-# Forward-looking namespace for the gem, per ADR-004.
-#
-# Since v2 step 5 the comparison implementation lives here
-# ({SnapDiff::Comparison}, {SnapDiff::ComparisonResult}); since step 6 the
-# old +Capybara::Screenshot::Diff+ constants are same-object const_missing
-# shims (snap_diff/legacy_shims) that emit a deprecation warning once per
-# constant per process. See ADR-004 for the full migration plan.
+# The canonical namespace for the gem. The old
+# +Capybara::Screenshot::Diff+ constants are same-object const_missing shims
+# (snap_diff/legacy_shims) that warn once per constant per process.
 module SnapDiff
-  # Compare two images on disk with the configured defaults. Canonical home
-  # since ADR-008 step 7b; +Capybara::Screenshot::Diff.compare+ now forwards
-  # here rather than the other way round.
+  # Compare two images on disk with the configured defaults. Canonical home;
+  # +Capybara::Screenshot::Diff.compare+ forwards here.
   #
   # Note the argument order swap: callers pass baseline first (reading
   # "compare baseline against current"), Comparison takes current first.
@@ -73,10 +64,9 @@ module SnapDiff
   end
 
   # v1-style configuration: yields the two legacy accessor holders
-  # (+Capybara::Screenshot+, +Capybara::Screenshot::Diff+) exactly as
-  # +Capybara::Screenshot::Diff.configure+ always has -- and, since ADR-008
-  # step 7b, this is where that yield actually happens; Diff.configure
-  # forwards here. Both names stay identical in call shape.
+  # (+Capybara::Screenshot+, +Capybara::Screenshot::Diff+). Canonical home;
+  # +Capybara::Screenshot::Diff.configure+ forwards here, and both names
+  # stay identical in call shape.
   #
   #   SnapDiff.start do |screenshot, diff|
   #     screenshot.window_size = [1280, 1024]

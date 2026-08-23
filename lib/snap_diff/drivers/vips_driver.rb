@@ -115,11 +115,6 @@ module SnapDiff
       private
 
       class << self
-        def difference_area(old_image, new_image, color_distance: 0)
-          mask = difference_mask(new_image, old_image, color_distance)
-          difference_area_size_by(mask)
-        end
-
         def difference_area_size_by(difference_mask)
           diff_mask = difference_mask == 0
           diff_mask.hist_find.to_a[0][0].max

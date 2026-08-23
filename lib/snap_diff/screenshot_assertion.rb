@@ -106,21 +106,6 @@ module SnapDiff
 
       test_screenshot_errors.empty? ? nil : test_screenshot_errors
     end
-
-    # Asserts that an image has not changed compared to its baseline.
-    #
-    # @param backtrace [Array(String)] The caller context, used for error reporting.
-    # @param name [String] The name of the screenshot being verified.
-    # @param comparison [Object] The comparison object containing the result and details of the comparison.
-    # @return [String, nil] Returns an error message if the screenshot differs from the baseline, otherwise nil.
-    # @note Legacy entry point; delegates to the instance verify flow
-    #   (pure question + explicit #archive_baseline! on pass).
-    def self.assert_image_not_changed(backtrace, name, comparison)
-      assertion = new(name)
-      assertion.caller = backtrace
-      assertion.compare = comparison
-      assertion.validate
-    end
   end
 
   class AssertionRegistry
@@ -153,14 +138,10 @@ module SnapDiff
     end
 
     def verify(screenshots = assertions)
-      return unless ::Capybara::Screenshot.active? && ::Capybara::Screenshot::Diff.fail_on_difference
-
-      failed_screenshot = failed_assertions.first
       result = ScreenshotAssertion.verify_screenshots!(screenshots)
+      return unless result
 
-      if result
-        raise SnapDiff::ExpectationNotMet.new(result.join("\n\n"), failed_screenshot.caller)
-      end
+      raise SnapDiff::ExpectationNotMet.new(result.join("\n\n"), failed_assertions.first.caller)
     end
 
     def failed_assertions

@@ -55,7 +55,6 @@ module SnapDiff
       path ? path.dirname.mkpath : root.mkpath
     end
 
-    # TODO: rename to delete!
     def cleanup!
       snapshots.each do |snapshot|
         cleanup_attempts!(snapshot)

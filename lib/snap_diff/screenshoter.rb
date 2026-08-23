@@ -51,9 +51,7 @@ module SnapDiff
       screenshot_image = driver.from_file(stored_path)
 
       # TODO(uwe): Remove when chromedriver takes right size screenshots
-      # TODO: Adds tests when this case is true
       screenshot_image = resize_if_needed(screenshot_image) if selenium_with_retina_screen?
-      # ODOT
 
       screenshot_image = driver.crop(crop, screenshot_image) if crop
 

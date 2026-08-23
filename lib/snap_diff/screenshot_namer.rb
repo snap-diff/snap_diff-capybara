@@ -11,15 +11,10 @@ module SnapDiff
   class ScreenshotNamer
     attr_reader :section, :group
 
-    def initialize(screenshot_area = nil)
+    def initialize
       @section = nil
       @group = nil
       @counter = nil
-      @screenshot_area = screenshot_area
-    end
-
-    def screenshot_area
-      @screenshot_area ||= Capybara::Screenshot.screenshot_area
     end
 
     # Sets the current section for screenshots.
@@ -50,13 +45,6 @@ module SnapDiff
       File.join(*directory_parts.push(name.to_s))
     end
 
-    # Builds the full path for a screenshot file, including section and group directories.
-    # @param base_name [String] The base name for the screenshot.
-    # @return [String] The absolute path for the screenshot file.
-    def full_name_with_path(base_name)
-      File.join(screenshot_area, full_name(base_name))
-    end
-
     # Returns the directory parts (section and group) for constructing paths.
     # @return [Array<String>] An array of directory names.
     def directory_parts
@@ -64,12 +52,6 @@ module SnapDiff
       parts << @section unless @section.nil? || @section.empty?
       parts << @group unless @group.nil? || @group.empty?
       parts
-    end
-
-    # Calculates the directory path for the current section and group.
-    # @return [String] The full path to the directory.
-    def current_group_directory
-      File.join(*([screenshot_area] + directory_parts))
     end
 
     private
