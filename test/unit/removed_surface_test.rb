@@ -34,7 +34,6 @@ class RemovedSurfaceTest < ActiveSupport::TestCase
   REMOVED_PATHS = %w[
     capybara
     capybara_screenshot_diff
-    capybara-screenshot-diff.rb
     capybara_screenshot_diff.rb
     snap_diff/legacy_shims.rb
     snap_diff/deprecation.rb
@@ -44,6 +43,15 @@ class RemovedSurfaceTest < ActiveSupport::TestCase
     snap_diff/drivers/chunky_png_driver.rb
     snap_diff/utils.rb
   ].freeze
+
+  # NOT removed, and deliberately absent from the list above:
+  # lib/capybara-screenshot-diff.rb. It looks like part of the v1 tree and is
+  # not -- it is the Bundler entry point for the `capybara-screenshot-diff`
+  # GEM NAME, which is still published (both names ship identical content).
+  # Bundler.require requires the gem's own name, and the dash->slash fallback
+  # it would otherwise use ("capybara/screenshot/diff") IS gone, so deleting
+  # this file makes `gem "capybara-screenshot-diff"` a silent no-op followed by
+  # a confusing NameError. support_load_probe_test pins both gem-name entries.
 
   # Removed CONSTANTS, by fully qualified name.
   REMOVED_CONSTANTS = %w[
