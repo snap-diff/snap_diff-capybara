@@ -56,35 +56,39 @@ class SupportLoadProbeTest < ActiveSupport::TestCase
   # consumers lost CapybaraScreenshotDiff::DSL, and only one CI matrix leg
   # noticed. capybara_screenshot_diff/cucumber is not probed: it calls
   # World(...) at load, which only exists inside cucumber's runtime context.
+  # Documented user-facing constants that must stay EAGER (see
+  # snap_diff/legacy_shims.rb's exception list): const_defined? never
+  # triggers const_missing, so a lazy shim makes `defined?` feature
+  # detection in adopter code silently return nil.
+  EAGER_USER_FACING = %w[
+    Capybara::Screenshot::Diff::Reporters::Default
+    Capybara::Screenshot::Diff::Comparison
+  ].freeze
+
   ENTRY_POINTS = {
     "capybara_screenshot_diff" => %w[
       CapybaraScreenshotDiff::DSL Capybara::Screenshot::Os Capybara::Screenshot::Diff
-    ],
+    ] + EAGER_USER_FACING,
     "capybara_screenshot_diff/minitest" => %w[
       CapybaraScreenshotDiff::DSL CapybaraScreenshotDiff::Minitest::Assertions
       Capybara::Screenshot::Os Capybara::Screenshot::Diff
-    ],
+    ] + EAGER_USER_FACING,
     "capybara_screenshot_diff/rspec" => %w[
       CapybaraScreenshotDiff::DSL Capybara::Screenshot::Os Capybara::Screenshot::Diff
-    ],
+    ] + EAGER_USER_FACING,
     "capybara-screenshot-diff" => %w[
       CapybaraScreenshotDiff::DSL CapybaraScreenshotDiff::Minitest::Assertions
       Capybara::Screenshot::Os Capybara::Screenshot::Diff
-    ]
+    ] + EAGER_USER_FACING
   }.freeze
 
   test "every documented entry point defines its advertised constants standalone" do
-    project_root = File.expand_path("../..", __dir__)
-
     failures = ENTRY_POINTS.filter_map do |entry, constants|
-      script = <<~RUBY
+      probe(entry, <<~RUBY)
         require #{entry.inspect}
         missing = #{constants.inspect}.reject { |c| Object.const_defined?(c) }
         abort("missing: \#{missing.join(", ")}") unless missing.empty?
       RUBY
-      out, status = Open3.capture2e(RbConfig.ruby, "-Ilib", "-e", script, chdir: project_root)
-
-      "require \"#{entry}\" -> #{out}" unless status.success?
     end
 
     assert_empty failures, <<~MSG
@@ -92,5 +96,127 @@ class SupportLoadProbeTest < ActiveSupport::TestCase
 
       #{failures.join("\n")}
     MSG
+  end
+
+  # --- beta3 blockers: entry points must load a COMPLETE surface ---
+  #
+  # The canonical `snap_diff/*` requires never loaded snap_diff.rb itself,
+  # so the docs' own quick start (`require "snap_diff/integrations/minitest"`)
+  # left SnapDiff.configure/.start/.compare undefined, SnapDiff::VERSION
+  # unresolvable, and the dual-install guard silent. The legacy entries had
+  # the mirror-image hole: some of them stopped loading the umbrella, so
+  # CapybaraScreenshotDiff.verify and friends vanished while
+  # `defined?(CapybaraScreenshotDiff)` still passed.
+
+  # SnapDiff.serve is deliberately absent here: docs/snapdiff.md's object
+  # map gates it behind its own `require "snap_diff/static"` (which pulls
+  # rack + minitest), so the core must not carry it.
+  CANONICAL_SURFACE = %w[
+    config configure start compare session reset pending_screenshots_message
+  ].freeze
+
+  CANONICAL_ENTRY_POINTS = {
+    "snap_diff" => CANONICAL_SURFACE,
+    "snap_diff/dsl" => CANONICAL_SURFACE,
+    "snap_diff/integrations/minitest" => CANONICAL_SURFACE,
+    "snap_diff/integrations/rspec" => CANONICAL_SURFACE,
+    "snap_diff/integrations/cucumber" => CANONICAL_SURFACE,
+    "snap_diff/static" => CANONICAL_SURFACE + %w[serve]
+  }.freeze
+
+  LEGACY_SESSION_SURFACE = %w[
+    verify reset reporters finalize_reporters! assertions registry
+    pending_screenshots_message
+  ].freeze
+
+  LEGACY_ENTRY_POINTS = %w[
+    capybara-screenshot-diff
+    snap_diff-capybara
+    capybara_screenshot_diff
+    capybara_screenshot_diff/minitest
+    capybara_screenshot_diff/rspec
+    capybara_screenshot_diff/cucumber
+    capybara_screenshot_diff/static
+    capybara/screenshot/diff
+    capybara/screenshot/diff/cucumber
+  ].freeze
+
+  test "every canonical snap_diff entry point loads the full SnapDiff surface" do
+    failures = CANONICAL_ENTRY_POINTS.filter_map do |entry, methods|
+      probe(entry, <<~RUBY)
+        require #{entry.inspect}
+        missing = #{methods.inspect}.reject { |m| SnapDiff.respond_to?(m) }
+        missing << "VERSION" unless defined?(SnapDiff::VERSION)
+        abort("missing: \#{missing.join(", ")}") unless missing.empty?
+      RUBY
+    end
+
+    assert_empty failures, <<~MSG
+      Canonical entry point(s) load only a fragment of SnapDiff:
+
+      #{failures.join("\n")}
+    MSG
+  end
+
+  test "every canonical snap_diff entry point runs the dual-install guard" do
+    failures = CANONICAL_ENTRY_POINTS.keys.filter_map do |entry|
+      probe(entry, <<~RUBY)
+        require "rubygems"
+        %w[capybara-screenshot-diff snap_diff-capybara].each do |name|
+          Gem.loaded_specs[name] ||= Gem::Specification.new(name, "0.0.0")
+        end
+        begin
+          require #{entry.inspect}
+        rescue SnapDiff::DualInstallError
+          exit 0
+        end
+        abort("both gems activated, but the dual-install guard stayed silent")
+      RUBY
+    end
+
+    assert_empty failures, <<~MSG
+      Entry point(s) bypass SnapDiff.assert_single_gem!:
+
+      #{failures.join("\n")}
+    MSG
+  end
+
+  test "every legacy entry point keeps the CapybaraScreenshotDiff session surface" do
+    failures = LEGACY_ENTRY_POINTS.filter_map do |entry|
+      probe(entry, <<~RUBY)
+        require #{entry.inspect}
+        missing = #{LEGACY_SESSION_SURFACE.inspect}.reject { |m| CapybaraScreenshotDiff.respond_to?(m) }
+        abort("missing: \#{missing.join(", ")}") unless missing.empty?
+      RUBY
+    end
+
+    assert_empty failures, <<~MSG
+      Legacy entry point(s) leave CapybaraScreenshotDiff half-present
+      (the module answers `defined?` but not its own session methods):
+
+      #{failures.join("\n")}
+    MSG
+  end
+
+  private
+
+  # cucumber's World/Before/After/AfterAll only exist inside its runtime, so
+  # a bare probe of a cucumber entry has to supply them or the require dies
+  # before it reaches what is under test.
+  CUCUMBER_RUNTIME_STUB = <<~RUBY
+    def World(*) = nil
+    def Before(*) = nil
+    def After(*) = nil
+    def AfterAll(*) = nil
+  RUBY
+
+  # Runs +script+ in a fresh process with only lib/ on the load path.
+  # Returns nil on success, a failure description otherwise.
+  def probe(entry, script)
+    project_root = File.expand_path("../..", __dir__)
+    preamble = entry.include?("cucumber") ? CUCUMBER_RUNTIME_STUB : ""
+    out, status = Open3.capture2e(RbConfig.ruby, "-Ilib", "-e", preamble + script, chdir: project_root)
+
+    "require \"#{entry}\" -> #{out}" unless status.success?
   end
 end

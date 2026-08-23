@@ -40,7 +40,7 @@ module SnapDiff
         reporters_snapshot.each do |reporter|
           reporter.record(assertions)
         rescue => e
-          warn "[capybara-screenshot-diff] Reporter failed: #{e.message}"
+          warn "[snap_diff] Reporter #{reporter.class} failed (#{e.class}: #{e.message})"
         end
       end
 
