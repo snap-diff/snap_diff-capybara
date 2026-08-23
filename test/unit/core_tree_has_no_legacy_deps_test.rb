@@ -17,10 +17,13 @@ require "test_helper"
 # because the generator for the v1 surface has to be code, and the v1 trees
 # have to stay alias-only -- they are legacy by design and go with it.
 #
-# Comments are ignored: "ex +Capybara::Screenshot.active?+" is history, not a
-# dependency. Strings are NOT ignored -- a user-facing message naming a
-# legacy accessor is a legacy reference that survives the deletion and starts
-# lying the day it happens.
+# WHOLE-LINE comments are ignored: "ex +Capybara::Screenshot.active?+" on its
+# own line is history, not a dependency. Everything else on a code line
+# counts, strings and trailing comments included -- a user-facing message
+# naming a legacy accessor is a legacy reference that survives the deletion
+# and starts lying the day it happens, and a trailing note on a live line is
+# close enough to the code to be worth keeping honest. Move such a note to
+# its own line if the gate objects.
 class CoreTreeHasNoLegacyDepsTest < ActiveSupport::TestCase
   LIB = Pathname.new(__dir__).join("../../lib").expand_path
 
@@ -40,7 +43,12 @@ class CoreTreeHasNoLegacyDepsTest < ActiveSupport::TestCase
   # `capybara_screenshot_diff...`, `capybara-screenshot-diff`. Plain
   # `require "capybara"` / `"capybara/dsl"` is the base gem, not this gem's
   # legacy tree, so it must not match.
-  LEGACY_REQUIRE = %r{\Arequire(_relative)?\s+["']capybara(/screenshot|_screenshot_diff|-screenshot-diff)}
+  #
+  # The `(\.{1,2}/)*` is load-bearing: every core file sits one directory
+  # below lib/, so `require_relative "../capybara/screenshot/diff/version"`
+  # reaches the v1 tree and really loads it. Anchoring straight on the quote
+  # let that through.
+  LEGACY_REQUIRE = %r{\Arequire(_relative)?\s+["'](\.{1,2}/)*capybara(/screenshot|_screenshot_diff|-screenshot-diff)}
 
   # A read or write of a v1 namespace constant.
   LEGACY_CONSTANT = /(?<![\w:])(?:::)?(?:Capybara::Screenshot|CapybaraScreenshotDiff)\b/
@@ -76,7 +84,12 @@ class CoreTreeHasNoLegacyDepsTest < ActiveSupport::TestCase
 
   test "the allowlist names only lines that still exist" do
     stale = ALLOWED.flat_map do |path, lines|
-      present = significant_lines(LIB.join(path)).map(&:first)
+      file = LIB.join(path)
+      # A deleted file is the most stale an entry can get; report it rather
+      # than letting Pathname#read blow up with Errno::ENOENT.
+      next ["#{path}: allowlisted file no longer exists"] unless file.exist?
+
+      present = significant_lines(file).map(&:first)
       (lines - present).map { |line| "#{path}: allowlisted line no longer present: `#{line}`" }
     end
 
