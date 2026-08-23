@@ -36,20 +36,32 @@ class LegacyTreeIsAliasOnlyTest < ActiveSupport::TestCase
 
   # A `def` in these trees is only acceptable as a THREE-line forwarder --
   # signature, ONE delegating expression, `end` -- and this is that
-  # expression: a single method-call chain rooted at SnapDiff, with at most
-  # one argument list and one block.
+  # expression: a single method-call chain rooted at SnapDiff, passing its
+  # arguments straight through.
   #
-  # The rule used to be `body.include?("SnapDiff")`, which waved through
-  # real behaviour hiding behind a mention of the canonical namespace:
-  # `SnapDiff.config.a ? b : c` is a conditional, and (with the `;` hole
-  # closed below) `SnapDiff.config.a; something_else` was two statements.
-  # Anchoring the whole body rejects both -- neither can be consumed by the
-  # chain, so neither matches.
+  # SIMPLE_ARGS is where the strictness lives. Names, commas, `*`/`**`/`&`
+  # and keyword colons -- and nothing else. No parentheses, so a nested call
+  # cannot appear; no `.`, so neither can a bare receiver call; no `?`, `"`
+  # or `=`, so no conditional, literal or assignment. Two escapes this
+  # closes, both of which ran arbitrary code past the previous rule:
+  #
+  #   SnapDiff.config.x(File.exist?("/etc/passwd") ? raise("boom") : ENV.fetch("HOME"))
+  #   SnapDiff.config.tap { |c| File.write("/tmp/pwned", c.inspect); exit 1 }
+  #
+  # The second also slipped past the semicolon check, because the walk below
+  # steps over a def's body line -- fixed there.
+  #
+  # No block form at all: nothing in these trees has a `def` left, and an
+  # unbounded `{ ... }` is exactly the hole above. A yield-through forwarder
+  # that genuinely needs one is a decision to re-open here, deliberately.
+  # `...` is Ruby's argument forwarding -- the purest forwarder there is
+  # (CapybaraScreenshotDiff.serve uses it), so it is spelled out rather than
+  # let in by loosening the character set.
+  SIMPLE_ARGS = /\.\.\.|[\w\s,:*&]*/
   FORWARDER_BODY = /\A
-    SnapDiff(::[A-Z]\w*)*     # SnapDiff, SnapDiff::Reporters, ...
-    (\.[a-z_]\w*[?!]?)+       # .config.active?, .compare, ...
-    (\(.*\))?                 # at most one argument list
-    (\s*\{.*\})?              # at most one block (yield-through forwarders)
+    SnapDiff(::[A-Z]\w*)*      # SnapDiff, SnapDiff::Reporting, ...
+    (\.[a-z_]\w*[?!]?)+        # .config.active?, .compare, ...
+    (\((?:#{SIMPLE_ARGS})\))?  # at most one argument list, pass-through only
   \z/x
 
   # Shapes that are pure compatibility plumbing rather than behaviour.
@@ -99,19 +111,23 @@ class LegacyTreeIsAliasOnlyTest < ActiveSupport::TestCase
   def offences(file)
     rel = file.relative_path_from(LIB)
     lines = significant_lines(file)
-    found = []
+
+    # A semicolon is how several statements -- or an entire
+    # `def x; body; end` -- hide inside one "line", which would then be
+    # judged as a single line. Never alias-shaped, whatever it says.
+    #
+    # Scanned over EVERY line up front, not inside the walk below: the walk
+    # steps past a def's body line without re-examining it, so a semicolon
+    # there went unseen.
+    found = lines.filter_map do |line|
+      "#{rel}: `#{line}` puts more than one statement on a line" if line.include?(";")
+    end
     index = 0
 
     while index < lines.length
       line = lines[index]
 
-      if line.include?(";")
-        # A semicolon is how several statements -- or an entire
-        # `def x; body; end` -- hide inside one "line", which would then be
-        # judged as a single line. Never alias-shaped, whatever it says.
-        found << "#{rel}: `#{line}` puts more than one statement on a line"
-        index += 1
-      elsif line.start_with?("def ")
+      if line.start_with?("def ")
         body, terminator = lines[index + 1], lines[index + 2]
         unless FORWARDER_BODY.match?(body.to_s) && terminator == "end"
           found << "#{rel}: `#{line}` is not a single-expression forwarder into SnapDiff"
