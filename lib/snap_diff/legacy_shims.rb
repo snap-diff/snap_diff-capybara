@@ -20,6 +20,11 @@ require "snap_diff/drivers"
 #   const_missing, so a lazy shim would break that contract.
 # - Capybara::Screenshot::Diff::VERSION: the gemspec resolves it at build
 #   time; a lazy shim would make every `gem build` warn.
+# - Capybara::Screenshot::Diff::Reporters::Default (a documented subclassing
+#   extension point) and Capybara::Screenshot::Diff::Comparison (the images
+#   struct): documented user-facing names that adopters feature-detect with
+#   defined?/const_defined?. Assigned eagerly by their own forwarder files
+#   (reporters/default.rb, image_compare.rb).
 # - Drivers::ChunkyPNGDriver / Drivers::VipsDriver: real constants on the
 #   shared SnapDiff::Drivers module (the Drivers alias is same-object by
 #   contract), so const_missing can never fire for the leaf names;
@@ -57,9 +62,6 @@ module Capybara
     module Diff
       # EAGER same-object alias of the canonical driver cache (see header).
       LOADED_DRIVERS = SnapDiff::Drivers.loaded
-
-      module Reporters
-      end
     end
   end
 end
@@ -84,12 +86,7 @@ SnapDiff::LegacyShims.install(Capybara::Screenshot::Diff, "Capybara::Screenshot:
   ScreenshotMatcher: "SnapDiff::ScreenshotMatcher",
   Drivers: "SnapDiff::Drivers",
   ImageCompare: "SnapDiff::Comparison",
-  Comparison: "SnapDiff::Comparison::Images",
   Difference: "SnapDiff::ComparisonResult"
-}.freeze)
-
-SnapDiff::LegacyShims.install(Capybara::Screenshot::Diff::Reporters, "Capybara::Screenshot::Diff::Reporters", {
-  Default: "SnapDiff::Reporters::Default"
 }.freeze)
 
 SnapDiff::LegacyShims.install(CapybaraScreenshotDiff, "CapybaraScreenshotDiff", {

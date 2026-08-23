@@ -49,9 +49,7 @@ class NamespaceForwardingTest < ActiveSupport::TestCase
     "Capybara::Screenshot::Diff::Drivers::BaseDriver" => "SnapDiff::Driver",
     "Capybara::Screenshot::Diff::Drivers::ChunkyPNGDriver" => "SnapDiff::Drivers::ChunkyPNGDriver",
     "Capybara::Screenshot::Diff::Drivers::VipsDriver" => "SnapDiff::Drivers::VipsDriver",
-    "Capybara::Screenshot::Diff::Reporters::Default" => "SnapDiff::Reporters::Default",
     "Capybara::Screenshot::Diff::ImageCompare" => "SnapDiff::Comparison",
-    "Capybara::Screenshot::Diff::Comparison" => "SnapDiff::Comparison::Images",
     "Capybara::Screenshot::Diff::Difference" => "SnapDiff::ComparisonResult",
     "CapybaraScreenshotDiff::RED_RGBA" => "SnapDiff::RED_RGBA",
     "CapybaraScreenshotDiff::ORANGE_RGBA" => "SnapDiff::ORANGE_RGBA"
@@ -108,8 +106,26 @@ class NamespaceForwardingTest < ActiveSupport::TestCase
     end
   end
 
-  test "MAPPING covers all 31 documented forwarders" do
-    assert_equal 31, MAPPING.size
+  test "MAPPING covers all 29 documented lazy forwarders" do
+    assert_equal 29, MAPPING.size
+  end
+
+  # Documented user-facing constants (beta3 blocker): a subclassing
+  # extension point and the images struct. EAGER same-object aliases, not
+  # lazy shims, for the same reason as the error classes -- const_defined?
+  # and defined? never trigger const_missing, so a lazy shim makes feature
+  # detection by the old name silently report "absent", permanently.
+  {
+    "Capybara::Screenshot::Diff::Reporters::Default" => "SnapDiff::Reporters::Default",
+    "Capybara::Screenshot::Diff::Comparison" => "SnapDiff::Comparison::Images"
+  }.each do |old_name, new_name|
+    test "#{old_name} is an eager same-object alias of #{new_name}" do
+      mod, leaf = old_name.rpartition("::").values_at(0, 2)
+
+      assert Object.const_get(mod).const_defined?(leaf, false),
+        "#{leaf} must be an eagerly-defined constant on #{mod}, not a const_missing shim"
+      assert_same Object.const_get(new_name), Object.const_get(old_name)
+    end
   end
 
   # Driver registries (ADR-008 step 5b): not part of MAPPING because the

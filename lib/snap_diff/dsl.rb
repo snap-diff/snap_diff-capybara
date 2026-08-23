@@ -1,5 +1,13 @@
 # frozen_string_literal: true
 
+# The canonical entry point. Everything a user is told to require under
+# snap_diff/ (this file, snap_diff/integrations/*, snap_diff/static) routes
+# through here, so this one line is what makes SnapDiff.configure/.start/
+# .compare/::VERSION -- and the dual-install guard -- present no matter
+# which of those paths the user picked. snap_diff.rb never requires this
+# file back, so the require graph stays acyclic.
+require "snap_diff"
+
 # No require of "capybara_screenshot_diff" here: every Capybara::Screenshot
 # reference below is inside a method body, resolved lazily at call time, not
 # at this file's own load time -- so this unit has no eager dependency on

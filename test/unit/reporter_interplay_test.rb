@@ -103,7 +103,7 @@ module CapybaraScreenshotDiff
 
         _out, err = capture_io { CapybaraScreenshotDiff.reset }
 
-        assert_match(/Reporter failed: record boom/, err)
+        assert_match(/\[snap_diff\] Reporter \S*RaisingReporter failed \(RuntimeError: record boom\)/, err)
         assert_equal 1, @spy.recorded.size, "reporters after the raising one must still be notified"
       end
     end

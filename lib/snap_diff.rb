@@ -6,8 +6,14 @@
 # undetectable. Refuse that setup at the entry point. Local dev from
 # source loads neither spec, so the guard fires only when both are
 # genuinely installed as gems.
+#
+# snap_diff/errors is pulled in first (two dependency-free files) so
+# DualInstallError can sit under SnapDiff::Error like every other error the
+# gem raises -- docs/snapdiff.md promises Error is the catch-all.
+require "snap_diff/errors"
+
 module SnapDiff
-  DualInstallError = Class.new(StandardError)
+  DualInstallError = Class.new(Error)
 
   # @api private
   def self.assert_single_gem!(loaded_specs = Gem.loaded_specs)
@@ -40,8 +46,13 @@ SnapDiff.assert_single_gem!
 require "capybara/dsl"
 require "capybara/screenshot/diff/config_legacy"
 require "capybara/screenshot/diff/image_compare"
-require "snap_diff/errors"
 require "snap_diff/config"
+require "snap_diff/version"
+# SnapDiff.session/.reset/.pending_screenshots_message are part of the
+# documented core surface (docs/snapdiff.md object map lists them with no
+# extra require), so the entry point owns them rather than leaving them to
+# whichever integration happens to be loaded.
+require "snap_diff/screenshot_assertion"
 
 # Forward-looking namespace for the gem, per ADR-004.
 #

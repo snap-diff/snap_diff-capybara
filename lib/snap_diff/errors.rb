@@ -8,6 +8,12 @@ require "snap_diff/error_with_filtered_backtrace"
 # shims, because rescue clauses and defined?/const_defined? feature
 # detection in adopter code must keep behaving exactly as before
 # (const_defined? never triggers const_missing).
+#
+# Error is the catch-all docs/snapdiff.md advertises: EVERY error this gem
+# raises inherits it, so `rescue SnapDiff::Error` really does catch them all
+# (pinned by test/unit/errors_alias_test.rb, which discovers the classes
+# rather than listing them). ErrorWithFilteredBacktrace is plumbing, not a
+# second root.
 module SnapDiff
   class Error < ErrorWithFilteredBacktrace; end
 
@@ -15,5 +21,5 @@ module SnapDiff
 
   class UnstableImage < Error; end
 
-  class WindowSizeMismatchError < ErrorWithFilteredBacktrace; end
+  class WindowSizeMismatchError < Error; end
 end
