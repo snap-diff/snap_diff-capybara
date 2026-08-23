@@ -6,7 +6,7 @@ require "snap_diff/drivers/chunky_png_driver"
 require "support/driver_contract_tests"
 
 # Nested in the canonical SnapDiff::Drivers namespace: reopening the old
-# SnapDiff::Drivers path would define a fresh Drivers
+# Capybara::Screenshot::Diff::Drivers path would define a fresh Drivers
 # module there, shadowing the v2 step 6 lazy const_missing forwarder.
 module SnapDiff
   module Drivers

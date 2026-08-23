@@ -24,7 +24,7 @@ RSpec.describe "capybara_screenshot_diff/rspec", type: :feature do
     SnapDiff.config.tolerance = 0.5
   end
 
-  it "should include CapybaraScreenshotDiff in rspec" do
+  it "should include SnapDiff::DSL in rspec" do
     expect(self.class.ancestors).to include SnapDiff::DSL
   end
 
@@ -45,7 +45,7 @@ RSpec.describe "capybara_screenshot_diff/rspec", type: :feature do
 
   it "marks the example pending when a new screenshot has no baseline and pending_if_new is enabled" do
     name = "pending-if-new-example"
-    allow(Capybara::Screenshot::Diff).to receive(:pending_if_new).and_return(true)
+    allow(SnapDiff.config).to receive(:pending_if_new).and_return(true)
     visit "/"
     screenshot name
   ensure

@@ -7,26 +7,25 @@ require "open3"
 # documented entry point, in fresh subprocesses (test_helper preloads the
 # whole gem, so only a subprocess can observe require-time behavior).
 #
-# Current behavior being pinned (the coming storage inversion must not
-# shift any of these):
+# Current behavior being pinned:
 #
-# - mattr_accessor block defaults (fail_if_new from ENV["CI"], root from
-#   Rails.root/pwd) are evaluated ONCE, at class-body eval time, when
-#   config_legacy.rb is first required. Mutating ENV, cwd, or Rails.root
-#   after the require -- even before the first read -- must NOT change the
-#   value. A refactor that turns any of these into a lazy (read-time)
-#   default, memoized or not, goes red here.
-# - Diff.default_options[:wait] is the opposite: it reads
+# - the ENV/pwd-derived defaults (fail_if_new from ENV["CI"], root from
+#   Rails.root/pwd) are evaluated ONCE, when snap_diff/config.rb is first
+#   required. Mutating ENV, cwd, or Rails.root after the require -- even
+#   before the first read -- must NOT change the value. A refactor that
+#   turns any of these into a lazy (read-time) default, memoized or not,
+#   goes red here.
+# - default_options[:wait] is the opposite: it reads
 #   Capybara.default_max_wait_time at CALL time, live, every call.
 #
-# Value snapshots are asserted through BOTH surfaces (SnapDiff.config.x
-# and the legacy mattr_accessor) so the inversion can't silently fork them.
+# Canonical entry points only, read through SnapDiff.config only. The v1
+# entry points and the "both surfaces agree" half re-run these same scripts
+# from test/legacy/legacy_config_default_timing_test.rb, which is deleted
+# with the v1 trees in 3.0.
 class ConfigDefaultTimingTest < ActiveSupport::TestCase
   ENTRY_POINTS = %w[
-    capybara_screenshot_diff
-    capybara_screenshot_diff/minitest
     snap_diff
-    capybara/screenshot/diff
+    snap_diff/integrations/minitest
   ].freeze
 
   def run_probe(script, env)
@@ -39,11 +38,6 @@ class ConfigDefaultTimingTest < ActiveSupport::TestCase
     def check(name, expected, actual)
       return if expected == actual
       abort("#{name}: expected #{expected.inspect}, got #{actual.inspect}")
-    end
-
-    def check_both(name, expected, mod, mattr)
-      check("#{mod}.#{mattr}", expected, mod.public_send(mattr))
-      check("SnapDiff.config.#{name}", expected, SnapDiff.config.public_send(name))
     end
   RUBY
 
@@ -62,49 +56,42 @@ class ConfigDefaultTimingTest < ActiveSupport::TestCase
     require "tmpdir"
     Dir.chdir(Dir.tmpdir)
 
-    # 1) Every mapped setting reads the same through both surfaces.
-    SnapDiff::LegacyShims::CONFIG_MAPPING.each do |name, (mod, mattr)|
-      check("SnapDiff.config.#{name} vs #{mod}.#{mattr}", mod.public_send(mattr), SnapDiff.config.public_send(name))
-    end
-
-    # 2) Expected default values (CI unset, no Rails, at require time).
-    #    fail_if_new false / root == launch pwd also pin require-time
-    #    evaluation: ENV["CI"] and cwd were changed above, pre-first-read.
-    screenshot = Capybara::Screenshot
-    diff = Capybara::Screenshot::Diff
+    # Expected default values (CI unset, no Rails, at require time).
+    # fail_if_new false / root == launch pwd also pin require-time
+    # evaluation: ENV["CI"] and cwd were changed above, pre-first-read.
     {
-      add_driver_path: [nil, screenshot, :add_driver_path],
-      add_os_path: [nil, screenshot, :add_os_path],
-      blur_active_element: [true, screenshot, :blur_active_element],
-      screenshot_enabled: [nil, screenshot, :enabled],
-      hide_caret: [true, screenshot, :hide_caret],
-      disable_animations: [nil, screenshot, :disable_animations],
-      root: [launch_pwd, screenshot, :root],
-      stability_time_limit: [nil, screenshot, :stability_time_limit],
-      window_size: [nil, screenshot, :window_size],
-      save_path: ["doc/screenshots", screenshot, :save_path],
-      use_lfs: [nil, screenshot, :use_lfs],
-      screenshot_format: ["png", screenshot, :screenshot_format],
-      capybara_screenshot_options: [{}, screenshot, :capybara_screenshot_options],
-      delayed: [true, diff, :delayed],
-      area_size_limit: [nil, diff, :area_size_limit],
-      fail_if_new: [false, diff, :fail_if_new],
-      pending_if_new: [false, diff, :pending_if_new],
-      fail_on_difference: [true, diff, :fail_on_difference],
-      color_distance_limit: [nil, diff, :color_distance_limit],
-      enabled: [true, diff, :enabled],
-      shift_distance_limit: [nil, diff, :shift_distance_limit],
-      skip_area: [nil, diff, :skip_area],
-      driver: [:auto, diff, :driver],
-      tolerance: [nil, diff, :tolerance],
-      perceptual_threshold: [nil, diff, :perceptual_threshold],
-      screenshoter: [SnapDiff::Screenshoter, diff, :screenshoter],
-      manager: [SnapDiff::SnapManager, diff, :manager]
-    }.each do |name, (expected, mod, mattr)|
-      check_both(name, expected, mod, mattr)
+      add_driver_path: nil,
+      add_os_path: nil,
+      blur_active_element: true,
+      screenshot_enabled: nil,
+      hide_caret: true,
+      disable_animations: nil,
+      root: launch_pwd,
+      stability_time_limit: nil,
+      window_size: nil,
+      save_path: "doc/screenshots",
+      use_lfs: nil,
+      screenshot_format: "png",
+      capybara_screenshot_options: {},
+      delayed: true,
+      area_size_limit: nil,
+      fail_if_new: false,
+      pending_if_new: false,
+      fail_on_difference: true,
+      color_distance_limit: nil,
+      enabled: true,
+      shift_distance_limit: nil,
+      skip_area: nil,
+      driver: :auto,
+      tolerance: nil,
+      perceptual_threshold: nil,
+      screenshoter: SnapDiff::Screenshoter,
+      manager: SnapDiff::SnapManager
+    }.each do |name, expected|
+      check("SnapDiff.config.#{name}", expected, SnapDiff.config.public_send(name))
     end
 
-    # 3) Capybara-coupled wait is read at CALL time (live), not frozen.
+    # Capybara-coupled wait is read at CALL time (live), not frozen.
     Capybara.default_max_wait_time = 42.5
     check("default_options[:wait] follows Capybara.default_max_wait_time set after require",
       42.5, SnapDiff.config.default_options[:wait])
@@ -116,7 +103,7 @@ class ConfigDefaultTimingTest < ActiveSupport::TestCase
   CI_SET_SCRIPT = CHECK_HELPER + <<~RUBY
     require ENV.fetch("PROBE_ENTRY")
     ENV.delete("CI")
-    check_both(:fail_if_new, true, Capybara::Screenshot::Diff, :fail_if_new)
+    check(:fail_if_new, true, SnapDiff.config.fail_if_new)
   RUBY
 
   # Probe C: a Rails module with .root defined BEFORE the require wins over
@@ -134,11 +121,11 @@ class ConfigDefaultTimingTest < ActiveSupport::TestCase
 
     require ENV.fetch("PROBE_ENTRY")
     Rails.root = Pathname("/fake-rails-root-after-require")
-    check_both(:root, Pathname("/fake-rails-root-at-require"), Capybara::Screenshot, :root)
+    check(:root, Pathname("/fake-rails-root-at-require"), SnapDiff.config.root)
   RUBY
 
   ENTRY_POINTS.each do |entry|
-    test "#{entry}: defaults snapshot matches through both surfaces; ENV/pwd frozen at require, wait live" do
+    test "#{entry}: defaults snapshot matches; ENV/pwd frozen at require, wait live" do
       run_probe(SNAPSHOT_SCRIPT, {"PROBE_ENTRY" => entry, "CI" => nil})
     end
 

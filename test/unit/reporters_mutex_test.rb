@@ -63,7 +63,7 @@ class ReportersMutexTest < ActiveSupport::TestCase
     assertions = [:some, :assertions]
 
     assert_nothing_raised do
-      CapybaraScreenshotDiff.send(:notify_reporters, assertions)
+      SnapDiff::Reporting.notify(assertions)
     end
 
     assert_equal [[:original, assertions]], received

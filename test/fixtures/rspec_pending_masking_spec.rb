@@ -43,7 +43,7 @@ RSpec.describe "capybara_screenshot_diff/rspec pending_if_new masking guard", ty
 
   it "keeps a genuine failure failing even when a new screenshot is pending" do
     name = "pending-masking-real-failure"
-    allow(Capybara::Screenshot::Diff).to receive(:pending_if_new).and_return(true)
+    allow(SnapDiff.config).to receive(:pending_if_new).and_return(true)
     visit "/"
     screenshot name
 

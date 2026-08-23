@@ -56,7 +56,7 @@ RSpec.describe "capybara_screenshot_diff/rspec after-hook ordering masking guard
 
   it "keeps a real after-hook failure failing even when a new screenshot is pending" do
     name = "pending-masking-after-hook-order"
-    allow(Capybara::Screenshot::Diff).to receive(:pending_if_new).and_return(true)
+    allow(SnapDiff.config).to receive(:pending_if_new).and_return(true)
     visit "/"
     screenshot name
   ensure

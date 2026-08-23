@@ -186,11 +186,11 @@ class DSLTest < ActiveSupport::TestCase
   test "SnapDiff.reset clears new_screenshots" do
     SnapDiff::Vcs.stub(:checkout_vcs, false) do
       screenshot "a"
-      assert_predicate CapybaraScreenshotDiff, :new_screenshots_present?
+      assert_predicate SnapDiff.session, :new_screenshots_present?
 
       SnapDiff.reset
 
-      assert_not_predicate CapybaraScreenshotDiff, :new_screenshots_present?
+      assert_not_predicate SnapDiff.session, :new_screenshots_present?
       assert_empty SnapDiff.session.new_screenshots
     end
   end

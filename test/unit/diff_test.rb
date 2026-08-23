@@ -20,7 +20,6 @@ class DiffTest < ActiveSupport::TestCase
     SnapDiff.config.window_size = [80, 80]
   end
 
-  include Capybara::Screenshot::Diff
   include SnapDiff::Minitest::Assertions
   include DSLStub
 
@@ -35,7 +34,7 @@ class DiffTest < ActiveSupport::TestCase
   end
 
   test "has a version number" do
-    refute_nil ::Capybara::Screenshot::Diff::VERSION
+    refute_nil SnapDiff::VERSION
   end
 
   test "updates screenshot group name" do
@@ -141,7 +140,6 @@ class DiffTest < ActiveSupport::TestCase
   end
 
   class SampleMiniTestCase < ActiveSupport::TestCase
-    include Capybara::Screenshot::Diff
     include SnapDiff::Minitest::Assertions
 
     # NOTE: we need to add `_` as prefix to skip this test from auto-run
@@ -178,7 +176,6 @@ class DiffTest < ActiveSupport::TestCase
       SnapDiff.reset
     end
 
-    include Capybara::Screenshot::Diff
     include NonMinitest::Assertions
 
     def _test_sample_screenshot_error
@@ -201,7 +198,6 @@ class DiffTest < ActiveSupport::TestCase
       @orig_screenshot_format = SnapDiff.config.screenshot_format
     end
 
-    include Capybara::Screenshot::Diff
     include DSLStub
     include SnapDiff::Minitest::Assertions
 
