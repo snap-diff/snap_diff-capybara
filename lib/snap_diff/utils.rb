@@ -4,21 +4,12 @@ require "snap_diff/drivers"
 
 module SnapDiff
   module Utils
+    # Detection itself lives on Drivers now (its canonical home -- so that
+    # `require "snap_diff/drivers"` standalone can answer .available); this
+    # keeps the documented Utils name working. One-way: Drivers never calls
+    # back here at load time, so requiring either file first is safe.
     def self.detect_available_drivers
-      result = []
-      begin
-        result << :vips if defined?(Vips) || require("vips")
-      rescue LoadError
-        # vips not present
-        Object.send(:remove_const, :Vips) if defined?(Vips)
-      end
-      begin
-        result << :chunky_png if defined?(ChunkyPNG) || require("chunky_png")
-      rescue LoadError
-        # chunky_png not present
-        Object.send(:remove_const, :ChunkyPNG) if defined?(ChunkyPNG)
-      end
-      result
+      Drivers.detect_available
     end
 
     def self.find_driver_class_for(driver)

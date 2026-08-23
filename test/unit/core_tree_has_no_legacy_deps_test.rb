@@ -97,9 +97,6 @@ class CoreTreeHasNoLegacyDepsTest < ActiveSupport::TestCase
       "screenshoter: [Capybara::Screenshot::Diff, :screenshoter],",
       "manager: [Capybara::Screenshot::Diff, :manager]"
     ],
-    "snap_diff/drivers.rb" => [
-      "Capybara::Screenshot::Diff::AVAILABLE_DRIVERS"
-    ],
     "snap_diff/dsl.rb" => [
       "require \"capybara/screenshot/diff/config_legacy\"",
       "require \"capybara/screenshot/diff/drivers\"",

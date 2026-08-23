@@ -17,9 +17,10 @@
 # default blocks used to run. snap_diff/config never requires back here,
 # so the graph stays acyclic.
 require "snap_diff/config"
-# AVAILABLE_DRIVERS below is evaluated at class-body eval time, so Utils
-# must be a real, already-loaded module before this module body runs.
-require "snap_diff/utils"
+# AVAILABLE_DRIVERS below aliases SnapDiff::Drivers::AVAILABLE_DRIVERS at
+# class-body eval time, so Drivers must be a real, already-loaded module
+# before this module body runs.
+require "snap_diff/drivers"
 
 module Capybara
   module Screenshot
@@ -39,7 +40,7 @@ module Capybara
 
     # Module to track screenshot changes
     module Diff
-      AVAILABLE_DRIVERS = SnapDiff::Utils.detect_available_drivers.freeze
+      AVAILABLE_DRIVERS = SnapDiff::Drivers::AVAILABLE_DRIVERS
 
       # Configure screenshot and diff settings in one block.
       #

@@ -79,7 +79,12 @@ module Capybara
         end
 
         test "#initialize with :auto driver raises error when no drivers available" do
-          Capybara::Screenshot::Diff.stub_const(:AVAILABLE_DRIVERS, []) do
+          # Canonical stubbing point since the detected-drivers list moved to
+          # SnapDiff::Drivers (3.0 readiness). The legacy
+          # Capybara::Screenshot::Diff::AVAILABLE_DRIVERS is now an eager
+          # same-object ALIAS of this constant, so stubbing the old name only
+          # rebinds the alias and no longer reaches the core.
+          SnapDiff::Drivers.stub_const(:AVAILABLE_DRIVERS, []) do
             assert_raise(RuntimeError) do
               comparison = make_comparison(:b, driver: :auto)
               assert comparison.quick_equal?
