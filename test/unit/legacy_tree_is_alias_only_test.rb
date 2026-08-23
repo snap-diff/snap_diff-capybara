@@ -23,18 +23,34 @@ class LegacyTreeIsAliasOnlyTest < ActiveSupport::TestCase
   # the v1 trees holds logic any more. config_legacy.rb was the last entry;
   # step 7b moved its derived config (.active? precedence, .screenshot_area
   # path assembly, .default_options incl. the vips tolerance literal) into
-  # SnapDiff::Config, and the Config::MAPPING accessor generator into
-  # snap_diff/config.rb alongside it, leaving only one-line forwarders.
+  # SnapDiff::Config, and the 3.0-readiness pass moved the remaining
+  # forwarders and the legacy accessor generator into
+  # snap_diff/legacy_shims.rb -- the one file that holds the v1 surface as
+  # code, and that 3.0 deletes together with these trees. There is not a
+  # single `def` left here.
   #
   # Keep it empty. Adding an entry back is a decision to keep behaviour on
   # the v1 side of the 3.0 deletion, so it needs a written reason here AND
   # an ADR-008 update -- never just to turn a red build green.
-  #
-  # (Diff::AVAILABLE_DRIVERS still lives in config_legacy.rb, but as a bare
-  # constant assignment it is alias-shaped and needs no exemption. It stays
-  # there on purpose -- see #227: test_helper reads it at boot and
-  # image_compare_test stubs it as the published no-drivers hook.)
   ALLOWED_WITH_CODE = {}.freeze
+
+  # A `def` in these trees is only acceptable as a THREE-line forwarder --
+  # signature, ONE delegating expression, `end` -- and this is that
+  # expression: a single method-call chain rooted at SnapDiff, with at most
+  # one argument list and one block.
+  #
+  # The rule used to be `body.include?("SnapDiff")`, which waved through
+  # real behaviour hiding behind a mention of the canonical namespace:
+  # `SnapDiff.config.a ? b : c` is a conditional, and (with the `;` hole
+  # closed below) `SnapDiff.config.a; something_else` was two statements.
+  # Anchoring the whole body rejects both -- neither can be consumed by the
+  # chain, so neither matches.
+  FORWARDER_BODY = /\A
+    SnapDiff(::[A-Z]\w*)*     # SnapDiff, SnapDiff::Reporters, ...
+    (\.[a-z_]\w*[?!]?)+       # .config.active?, .compare, ...
+    (\(.*\))?                 # at most one argument list
+    (\s*\{.*\})?              # at most one block (yield-through forwarders)
+  \z/x
 
   # Shapes that are pure compatibility plumbing rather than behaviour.
   ALIAS_SHAPES = /\A(
@@ -78,8 +94,8 @@ class LegacyTreeIsAliasOnlyTest < ActiveSupport::TestCase
   end
 
   # Walks the file's significant lines. A `def` is only acceptable when its
-  # whole body is a single line delegating into SnapDiff; anything else must
-  # match ALIAS_SHAPES.
+  # whole body is one FORWARDER_BODY expression; anything else must match
+  # ALIAS_SHAPES.
   def offences(file)
     rel = file.relative_path_from(LIB)
     lines = significant_lines(file)
@@ -89,10 +105,16 @@ class LegacyTreeIsAliasOnlyTest < ActiveSupport::TestCase
     while index < lines.length
       line = lines[index]
 
-      if line.start_with?("def ")
+      if line.include?(";")
+        # A semicolon is how several statements -- or an entire
+        # `def x; body; end` -- hide inside one "line", which would then be
+        # judged as a single line. Never alias-shaped, whatever it says.
+        found << "#{rel}: `#{line}` puts more than one statement on a line"
+        index += 1
+      elsif line.start_with?("def ")
         body, terminator = lines[index + 1], lines[index + 2]
-        unless body.to_s.include?("SnapDiff") && terminator == "end"
-          found << "#{rel}: `#{line}` is not a one-line forwarder into SnapDiff"
+        unless FORWARDER_BODY.match?(body.to_s) && terminator == "end"
+          found << "#{rel}: `#{line}` is not a single-expression forwarder into SnapDiff"
         end
         index += 3
       else
