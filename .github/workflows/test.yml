@@ -134,6 +134,13 @@ jobs:
 
     env:
       BUNDLE_GEMFILE: gemfiles/${{ matrix.gemfile }}
+      # The JRuby cells are the only place the vips driver runs on a non-MRI
+      # engine, and `bin/rake test` otherwise leaves them on chunky_png (the
+      # default in test/system_test_case.rb) -- so ruby-vips' FFI path was
+      # only ever loaded there, never driven end to end. Test Drivers covers
+      # both drivers on CRuby; chunky_png stays covered on JRuby by its own
+      # unit tests, which do not read this variable.
+      SCREENSHOT_DRIVER: ${{ contains(matrix.ruby-version, 'jruby') && 'vips' || 'chunky_png' }}
 
     steps:
       - uses: actions/checkout@v7
