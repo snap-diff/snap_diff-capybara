@@ -31,13 +31,12 @@ module SnapDiff
     # used to declare them.
     #
     # +screenshot_enabled+ is the one name that differs from its legacy
-    # spelling: +Capybara::Screenshot.enabled+ and
-    # +Capybara::Screenshot::Diff.enabled+ are independent settings (see
-    # {#active?}, which reads both) that happened to share a bare name in
-    # their own modules. A flat Config can't expose two attributes both
-    # called +enabled+, so the Screenshot-side one is renamed here; Diff's
-    # keeps the bare +enabled+ name since it's the one most existing
-    # configuration touches directly.
+    # spelling. The two v1 holders each carried an independent +enabled+
+    # setting (see {#active?}, which still reads both) under their own
+    # module, and a flat Config cannot expose two attributes both called
+    # +enabled+ -- so the capture-side one became +screenshot_enabled+ and
+    # the comparison-side one kept the bare name, being the one most
+    # existing configuration touches directly.
     SETTINGS = %i[
       add_driver_path
       add_os_path
@@ -76,7 +75,7 @@ module SnapDiff
       # only appears on first write would escape that snapshot and leak
       # between tests.
       SETTINGS.each { |key| instance_variable_set(:"@#{key}", nil) }
-      # Capybara::Screenshot side.
+      # Capture side.
       @blur_active_element = true
       @hide_caret = true
       # Raw Rails.root (no coercion), matching the old mattr_reader default;
@@ -85,7 +84,7 @@ module SnapDiff
       @save_path = "doc/screenshots"
       @screenshot_format = "png"
       @capybara_screenshot_options = {}
-      # Capybara::Screenshot::Diff side.
+      # Comparison side.
       @delayed = true
       @fail_if_new = !ENV["CI"].nil? && !ENV["CI"].empty?
       @pending_if_new = false

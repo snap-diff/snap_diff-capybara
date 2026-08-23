@@ -1,15 +1,11 @@
 # SnapDiff — the canonical API
 
-Everything in this gem lives under `SnapDiff` since v2. This page is the SnapDiff-native
-reference: setup, configuration, the object map, and the extension points — all using canonical
-names only.
+Everything in this gem lives under `SnapDiff`. This page is the reference: setup, configuration,
+the object map, and the extension points.
 
-The legacy `Capybara::Screenshot::Diff` / `CapybaraScreenshotDiff` names still work — they resolve
-to the same objects — and the rest of the docs still teach them. The first legacy API a process
-touches prints one migration notice; on top of that, *lazily shimmed* constants warn once each.
-Some legacy names are silent by design. [UPGRADING.md](UPGRADING.md#deprecation-warnings) lists
-exactly which is which. Nothing here replaces a working setup — it is what you write for **new** code.
-For migrating an existing suite, see [UPGRADING.md](UPGRADING.md).
+2.1 deleted the v1 `Capybara::Screenshot::Diff` / `CapybaraScreenshotDiff` namespaces outright —
+they are `NameError`s now, not deprecations. Migrating a suite that still uses them? See
+[UPGRADING.md](UPGRADING.md#upgrading-to-v21).
 
 ## Quick start
 
@@ -112,24 +108,10 @@ SnapDiff.config.hide_caret = true
 SnapDiff.config.tolerance          # => 0.0005
 ```
 
-`SnapDiff::Config` **is** the storage. The legacy `Capybara::Screenshot.*` and
-`Capybara::Screenshot::Diff.*` accessors are thin delegators onto it — one storage, two views —
-so a write through either surface is immediately visible through the other:
-
-```ruby
-SnapDiff.config.window_size = [1280, 1024]
-Capybara::Screenshot.window_size    # => [1280, 1024]
-```
-
-`SnapDiff.start` is the same call shape as the old `Capybara::Screenshot::Diff.configure`, if
-you prefer the two-holder form:
-
-```ruby
-SnapDiff.start do |screenshot, diff|
-  screenshot.window_size = [1280, 1024]
-  diff.tolerance = 0.0005
-end
-```
+`SnapDiff::Config` **is** the storage — one eagerly-created instance, every setting a plain
+`attr_accessor`. There is no second view of it: the v1 `Capybara::Screenshot.*` /
+`Capybara::Screenshot::Diff.*` delegators and the two-holder `SnapDiff.start` block were removed
+in 2.1.
 
 Three derived, read-only values are computed from the settings above:
 
@@ -140,9 +122,9 @@ Three derived, read-only values are computed from the settings above:
 | `SnapDiff.config.default_options` | The capture/compare defaults handed to `SnapDiff::Comparison` |
 
 Every option's meaning is documented in the
-[Configuration Reference](configuration.md) — the names are identical, only the receiver differs.
-The one rename: `Capybara::Screenshot.enabled` is `SnapDiff.config.screenshot_enabled`, because
-`SnapDiff.config.enabled` is taken by `Capybara::Screenshot::Diff.enabled`.
+[Configuration Reference](configuration.md). One name differs from its v1 spelling:
+`screenshot_enabled` is the old `Capybara::Screenshot.enabled`, because the bare `enabled` is
+taken by the old `Capybara::Screenshot::Diff.enabled`.
 
 ## Object map
 
@@ -152,7 +134,7 @@ integration require; a few objects need their own require, noted below.
 | Object | What it is for |
 |--------|----------------|
 | `SnapDiff.config`, `SnapDiff::Config` | Every setting, one flat object. The storage. |
-| `SnapDiff.configure`, `SnapDiff.start` | Config block helpers (consolidated / v1 shape) |
+| `SnapDiff.configure` | Config block helper — the single config entry point |
 | `SnapDiff.compare` | Compare two image files directly, no browser |
 | `SnapDiff::Comparison` | The layered comparison engine (ex `ImageCompare`) |
 | `SnapDiff::Comparison::Images` | Frozen bundle a comparison operates on: both images, their paths, the driver and the options |
@@ -164,8 +146,6 @@ integration require; a few objects need their own require, noted below.
 | `SnapDiff::ExpectationNotMet` | A screenshot did not match its baseline |
 | `SnapDiff::UnstableImage` | No stable capture within `stability_time_limit` / `wait` |
 | `SnapDiff::WindowSizeMismatchError` | Browser window is not the configured `window_size` |
-| `SnapDiff::Driver` | Mixin with the shared driver defaults (`require "snap_diff/driver"`) — **removed in 2.1** |
-| `SnapDiff::Drivers` | Driver factory and registry — `.for`, `.loaded`, `.available` — **removed in 2.1** |
 | `SnapDiff::Reporting` | Process-global reporter lifecycle (`require "snap_diff/reporting"`) |
 | `SnapDiff::Reporters::HTML` | The interactive HTML report (`require "snap_diff/reporters/html"`) |
 | `SnapDiff::Reporters::Default` | Builds the annotated diff images and the failure message |
@@ -287,7 +267,7 @@ Everything the abstraction was used for from the outside has a direct answer:
 
 ## Related
 
-- [Framework Setup](framework-setup.md) — the same three integrations under their legacy names
+- [Framework Setup](framework-setup.md) — the three integrations, one page each
 - [Configuration Reference](configuration.md) — what every option does
 - [Image Processing](drivers.md) — libvips, perceptual threshold, tolerance
 - [Web UI & Custom Reporters](reporters.md) — the HTML report in detail

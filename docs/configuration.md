@@ -2,7 +2,8 @@
 
 ## Quick Setup
 
-**Canonical (v2):** every setting lives on one flat object, `SnapDiff.config`.
+Every setting lives on one flat object, `SnapDiff.config` (a `SnapDiff::Config`), and
+`SnapDiff.configure` is the single way in.
 
 ```ruby
 # In test_helper.rb or rails_helper.rb
@@ -16,38 +17,25 @@ SnapDiff.configure do |config|
 end
 ```
 
-**Legacy (still supported):** the two-holder block, split across `Capybara::Screenshot` and
-`Capybara::Screenshot::Diff`.
-
-```ruby
-Capybara::Screenshot::Diff.configure do |screenshot, diff|
-  screenshot.window_size = [1280, 1024]
-  screenshot.stability_time_limit = 1
-  screenshot.blur_active_element = true
-  screenshot.hide_caret = true
-  diff.driver = :vips
-  diff.tolerance = 0.0005
-  diff.color_distance_limit = 15
-end
-```
-
-`SnapDiff::Config` **is** the storage; the legacy accessors are thin delegators onto it. There is
-one source of truth, so a write through either surface is visible through the other — mixing them
-is safe, and you can migrate a suite one line at a time:
+Or set them one at a time:
 
 ```ruby
 SnapDiff.config.window_size = [1280, 1024]
-Capybara::Screenshot.window_size    # => [1280, 1024]
+SnapDiff.config.tolerance          # => 0.0005
 ```
 
-Every option name below is identical on both surfaces — only the receiver changes. The one
-exception: `Capybara::Screenshot.enabled` is `SnapDiff.config.screenshot_enabled`, because
-`SnapDiff.config.enabled` is taken by `Capybara::Screenshot::Diff.enabled`. See
-[SnapDiff — the canonical API](snapdiff.md) for the full SnapDiff-native surface.
+There are 25 settings, all of them on this object. The v1 two-holder form — the
+`Capybara::Screenshot` / `Capybara::Screenshot::Diff` accessors and the
+`Diff.configure { |screenshot, diff| }` block — was removed in 2.1; see
+[UPGRADING.md](UPGRADING.md#upgrading-to-v21). The option names did not change, only the
+receiver. The one exception: the old `Capybara::Screenshot.enabled` is
+`SnapDiff.config.screenshot_enabled`, because `SnapDiff.config.enabled` is the old
+`Capybara::Screenshot::Diff.enabled`. See
+[SnapDiff — the canonical API](snapdiff.md) for the full object map.
 
 **Note:** `fail_if_new` defaults to `true` in CI environments (when `ENV['CI']` is set). New screenshots are allowed locally but rejected in CI — no configuration needed.
 
-**Note:** Setting `Capybara::Screenshot.enabled = false` is sufficient to disable all screenshots. There is no need to define no-op modules or monkey-patch the gem.
+**Note:** Setting `SnapDiff.config.screenshot_enabled = false` is sufficient to disable all screenshots. There is no need to define no-op modules or monkey-patch the gem.
 
 ## Recommended tolerance values
 
@@ -103,7 +91,7 @@ screenshot 'dashboard', color_distance_limit: 15
 
 **Tier 1 — Zero config (works immediately):**
 `blur_active_element`, `hide_caret`, and `fail_if_new` (in CI) are enabled by default.
-Just `require 'snap_diff/integrations/minitest'` (legacy: `capybara_screenshot_diff/minitest`) and call `screenshot`.
+Just `require 'snap_diff/integrations/minitest'` and call `screenshot`.
 
 **Tier 2 — Set when tests are flaky:**
 
@@ -121,7 +109,7 @@ Just `require 'snap_diff/integrations/minitest'` (legacy: `capybara_screenshot_d
 | `perceptual_threshold` | Anti-aliasing false positives across OS/browser versions |
 | `area_size_limit` | Allow small diff regions below a pixel count |
 | `color_distance_limit` | Fine-tune raw RGB channel tolerance |
-| `median_filter_window_size` | Smooth noise before comparison (VIPS only) |
+| `median_filter_window_size` | Smooth noise before comparison (per-screenshot option only) |
 
 ---
 
@@ -132,7 +120,7 @@ Just `require 'snap_diff/integrations/minitest'` (legacy: `capybara_screenshot_d
 You can specify the desired screen size using
 
 ```ruby
-Capybara::Screenshot.window_size = [1024, 768]
+SnapDiff.config.window_size = [1024, 768]
 ```
 
 This will force the screen shots to the given size, and skip taking screen shots
@@ -143,13 +131,13 @@ unless the desired window size can be achieved.
 If you want to skip taking screen shots, set
 
 ```ruby
-Capybara::Screenshot.enabled = false
+SnapDiff.config.screenshot_enabled = false
 ```
 
 You can of course set this by an environment variable
 
 ```ruby
-Capybara::Screenshot.enabled = ENV['TAKE_SCREENSHOTS']
+SnapDiff.config.screenshot_enabled = ENV['TAKE_SCREENSHOTS']
 ```
 
 ### Disabling diff
@@ -157,13 +145,13 @@ Capybara::Screenshot.enabled = ENV['TAKE_SCREENSHOTS']
 If you want to skip the assertion for change in the screen shot, set
 
 ```ruby
-Capybara::Screenshot::Diff.enabled = false
+SnapDiff.config.enabled = false
 ```
 
 Using an environment variable
 
 ```ruby
-Capybara::Screenshot::Diff.enabled = ENV['COMPARE_SCREENSHOTS']
+SnapDiff.config.enabled = ENV['COMPARE_SCREENSHOTS']
 ```
 
 ### Tolerate screenshot differences
@@ -171,7 +159,7 @@ Capybara::Screenshot::Diff.enabled = ENV['COMPARE_SCREENSHOTS']
 To allow screenshot differences, but still fail on functional errors, you can set the following option:
 
 ```ruby
-Capybara::Screenshot::Diff.fail_on_difference = false
+SnapDiff.config.fail_on_difference = false
 ```
 
 It defaults to `true`.  This can be useful in continuous integration to a generate a screenshot difference
@@ -182,7 +170,7 @@ report while still reporting functional errors.
 To fail the test if a new screenshot is taken, set the following option:
 
 ```ruby
-Capybara::Screenshot::Diff.fail_if_new = true
+SnapDiff.config.fail_if_new = true
 ```
 
 If `fail_if_new` is set to `true`, the test will fail if a new screenshot is taken
@@ -195,10 +183,10 @@ that every screenshot taken by your tests corresponds to an expected state of yo
 To mark tests as pending (skipped) if a new screenshot is taken without a baseline, set:
 
 ```ruby
-Capybara::Screenshot::Diff.pending_if_new = true
+SnapDiff.config.pending_if_new = true
 # Required in CI, because fail_if_new defaults to true there and raises before
 # the pending marker is applied.
-Capybara::Screenshot::Diff.fail_if_new = false
+SnapDiff.config.fail_if_new = false
 ```
 
 If `pending_if_new` is set to `true`, the test will be marked as skipped in teardown
@@ -208,7 +196,7 @@ This option is useful when you want to record new screenshots without blocking C
 
 ### Screen shot save path
 
-By default, `Capybara::Screenshot::Diff` saves screenshots to a
+By default, SnapDiff saves screenshots to a
 `doc/screenshots` folder, relative to either `Rails.root` (if you're in Rails),
 or your current directory otherwise.
 
@@ -218,17 +206,17 @@ configuration options that that are relevant.
 The most likely one you'll want to modify is ...
 
 ```ruby
-Capybara::Screenshot.save_path = "other/path"
+SnapDiff.config.save_path = "other/path"
 ```
 
-The `save_path` option is relative to `Capybara::Screenshot.root`.
+The `save_path` option is relative to `SnapDiff.config.root`.
 
-`Capybara::Screenshot.root` defaults to either `Rails.root` (if you're in
+`SnapDiff.config.root` defaults to either `Rails.root` (if you're in
 Rails) or your current directory. You can change it to something entirely
 different if necessary, such as when using an alternative web framework.
 
 ```ruby
-Capybara::Screenshot.root = Hanami.root
+SnapDiff.config.root = Hanami.root
 ```
 
 ### Screen shot stability
@@ -239,7 +227,7 @@ shot will be taken and compared to the first.  This is repeated until two
 subsequent screen shots are identical.
 
 ```ruby
-Capybara::Screenshot.stability_time_limit = 0.1
+SnapDiff.config.stability_time_limit = 0.1
 ```
 
 This can be overridden on a single screenshot:
@@ -269,7 +257,7 @@ In Chrome the screenshot includes the blinking input cursor.  This can make it i
 stable screenshot.  To get around this you can set the `hide caret` option:
 
 ```ruby
-Capybara::Screenshot.hide_caret = true
+SnapDiff.config.hide_caret = true
 ```
 
 This will make the cursor (caret) transparent (invisible), so the blinking does not delay the screen shot.
@@ -280,7 +268,7 @@ This will make the cursor (caret) transparent (invisible), so the blinking does 
 Another way to avoid the cursor blinking is to set the `blur_active_element` option:
 
 ```ruby
-Capybara::Screenshot.blur_active_element = true
+SnapDiff.config.blur_active_element = true
 ```
 
 This will remove the focus from the active element, removing the blinking cursor.
@@ -303,11 +291,11 @@ end
 The difference is calculated as the euclidean distance.  You can also set this globally:
 
 ```ruby
-Capybara::Screenshot::Diff.color_distance_limit = 42
+SnapDiff.config.color_distance_limit = 42
 ```
 
 
-### Allowed shift distance — removed in 2.1
+### Allowed shift distance (removed in 2.1)
 
 The `shift_distance_limit` option let you tolerate small movements in the image (for example,
 jquery-tablesorter rendering the same table slightly differently each run). It was implemented
@@ -338,7 +326,7 @@ end
 The difference is calculated as `width * height`.  You can also set this globally:
 
 ```ruby
-Capybara::Screenshot::Diff.area_size_limit = 42
+SnapDiff.config.area_size_limit = 42
 ```
 
 
@@ -360,7 +348,7 @@ end
 The arguments are `[left, top, right, bottom]` for the area you want to ignore.  You can also set this globally:
 
 ```ruby
-Capybara::Screenshot::Diff.skip_area = [0, 0, 64, 48]
+SnapDiff.config.skip_area = [0, 0, 64, 48]
 ```
 
 If you need to ignore multiple areas:
@@ -392,7 +380,7 @@ end
 You can specify the format of the screenshots taken by setting the `screenshot_format` option. By default, the format is set to `"png"`. However, you can change this to any format supported by your image processing driver. For example, to set the format to `"webp"`, you can do the following:
 
 ```ruby
-Capybara::Screenshot.screenshot_format = "webp"
+SnapDiff.config.screenshot_format = "webp"
 ```
 
 ### Customize Capybara#screenshot options
@@ -401,7 +389,7 @@ Allow to bypass screenshot options to Capybara driver.
 
 ```ruby
 # To create full page screenshots for Selenium
-Capybara::Screenshot.capybara_screenshot_options[:full_page] = true
+SnapDiff.config.capybara_screenshot_options[:full_page] = true
 
 screenshot('index', median_filter_window_size: 2, capybara_screenshot_options: {full_page: false})
 ```

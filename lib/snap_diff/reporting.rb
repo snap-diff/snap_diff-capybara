@@ -7,9 +7,7 @@ module SnapDiff
   #
   # Deliberately separate from the per-test session lifecycle
   # (SnapDiff.session): reporters outlive any single test, the session does
-  # not. CapybaraScreenshotDiff keeps its public
-  # reporters/reporters_mutex/finalize_reporters! methods as thin shims
-  # over this module.
+  # not.
   module Reporting
     @reporters = []
     @mutex = Mutex.new
