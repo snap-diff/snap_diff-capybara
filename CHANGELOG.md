@@ -5,6 +5,62 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v2.0.0.beta2] - 2026-08-23
+
+Third prerelease of the 2.0 opt-in experiment. This one finishes the namespace
+move: `SnapDiff` no longer depends on the namespaces it deprecates. Legacy names
+keep working exactly as before — see the v2.0.0.alpha1 notes below for the
+opt-in and silencing basics, and [docs/snapdiff.md](docs/snapdiff.md) for the
+canonical API.
+
+### Changed
+- **Everything canonical now lives in `SnapDiff`** — configuration storage
+  (`SnapDiff::Config`, one storage behind every settings surface), error classes
+  (`SnapDiff::Error`, `ExpectationNotMet`, `UnstableImage`,
+  `WindowSizeMismatchError`), `SnapDiff::Region`, `SnapDiff::Reporters::Default`,
+  the driver registry (`SnapDiff::Drivers.loaded`/`.available`), the per-test
+  session (`SnapDiff.session`), and reporter registration
+  (`SnapDiff::Reporting.register`, mutex-guarded). Old constants remain
+  same-object aliases; `rescue`, `is_a?`, and `defined?` on them are unchanged
+  ([#224](https://github.com/snap-diff/snap_diff-capybara/pull/224)–[#230](https://github.com/snap-diff/snap_diff-capybara/pull/230))
+- **Error class names in failure output** now print as `SnapDiff::…` (the class
+  objects are identical, so `rescue CapybaraScreenshotDiff::ExpectationNotMet`
+  still catches them — only the printed name differs). CI jobs that
+  string-match on the old class name in output need updating.
+- The images-holder struct is now `SnapDiff::Comparison::Images`, ending the
+  two-classes-one-name collision with the comparator
+  ([#227](https://github.com/snap-diff/snap_diff-capybara/pull/227))
+
+### Added
+- **Deprecation warnings now name your call site** — `(called from
+  your_file.rb:42)`, so migration is warning-driven instead of grep-driven
+  ([#222](https://github.com/snap-diff/snap_diff-capybara/pull/222))
+- **Dual-install guard** — installing both `capybara-screenshot-diff` and
+  `snap_diff-capybara` now raises a clear error instead of silently loading
+  files from whichever gem activated first
+  ([#222](https://github.com/snap-diff/snap_diff-capybara/pull/222))
+- **[docs/snapdiff.md](docs/snapdiff.md)** — the SnapDiff-native guide: quick
+  start for all four integrations, configuration, custom drivers and reporters,
+  standalone comparison ([#231](https://github.com/snap-diff/snap_diff-capybara/pull/231))
+
+### Removed
+- The unused `anchor:` keyword on the internal viewport seam; v3's
+  scroll-preservation work will design its real contract
+  ([#229](https://github.com/snap-diff/snap_diff-capybara/pull/229))
+
+### Internal
+- A test now mechanically enforces that the legacy namespace trees contain only
+  requires, aliases, and one-line forwarders — no real logic — so removing them
+  in 3.0 is a deletion, not a refactor
+  ([#229](https://github.com/snap-diff/snap_diff-capybara/pull/229),
+  [#230](https://github.com/snap-diff/snap_diff-capybara/pull/230))
+- Release workflow is idempotent on re-run; config default-eval timing is
+  pinned by guards across every entry point
+  ([#222](https://github.com/snap-diff/snap_diff-capybara/pull/222),
+  [#223](https://github.com/snap-diff/snap_diff-capybara/pull/223))
+
+---
+
 ## [v2.0.0.beta1] - 2026-08-22
 
 Second prerelease of the 2.0 opt-in experiment (see the v2.0.0.alpha1 notes
