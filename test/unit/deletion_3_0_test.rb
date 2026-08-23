@@ -73,7 +73,12 @@ class Deletion30Test < ActiveSupport::TestCase
 
     # The BUNDLE_GEMFILE trap: files resolving from the INTACT lib/ while the
     # tmpdir sits unused on the load path.
-    strays = $LOADED_FEATURES.grep(/snap_diff/).reject { |f| f.start_with?(tree) }
+    #
+    # Anchored on the library path, NOT a bare /snap_diff/ substring: CI checks
+    # this repo out at .../snap_diff-capybara/, so a bare match flags every gem
+    # under vendor/bundle (nokogiri and friends) and the gate fails everywhere
+    # except a dev machine whose directory happens to be named otherwise.
+    strays = $LOADED_FEATURES.grep(%r{/lib/snap_diff(/|\.rb\z)}).reject { |f| f.start_with?(tree) }
     gate << "loaded from outside the deleted tree: #{strays.join(", ")}" unless strays.empty?
 
     unless gate.empty?
