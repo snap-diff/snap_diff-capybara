@@ -2,7 +2,7 @@
 
 require "test_helper"
 # The shared harness loads canonical entry points only, so a legacy-surface
-# test pulls in the v1 entry itself -- the require goes with the file in 3.0.
+# test pulls in the v1 entry itself -- the require goes with the file in 2.1.
 require "capybara_screenshot_diff"
 
 # Every old-namespace constant touched by the ADR-004 v2 file-tree move
@@ -13,7 +13,7 @@ require "capybara_screenshot_diff"
 # that always returns false.
 #
 # LEGACY SURFACE (test/legacy/, see the Rakefile): deleted with lib/capybara*
-# in 3.0, when there is no old namespace left to forward.
+# in 2.1, when there is no old namespace left to forward.
 class NamespaceForwardingTest < ActiveSupport::TestCase
   # This file's whole purpose is resolving the old names, so silence the
   # shims' deprecation warnings here (the suite-wide guard in test_helper

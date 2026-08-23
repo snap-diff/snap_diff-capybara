@@ -6,7 +6,7 @@ require "open3"
 class SnapDiffTest < ActiveSupport::TestCase
   # The ImageCompare alias claim and the v1-shaped SnapDiff.start / .configure
   # pair live in test/legacy/legacy_forwarders_test.rb -- both are v1 surface
-  # and go with it in 3.0.
+  # and go with it in 2.1.
   test ".compare returns the same kind of result as Diff.compare, forwarding options" do
     result = SnapDiff.compare(
       TEST_IMAGES_DIR / "a.png",

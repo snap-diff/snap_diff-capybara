@@ -6,7 +6,7 @@ require "test_helper"
 # same storage -- LegacyShims::CONFIG_MAPPING's completeness and the
 # write-through-either-surface round trips -- lives in
 # test/legacy/legacy_config_accessors_test.rb and is deleted with the v1
-# trees in 3.0. What is here has to keep standing on its own after that.
+# trees in 2.1. What is here has to keep standing on its own after that.
 class SnapDiffConfigTest < ActiveSupport::TestCase
   def config
     SnapDiff.config

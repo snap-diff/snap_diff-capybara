@@ -38,11 +38,11 @@ module SnapDiff
     # the v1 surface cannot warn per use -- the config accessors are plain
     # delegators and the eager aliases never reach const_missing -- so
     # without this a 2.x app is completely silent right up to the bare
-    # NameError it gets on 3.0. Deliberately generic and once per process:
+    # NameError it gets on 2.1. Deliberately generic and once per process:
     # an actionable signal, not per-call stderr noise.
     MIGRATION_NOTICE =
       "[snap_diff deprecation] This process uses the v1 `Capybara::Screenshot*` / " \
-      "`CapybaraScreenshotDiff*` API. It still works in 2.x and is REMOVED in 3.0 -- " \
+      "`CapybaraScreenshotDiff*` API. It still works in 2.0 and is REMOVED in 2.1 -- " \
       "see docs/UPGRADING.md for the SnapDiff replacements. Silence with " \
       "`SnapDiff.silence_deprecations = true` or SNAP_DIFF_SILENCE_DEPRECATIONS=1. " \
       "(shown once per process)"
