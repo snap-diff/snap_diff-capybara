@@ -19,6 +19,7 @@ Gem::Specification.new do |spec|
   # Build/dev files (gems.rb, Rakefile, the gemspec itself, tests, CI) stay out.
   spec.files = `git ls-files -z`.split("\x0")
     .grep(%r{\A(lib/|docs/|README\.md\z|LICENSE\.txt\z|CHANGELOG\.md\z)})
+    .grep_v(%r{\Adocs/RELEASE_PREP\.md\z}) # maintainer-only, not user documentation
 
   spec.bindir = "exe"
   spec.executables = spec.files.grep(%r{^exe/}) { |f| File.basename(f) }
