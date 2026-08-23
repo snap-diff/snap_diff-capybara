@@ -107,7 +107,7 @@ class ConfigDefaultTimingTest < ActiveSupport::TestCase
     # 3) Capybara-coupled wait is read at CALL time (live), not frozen.
     Capybara.default_max_wait_time = 42.5
     check("default_options[:wait] follows Capybara.default_max_wait_time set after require",
-      42.5, Capybara::Screenshot::Diff.default_options[:wait])
+      42.5, SnapDiff.config.default_options[:wait])
   RUBY
 
   # Probe B: ENV["CI"] present (non-empty) BEFORE the require flips the

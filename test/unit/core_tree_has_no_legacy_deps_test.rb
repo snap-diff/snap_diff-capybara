@@ -17,7 +17,7 @@ require "test_helper"
 # because the generator for the v1 surface has to be code, and the v1 trees
 # have to stay alias-only -- they are legacy by design and go with it.
 #
-# WHOLE-LINE comments are ignored: "ex +Capybara::Screenshot.active?+" on its
+# WHOLE-LINE comments are ignored: "ex +SnapDiff.config.active?+" on its
 # own line is history, not a dependency. Everything else on a code line
 # counts, strings and trailing comments included -- a user-facing message
 # naming a legacy accessor is a legacy reference that survives the deletion

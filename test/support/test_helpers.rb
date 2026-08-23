@@ -3,7 +3,7 @@
 require "support/test_doubles"
 
 module TestHelpers
-  include Capybara::Screenshot::Diff::TestDoubles
+  include TestDoubles
 
   # Common assertions for image comparison tests
   module Assertions
@@ -44,7 +44,7 @@ module TestHelpers
     # @param images [Array, nil] Images to return from load_images (default: nil)
     # @return [TestDoubles::TestDriver] A test driver object
     def create_test_driver(is_vips: false, images: nil)
-      Capybara::Screenshot::Diff::TestDoubles::TestDriver.new(is_vips, images)
+      TestDoubles::TestDriver.new(is_vips, images)
     end
   end
 end

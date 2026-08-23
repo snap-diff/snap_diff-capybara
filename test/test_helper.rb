@@ -22,7 +22,7 @@ require "minitest/autorun"
 require "capybara/minitest"
 require "support/setup_capybara"
 
-require "capybara_screenshot_diff/minitest"
+require "snap_diff/integrations/minitest"
 
 # v2 step 8: the suite exercises only canonical SnapDiff:: names, so any
 # legacy-shim deprecation warning during a test run is a bug in the
@@ -51,13 +51,13 @@ require "support/setup_capybara_drivers"
 require "support/test_helpers"
 require "support/driver_coverage"
 
-Capybara::Screenshot.root = Rails.root
-Capybara::Screenshot.save_path = "./doc/screenshots"
+SnapDiff.config.root = Rails.root
+SnapDiff.config.save_path = "./doc/screenshots"
 
-puts CapybaraScreenshotDiff::DriverCoverage.banner(Capybara::Screenshot::Diff::AVAILABLE_DRIVERS)
+puts DriverCoverage.banner(SnapDiff::Drivers.available)
 
-missing_drivers = CapybaraScreenshotDiff::DriverCoverage.missing_for_ci(
-  Capybara::Screenshot::Diff::AVAILABLE_DRIVERS,
+missing_drivers = DriverCoverage.missing_for_ci(
+  SnapDiff::Drivers.available,
   ci: ENV["CI"],
   exclude: ENV["CI_EXPECTED_DRIVERS_EXCLUDE"]&.split(",")&.map(&:to_sym)
 )
@@ -84,10 +84,10 @@ class ActiveSupport::TestCase
     @_orig_cwd = Dir.pwd
     @_orig_capybara_app = Capybara.app
 
-    Capybara::Screenshot::Diff.fail_if_new = false
-    Capybara::Screenshot.blur_active_element = false
-    Capybara::Screenshot.hide_caret = false
-    Capybara::Screenshot.disable_animations = false
+    SnapDiff.config.fail_if_new = false
+    SnapDiff.config.blur_active_element = false
+    SnapDiff.config.hide_caret = false
+    SnapDiff.config.disable_animations = false
   end
 
   teardown do

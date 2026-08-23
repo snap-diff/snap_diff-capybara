@@ -76,59 +76,59 @@ class SnapDiffConfigTest < ActiveSupport::TestCase
   end
 
   test "writing fail_if_new via the old mattr_accessor is visible via config, and back" do
-    original = Capybara::Screenshot::Diff.fail_if_new
+    original = SnapDiff.config.fail_if_new
 
     begin
-      Capybara::Screenshot::Diff.fail_if_new = true
+      SnapDiff.config.fail_if_new = true
       assert_equal true, config.fail_if_new
 
       config.fail_if_new = false
-      assert_equal false, Capybara::Screenshot::Diff.fail_if_new
+      assert_equal false, SnapDiff.config.fail_if_new
     ensure
-      Capybara::Screenshot::Diff.fail_if_new = original
+      SnapDiff.config.fail_if_new = original
     end
   end
 
   test "writing window_size via the old mattr_accessor is visible via config, and back" do
-    original = Capybara::Screenshot.window_size
+    original = SnapDiff.config.window_size
 
     begin
-      Capybara::Screenshot.window_size = [1280, 1024]
+      SnapDiff.config.window_size = [1280, 1024]
       assert_equal [1280, 1024], config.window_size
 
       config.window_size = [800, 600]
-      assert_equal [800, 600], Capybara::Screenshot.window_size
+      assert_equal [800, 600], SnapDiff.config.window_size
     ensure
-      Capybara::Screenshot.window_size = original
+      SnapDiff.config.window_size = original
     end
   end
 
-  # Capybara::Screenshot.enabled and Capybara::Screenshot::Diff.enabled are
+  # SnapDiff.config.screenshot_enabled and SnapDiff.config.enabled are
   # two independent settings that happen to share a bare name in their own
-  # modules (see Capybara::Screenshot.active?, which reads both). Config is
+  # modules (see SnapDiff.config.active?, which reads both). Config is
   # flat, so it cannot expose two attributes both called `enabled` -- the
   # Screenshot-side one is renamed `screenshot_enabled`. This test proves
   # the rename didn't accidentally collapse them into one shared value.
   test "screenshot_enabled and enabled stay independent settings under Config" do
-    original_screenshot = Capybara::Screenshot.enabled
-    original_diff = Capybara::Screenshot::Diff.enabled
+    original_screenshot = SnapDiff.config.screenshot_enabled
+    original_diff = SnapDiff.config.enabled
 
     begin
       config.screenshot_enabled = true
       config.enabled = false
 
-      assert_equal true, Capybara::Screenshot.enabled
-      assert_equal false, Capybara::Screenshot::Diff.enabled
+      assert_equal true, SnapDiff.config.screenshot_enabled
+      assert_equal false, SnapDiff.config.enabled
       assert_equal true, config.screenshot_enabled
       assert_equal false, config.enabled
     ensure
-      Capybara::Screenshot.enabled = original_screenshot
-      Capybara::Screenshot::Diff.enabled = original_diff
+      SnapDiff.config.screenshot_enabled = original_screenshot
+      SnapDiff.config.enabled = original_diff
     end
   end
 
   # ADR-008 step 7b moved this precedence rule from
-  # Capybara::Screenshot.active? into Config#active?, and found it had no
+  # SnapDiff.config.active? into Config#active?, and found it had no
   # test at all: replacing the whole expression with a bare `enabled` kept
   # all 529 unit tests green. The full truth table is pinned here, through
   # both the canonical method and the legacy forwarder, so it cannot move
@@ -146,8 +146,8 @@ class SnapDiffConfigTest < ActiveSupport::TestCase
   ].freeze
 
   test "active? gives Screenshot.enabled precedence and only falls through on nil" do
-    original_screenshot = Capybara::Screenshot.enabled
-    original_diff = Capybara::Screenshot::Diff.enabled
+    original_screenshot = SnapDiff.config.screenshot_enabled
+    original_diff = SnapDiff.config.enabled
 
     ACTIVE_TRUTH_TABLE.each do |screenshot_enabled, enabled, expected|
       config.screenshot_enabled = screenshot_enabled
@@ -155,23 +155,23 @@ class SnapDiffConfigTest < ActiveSupport::TestCase
       context = "screenshot_enabled=#{screenshot_enabled.inspect}, enabled=#{enabled.inspect}"
 
       assert_equal expected, !!config.active?, "Config#active? with #{context}"
-      assert_equal expected, !!Capybara::Screenshot.active?, "Capybara::Screenshot.active? with #{context}"
+      assert_equal expected, !!SnapDiff.config.active?, "SnapDiff.config.active? with #{context}"
     end
   ensure
-    Capybara::Screenshot.enabled = original_screenshot
-    Capybara::Screenshot::Diff.enabled = original_diff
+    SnapDiff.config.screenshot_enabled = original_screenshot
+    SnapDiff.config.enabled = original_diff
   end
 
   test "writing root through config round-trips through the same Pathname coercion" do
-    original = Capybara::Screenshot.root
+    original = SnapDiff.config.root
 
     begin
       config.root = "/tmp"
 
-      assert_equal Pathname("/tmp"), Capybara::Screenshot.root
+      assert_equal Pathname("/tmp"), SnapDiff.config.root
       assert_equal Pathname("/tmp"), config.root
     ensure
-      Capybara::Screenshot.root = original
+      SnapDiff.config.root = original
     end
   end
 
@@ -183,13 +183,13 @@ class SnapDiffConfigTest < ActiveSupport::TestCase
   end
 
   test "SnapDiff.configure lets callers set values through the yielded config" do
-    original = Capybara::Screenshot::Diff.tolerance
+    original = SnapDiff.config.tolerance
 
     begin
       SnapDiff.configure { |c| c.tolerance = 0.0321 }
-      assert_equal 0.0321, Capybara::Screenshot::Diff.tolerance
+      assert_equal 0.0321, SnapDiff.config.tolerance
     ensure
-      Capybara::Screenshot::Diff.tolerance = original
+      SnapDiff.config.tolerance = original
     end
   end
 

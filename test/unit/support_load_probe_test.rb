@@ -10,7 +10,7 @@ require "open3"
 # own requires still loads fine in most suite runs and only breaks in the CI
 # matrix cell with a different load order — exactly how
 # setup_capybara_drivers.rb broke on selenium_chrome_headless + vips (it used
-# Capybara::Screenshot::Os without requiring it, fixed in b7ada5e). This test
+# SnapDiff::Os without requiring it, fixed in b7ada5e). This test
 # requires every test/support file in a bare subprocess with only capybara
 # core preloaded. Scope: it catches missing requires for constants referenced
 # AT LOAD TIME under this process's env; references hidden behind env guards
@@ -53,7 +53,7 @@ class SupportLoadProbeTest < ActiveSupport::TestCase
   # Alias-completeness probe (the f89cea2 bug class): each documented entry
   # point must define its advertised constants when it is the ONLY require —
   # the acyclic redesign once narrowed capybara_screenshot_diff/minitest so
-  # consumers lost CapybaraScreenshotDiff::DSL, and only one CI matrix leg
+  # consumers lost SnapDiff::DSL, and only one CI matrix leg
   # noticed. capybara_screenshot_diff/cucumber is not probed: it calls
   # World(...) at load, which only exists inside cucumber's runtime context.
   # Documented user-facing constants that must stay EAGER (see
@@ -61,8 +61,8 @@ class SupportLoadProbeTest < ActiveSupport::TestCase
   # triggers const_missing, so a lazy shim makes `defined?` feature
   # detection in adopter code silently return nil.
   EAGER_USER_FACING = %w[
-    Capybara::Screenshot::Diff::Reporters::Default
-    Capybara::Screenshot::Diff::Comparison
+    SnapDiff::Reporters::Default
+    SnapDiff::Comparison::Images
   ].freeze
 
   # The subset of EAGER_USER_FACING that must resolve under EVERY entry
@@ -74,24 +74,24 @@ class SupportLoadProbeTest < ActiveSupport::TestCase
   # loaded the forwarder that assigned it, and const_missing does not fire
   # for a constant legacy_shims deliberately leaves out of its map.
   EAGER_EVERYWHERE = %w[
-    Capybara::Screenshot::Diff::VERSION
-    Capybara::Screenshot::Diff::Comparison
+    SnapDiff::VERSION
+    SnapDiff::Comparison::Images
   ].freeze
 
   ENTRY_POINTS = {
     "capybara_screenshot_diff" => %w[
-      CapybaraScreenshotDiff::DSL Capybara::Screenshot::Os Capybara::Screenshot::Diff
+      SnapDiff::DSL SnapDiff::Os Capybara::Screenshot::Diff
     ] + EAGER_USER_FACING,
     "capybara_screenshot_diff/minitest" => %w[
-      CapybaraScreenshotDiff::DSL CapybaraScreenshotDiff::Minitest::Assertions
-      Capybara::Screenshot::Os Capybara::Screenshot::Diff
+      SnapDiff::DSL SnapDiff::Minitest::Assertions
+      SnapDiff::Os Capybara::Screenshot::Diff
     ] + EAGER_USER_FACING,
     "capybara_screenshot_diff/rspec" => %w[
-      CapybaraScreenshotDiff::DSL Capybara::Screenshot::Os Capybara::Screenshot::Diff
+      SnapDiff::DSL SnapDiff::Os Capybara::Screenshot::Diff
     ] + EAGER_USER_FACING,
     "capybara-screenshot-diff" => %w[
-      CapybaraScreenshotDiff::DSL CapybaraScreenshotDiff::Minitest::Assertions
-      Capybara::Screenshot::Os Capybara::Screenshot::Diff
+      SnapDiff::DSL SnapDiff::Minitest::Assertions
+      SnapDiff::Os Capybara::Screenshot::Diff
     ] + EAGER_USER_FACING
   }.freeze
 
@@ -118,7 +118,7 @@ class SupportLoadProbeTest < ActiveSupport::TestCase
   # left SnapDiff.configure/.start/.compare undefined, SnapDiff::VERSION
   # unresolvable, and the dual-install guard silent. The legacy entries had
   # the mirror-image hole: some of them stopped loading the umbrella, so
-  # CapybaraScreenshotDiff.verify and friends vanished while
+  # SnapDiff.session.verify and friends vanished while
   # `defined?(CapybaraScreenshotDiff)` still passed.
 
   # SnapDiff.serve is deliberately absent here: docs/snapdiff.md's object

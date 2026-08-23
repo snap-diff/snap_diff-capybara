@@ -1,17 +1,17 @@
 # frozen_string_literal: true
 
 require "test_helper"
-require "capybara/screenshot/diff/image_compare"
-require "capybara/screenshot/diff/drivers/chunky_png_driver"
+require "snap_diff/comparison"
+require "snap_diff/drivers/chunky_png_driver"
 require "support/driver_contract_tests"
 
 # Nested in the canonical SnapDiff::Drivers namespace: reopening the old
-# Capybara::Screenshot::Diff::Drivers path would define a fresh Drivers
+# SnapDiff::Drivers path would define a fresh Drivers
 # module there, shadowing the v2 step 6 lazy const_missing forwarder.
 module SnapDiff
   module Drivers
     class ChunkyPNGDriverTest < ActiveSupport::TestCase
-      include CapybaraScreenshotDiff::DSLStub
+      include DSLStub
       include DriverContractTests
 
       class QuickEqualTest < self

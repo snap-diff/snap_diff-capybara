@@ -1,11 +1,11 @@
 # frozen_string_literal: true
 
-require "capybara/screenshot/diff/os"
+require "snap_diff/os"
 
 ENV["CAPYBARA_DRIVER"] ||= "cuprite"
 
 SCREEN_SIZE = [800, 600]
-if ENV["CAPYBARA_DRIVER"] == "selenium_chrome_headless" && Capybara::Screenshot::Os.name == "linux"
+if ENV["CAPYBARA_DRIVER"] == "selenium_chrome_headless" && SnapDiff::Os.name == "linux"
   SCREEN_SIZE[1] += 87 # Add extra space for address field etc.
 end
 BROWSERS = {cuprite: "chrome", selenium_headless: "firefox", selenium_chrome_headless: "chrome"}

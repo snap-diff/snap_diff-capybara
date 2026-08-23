@@ -6,7 +6,7 @@ require "minitest/stub_const"
 
 # SnapDiff::Drivers is the canonical driver registry (docs/snapdiff.md).
 # Until 3.0 readiness work, `.available` read the value out of
-# Capybara::Screenshot::Diff::AVAILABLE_DRIVERS, which is defined by
+# SnapDiff::Drivers::AVAILABLE_DRIVERS, which is defined by
 # config_legacy.rb -- so a documented canonical API only worked when the v1
 # tree happened to be loaded.
 class DriversTest < ActiveSupport::TestCase

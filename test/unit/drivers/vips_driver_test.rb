@@ -3,15 +3,15 @@
 require "test_helper"
 require "support/driver_contract_tests"
 
-require "capybara/screenshot/diff/drivers/vips_driver" if defined?(Vips)
+require "snap_diff/drivers/vips_driver" if defined?(Vips)
 
 # Nested in the canonical SnapDiff::Drivers namespace: reopening the old
-# Capybara::Screenshot::Diff::Drivers path would define a fresh Drivers
+# SnapDiff::Drivers path would define a fresh Drivers
 # module there, shadowing the v2 step 6 lazy const_missing forwarder.
 module SnapDiff
   module Drivers
     class VipsDriverTest < ActiveSupport::TestCase
-      include CapybaraScreenshotDiff::DSLStub
+      include DSLStub
       include DriverContractTests
 
       setup do

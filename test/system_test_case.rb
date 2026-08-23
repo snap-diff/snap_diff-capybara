@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
 require "test_helper"
-require "capybara_screenshot_diff/minitest"
-require "capybara_screenshot_diff/reporters/html"
+require "snap_diff/integrations/minitest"
+require "snap_diff/reporters/html"
 
 require "support/setup_capybara_drivers"
 
@@ -11,47 +11,47 @@ class SystemTestCase < ActiveSupport::TestCase
     Capybara.current_driver = Capybara.javascript_driver
     Capybara.page.current_window.resize_to(*SCREEN_SIZE)
 
-    Capybara::Screenshot.enabled = true
-    Capybara::Screenshot::Diff.enabled = true
+    SnapDiff.config.screenshot_enabled = true
+    SnapDiff.config.enabled = true
 
     # TODO: Reset original settings to previous values
-    @orig_root = Capybara::Screenshot.root
-    Capybara::Screenshot.root = Rails.root / "../test/fixtures/app"
+    @orig_root = SnapDiff.config.root
+    SnapDiff.config.root = Rails.root / "../test/fixtures/app"
 
-    @orig_save_path = Capybara::Screenshot.save_path
-    Capybara::Screenshot.save_path = "./doc/screenshots"
+    @orig_save_path = SnapDiff.config.save_path
+    SnapDiff.config.save_path = "./doc/screenshots"
 
-    Capybara::Screenshot::Diff.driver = ENV.fetch("SCREENSHOT_DRIVER", "chunky_png").to_sym
+    SnapDiff.config.driver = ENV.fetch("SCREENSHOT_DRIVER", "chunky_png").to_sym
 
     # TODO: Makes configurations copying and restoring much easier
 
-    @orig_add_os_path = Capybara::Screenshot.add_os_path
-    Capybara::Screenshot.add_os_path = true
-    @orig_add_driver_path = Capybara::Screenshot.add_driver_path
-    Capybara::Screenshot.add_driver_path = true
-    # NOTE: Only works before `include Capybara::Screenshot::Diff` line
-    @orig_window_size = Capybara::Screenshot.window_size
-    Capybara::Screenshot.window_size = SCREEN_SIZE
+    @orig_add_os_path = SnapDiff.config.add_os_path
+    SnapDiff.config.add_os_path = true
+    @orig_add_driver_path = SnapDiff.config.add_driver_path
+    SnapDiff.config.add_driver_path = true
+    # NOTE: Only works before the `include SnapDiff::DSL` line
+    @orig_window_size = SnapDiff.config.window_size
+    SnapDiff.config.window_size = SCREEN_SIZE
 
     # NOTE: For small screenshots we should have pixel perfect comparisons
-    @orig_tolerance = Capybara::Screenshot::Diff.tolerance
-    Capybara::Screenshot::Diff.tolerance = nil
+    @orig_tolerance = SnapDiff.config.tolerance
+    SnapDiff.config.tolerance = nil
   end
 
-  include Capybara::Screenshot::Diff
-  include CapybaraScreenshotDiff::Minitest::Assertions
+  include SnapDiff::DSL
+  include SnapDiff::Minitest::Assertions
 
   teardown do
     # Restore to previous values
-    Capybara::Screenshot.root = @orig_root
-    Capybara::Screenshot.save_path = @orig_save_path
-    Capybara::Screenshot.add_os_path = @orig_add_os_path
-    Capybara::Screenshot.add_driver_path = @orig_add_driver_path
-    Capybara::Screenshot.window_size = @orig_window_size
-    Capybara::Screenshot::Diff.tolerance = @orig_tolerance
+    SnapDiff.config.root = @orig_root
+    SnapDiff.config.save_path = @orig_save_path
+    SnapDiff.config.add_os_path = @orig_add_os_path
+    SnapDiff.config.add_driver_path = @orig_add_driver_path
+    SnapDiff.config.window_size = @orig_window_size
+    SnapDiff.config.tolerance = @orig_tolerance
     Capybara.current_driver = Capybara.default_driver
 
-    if Capybara::Screenshot::Diff.driver == :vips
+    if SnapDiff.config.driver == :vips
       Vips.cache_set_max(0)
       Vips.cache_set_max(1000)
     end
@@ -66,7 +66,7 @@ class SystemTestCase < ActiveSupport::TestCase
     save_annotations_for_debug(comparison)
 
     screenshot_path = comparison.image_path
-    SnapDiff::Vcs.checkout_vcs(Capybara::Screenshot.root, screenshot_path, screenshot_path)
+    SnapDiff::Vcs.checkout_vcs(SnapDiff.config.root, screenshot_path, screenshot_path)
 
     if comparison.difference
       comparison.reporter.clean_tmp_files
