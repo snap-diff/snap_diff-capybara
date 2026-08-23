@@ -78,10 +78,13 @@ class SupportLoadProbeTest < ActiveSupport::TestCase
     config configure compare session reset pending_screenshots_message
   ].freeze
 
-  # snap_diff-capybara is the canonical gem's Bundler entry point, so it is
-  # probed here rather than with the v1 ones: 2.1 keeps it (repointed at
-  # snap_diff/integrations/minitest), it just stops carrying the
-  # CapybaraScreenshotDiff surface.
+  # Both GEM NAMES have a Bundler entry point, and both are probed here rather
+  # than with the v1 ones: 2.1 keeps them (repointed at
+  # snap_diff/integrations/minitest), they just stop carrying the
+  # CapybaraScreenshotDiff surface. capybara-screenshot-diff is the name most
+  # existing users have in their Gemfile -- if its entry file goes missing,
+  # `Bundler.require` is a silent no-op and the first SnapDiff reference is a
+  # confusing NameError, so it is pinned here deliberately.
   CANONICAL_ENTRY_POINTS = {
     "snap_diff" => CANONICAL_SURFACE,
     "snap_diff/dsl" => CANONICAL_SURFACE,
@@ -89,7 +92,8 @@ class SupportLoadProbeTest < ActiveSupport::TestCase
     "snap_diff/integrations/rspec" => CANONICAL_SURFACE,
     "snap_diff/integrations/cucumber" => CANONICAL_SURFACE,
     "snap_diff/static" => CANONICAL_SURFACE + %w[serve],
-    "snap_diff-capybara" => CANONICAL_SURFACE
+    "snap_diff-capybara" => CANONICAL_SURFACE,
+    "capybara-screenshot-diff" => CANONICAL_SURFACE
   }.freeze
 
   test "every canonical snap_diff entry point loads the full SnapDiff surface" do
