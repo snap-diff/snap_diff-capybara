@@ -66,8 +66,16 @@ class SupportLoadProbeTest < ActiveSupport::TestCase
   # SnapDiff.serve is deliberately absent here: docs/snapdiff.md's object
   # map gates it behind its own `require "snap_diff/static"` (which pulls
   # rack + minitest), so the core must not carry it.
+  #
+  # SnapDiff.start is absent for a different reason: it is defined in
+  # snap_diff/legacy_shims.rb and yields the two v1 config holders, so it
+  # cannot outlive them (#235). A CANONICAL gate demanding a method 3.0
+  # deletes is a gate that fails the day the deletion lands -- which is
+  # exactly what it did. `.start` keeps its coverage on the legacy side:
+  # test/legacy/legacy_forwarders_test.rb asserts what it yields and that it
+  # applies a setting, and LEGACY_SESSION_SURFACE pins it per v1 entry point.
   CANONICAL_SURFACE = %w[
-    config configure start compare session reset pending_screenshots_message
+    config configure compare session reset pending_screenshots_message
   ].freeze
 
   # snap_diff-capybara is the canonical gem's Bundler entry point, so it is

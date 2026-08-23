@@ -8,7 +8,7 @@ class BacktraceFilterTest < ActiveSupport::TestCase
     filter = SnapDiff::BacktraceFilter.new("/app/lib/")
 
     result = filter.filtered([
-      "/app/lib/capybara_screenshot_diff/foo.rb:1:in 'bar'",
+      "/app/lib/snap_diff/foo.rb:1:in 'bar'",
       "/app/test/some_test.rb:5:in 'test_thing'"
     ])
 
@@ -48,7 +48,7 @@ class BacktraceFilterTest < ActiveSupport::TestCase
 
   test "#initialize defaults to the library's own lib directory" do
     filter = SnapDiff::BacktraceFilter.new
-    lib_file = File.expand_path("../../lib/capybara_screenshot_diff/error_with_filtered_backtrace.rb", __dir__)
+    lib_file = File.expand_path("../../lib/snap_diff/error_with_filtered_backtrace.rb", __dir__)
 
     result = filter.filtered([
       "#{lib_file}:1:in 'filtered'",

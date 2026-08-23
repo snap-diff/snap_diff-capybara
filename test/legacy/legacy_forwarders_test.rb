@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "test_helper"
+require "open3"
 # The shared harness loads canonical entry points only, so a legacy-surface
 # test pulls in the v1 entry itself -- the require goes with the file in 3.0.
 require "capybara_screenshot_diff"
@@ -72,6 +73,31 @@ class LegacyForwardersTest < ActiveSupport::TestCase
   ensure
     Capybara.app = Rails.application
     SnapDiff.config.root = original_root
+  end
+
+  # Acyclicity contract (the #208 deadlock-class fix): the lean
+  # `require "snap_diff"` entry must NEVER pull the umbrella
+  # capybara_screenshot_diff.rb back in. The old autoload wiring had
+  # snap_diff <-> capybara_screenshot_diff requiring each other, which
+  # produced load-order deadlocks/partially-initialized constants; #208
+  # broke the cycle, but until now only discipline guarded it -- a probe
+  # that reintroduced the cycle left the whole suite green. This asserts
+  # the contract as data: after a bare require, the umbrella file must be
+  # absent from $LOADED_FEATURES.
+  #
+  # Lives here rather than in snap_diff_test: its subject is the v1
+  # umbrella, and once 3.0 deletes that file the grep below is empty by
+  # construction and the guard can never fail again.
+  test "bare require \"snap_diff\" never loads the umbrella capybara_screenshot_diff" do
+    script = <<~RUBY
+      require "snap_diff"
+      umbrella = $LOADED_FEATURES.grep(%r{/lib/capybara_screenshot_diff\\.rb\\z})
+      abort("umbrella loaded via: \#{umbrella.join(", ")}") unless umbrella.empty?
+    RUBY
+
+    out, status = Open3.capture2e(RbConfig.ruby, "-Ilib", "-e", script)
+
+    assert status.success?, "expected bare `require \"snap_diff\"` to keep the umbrella unloaded, got:\n#{out}"
   end
 
   test ".start yields the same objects Diff.configure yields" do

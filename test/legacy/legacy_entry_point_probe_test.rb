@@ -108,6 +108,23 @@ class LegacyEntryPointProbeTest < ActiveSupport::TestCase
     MSG
   end
 
+  # SnapDiff.start moved here out of the canonical CANONICAL_SURFACE gate: it
+  # is defined in legacy_shims.rb and yields the two v1 config holders, so a
+  # canonical gate demanding it fails the moment 3.0 deletes them. It is
+  # still a documented v1 method, so the per-entry-point availability claim
+  # the canonical gate used to make lives on here -- for the entries that
+  # actually keep it. (What it yields is pinned in legacy_forwarders_test.)
+  test "SnapDiff.start is available from every legacy entry point" do
+    failures = LEGACY_ENTRY_POINTS.filter_map do |entry|
+      probe(entry, <<~RUBY)
+        require #{entry.inspect}
+        abort("SnapDiff.start missing") unless SnapDiff.respond_to?(:start)
+      RUBY
+    end
+
+    assert_empty failures, failures.join("\n")
+  end
+
   # Every documented entry point, canonical and legacy. capybara_screenshot_diff/dsl
   # is listed only here: it is not in ENTRY_POINTS or LEGACY_ENTRY_POINTS, which
   # is exactly why it was the legacy entry that lost VERSION unnoticed.
