@@ -59,7 +59,7 @@ Each thread gets its own `ScreenshotNamer` via the per-thread registry, so count
 
 ## Global Configuration
 
-Configuration uses `mattr_accessor` and should be set once before tests run. Do not mutate config during parallel execution.
+Configuration is one process-wide `SnapDiff::Config` instance of plain `attr_accessor`s, reachable as `SnapDiff.config`. Set it once before tests run; do not mutate it during parallel execution.
 
 ## Parallel Test Lifecycle
 
@@ -73,10 +73,10 @@ Configuration uses `mattr_accessor` and should be set once before tests run. Do 
 ```ruby
 parallelize(workers: :number_of_processors, with: :threads)
 
-Capybara::Screenshot::Diff.configure do |screenshot, diff|
-  screenshot.window_size = [1280, 1024]
-  screenshot.save_path = "doc/screenshots"
-  diff.tolerance = 0.001
+SnapDiff.configure do |config|
+  config.window_size = [1280, 1024]
+  config.save_path = "doc/screenshots"
+  config.tolerance = 0.001
 end
 ```
 
@@ -100,10 +100,9 @@ Do not:
 
 Runtime state is thread-local (above), but *loading* the gem is a separate
 concern. The require graph is deliberately acyclic: `lib/snap_diff/*` units
-depend only on the config-storage leaf (`snap_diff/config`, which the legacy
-view `capybara/screenshot/diff/config_legacy` requires) and specific sibling
-units, the umbrella files depend on the units, and nothing requires back up
-the chain.
+depend only on the config-storage leaf (`snap_diff/config`) and specific
+sibling units, the entry points depend on the units, and nothing requires
+back up the chain.
 
 Eager mutual requires between entry points are forbidden, even guarded ones:
 per-thread "loading" flags cannot serialize Ruby's process-global per-file

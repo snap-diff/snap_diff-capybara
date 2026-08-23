@@ -149,7 +149,7 @@ Often it is useful to test your app using different browsers.  To avoid the
 screenshots for different Capybara drivers to overwrite each other, set
 
 ```ruby
-Capybara::Screenshot.add_driver_path = true
+SnapDiff.config.add_driver_path = true
 ```
 
 The example above will then save your screenshots like this
@@ -177,7 +177,7 @@ the screen shots differ.  To avoid the screenshots for different OSs to
 overwrite each other, set
 
 ```ruby
-Capybara::Screenshot.add_os_path = true
+SnapDiff.config.add_os_path = true
 ```
 
 The example above will then save your screenshots like this

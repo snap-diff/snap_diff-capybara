@@ -1,38 +1,23 @@
 # Framework Setup
 
-> **Canonical equivalents.** This page uses the legacy `CapybaraScreenshotDiff` names, which keep
-> working. Each has a `SnapDiff` home:
->
-> | This page | Canonical |
-> |-----------|-----------|
-> | `require "capybara_screenshot_diff/minitest"` | `require "snap_diff/integrations/minitest"` |
-> | `require "capybara_screenshot_diff/rspec"` | `require "snap_diff/integrations/rspec"` |
-> | `require "capybara_screenshot_diff/cucumber"` | `require "snap_diff/integrations/cucumber"` |
-> | `CapybaraScreenshotDiff::DSL` | `SnapDiff::DSL` |
-> | `CapybaraScreenshotDiff::Minitest::Assertions` | `SnapDiff::Minitest::Assertions` |
-> | `CapybaraScreenshotDiff.finalize_reporters!` | `SnapDiff::Reporting.finalize!` |
->
-> The canonical setup, written out in full, is in [SnapDiff — the canonical API](snapdiff.md).
+Minitest, RSpec and Cucumber are supported out of the box. Each is one require plus, in some
+cases, one include.
 
-## Including DSL
-
-To use the screenshot capturing and change detection features in your tests, include the `CapybaraScreenshotDiff::DSL` in your test classes. It provides the `screenshot` method to capture and compare screenshots.
-
-There are different modules for different testing frameworks integrations.
+> The require path is `snap_diff/integrations/…`, not `snap_diff/…` —
+> `require "snap_diff/minitest"` raises `LoadError`.
 
 ## Minitest
 
-For Minitest, need to require `capybara_screenshot_diff/minitest`.
-In your test class, include the `CapybaraScreenshotDiff::Minitest::Assertions` module:
+Require `snap_diff/integrations/minitest`, then include `SnapDiff::Minitest::Assertions` in your
+test class. It brings `SnapDiff::DSL` with it, so a separate `include SnapDiff::DSL` is not
+needed.
 
 ```ruby
-require 'capybara_screenshot_diff/minitest'
+require 'snap_diff/integrations/minitest'
 
 class ApplicationSystemTestCase < ActionDispatch::SystemTestCase
-  # Make the Capybara & Capybara Screenshot Diff DSLs available in tests
-  include CapybaraScreenshotDiff::DSL
-  # Make `assert_*` methods behave like Minitest assertions
-  include CapybaraScreenshotDiff::Minitest::Assertions
+  # `screenshot` / `assert_matches_screenshot`, wired to Minitest's assertion counter
+  include SnapDiff::Minitest::Assertions
 
   def test_my_feature
     visit '/'
@@ -43,16 +28,11 @@ end
 
 ## RSpec
 
-To use the screenshot capturing and change detection features in your tests,
-include the `CapybaraScreenshotDiff::DSL` in your test classes.
-It adds `match_screenshot` matcher to RSpec.
-
-> **Important**:
-> The `CapybaraScreenshotDiff::DSL` is automatically included in all feature and system tests by default.
-
+Requiring `snap_diff/integrations/rspec` registers the `match_screenshot` matcher and includes
+`SnapDiff::DSL` into `type: :feature` and `type: :system` examples automatically.
 
 ```ruby
-require 'capybara_screenshot_diff/rspec'
+require 'snap_diff/integrations/rspec'
 
 describe 'Permissions admin', type: :feature do
   it 'works with permissions' do
@@ -60,10 +40,13 @@ describe 'Permissions admin', type: :feature do
     expect(page).to match_screenshot('home_page')
   end
 end
+```
 
+For other example types, include the DSL yourself:
 
+```ruby
 describe 'Permissions admin', type: :non_feature do
-  include CapybaraScreenshotDiff::DSL
+  include SnapDiff::DSL
 
   it 'works with permissions' do
     visit('/')
@@ -74,13 +57,14 @@ end
 
 ## Cucumber
 
-Load Cucumber support by adding the following line (typically to your `features/support/env.rb` file):
+Load Cucumber support by adding the following line (typically to your `features/support/env.rb`
+file):
 
 ```ruby
-require 'capybara_screenshot_diff/cucumber'
+require 'snap_diff/integrations/cucumber'
 ```
 
-And in the steps you can use:
+The DSL is added to the Cucumber `World`, so steps can call it directly:
 
 ```ruby
 Then('I should not see any visual difference') do
@@ -88,14 +72,15 @@ Then('I should not see any visual difference') do
 end
 ```
 
+This file must be loaded from inside a Cucumber run — it calls `World`, `Before`, `After` and
+`AfterAll` at load time and raises `NoMethodError` if required outside one.
+
 ## Custom Test Frameworks
 
-Minitest, RSpec, and Cucumber are supported out of the box. For other frameworks, call the
-end-of-suite hook yourself:
+For other frameworks, call the end-of-suite hook yourself:
 
 ```ruby
-SnapDiff::Reporting.finalize!            # canonical
-CapybaraScreenshotDiff.finalize_reporters!   # legacy, same thing
+SnapDiff::Reporting.finalize!
 ```
 
 This generates the HTML report and prints the summary. A framework also needs the per-test

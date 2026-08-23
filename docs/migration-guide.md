@@ -36,14 +36,14 @@ end
 **After (capybara-screenshot-diff):**
 ```ruby
 # Gemfile
-gem 'capybara-screenshot-diff'
+gem 'snap_diff-capybara'
 
 # test helper
-require 'capybara_screenshot_diff/minitest'
+require 'snap_diff/integrations/minitest'
 
 # test class
 class ApplicationSystemTestCase < ActionDispatch::SystemTestCase
-  include CapybaraScreenshotDiff::Minitest::Assertions
+  include SnapDiff::Minitest::Assertions
 
   test "homepage" do
     visit '/'
@@ -179,7 +179,7 @@ end
 | Concept | BackstopJS | capybara-screenshot-diff |
 |---------|-----------|-------------------------|
 | Language | JavaScript + Node | Ruby (runs in test suite) |
-| Dependencies | Node, Puppeteer/Chromium | Ruby gems + optional libvips |
+| Dependencies | Node, Puppeteer/Chromium | Ruby gems + libvips (system package) |
 | Test runner | Standalone CLI | Minitest, RSpec, Cucumber |
 | Selectors | CSS selectors for scenarios | CSS selectors for crop/skip_area |
 | Viewports | Per-scenario config | Global `window_size` setting |
@@ -231,8 +231,8 @@ end
 ## General Migration Checklist
 
 - [ ] Remove old gem/npm dependencies
-- [ ] Add `capybara-screenshot-diff` to Gemfile
-- [ ] Require the appropriate adapter (`minitest`, `rspec`, or `cucumber`)
+- [ ] Add `snap_diff-capybara` to Gemfile
+- [ ] Require the appropriate integration (`snap_diff/integrations/minitest`, `…/rspec`, or `…/cucumber`)
 - [ ] Replace screenshot calls with `screenshot` / `match_screenshot`
 - [ ] Configure `window_size` for consistent viewport dimensions
 - [ ] Set `tolerance` or `perceptual_threshold` if your previous tool had a mismatch threshold
@@ -262,11 +262,9 @@ screenshot 'step2'
 
 ### "My tests are slow now"
 
-Use the VIPS driver for ~50ms comparisons per image:
-```ruby
-gem 'ruby-vips'
-Capybara::Screenshot::Diff.driver = :vips
-```
+Comparison runs on libvips (~50ms per image) and there is nothing to select — `ruby-vips` is a
+runtime dependency of the gem. If comparisons are the slow part, the usual cause is
+`stability_time_limit`: keep it low (0.1–0.5s) or use `disable_animations` instead.
 
 ### "The diffs look different from what I'm used to"
 
@@ -280,7 +278,7 @@ Start with default settings, then adjust `tolerance` or `perceptual_threshold` b
 
 ## Need Help?
 
-- [Architecture Overview](docs/architecture.md) — understanding how comparisons work
-- [Configuration Reference](docs/configuration.md) — all available options
-- [CI Integration](docs/ci-integration.md) — setting up in CI
+- [Architecture Overview](architecture.md) — understanding how comparisons work
+- [Configuration Reference](configuration.md) — all available options
+- [CI Integration](ci-integration.md) — setting up in CI
 - [GitHub Issues](https://github.com/snap-diff/snap_diff-capybara/issues) — ask questions

@@ -9,7 +9,7 @@ to adhere to the [Contributor Covenant](CODE_OF_CONDUCT.md) code of conduct.
 ### Prerequisites
 
 - **Ruby 3.2+** (the project tests against 3.2–4.0)
-- **libvips 8.9+** (optional, for the VIPS driver). Install with:
+- **libvips 8.9+** — required. It is the only image backend, and `ruby-vips` is a runtime dependency of the gem. Install the system library with:
   - macOS: `brew install vips`
   - Ubuntu: `sudo apt-get install libvips-dev`
 - **Chrome** (for integration tests with `selenium_chrome_headless` or `cuprite`)
@@ -36,9 +36,6 @@ rake test:integration
 
 # Run specific test file
 ruby -Ilib:test test/unit/image_compare_test.rb
-
-# Run with a specific screenshot driver
-SCREENSHOT_DRIVER=vips rake test
 
 # Run with a specific Capybara driver (integration tests)
 CAPYBARA_DRIVER=cuprite rake test:integration
@@ -90,9 +87,9 @@ The gem supports Ruby 3.2 through 4.0 (including JRuby). When adding features:
 
 ### Architecture patterns
 
-- **Value objects** — immutable data carriers (e.g., `Difference`, `Comparison`, `Region`)
-- **Strategy pattern** — interchangeable algorithms (e.g., `VipsDriver`/`ChunkyPNGDriver`)
-- **Layered comparison** — fast-then-slow strategy in `ImageCompare` (byte → pixel → region)
+- **Value objects** — immutable data carriers (e.g., `ComparisonResult`, `Comparison::Images`, `Region`)
+- **Layered comparison** — fast-then-slow strategy in `SnapDiff::Comparison` (byte → pixel → region)
+- **One image backend** — `SnapDiff::Drivers::VipsDriver`. 2.1 removed the driver abstraction; do not reintroduce a strategy layer around it
 - **Thread safety** — thread-local state for per-test data, mutex for shared state
 - **Test doubles** — use `TestDoubles::TestDriver` and `TestDoubles::TestPath` (see `test/support/test_doubles.rb`)
 
@@ -130,29 +127,21 @@ Include:
 
 - **Unit tests** go in `test/unit/` and test a single class in isolation. Use test doubles from `test/support/test_doubles.rb` rather than testing with real image files or browsers.
 - **Integration tests** go in `test/integration/` and exercise the full capture → compare → report pipeline with a real browser. These are slower and require Chrome.
-- **Driver contract tests** (`test/support/driver_contract_tests.rb`) verify that all image processing drivers meet the same interface. Add a contract test when adding a new driver method.
-- **Test environment isolation:** each unit test snapshots and restores `Capybara::Screenshot` and `Capybara::Screenshot::Diff` global state. Don't mutate globals outside of setup/teardown.
-
-## Adding a New Driver
-
-1. Create `lib/capybara/screenshot/diff/drivers/new_driver.rb` inheriting from `BaseDriver`
-2. Implement required methods: `load_images`, `from_file`, `save_image_to`, `same_pixels?`, `find_difference_region`, `crop`, `add_black_box`, `draw_rectangles`, `resize_image_to`
-3. Register in `Utils.detect_available_drivers` and `Utils.find_driver_class_for`
-4. Add driver contract tests in `test/unit/drivers/new_driver_test.rb`
-5. Add integration tests exercising the new driver
+- **Driver contract tests** (`test/support/driver_contract_tests.rb`) pin the interface `Comparison`, `ImagePreprocessor`, `Screenshoter` and `AnnotationService` all call on `VipsDriver` — signatures, arity, and `load_images` slot order. It is no longer a *shared* contract (2.1 left one backend), but drift in any of those would break the callers silently. Extend it when you change a method the callers use.
+- **Test environment isolation:** each unit test snapshots and restores `SnapDiff.config` by instance variable. Don't mutate global config outside of setup/teardown.
 
 ## Adding a New Reporter
 
-1. Create `lib/capybara_screenshot_diff/reporters/new_reporter.rb`
-2. Implement `record(assertions)` and `finalize` methods
-3. Register with `CapybaraScreenshotDiff.reporters << MyReporter.new`
+1. Create `lib/snap_diff/reporters/new_reporter.rb`
+2. Implement `record(assertions)`, `finalize` and `summary` methods
+3. Register with `SnapDiff::Reporting.register(MyReporter.new)`
 4. Add tests in `test/unit/reporters/`
 
 ## Releasing
 
 To release a new version:
 
-1. Update the version number in [lib/capybara/screenshot/diff/version.rb](lib/capybara/screenshot/diff/version.rb)
+1. Update the version number in [lib/snap_diff/version.rb](lib/snap_diff/version.rb)
 2. Update [CHANGELOG.md](CHANGELOG.md) with the new version and date
 3. Create a GitHub Release:
    - Go to [Actions → Release](https://github.com/snap-diff/snap_diff-capybara/actions/workflows/release.yml)

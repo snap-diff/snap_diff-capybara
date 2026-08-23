@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
 module SnapDiff
-  # Annotation colors, defined here (not in the capybara_screenshot_diff
-  # umbrella) so they resolve in processes that only `require "snap_diff"`.
+  # Annotation colors, defined here (not in an umbrella file) so they resolve
+  # in processes that only `require "snap_diff"`.
   RED_RGBA = [255, 0, 0, 255].freeze
   ORANGE_RGBA = [255, 192, 0, 255].freeze
 
