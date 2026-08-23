@@ -24,34 +24,10 @@ require "support/setup_capybara"
 
 require "snap_diff/integrations/minitest"
 
-# This suite IS the v1 surface, not a consumer of it: it configures through
-# `Capybara::Screenshot.*` below and exercises the legacy entry points on
-# purpose, so the once-per-process migration notice would fire on every run.
-# Mark it shown rather than silencing deprecations wholesale -- the
-# per-constant warnings must still reach the guard below and raise.
-SnapDiff::Deprecation.suppress_migration_notice!
-
-# v2 step 8: the suite exercises only canonical SnapDiff:: names, so any
-# legacy-shim deprecation warning during a test run is a bug in the
-# referencing test -- fail loud at the resolution site instead of letting
-# it scroll by on stderr. Tests that exercise the legacy surface on purpose
-# opt out per test: namespace_forwarding_test silences deprecations in its
-# own setup; the deprecation-machinery tests set `expected = true` around
-# the warnings they capture and assert on. A plain module flag (not a
-# thread-local) so warnings emitted from threads a test spawns are covered
-# too; tests run serially, so there is no cross-test race.
-module SnapDiffDeprecationGuard
-  singleton_class.attr_accessor :expected
-
-  def warn(message, ...)
-    if message.to_s.include?("[snap_diff deprecation]") && !SnapDiffDeprecationGuard.expected
-      raise "old-namespace constant resolved inside the test suite: #{message}"
-    end
-
-    super
-  end
-end
-Warning.extend(SnapDiffDeprecationGuard)
+# The deprecation channel (snap_diff/deprecation.rb) and the shim layer it
+# announced were deleted in 2.1, so there is nothing left to silence and no
+# warning left to guard against: the only names this suite can reference are
+# canonical ones.
 
 require "support/stub_test_methods"
 require "support/setup_capybara_drivers"
@@ -80,9 +56,8 @@ class ActiveSupport::TestCase
 
   # Snapshot ALL global config state before each test, restore after.
   # Prevents one test from poisoning another via leaked config changes.
-  # Since ADR-008 step 1 the single storage is the SnapDiff.config instance
-  # (the legacy Capybara::Screenshot / ::Diff accessors delegate to it), so
-  # snapshotting its instance variables covers both surfaces.
+  # Since ADR-008 step 1 the single storage is the SnapDiff.config instance,
+  # so snapshotting its instance variables covers every setting.
   setup do
     config = SnapDiff.config
     @_global_snapshots = config.instance_variables.map { |iv|

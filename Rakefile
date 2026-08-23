@@ -5,46 +5,24 @@ require "rake/testtask"
 
 task default: :test
 
-# THE 3.0 SPLIT.
+# `rake test:canonical` is gone with the thing it was defined against: it
+# was "test/**/*_test.rb minus test/legacy/", i.e. exactly what had to keep
+# passing once the v1 compatibility trees were deleted. 2.1 deleted them and
+# test/legacy/ with them, so that task became a second name for `rake test`.
 #
-# test/legacy/ holds every test whose SUBJECT is the v1 compatibility surface
-# -- the old Capybara::Screenshot / CapybaraScreenshotDiff namespaces, their
-# deprecation warnings, and the gates that keep lib/capybara* alias-only.
-# Those tests guard the v1 contract for the whole 2.x line, so they stay and
-# stay green; in 3.0 they are deleted by the same commit that deletes what
-# they test:
-#
-#   git rm -r lib/capybara* lib/capybara_screenshot_diff.rb \
-#             lib/snap_diff/legacy_shims.rb lib/snap_diff/deprecation.rb \
-#             test/legacy
-#
-# A directory rather than a list in this file: there is nothing to keep in
-# sync, and the deletion is one `git rm -r`.
-#
-# `rake test`           -- everything, today's gate.
-# `rake test:canonical` -- exactly what must still pass once test/legacy and
-#                          the v1 trees are gone. THE 3.0 GATE.
-# `rake test:unit`      -- unit-sized tests; test/legacy is unit-sized too
-#                          (legacy/ marks lifetime, not kind), so it is in.
-LEGACY_SURFACE_TESTS = "test/legacy/**/*_test.rb"
-
+# The split still has a live guard, on the other side: canonical tests must
+# not grow legacy references BACK (test/unit/canonical_suite_has_no_legacy_
+# refs_test.rb, and its lib/ twin core_tree_has_no_legacy_deps_test.rb).
 Rake::TestTask.new(:test) do |t|
   t.libs << "test"
   t.libs << "lib"
   t.test_files = FileList["test/**/*_test.rb"]
 end
 
-desc "Run every test that must survive the 3.0 deletion of the v1 surface"
-Rake::TestTask.new("test:canonical") do |t|
-  t.libs << "test"
-  t.libs << "lib"
-  t.test_files = FileList["test/**/*_test.rb"].exclude(LEGACY_SURFACE_TESTS)
-end
-
 Rake::TestTask.new("test:unit") do |t|
   t.libs << "test"
   t.libs << "lib"
-  t.test_files = FileList["test/unit/**/*_test.rb", LEGACY_SURFACE_TESTS]
+  t.test_files = FileList["test/unit/**/*_test.rb"]
 end
 
 Rake::TestTask.new("test:integration") do |t|
@@ -78,18 +56,4 @@ end
 task "clobber" do
   puts "Cleanup tmp/"
   FileUtils.rm_rf(Dir["./tmp/*"])
-end
-
-task "test:benchmark" do
-  require_relative "scripts/benchmark/find_region_benchmark"
-  benchmark = Capybara::Screenshot::Diff::Drivers::FindRegionBenchmark.new
-
-  puts "For Medium Screen Size: 800x600"
-  benchmark.for_medium_size_screens
-
-  puts ""
-  puts "*" * 100
-
-  puts "For Small Screen Size: 80x60"
-  benchmark.for_small_images
 end

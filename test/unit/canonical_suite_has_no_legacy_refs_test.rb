@@ -76,16 +76,16 @@ class CanonicalSuiteHasNoLegacyRefsTest < ActiveSupport::TestCase
   # entry is a signal that canonical tests are still entangled with the
   # legacy surface -- it needs a decision, not a green build.
   ALLOWED = {
-    # Simulates the deletion for real (copies lib/, removes the trees, loads
-    # every canonical entry point). It names the deletion set and the edits
-    # by construction, and asserts its own gate line can reject an intact
-    # tree -- it cannot do that without spelling the doomed names.
-    "unit/deletion_3_0_test.rb" => [
-      '["snap_diff.rb", %(require "snap_diff/legacy_shims"), nil],',
-      '%(require "capybara_screenshot_diff/minitest"),',
-      'gate << "SnapDiff.start is still defined" if SnapDiff.respond_to?(:start)',
-      'gate << "CapybaraScreenshotDiff is still defined" if defined?(CapybaraScreenshotDiff)',
-      'assert_includes failure, "SnapDiff.start is still defined"'
+    # Asserts the removed surface is ABSENT -- from lib/ on disk and from a
+    # fresh process. It names the removed paths and constants by
+    # construction: there is no way to check a name is gone without writing
+    # it down.
+    "unit/legacy_surface_removed_test.rb" => [
+      'back << "Capybara::Screenshot" if defined?(Capybara::Screenshot)',
+      'back << "CapybaraScreenshotDiff" if defined?(CapybaraScreenshotDiff)',
+      'back << "SnapDiff::Deprecation" if defined?(SnapDiff::Deprecation)',
+      'back << "SnapDiff.start" if SnapDiff.respond_to?(:start)',
+      'back << "SnapDiff.silence_deprecations" if SnapDiff.respond_to?(:silence_deprecations)'
     ],
     # The twin gate's own pattern literal. A detector has to spell what it
     # detects; the line asserts nothing about legacy behaviour and is deleted

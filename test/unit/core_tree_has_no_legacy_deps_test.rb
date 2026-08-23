@@ -2,20 +2,20 @@
 
 require "test_helper"
 
-# The REVERSE of legacy_tree_is_alias_only_test.rb, and the other half of
-# what makes 3.0 a `git rm`.
+# Wrote the 2.1 deletion; still earns its keep after it.
 #
-# That test proves the v1 trees hold no logic. This one proves the canonical
-# core does not reach BACK into them -- which is the half that actually
-# breaks the gem if it is wrong: as long as any file under lib/snap_diff/
-# requires a `capybara/...` path or reads a `Capybara::Screenshot.*` /
-# `CapybaraScreenshotDiff::*` constant, deleting lib/capybara* leaves a core
-# that no longer loads.
+# Before: this gate and legacy_tree_is_alias_only_test.rb were the two halves
+# of what made the removal a plain `git rm` -- one proved the v1 trees held
+# no logic, this one proved the canonical core never reached BACK into them.
+# The alias-only half died with test/legacy/.
 #
-# Scope: everything the 3.0 deletion KEEPS. Files that are themselves part of
-# the deletion set (DELETED_IN_3_0 below) live under lib/snap_diff/ only
-# because the generator for the v1 surface has to be code, and the v1 trees
-# have to stay alias-only -- they are legacy by design and go with it.
+# After: the trees are gone, so a `require "capybara/screenshot/..."` fails
+# loudly on its own. What does NOT fail loudly is the rest -- a user-facing
+# message telling someone to set `Capybara::Screenshot.tolerance`, a
+# docstring pointing at a forwarder, a rescue naming an old constant. Those
+# survive the deletion and start lying the day it lands. This gate is what
+# keeps the removed names from creeping back into the code that shipped
+# without them.
 #
 # WHOLE-LINE comments are ignored: "ex +SnapDiff.config.active?+" on its
 # own line is history, not a dependency. Everything else on a code line
@@ -27,17 +27,12 @@ require "test_helper"
 class CoreTreeHasNoLegacyDepsTest < ActiveSupport::TestCase
   LIB = Pathname.new(__dir__).join("../../lib").expand_path
 
-  # Deleted alongside lib/capybara* in 3.0: these files exist to BUILD the
-  # v1 compatibility surface (const_missing shims, the legacy config
-  # accessor generator, the deprecation channel that announces both).
-  DELETED_IN_3_0 = %w[
-    snap_diff/legacy_shims.rb
-    snap_diff/deprecation.rb
-  ].freeze
-
+  # No exclusions: snap_diff/legacy_shims.rb and snap_diff/deprecation.rb
+  # were the two files under here that existed to BUILD the v1 surface, and
+  # 2.1 deleted them with it. Everything left is canonical by definition.
   CORE_FILES = (
     [LIB.join("snap_diff.rb")] + Dir[LIB.join("snap_diff/**/*.rb")].map { |p| Pathname.new(p) }
-  ).sort.reject { |file| DELETED_IN_3_0.include?(file.relative_path_from(LIB).to_s) }.freeze
+  ).sort.freeze
 
   # A require of anything in the v1 trees: `capybara/screenshot/...`,
   # `capybara_screenshot_diff...`, `capybara-screenshot-diff`. Plain
@@ -61,10 +56,10 @@ class CoreTreeHasNoLegacyDepsTest < ActiveSupport::TestCase
   # the second.
   #
   # EMPTY. It was seeded with all 64 core->legacy edges that existed the day
-  # the gate was written, and every one of them is gone. Keep it empty: an
-  # entry is a decision to keep a core->legacy edge across the 3.0 deletion,
-  # so it needs a written reason here AND an ADR-008 update -- never just a
-  # red build turned green.
+  # the gate was written, and every one of them is gone -- along with the
+  # trees they pointed at. An entry now is a decision to name a REMOVED api
+  # in shipped code, so it needs a written reason here AND an ADR-008
+  # update -- never just a red build turned green.
   ALLOWED = {}.freeze
 
   test "no core file requires or references the v1 namespaces" do
@@ -73,10 +68,11 @@ class CoreTreeHasNoLegacyDepsTest < ActiveSupport::TestCase
     offenders = CORE_FILES.flat_map { |file| offences(file) }
 
     assert_empty offenders, <<~MSG
-      The canonical core still depends on the v1 compatibility trees. Repoint
-      these at their snap_diff/* equivalents (`SnapDiff.config.*`,
-      `SnapDiff::Drivers.*`, `require "snap_diff/..."`) -- until they are gone,
-      `git rm lib/capybara*` breaks the gem:
+      The canonical core names the v1 compatibility surface, which 2.1
+      removed. Repoint these at their snap_diff/* equivalents
+      (`SnapDiff.config.*`, `SnapDiff::Drivers.*`, `require "snap_diff/..."`) --
+      a require here does not resolve at all, and a message or docstring
+      here sends users to an API that is gone:
 
       #{offenders.join("\n")}
     MSG
