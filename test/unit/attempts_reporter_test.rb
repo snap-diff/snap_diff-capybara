@@ -2,6 +2,9 @@
 
 require "test_helper"
 require "snap_diff"
+# Not on any entry point's require path: stable_screenshoter pulls it in
+# lazily, at the moment a capture actually goes unstable.
+require "snap_diff/attempts_reporter"
 
 module SnapDiff
   # Guard #2 from the v2 core-redesign acceptance contract (D8).

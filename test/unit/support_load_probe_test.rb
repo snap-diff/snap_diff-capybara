@@ -101,6 +101,44 @@ class SupportLoadProbeTest < ActiveSupport::TestCase
     MSG
   end
 
+  # Ported from the legacy entry-point probe (test/legacy/), which was the
+  # only place asserting that an entry point defines its advertised
+  # CONSTANTS when it is the ONLY require -- it just did so for the v1 names
+  # (CapybaraScreenshotDiff::DSL, Capybara::Screenshot::Os, ...). That is the
+  # f89cea2 bug class: the acyclic redesign once narrowed an entry point so
+  # consumers lost the DSL, and only one CI matrix leg noticed. Same claim,
+  # canonical names, canonical entries -- so 3.0 keeps the guard.
+  #
+  # Entry-specific on purpose: bare `snap_diff` deliberately carries neither
+  # the DSL nor the reporters (see CANONICAL_SURFACE above), so a flat list
+  # over all entries would be wrong rather than strict.
+  CANONICAL_ADVERTISED_CONSTANTS = {
+    "snap_diff/dsl" => %w[SnapDiff::DSL SnapDiff::Os SnapDiff::Comparison],
+    "snap_diff/integrations/minitest" => %w[
+      SnapDiff::DSL SnapDiff::Minitest::Assertions SnapDiff::Os SnapDiff::Comparison
+    ],
+    "snap_diff/integrations/rspec" => %w[SnapDiff::DSL SnapDiff::Os SnapDiff::Comparison],
+    "snap_diff-capybara" => %w[
+      SnapDiff::DSL SnapDiff::Minitest::Assertions SnapDiff::Os SnapDiff::Comparison
+    ]
+  }.freeze
+
+  test "every canonical entry point defines its advertised constants standalone" do
+    failures = CANONICAL_ADVERTISED_CONSTANTS.filter_map do |entry, constants|
+      self.class.probe(entry, <<~RUBY)
+        require #{entry.inspect}
+        missing = #{constants.inspect}.reject { |c| Object.const_defined?(c) }
+        abort("missing: \#{missing.join(", ")}") unless missing.empty?
+      RUBY
+    end
+
+    assert_empty failures, <<~MSG
+      Canonical entry point(s) no longer provide their advertised constants standalone:
+
+      #{failures.join("\n")}
+    MSG
+  end
+
   test "every canonical snap_diff entry point runs the dual-install guard" do
     failures = CANONICAL_ENTRY_POINTS.keys.filter_map do |entry|
       self.class.probe(entry, <<~RUBY)

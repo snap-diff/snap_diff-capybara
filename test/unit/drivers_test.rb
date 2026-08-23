@@ -39,6 +39,22 @@ class DriversTest < ActiveSupport::TestCase
     assert_equal SnapDiff::Drivers::AVAILABLE_DRIVERS, SnapDiff::Drivers.available
   end
 
+  # Ported from namespace_forwarding_test (test/legacy/), which was the only
+  # place pinning this: it asserted the v1 LOADED_DRIVERS constant is the
+  # same object as this hash and that a registration through it shows up
+  # here. The v1 half dies in 3.0; the canonical half -- .loaded is ONE
+  # memoized hash, mutated in place, so a driver registered into it stays
+  # registered (Utils.find_driver_class_for caches through it) -- must not.
+  test ".loaded is a single hash mutated in place, so registrations stick" do
+    assert_same SnapDiff::Drivers.loaded, SnapDiff::Drivers.loaded
+
+    SnapDiff::Drivers.loaded[:registry_probe] = :probe_driver
+
+    assert_equal :probe_driver, SnapDiff::Drivers.loaded[:registry_probe]
+  ensure
+    SnapDiff::Drivers.loaded.delete(:registry_probe)
+  end
+
   test "detection is reachable under both the canonical and the documented Utils name" do
     assert_equal SnapDiff::Drivers.detect_available, SnapDiff::Utils.detect_available_drivers
   end
