@@ -10,9 +10,9 @@ require "open3"
 # own requires still loads fine in most suite runs and only breaks in the CI
 # matrix cell with a different load order — exactly how
 # setup_capybara_drivers.rb broke on selenium_chrome_headless + vips (it used
-# Capybara::Screenshot::Os without requiring it, fixed in b7ada5e). This test
-# requires every test/support file in a bare subprocess with only capybara
-# core preloaded. Scope: it catches missing requires for constants referenced
+# SnapDiff::Os without requiring it, fixed in b7ada5e). This test requires
+# every test/support file in a bare subprocess with only capybara core
+# preloaded. Scope: it catches missing requires for constants referenced
 # AT LOAD TIME under this process's env; references hidden behind env guards
 # (e.g. CAPYBARA_DRIVER branches not taken here) or inside method bodies
 # still escape it.
@@ -22,6 +22,12 @@ require "open3"
 # active_support/concern in dsl_stub and driver_contract_tests, the gem's own
 # files elsewhere). If a future support file legitimately needs more context
 # than "capybara is loaded", list it in SKIP with the reason.
+#
+# The v1 entry points -- their advertised constants, the
+# CapybaraScreenshotDiff session surface, and the eager user-facing
+# constants under the old names -- are probed the same way from
+# test/legacy/legacy_entry_point_probe_test.rb, which is deleted with the v1
+# trees in 3.0.
 class SupportLoadProbeTest < ActiveSupport::TestCase
   SKIP = {
     # "support/example" => "why it cannot load bare"
@@ -50,113 +56,45 @@ class SupportLoadProbeTest < ActiveSupport::TestCase
     MSG
   end
 
-  # Alias-completeness probe (the f89cea2 bug class): each documented entry
-  # point must define its advertised constants when it is the ONLY require —
-  # the acyclic redesign once narrowed capybara_screenshot_diff/minitest so
-  # consumers lost CapybaraScreenshotDiff::DSL, and only one CI matrix leg
-  # noticed. capybara_screenshot_diff/cucumber is not probed: it calls
-  # World(...) at load, which only exists inside cucumber's runtime context.
-  # Documented user-facing constants that must stay EAGER (see
-  # snap_diff/legacy_shims.rb's exception list): const_defined? never
-  # triggers const_missing, so a lazy shim makes `defined?` feature
-  # detection in adopter code silently return nil.
-  EAGER_USER_FACING = %w[
-    Capybara::Screenshot::Diff::Reporters::Default
-    Capybara::Screenshot::Diff::Comparison
-  ].freeze
-
-  # The subset of EAGER_USER_FACING that must resolve under EVERY entry
-  # point, canonical ones included -- these are read directly (a version
-  # string, a struct), not just feature-detected, so a canonical-only app
-  # still hits them. The test above only covers the four legacy entries,
-  # which is how VERSION silently disappeared from six entry points when the
-  # core stopped requiring capybara/screenshot/diff/version.rb: nothing
-  # loaded the forwarder that assigned it, and const_missing does not fire
-  # for a constant legacy_shims deliberately leaves out of its map.
-  EAGER_EVERYWHERE = %w[
-    Capybara::Screenshot::Diff::VERSION
-    Capybara::Screenshot::Diff::Comparison
-  ].freeze
-
-  ENTRY_POINTS = {
-    "capybara_screenshot_diff" => %w[
-      CapybaraScreenshotDiff::DSL Capybara::Screenshot::Os Capybara::Screenshot::Diff
-    ] + EAGER_USER_FACING,
-    "capybara_screenshot_diff/minitest" => %w[
-      CapybaraScreenshotDiff::DSL CapybaraScreenshotDiff::Minitest::Assertions
-      Capybara::Screenshot::Os Capybara::Screenshot::Diff
-    ] + EAGER_USER_FACING,
-    "capybara_screenshot_diff/rspec" => %w[
-      CapybaraScreenshotDiff::DSL Capybara::Screenshot::Os Capybara::Screenshot::Diff
-    ] + EAGER_USER_FACING,
-    "capybara-screenshot-diff" => %w[
-      CapybaraScreenshotDiff::DSL CapybaraScreenshotDiff::Minitest::Assertions
-      Capybara::Screenshot::Os Capybara::Screenshot::Diff
-    ] + EAGER_USER_FACING
-  }.freeze
-
-  test "every documented entry point defines its advertised constants standalone" do
-    failures = ENTRY_POINTS.filter_map do |entry, constants|
-      probe(entry, <<~RUBY)
-        require #{entry.inspect}
-        missing = #{constants.inspect}.reject { |c| Object.const_defined?(c) }
-        abort("missing: \#{missing.join(", ")}") unless missing.empty?
-      RUBY
-    end
-
-    assert_empty failures, <<~MSG
-      Entry point(s) no longer provide their advertised constants standalone:
-
-      #{failures.join("\n")}
-    MSG
-  end
-
   # --- beta3 blockers: entry points must load a COMPLETE surface ---
   #
   # The canonical `snap_diff/*` requires never loaded snap_diff.rb itself,
   # so the docs' own quick start (`require "snap_diff/integrations/minitest"`)
   # left SnapDiff.configure/.start/.compare undefined, SnapDiff::VERSION
-  # unresolvable, and the dual-install guard silent. The legacy entries had
-  # the mirror-image hole: some of them stopped loading the umbrella, so
-  # CapybaraScreenshotDiff.verify and friends vanished while
-  # `defined?(CapybaraScreenshotDiff)` still passed.
+  # unresolvable, and the dual-install guard silent.
 
   # SnapDiff.serve is deliberately absent here: docs/snapdiff.md's object
   # map gates it behind its own `require "snap_diff/static"` (which pulls
   # rack + minitest), so the core must not carry it.
+  #
+  # SnapDiff.start is absent for a different reason: it is defined in
+  # snap_diff/legacy_shims.rb and yields the two v1 config holders, so it
+  # cannot outlive them (#235). A CANONICAL gate demanding a method 3.0
+  # deletes is a gate that fails the day the deletion lands -- which is
+  # exactly what it did. `.start` keeps its coverage on the legacy side:
+  # test/legacy/legacy_forwarders_test.rb asserts what it yields and that it
+  # applies a setting, and LEGACY_SESSION_SURFACE pins it per v1 entry point.
   CANONICAL_SURFACE = %w[
-    config configure start compare session reset pending_screenshots_message
+    config configure compare session reset pending_screenshots_message
   ].freeze
 
+  # snap_diff-capybara is the canonical gem's Bundler entry point, so it is
+  # probed here rather than with the v1 ones: 3.0 keeps it (repointed at
+  # snap_diff/integrations/minitest), it just stops carrying the
+  # CapybaraScreenshotDiff surface.
   CANONICAL_ENTRY_POINTS = {
     "snap_diff" => CANONICAL_SURFACE,
     "snap_diff/dsl" => CANONICAL_SURFACE,
     "snap_diff/integrations/minitest" => CANONICAL_SURFACE,
     "snap_diff/integrations/rspec" => CANONICAL_SURFACE,
     "snap_diff/integrations/cucumber" => CANONICAL_SURFACE,
-    "snap_diff/static" => CANONICAL_SURFACE + %w[serve]
+    "snap_diff/static" => CANONICAL_SURFACE + %w[serve],
+    "snap_diff-capybara" => CANONICAL_SURFACE
   }.freeze
-
-  LEGACY_SESSION_SURFACE = %w[
-    verify reset reporters finalize_reporters! assertions registry
-    pending_screenshots_message
-  ].freeze
-
-  LEGACY_ENTRY_POINTS = %w[
-    capybara-screenshot-diff
-    snap_diff-capybara
-    capybara_screenshot_diff
-    capybara_screenshot_diff/minitest
-    capybara_screenshot_diff/rspec
-    capybara_screenshot_diff/cucumber
-    capybara_screenshot_diff/static
-    capybara/screenshot/diff
-    capybara/screenshot/diff/cucumber
-  ].freeze
 
   test "every canonical snap_diff entry point loads the full SnapDiff surface" do
     failures = CANONICAL_ENTRY_POINTS.filter_map do |entry, methods|
-      probe(entry, <<~RUBY)
+      self.class.probe(entry, <<~RUBY)
         require #{entry.inspect}
         missing = #{methods.inspect}.reject { |m| SnapDiff.respond_to?(m) }
         missing << "VERSION" unless defined?(SnapDiff::VERSION)
@@ -171,9 +109,47 @@ class SupportLoadProbeTest < ActiveSupport::TestCase
     MSG
   end
 
+  # Ported from the legacy entry-point probe (test/legacy/), which was the
+  # only place asserting that an entry point defines its advertised
+  # CONSTANTS when it is the ONLY require -- it just did so for the v1 names
+  # (CapybaraScreenshotDiff::DSL, Capybara::Screenshot::Os, ...). That is the
+  # f89cea2 bug class: the acyclic redesign once narrowed an entry point so
+  # consumers lost the DSL, and only one CI matrix leg noticed. Same claim,
+  # canonical names, canonical entries -- so 3.0 keeps the guard.
+  #
+  # Entry-specific on purpose: bare `snap_diff` deliberately carries neither
+  # the DSL nor the reporters (see CANONICAL_SURFACE above), so a flat list
+  # over all entries would be wrong rather than strict.
+  CANONICAL_ADVERTISED_CONSTANTS = {
+    "snap_diff/dsl" => %w[SnapDiff::DSL SnapDiff::Os SnapDiff::Comparison],
+    "snap_diff/integrations/minitest" => %w[
+      SnapDiff::DSL SnapDiff::Minitest::Assertions SnapDiff::Os SnapDiff::Comparison
+    ],
+    "snap_diff/integrations/rspec" => %w[SnapDiff::DSL SnapDiff::Os SnapDiff::Comparison],
+    "snap_diff-capybara" => %w[
+      SnapDiff::DSL SnapDiff::Minitest::Assertions SnapDiff::Os SnapDiff::Comparison
+    ]
+  }.freeze
+
+  test "every canonical entry point defines its advertised constants standalone" do
+    failures = CANONICAL_ADVERTISED_CONSTANTS.filter_map do |entry, constants|
+      self.class.probe(entry, <<~RUBY)
+        require #{entry.inspect}
+        missing = #{constants.inspect}.reject { |c| Object.const_defined?(c) }
+        abort("missing: \#{missing.join(", ")}") unless missing.empty?
+      RUBY
+    end
+
+    assert_empty failures, <<~MSG
+      Canonical entry point(s) no longer provide their advertised constants standalone:
+
+      #{failures.join("\n")}
+    MSG
+  end
+
   test "every canonical snap_diff entry point runs the dual-install guard" do
     failures = CANONICAL_ENTRY_POINTS.keys.filter_map do |entry|
-      probe(entry, <<~RUBY)
+      self.class.probe(entry, <<~RUBY)
         require "rubygems"
         %w[capybara-screenshot-diff snap_diff-capybara].each do |name|
           Gem.loaded_specs[name] ||= Gem::Specification.new(name, "0.0.0")
@@ -194,50 +170,6 @@ class SupportLoadProbeTest < ActiveSupport::TestCase
     MSG
   end
 
-  test "every legacy entry point keeps the CapybaraScreenshotDiff session surface" do
-    failures = LEGACY_ENTRY_POINTS.filter_map do |entry|
-      probe(entry, <<~RUBY)
-        require #{entry.inspect}
-        missing = #{LEGACY_SESSION_SURFACE.inspect}.reject { |m| CapybaraScreenshotDiff.respond_to?(m) }
-        abort("missing: \#{missing.join(", ")}") unless missing.empty?
-      RUBY
-    end
-
-    assert_empty failures, <<~MSG
-      Legacy entry point(s) leave CapybaraScreenshotDiff half-present
-      (the module answers `defined?` but not its own session methods):
-
-      #{failures.join("\n")}
-    MSG
-  end
-
-  # Every documented entry point, canonical and legacy. capybara_screenshot_diff/dsl
-  # is listed only here: it is not in ENTRY_POINTS or LEGACY_ENTRY_POINTS, which
-  # is exactly why it was the legacy entry that lost VERSION unnoticed.
-  ALL_ENTRY_POINTS = (
-    CANONICAL_ENTRY_POINTS.keys + LEGACY_ENTRY_POINTS + %w[capybara_screenshot_diff/dsl]
-  ).uniq.freeze
-
-  test "the eager user-facing constants resolve under every entry point" do
-    failures = ALL_ENTRY_POINTS.filter_map do |entry|
-      probe(entry, <<~RUBY)
-        require #{entry.inspect}
-        missing = #{EAGER_EVERYWHERE.inspect}.reject { |c| Object.const_defined?(c) }
-        abort("missing: \#{missing.join(", ")}") unless missing.empty?
-      RUBY
-    end
-
-    assert_empty failures, <<~MSG
-      Entry point(s) no longer resolve constants that are supposed to be eager
-      everywhere. `defined?` returns nil for these and const_missing does not
-      fire, so adopter feature detection fails silently:
-
-      #{failures.join("\n")}
-    MSG
-  end
-
-  private
-
   # cucumber's World/Before/After/AfterAll only exist inside its runtime, so
   # a bare probe of a cucumber entry has to supply them or the require dies
   # before it reaches what is under test.
@@ -250,7 +182,10 @@ class SupportLoadProbeTest < ActiveSupport::TestCase
 
   # Runs +script+ in a fresh process with only lib/ on the load path.
   # Returns nil on success, a failure description otherwise.
-  def probe(entry, script)
+  #
+  # Public, and deliberately so: test/legacy/legacy_entry_point_probe_test.rb
+  # reuses it rather than keeping a second copy that would drift.
+  def self.probe(entry, script)
     project_root = File.expand_path("../..", __dir__)
     preamble = entry.include?("cucumber") ? CUCUMBER_RUNTIME_STUB : ""
     out, status = Open3.capture2e(RbConfig.ruby, "-Ilib", "-e", preamble + script, chdir: project_root)

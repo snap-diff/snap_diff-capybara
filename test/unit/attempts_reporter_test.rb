@@ -1,7 +1,10 @@
 # frozen_string_literal: true
 
 require "test_helper"
-require "capybara_screenshot_diff"
+require "snap_diff"
+# Not on any entry point's require path: stable_screenshoter pulls it in
+# lazily, at the moment a capture actually goes unstable.
+require "snap_diff/attempts_reporter"
 
 module SnapDiff
   # Guard #2 from the v2 core-redesign acceptance contract (D8).
@@ -13,7 +16,7 @@ module SnapDiff
   # data raised later at verify time.
   class AttemptsReporterTest < ActiveSupport::TestCase
     setup do
-      @manager = SnapDiff::SnapManager.new(Capybara::Screenshot.root / "attempts_reporter_test")
+      @manager = SnapDiff::SnapManager.new(SnapDiff.config.root / "attempts_reporter_test")
       @manager.create_output_directory_for
     end
 
@@ -60,7 +63,7 @@ module SnapDiff
 
       error = nil
       SnapDiff.config.stub(:screenshoter, alternating_screenshoter) do
-        error = assert_raises(CapybaraScreenshotDiff::UnstableImage) do
+        error = assert_raises(SnapDiff::UnstableImage) do
           StableScreenshoter
             .new({stability_time_limit: 0.05, wait: 0.2}, {driver: :chunky_png})
             .take_comparison_screenshot(snap)

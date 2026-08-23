@@ -3,6 +3,9 @@
 require "test_helper"
 require "snap_diff/deprecation"
 
+# LEGACY SURFACE (test/legacy/, see the Rakefile): SnapDiff::Deprecation is
+# the channel that announces the v1 shims, so snap_diff/deprecation.rb and
+# this file are deleted together with lib/capybara* in 3.0.
 class SnapDiffDeprecationTest < ActiveSupport::TestCase
   def setup
     SnapDiff::Deprecation.reset!

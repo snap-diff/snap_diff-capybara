@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require "test_helper"
-require "capybara_screenshot_diff"
+require "snap_diff"
 
 module SnapDiff
   # Pins the baseline-archiving side effect of the verify flow: when a
@@ -11,7 +11,7 @@ module SnapDiff
   # extracted from the read path into an explicit archive step.
   class ScreenshotAssertionTest < ActiveSupport::TestCase
     include SnapDiff::DSL
-    include CapybaraScreenshotDiff::DSLStub
+    include DSLStub
 
     test "#validate! archives the baseline when the comparison passes" do
       comparison = make_comparison(:a, :a)
@@ -27,7 +27,7 @@ module SnapDiff
       comparison = make_comparison(:a, :b)
       assertion = build_assertion(comparison)
 
-      assert_raises(CapybaraScreenshotDiff::ExpectationNotMet) { assertion.validate! }
+      assert_raises(SnapDiff::ExpectationNotMet) { assertion.validate! }
 
       assert comparison.base_image_path.exist?, "base image must be kept for the reporter on failure"
     end
@@ -39,7 +39,7 @@ module SnapDiff
         assert_matches_screenshot(snap.full_name) # delayed by default
         assert comparison_for(snap.full_name).base_image_path.exist?, "verify has not run yet: base image must still be present"
 
-        CapybaraScreenshotDiff.verify
+        SnapDiff.session.verify
 
         assert_not snap.base_path.exist?, "verify must archive the baseline of a passing assertion"
         assert_predicate snap.path, :exist?
@@ -52,7 +52,7 @@ module SnapDiff
 
         assert_matches_screenshot(snap.full_name) # delayed by default
 
-        assert_raises(CapybaraScreenshotDiff::ExpectationNotMet) { CapybaraScreenshotDiff.verify }
+        assert_raises(SnapDiff::ExpectationNotMet) { SnapDiff.session.verify }
 
         assert snap.base_path.exist?, "base image must be kept for the reporter on failure"
       end
@@ -115,7 +115,7 @@ module SnapDiff
     end
 
     def comparison_for(name)
-      CapybaraScreenshotDiff.assertions.find { |assertion| assertion.name == name }.compare
+      SnapDiff.session.assertions.find { |assertion| assertion.name == name }.compare
     end
   end
 end

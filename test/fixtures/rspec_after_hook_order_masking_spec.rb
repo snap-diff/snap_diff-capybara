@@ -16,7 +16,7 @@ RSpec.configure do |config|
   end
 end
 
-require "capybara_screenshot_diff/rspec"
+require "snap_diff/integrations/rspec"
 require "support/stub_test_methods"
 
 unless defined?(SCREEN_SIZE)
@@ -40,23 +40,23 @@ RSpec.describe "capybara_screenshot_diff/rspec after-hook ordering masking guard
   before do
     Capybara.current_driver = Capybara.javascript_driver
     Capybara.page.current_window.resize_to(*SCREEN_SIZE)
-    Capybara::Screenshot.window_size = SCREEN_SIZE
+    SnapDiff.config.window_size = SCREEN_SIZE
 
-    Capybara::Screenshot.save_path = "doc/screenshots"
-    Capybara::Screenshot.root = Rails.root / "../test/fixtures/app"
-    Capybara::Screenshot.add_os_path = true
-    Capybara::Screenshot.add_driver_path = true
-    Capybara::Screenshot::Diff.driver = ENV.fetch("SCREENSHOT_DRIVER", "chunky_png").to_sym
-    Capybara::Screenshot::Diff.tolerance = 0.5
+    SnapDiff.config.save_path = "doc/screenshots"
+    SnapDiff.config.root = Rails.root / "../test/fixtures/app"
+    SnapDiff.config.add_os_path = true
+    SnapDiff.config.add_driver_path = true
+    SnapDiff.config.driver = ENV.fetch("SCREENSHOT_DRIVER", "chunky_png").to_sym
+    SnapDiff.config.tolerance = 0.5
     # This fixture runs standalone in its own subprocess (no
     # ActiveSupport::TestCase setup forcing this off), and CI sets $CI,
     # which flips the default on and would raise before we ever get here.
-    Capybara::Screenshot::Diff.fail_if_new = false
+    SnapDiff.config.fail_if_new = false
   end
 
   it "keeps a real after-hook failure failing even when a new screenshot is pending" do
     name = "pending-masking-after-hook-order"
-    allow(Capybara::Screenshot::Diff).to receive(:pending_if_new).and_return(true)
+    allow(SnapDiff.config).to receive(:pending_if_new).and_return(true)
     visit "/"
     screenshot name
   ensure

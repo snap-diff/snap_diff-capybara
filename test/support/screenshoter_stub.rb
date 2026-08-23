@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
-require "capybara/screenshot/diff/screenshoter"
+require "snap_diff/screenshoter"
 
-class Capybara::Screenshot::ScreenshoterStub < SnapDiff::Screenshoter
+class ScreenshoterStub < SnapDiff::Screenshoter
   def pending_image_to_load
   end
 

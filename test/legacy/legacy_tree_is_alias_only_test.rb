@@ -10,6 +10,10 @@ require "test_helper"
 # and one-line forwarders. If that stays true, dropping v1 support in 3.0 is
 # a deletion; the moment real logic lands back in these trees it becomes a
 # refactor. This test fails the second that happens, naming the file.
+#
+# LEGACY SURFACE (test/legacy/, see the Rakefile): deleted with the trees it
+# scans in 3.0. Its mirror image, core_tree_has_no_legacy_deps_test.rb,
+# guards what 3.0 KEEPS and so stays in test/unit/.
 class LegacyTreeIsAliasOnlyTest < ActiveSupport::TestCase
   LIB = Pathname.new(__dir__).join("../../lib").expand_path
 

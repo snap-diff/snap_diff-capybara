@@ -4,16 +4,16 @@ require "system_test_case"
 
 class RecordScreenshotTest < SystemTestCase
   setup do
-    screenshot_section class_name.underscore.sub(/(_feature|_system)?_test$/, "") unless CapybaraScreenshotDiff.screenshot_namer.section
-    screenshot_group name[5..] unless CapybaraScreenshotDiff.screenshot_namer.group
+    screenshot_section class_name.underscore.sub(/(_feature|_system)?_test$/, "") unless SnapDiff.session.screenshot_namer.section
+    screenshot_group name[5..] unless SnapDiff.session.screenshot_namer.group
 
-    @original_tolerance = Capybara::Screenshot::Diff.tolerance
-    Capybara::Screenshot::Diff.tolerance = (Capybara::Screenshot::Diff.driver == :vips) ? 0.035 : 0.7
+    @original_tolerance = SnapDiff.config.tolerance
+    SnapDiff.config.tolerance = (SnapDiff.config.driver == :vips) ? 0.035 : 0.7
   end
 
   teardown do
-    Capybara::Screenshot.blur_active_element = nil
-    Capybara::Screenshot::Diff.tolerance = @original_tolerance
+    SnapDiff.config.blur_active_element = nil
+    SnapDiff.config.tolerance = @original_tolerance
   end
 
   def test_record_index

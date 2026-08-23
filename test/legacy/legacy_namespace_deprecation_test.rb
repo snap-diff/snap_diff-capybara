@@ -3,7 +3,7 @@
 require "test_helper"
 require "open3"
 require "snap_diff/deprecation"
-require "unit/namespace_forwarding_test" # single source of truth for the old->new MAPPING
+require "legacy/namespace_forwarding_test" # single source of truth for the old->new MAPPING
 
 # ADR-004 v2 step 6: resolving an old-namespace constant emits a deprecation
 # warning -- exactly once per constant per process, naming the SnapDiff
@@ -11,6 +11,9 @@ require "unit/namespace_forwarding_test" # single source of truth for the old->n
 # switches (SnapDiff.silence_deprecations / SNAP_DIFF_SILENCE_DEPRECATIONS).
 # Same-object identity for every pair stays pinned by
 # namespace_forwarding_test.rb; this file pins only the warning behavior.
+#
+# LEGACY SURFACE (test/legacy/, see the Rakefile): deleted with lib/capybara*
+# and snap_diff/deprecation.rb in 3.0.
 class LegacyNamespaceDeprecationTest < ActiveSupport::TestCase
   # Documented exceptions that stay EAGER (real constants, never warn):
   # - Os / DSL: advertised entry-point constants, probed with

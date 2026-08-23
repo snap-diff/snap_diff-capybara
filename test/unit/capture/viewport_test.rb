@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 require "test_helper"
-require "capybara_screenshot_diff"
+require "snap_diff"
 
 module SnapDiff
   module Capture
@@ -17,7 +17,7 @@ module SnapDiff
       test "prepare! raises WindowSizeMismatchError when the window size is wrong" do
         BrowserHelpers.stub(:window_size_is_wrong?, true) do
           BrowserHelpers.stub(:selenium?, false) do
-            error = assert_raises(CapybaraScreenshotDiff::WindowSizeMismatchError) do
+            error = assert_raises(SnapDiff::WindowSizeMismatchError) do
               Viewport.prepare!([800, 600])
             end
             assert_includes error.message, "[800, 600]"
