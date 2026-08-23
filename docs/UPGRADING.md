@@ -159,7 +159,8 @@ This means you can migrate your codebase incrementally **now**, before opting in
 
 ### Deprecation Warnings
 
-v2.0 emits two different things, and it is worth knowing which is which.
+v2.0 emits three different things, and it is worth knowing which is which. The first two are
+about the old namespaces; the third is about the driver features 2.1 removes.
 
 #### 1. The migration notice — one line per process
 
@@ -198,6 +199,39 @@ ErrorWithFilteredBacktrace, ScreenshotAssertion, AssertionRegistry}`;
 `CapybaraScreenshotDiff::DSL` and `::Minitest::Assertions` are shimmed this way **only under a
 canonical `snap_diff*` require**. Under the v1 entry points — what an unmigrated app actually
 uses — they are eagerly defined and silent, like everything in the next section.
+
+#### 3. Removal warnings — the driver half, removed in 2.1
+
+The warnings above are about *names*. These are about *features*: 2.1 makes **libvips the only
+image backend** and deletes the rest of the driver machinery. 2.0 still supports all of it and
+warns once per process per subject, through the same channel and the same silencing switches.
+
+| You will see it when you… | Removed in 2.1 | Do this instead |
+|---|---|---|
+| select the ChunkyPNG driver — `driver: :chunky_png`, `SnapDiff.config.driver = :chunky_png`, or the legacy `Capybara::Screenshot::Diff.driver =` | the `:chunky_png` driver | add `gem "ruby-vips"` (plus the libvips system package) and drop the option |
+| run on `driver: :auto` **without `ruby-vips` installed** | the `:auto` fallback to ChunkyPNG | same — install libvips + `ruby-vips`. This is the case worth reading twice: nothing in your setup says `chunky_png`, so the warning is the only sign that 2.1 will break this process |
+| set `shift_distance_limit` — globally or per screenshot | `shift_distance_limit` (ChunkyPNG-only) | `median_filter_window_size`, `tolerance`, or `color_distance_limit` — see [Configuration](configuration.md#allowed-shift-distance) |
+| read `SnapDiff::Drivers.loaded` (the custom-driver registry) | the registry | nothing — custom drivers are removed, see below |
+| read `SnapDiff::Drivers.available` | driver detection | require `ruby-vips` instead of branching on a detected list |
+| `include SnapDiff::Driver` in your own driver class | the driver mixin | nothing — see below |
+
+```
+[snap_diff deprecation] `driver: :auto` selected chunky_png because libvips is not available in this process. The chunky_png driver is REMOVED in 2.1, when libvips (the `ruby-vips` gem) becomes required -- install it now, or this setup stops comparing on 2.1. See docs/drivers.md. Silence with `SnapDiff.silence_deprecations = true` or SNAP_DIFF_SILENCE_DEPRECATIONS=1. (shown once per process) (called from /app/test/test_helper.rb:12)
+```
+
+**Custom drivers have no migration path.** The whole abstraction goes: the `SnapDiff::Driver`
+mixin, the `SnapDiff::Drivers.loaded` registry, `SnapDiff::Drivers.available` /
+`SnapDiff::Utils.detect_available_drivers`, and selecting a driver by name. Nothing replaces
+them, and this guide is not going to pretend otherwise — if you maintain a third-party driver,
+say so on [#166](https://github.com/snap-diff/snap_diff-capybara/issues/166) before 2.1 ships.
+
+Three spots on the same chopping block stay silent: the legacy
+`Capybara::Screenshot::Diff::LOADED_DRIVERS` / `::AVAILABLE_DRIVERS` aliases are plain constants
+with nothing to hook (use `SnapDiff::Drivers.loaded` / `.available` to hear the warning);
+`SnapDiff::Drivers.for` is not warned on at all — the gem itself calls it for every comparison,
+so warning there would fire on setups that are not affected by anything on this list; and
+detection (`SnapDiff::Drivers.detect_available` / `SnapDiff::Utils.detect_available_drivers`)
+runs at load, before any user code.
 
 #### Silent by design
 

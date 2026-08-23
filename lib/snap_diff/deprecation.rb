@@ -1,5 +1,11 @@
 # frozen_string_literal: true
 
+# SnapDiff.silence_deprecations? -- the one switch that silences BOTH halves
+# of the story -- lives in snap_diff/removal.rb, not here: the other half
+# (the driver features 2.1 removes) is announced from core files that outlive
+# this one, and they cannot depend on a file the same deletion removes.
+require "snap_diff/removal"
+
 module SnapDiff
   # @api private
   #
@@ -121,26 +127,6 @@ module SnapDiff
         end
         nil
       end
-    end
-  end
-
-  class << self
-    # @api private
-    attr_accessor :silence_deprecations
-
-    # @api private
-    #
-    # @return [Boolean] true if deprecation warnings should be suppressed,
-    #   either via the {silence_deprecations} accessor or the
-    #   SNAP_DIFF_SILENCE_DEPRECATIONS env var (truthy = "1"/"true").
-    def silence_deprecations?
-      !!silence_deprecations || truthy_env?(ENV["SNAP_DIFF_SILENCE_DEPRECATIONS"])
-    end
-
-    private
-
-    def truthy_env?(value)
-      %w[1 true].include?(value.to_s.downcase)
     end
   end
 end

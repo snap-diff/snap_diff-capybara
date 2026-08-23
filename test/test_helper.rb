@@ -31,6 +31,14 @@ require "snap_diff/integrations/minitest"
 # per-constant warnings must still reach the guard below and raise.
 SnapDiff::Deprecation.suppress_migration_notice!
 
+# Same reasoning for the OTHER half of the 2.1 story: this suite runs the
+# whole comparison matrix on chunky_png, sets shift_distance_limit, and reads
+# the driver registry on purpose -- it exercises those APIs rather than
+# depending on them. Suppressed here, asserted in a subprocess instead
+# (test/unit/removed_in_2_1_deprecation_test.rb), because "once per process"
+# cannot be measured inside one long-lived process anyway.
+SnapDiff::Removal.suppress!
+
 # v2 step 8: the suite exercises only canonical SnapDiff:: names, so any
 # legacy-shim deprecation warning during a test run is a bug in the
 # referencing test -- fail loud at the resolution site instead of letting

@@ -12,6 +12,7 @@ require "pathname"
 # Referenced by Config#initialize (screenshoter/manager defaults), which
 # runs at the eager Config.new at the bottom of this file, so they must be
 # real, already-loaded classes first. Neither requires back here.
+require "snap_diff/removal"
 require "snap_diff/screenshoter"
 require "snap_diff/snap_manager"
 
@@ -78,8 +79,11 @@ module SnapDiff
       manager
     ].freeze
 
-    attr_accessor(*(SETTINGS - [:root]))
-    attr_reader :root
+    # shift_distance_limit is excluded from the generated writers and hand
+    # written below (it announces its 2.1 removal); generating it here too
+    # would print Ruby's "method redefined" warning on every load.
+    attr_accessor(*(SETTINGS - %i[root shift_distance_limit]))
+    attr_reader :root, :shift_distance_limit
 
     def initialize
       # Every setting gets its ivar up front (nil-defaulted ones included)
@@ -110,6 +114,16 @@ module SnapDiff
 
     def root=(path)
       @root = Pathname(path).expand_path
+    end
+
+    # Overrides the generated accessor above to announce the 2.1 removal
+    # (chunky_png-only, and chunky_png goes too). The writer, not the reader:
+    # the reader runs on every comparison through #default_options, including
+    # for the overwhelming majority who never set this. #initialize seeds the
+    # ivar directly, so booting the gem stays silent.
+    def shift_distance_limit=(value)
+      Removal.warn_once(:shift_distance_limit, Removal::SHIFT_DISTANCE_LIMIT_REMOVED) unless value.nil?
+      @shift_distance_limit = value
     end
 
     # --- Derived config (ADR-008 step 7b) -------------------------------

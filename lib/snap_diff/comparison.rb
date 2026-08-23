@@ -6,6 +6,7 @@ require "fileutils"
 require "snap_diff/comparison_result"
 require "snap_diff/drivers"
 require "snap_diff/image_preprocessor"
+require "snap_diff/removal"
 require "snap_diff/reporters/default"
 
 module SnapDiff
@@ -53,6 +54,13 @@ module SnapDiff
       ensure_files_exist!
 
       @driver_options = options.freeze
+      # The per-comparison half of the shift_distance_limit removal (the
+      # global half is Config#shift_distance_limit=). Presence is not enough:
+      # config.default_options carries the key on EVERY comparison, nil for
+      # everyone who never set it.
+      if options[:shift_distance_limit]
+        Removal.warn_once(:shift_distance_limit, Removal::SHIFT_DISTANCE_LIMIT_REMOVED)
+      end
       @driver = Drivers.for(@driver_options)
       @without_tolerable_options = (driver_options.keys & TOLERABLE_OPTIONS).empty?
     end

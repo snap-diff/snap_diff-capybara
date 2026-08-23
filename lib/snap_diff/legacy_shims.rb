@@ -262,7 +262,10 @@ module Capybara
     module Diff
       # EAGER same-object aliases of canonical values (see header for why
       # each one is eager rather than a warn-once const_missing shim).
-      LOADED_DRIVERS = SnapDiff::Drivers.loaded
+      # .registry, not .loaded: this alias is assigned at load time by the
+      # gem itself, and .loaded announces its own 2.1 removal. Same object
+      # either way -- which is the whole point of the alias.
+      LOADED_DRIVERS = SnapDiff::Drivers.registry
       AVAILABLE_DRIVERS = SnapDiff::Drivers::AVAILABLE_DRIVERS
       Comparison = SnapDiff::Comparison::Images
       VERSION = SnapDiff::VERSION
