@@ -9,7 +9,7 @@ require "snap_diff"
 
 # Must NOT require "capybara_screenshot_diff": that would cycle back here via
 # this file's old-path forwarder. Nothing from the v1 trees is required here
-# at all (3.0 readiness): the three requires below used to point at their
+# at all (legacy-removal readiness): the three requires below used to point at their
 # capybara/screenshot/diff/* forwarders, which made this unit depend on the
 # compatibility tree it is meant to replace.
 # DSL includes Capybara::DSL directly below, so it needs the base gem

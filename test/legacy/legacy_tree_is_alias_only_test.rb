@@ -2,18 +2,18 @@
 
 require "test_helper"
 
-# ADR-008 step 7: the mechanical gate that keeps 3.0 a `git rm`.
+# ADR-008 step 7: the mechanical gate that keeps 2.1 a `git rm`.
 #
 # lib/capybara/ and lib/capybara_screenshot_diff/ are the v1 compatibility
 # surface. Every unit of behaviour has moved to lib/snap_diff/, so what is
 # left must be nothing but requires, namespace reopening, constant aliases
-# and one-line forwarders. If that stays true, dropping v1 support in 3.0 is
+# and one-line forwarders. If that stays true, dropping v1 support in 2.1 is
 # a deletion; the moment real logic lands back in these trees it becomes a
 # refactor. This test fails the second that happens, naming the file.
 #
 # LEGACY SURFACE (test/legacy/, see the Rakefile): deleted with the trees it
-# scans in 3.0. Its mirror image, core_tree_has_no_legacy_deps_test.rb,
-# guards what 3.0 KEEPS and so stays in test/unit/.
+# scans in 2.1. Its mirror image, core_tree_has_no_legacy_deps_test.rb,
+# guards what 2.1 KEEPS and so stays in test/unit/.
 class LegacyTreeIsAliasOnlyTest < ActiveSupport::TestCase
   LIB = Pathname.new(__dir__).join("../../lib").expand_path
 
@@ -27,14 +27,14 @@ class LegacyTreeIsAliasOnlyTest < ActiveSupport::TestCase
   # the v1 trees holds logic any more. config_legacy.rb was the last entry;
   # step 7b moved its derived config (.active? precedence, .screenshot_area
   # path assembly, .default_options incl. the vips tolerance literal) into
-  # SnapDiff::Config, and the 3.0-readiness pass moved the remaining
+  # SnapDiff::Config, and the 2.1-readiness pass moved the remaining
   # forwarders and the legacy accessor generator into
   # snap_diff/legacy_shims.rb -- the one file that holds the v1 surface as
-  # code, and that 3.0 deletes together with these trees. There is not a
+  # code, and that 2.1 deletes together with these trees. There is not a
   # single `def` left here.
   #
   # Keep it empty. Adding an entry back is a decision to keep behaviour on
-  # the v1 side of the 3.0 deletion, so it needs a written reason here AND
+  # the v1 side of the 2.1 deletion, so it needs a written reason here AND
   # an ADR-008 update -- never just to turn a red build green.
   ALLOWED_WITH_CODE = {}.freeze
 

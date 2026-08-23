@@ -5,7 +5,7 @@ require "test_helper"
 # The canonical half of what used to be errors_alias_test.rb: the shape of
 # the SnapDiff error hierarchy itself, which outlives the v1 aliases. The
 # `CapybaraScreenshotDiff::*` alias half stayed behind in
-# test/legacy/errors_alias_test.rb and goes with the v1 trees in 3.0.
+# test/legacy/errors_alias_test.rb and goes with the v1 trees.
 class ErrorsTest < ActiveSupport::TestCase
   test "error hierarchy is preserved" do
     assert_operator SnapDiff::ExpectationNotMet, :<, SnapDiff::Error

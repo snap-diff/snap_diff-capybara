@@ -31,15 +31,15 @@ SnapDiff.assert_single_gem!
 # -- snap_diff_test.rb's "bare require never loads the umbrella" guard
 # enforces it -- so nothing required below may reach back here. None of
 # these requires reaches into lib/capybara* at all, so the canonical entry
-# point is exactly what 3.0 keeps.
+# point is exactly what survives the removal of the legacy trees.
 #
 # "capybara/dsl" is needed directly (not just transitively) so
 # `Capybara.default_max_wait_time` in Config#default_options resolves even
 # when "snap_diff" is required standalone (SnapDiffTest's
 # "standalone-loadable in a fresh process" regression test).
 #
-# snap_diff/legacy_shims is deliberate and is the ONE line here that 3.0
-# drops: it carries the whole v1 surface (const_missing forwarders, the old
+# snap_diff/legacy_shims is deliberate and is the ONE line here that goes
+# with the legacy trees: it carries the whole v1 surface (const_missing forwarders, the old
 # mattr_accessors, SnapDiff.start), so a process that only ever requires
 # "snap_diff" still resolves the old Capybara::Screenshot::Diff names --
 # with deprecation warnings -- exactly as it did when this file reached

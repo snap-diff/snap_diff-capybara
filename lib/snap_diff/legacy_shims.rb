@@ -13,7 +13,7 @@ require "snap_diff/version"
 # code. lib/capybara* is alias-only by contract
 # (legacy_tree_is_alias_only_test.rb) and the canonical core names nothing
 # from it (core_tree_has_no_legacy_deps_test.rb), so this file plus those
-# trees is exactly what 3.0 deletes.
+# trees is exactly what 2.1 deletes.
 #
 # Three things live here:
 #   1. the const_missing forwarders for the pre-v2 namespaces (below);

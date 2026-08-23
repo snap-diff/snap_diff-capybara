@@ -52,6 +52,12 @@ There are several options to setup active driver: `:auto`, `:chunky_png` and `:v
 * `:auto` - will try to load `:vips` if there is gem `ruby-vips`, in other cases will load `:chunky_png`
 * `:chunky_png` and `:vips` will load correspondent driver
 
+> **`:chunky_png` is deprecated in 2.0 and removed in 2.1.** VIPS becomes the only driver, and
+> `shift_distance_limit` — a ChunkyPNG-only option — goes with it. If you are on ChunkyPNG today,
+> add `ruby-vips` to your Gemfile and install libvips before taking 2.1, and replace
+> `shift_distance_limit` with `median_filter_window_size` and `color_distance_limit` with
+> `perceptual_threshold`.
+
 ## Enable VIPS image processing
 
 [Vips](https://www.rubydoc.info/gems/ruby-vips/Vips/Image) driver provides a faster comparison,

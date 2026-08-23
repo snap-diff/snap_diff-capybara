@@ -6,7 +6,7 @@ require "snap_diff/deprecation"
 
 # LEGACY SURFACE (test/legacy/, see the Rakefile): SnapDiff::Deprecation is
 # the channel that announces the v1 shims, so snap_diff/deprecation.rb and
-# this file are deleted together with lib/capybara* in 3.0.
+# this file are deleted together with lib/capybara* in 2.1.
 class SnapDiffDeprecationTest < ActiveSupport::TestCase
   def setup
     SnapDiff::Deprecation.reset!
@@ -141,9 +141,9 @@ class SnapDiffDeprecationTest < ActiveSupport::TestCase
   # Most of the v1 surface cannot warn per use: the legacy config accessors
   # are plain delegators, and the eagerly-aliased constants (Os, the error
   # classes, VERSION) never reach const_missing. Exercising all 14 legacy
-  # APIs a real setup file touches under -w produced ZERO warnings, so a 2.x
+  # APIs a real setup file touches under -w produced ZERO warnings, so a 2.0
   # app was completely silent right up to the bare NameError it would get on
-  # 3.0. {MIGRATION_NOTICE} is the one line that closes that gap; these
+  # 2.1. {MIGRATION_NOTICE} is the one line that closes that gap; these
   # probes run in subprocesses because "once per process" is the contract.
 
   NOTICE_MARKER = "shown once per process"
@@ -186,7 +186,7 @@ class SnapDiffDeprecationTest < ActiveSupport::TestCase
 
     assert_equal 1, out.scan(NOTICE_MARKER).size, "expected exactly one migration notice, got:\n#{out}"
     assert_includes out, "docs/UPGRADING.md"
-    assert_includes out, "REMOVED in 3.0"
+    assert_includes out, "still works in 2.0 and is REMOVED in 2.1"
     assert_includes out, "SNAP_DIFF_SILENCE_DEPRECATIONS"
   end
 

@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+- **The legacy API is removed in 2.1, not 3.0.** There is no 3.0. 2.0.0 final ships
+  *with* the full v1 compatibility layer — the `Capybara::Screenshot*` /
+  `CapybaraScreenshotDiff*` shims, the per-constant deprecation warnings and the
+  one-per-process migration notice — so 2.0 is a real migration window. 2.1 then
+  deletes all of it. Earlier entries below (and the beta migration notice) said
+  "3.0"; read every such mention as 2.1.
+- **The ChunkyPNG driver and `shift_distance_limit` are also removed in 2.1.**
+  Both are deprecated in 2.0; VIPS becomes the only driver. Add `ruby-vips` and
+  install libvips before taking 2.1, and replace `shift_distance_limit` with
+  `median_filter_window_size`.
+
+---
+
 ## [v2.0.0.beta3] - 2026-08-23
 
 Fixes the canonical `SnapDiff` entry points, which were incomplete in beta2.

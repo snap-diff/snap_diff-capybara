@@ -27,7 +27,7 @@ require "open3"
 # CapybaraScreenshotDiff session surface, and the eager user-facing
 # constants under the old names -- are probed the same way from
 # test/legacy/legacy_entry_point_probe_test.rb, which is deleted with the v1
-# trees in 3.0.
+# trees.
 class SupportLoadProbeTest < ActiveSupport::TestCase
   SKIP = {
     # "support/example" => "why it cannot load bare"
@@ -69,8 +69,8 @@ class SupportLoadProbeTest < ActiveSupport::TestCase
   #
   # SnapDiff.start is absent for a different reason: it is defined in
   # snap_diff/legacy_shims.rb and yields the two v1 config holders, so it
-  # cannot outlive them (#235). A CANONICAL gate demanding a method 3.0
-  # deletes is a gate that fails the day the deletion lands -- which is
+  # cannot outlive them (#235). A CANONICAL gate demanding a method the
+  # legacy deletion removes is a gate that fails the day the deletion lands -- which is
   # exactly what it did. `.start` keeps its coverage on the legacy side:
   # test/legacy/legacy_forwarders_test.rb asserts what it yields and that it
   # applies a setting, and LEGACY_SESSION_SURFACE pins it per v1 entry point.
@@ -79,7 +79,7 @@ class SupportLoadProbeTest < ActiveSupport::TestCase
   ].freeze
 
   # snap_diff-capybara is the canonical gem's Bundler entry point, so it is
-  # probed here rather than with the v1 ones: 3.0 keeps it (repointed at
+  # probed here rather than with the v1 ones: the deletion keeps it (repointed at
   # snap_diff/integrations/minitest), it just stops carrying the
   # CapybaraScreenshotDiff surface.
   CANONICAL_ENTRY_POINTS = {
@@ -115,7 +115,7 @@ class SupportLoadProbeTest < ActiveSupport::TestCase
   # (CapybaraScreenshotDiff::DSL, Capybara::Screenshot::Os, ...). That is the
   # f89cea2 bug class: the acyclic redesign once narrowed an entry point so
   # consumers lost the DSL, and only one CI matrix leg noticed. Same claim,
-  # canonical names, canonical entries -- so 3.0 keeps the guard.
+  # canonical names, canonical entries -- so the deletion keeps the guard.
   #
   # Entry-specific on purpose: bare `snap_diff` deliberately carries neither
   # the DSL nor the reporters (see CANONICAL_SURFACE above), so a flat list

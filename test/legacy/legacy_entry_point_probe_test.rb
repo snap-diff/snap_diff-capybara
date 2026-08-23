@@ -7,7 +7,7 @@ require "unit/support_load_probe_test" # single source of truth for the subproce
 #
 # The v1 half of support_load_probe_test.rb: what the OLD entry points must
 # still provide. Names and constants restored verbatim -- every assertion
-# here is about a name 3.0 deletes, so repointing them at SnapDiff would
+# here is about a name 2.1 deletes, so repointing them at SnapDiff would
 # have quietly turned this file into a duplicate of the canonical one.
 class LegacyEntryPointProbeTest < ActiveSupport::TestCase
   # Alias-completeness probe (the f89cea2 bug class): each documented entry
@@ -110,7 +110,7 @@ class LegacyEntryPointProbeTest < ActiveSupport::TestCase
 
   # SnapDiff.start moved here out of the canonical CANONICAL_SURFACE gate: it
   # is defined in legacy_shims.rb and yields the two v1 config holders, so a
-  # canonical gate demanding it fails the moment 3.0 deletes them. It is
+  # canonical gate demanding it fails the moment 2.1 deletes them. It is
   # still a documented v1 method, so the per-entry-point availability claim
   # the canonical gate used to make lives on here -- for the entries that
   # actually keep it. (What it yields is pinned in legacy_forwarders_test.)

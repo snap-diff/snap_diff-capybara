@@ -21,7 +21,7 @@ require "open3"
 # Canonical entry points only, read through SnapDiff.config only. The v1
 # entry points and the "both surfaces agree" half re-run these same scripts
 # from test/legacy/legacy_config_default_timing_test.rb, which is deleted
-# with the v1 trees in 3.0.
+# with the v1 trees.
 class ConfigDefaultTimingTest < ActiveSupport::TestCase
   ENTRY_POINTS = %w[
     snap_diff

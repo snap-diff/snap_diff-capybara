@@ -5,7 +5,7 @@ require "pathname"
 # This file is the LEAF of the config require graph (ADR-008 step 1):
 # config_legacy.rb requires it, so it must never require config_legacy nor
 # anything that leads back to either entry point. It also names nothing from
-# the v1 trees at all (3.0 readiness): which legacy accessor each setting is
+# the v1 trees at all (legacy-removal readiness): which legacy accessor each setting is
 # exposed as is snap_diff/legacy_shims' business, and that file is deleted
 # together with lib/capybara* -- see LegacyShims::CONFIG_MAPPING.
 

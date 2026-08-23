@@ -1,7 +1,7 @@
 require "active_support/concern"
 
 # Plain top-level module: test scaffolding has no business reopening a gem
-# namespace -- least of all the v1 one 3.0 deletes.
+# namespace -- least of all the v1 one 2.1 deletes.
 module DSLStub
   extend ActiveSupport::Concern
 

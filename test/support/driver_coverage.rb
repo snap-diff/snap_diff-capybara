@@ -11,7 +11,7 @@
 # a driver it's supposed to have goes missing.
 #
 # Plain top-level module: it is test scaffolding, so it has no business
-# reopening a gem namespace -- least of all the v1 one 3.0 deletes.
+# reopening a gem namespace -- least of all the v1 one 2.1 deletes.
 module DriverCoverage
   ALL_DRIVERS = %i[chunky_png vips].freeze
 

@@ -77,7 +77,7 @@ class ImageCompareTest < ActiveSupport::TestCase
 
   test "#initialize with :auto driver raises error when no drivers available" do
     # Canonical stubbing point since the detected-drivers list moved to
-    # SnapDiff::Drivers (3.0 readiness). The legacy
+    # SnapDiff::Drivers (legacy-removal readiness). The legacy
     # Capybara::Screenshot::Diff::AVAILABLE_DRIVERS is now an eager
     # same-object ALIAS of this constant, so stubbing the old name only
     # rebinds the alias and no longer reaches the core.

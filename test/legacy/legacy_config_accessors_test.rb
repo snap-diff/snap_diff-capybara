@@ -2,7 +2,7 @@
 
 require "test_helper"
 # The shared harness loads canonical entry points only, so a legacy-surface
-# test pulls in the v1 entry itself -- the require goes with the file in 3.0.
+# test pulls in the v1 entry itself -- the require goes with the file in 2.1.
 require "capybara_screenshot_diff"
 
 # LEGACY SURFACE (test/legacy/, see the Rakefile).
@@ -12,7 +12,7 @@ require "capybara_screenshot_diff"
 # as a second VIEW of the one SnapDiff::Config storage. Everything here is
 # about that view -- the mapping's completeness, and that a write through
 # either surface is visible from the other. Verbatim from the canonical
-# file, which keeps the Config-only half; both go on passing until 3.0
+# file, which keeps the Config-only half; both go on passing until 2.1
 # deletes legacy_shims.rb, this file, and the trees they serve.
 class LegacyConfigAccessorsTest < ActiveSupport::TestCase
   def config

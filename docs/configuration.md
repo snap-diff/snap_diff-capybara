@@ -313,6 +313,11 @@ Capybara::Screenshot::Diff.color_distance_limit = 42
 
 ### Allowed shift distance
 
+> **Deprecated — removed in 2.1.** `shift_distance_limit` only ever worked on the ChunkyPNG
+> driver (VIPS ignores it), and the ChunkyPNG driver is removed in 2.1 as well. Use
+> `median_filter_window_size` on the VIPS driver instead — it is the same idea and far faster.
+> See [Image Processing Drivers](drivers.md).
+
 Sometimes you want to allow small movements in the images.  For example, jquery-tablesorter
 renders the same table slightly differently sometimes.  You can set set the shift distance
 threshold for the comparison using the `shift_distance_limit` option to the `screenshot`

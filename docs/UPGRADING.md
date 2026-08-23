@@ -159,6 +159,10 @@ This means you can migrate your codebase incrementally **now**, before opting in
 
 ### Deprecation Warnings
 
+**The contract, plainly: every legacy name keeps working in 2.0 and warns. All of it is removed in
+2.1** — the `Capybara::Screenshot*` / `CapybaraScreenshotDiff*` namespaces, the shims, and the
+deprecation machinery itself. 2.0 is your migration window; do the rename before you take 2.1.
+
 v2.0 emits two different things, and it is worth knowing which is which.
 
 #### 1. The migration notice — one line per process
@@ -166,7 +170,7 @@ v2.0 emits two different things, and it is worth knowing which is which.
 The first time a process touches *any* hookable legacy API, you get a single line:
 
 ```
-[snap_diff deprecation] This process uses the v1 `Capybara::Screenshot*` / `CapybaraScreenshotDiff*` API. It still works in 2.x and is REMOVED in 3.0 -- see docs/UPGRADING.md for the SnapDiff replacements. Silence with `SnapDiff.silence_deprecations = true` or SNAP_DIFF_SILENCE_DEPRECATIONS=1. (shown once per process)
+[snap_diff deprecation] This process uses the v1 `Capybara::Screenshot*` / `CapybaraScreenshotDiff*` API. It still works in 2.0 and is REMOVED in 2.1 -- see docs/UPGRADING.md for the SnapDiff replacements. Silence with `SnapDiff.silence_deprecations = true` or SNAP_DIFF_SILENCE_DEPRECATIONS=1. (shown once per process)
 ```
 
 It fires once and never again, whichever door you came through:
@@ -175,8 +179,8 @@ It fires once and never again, whichever door you came through:
 - a lazily shimmed legacy constant (see below)
 - `include Capybara::Screenshot` / `include Capybara::Screenshot::Diff`
 
-It exists because most of the v1 surface **cannot** warn per use, so without it a 2.x app could
-be entirely silent right up to the bare `NameError` it would get on 3.0.
+It exists because most of the v1 surface **cannot** warn per use, so without it a 2.0 app could
+be entirely silent right up to the bare `NameError` it would get on 2.1.
 
 #### 2. Per-constant warnings — one line per lazily shimmed constant
 
@@ -261,7 +265,7 @@ Capybara::Screenshot::Diff.stub_const(:AVAILABLE_DRIVERS, []) { ... }
 SnapDiff::Drivers.stub_const(:AVAILABLE_DRIVERS, []) { ... }
 ```
 
-**`SnapDiff::Config::MAPPING` is gone.** It split in two: `SnapDiff::Config::SETTINGS` (the setting names, no legacy knowledge) and `SnapDiff::LegacyShims::CONFIG_MAPPING` (which legacy holder each name hangs off). If you referenced `MAPPING` — iterating settings in a test helper, say — use `SETTINGS`; `CONFIG_MAPPING` is `@api private` and disappears in 3.0 with the rest of the v1 surface.
+**`SnapDiff::Config::MAPPING` is gone.** It split in two: `SnapDiff::Config::SETTINGS` (the setting names, no legacy knowledge) and `SnapDiff::LegacyShims::CONFIG_MAPPING` (which legacy holder each name hangs off). If you referenced `MAPPING` — iterating settings in a test helper, say — use `SETTINGS`; `CONFIG_MAPPING` is `@api private` and disappears in 2.1 with the rest of the v1 surface.
 
 ---
 

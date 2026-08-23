@@ -3,7 +3,7 @@
 require "test_helper"
 require "open3"
 # The shared harness loads canonical entry points only, so a legacy-surface
-# test pulls in the v1 entry itself -- the require goes with the file in 3.0.
+# test pulls in the v1 entry itself -- the require goes with the file in 2.1.
 require "capybara_screenshot_diff"
 require "capybara_screenshot_diff/static"
 
@@ -86,7 +86,7 @@ class LegacyForwardersTest < ActiveSupport::TestCase
   # absent from $LOADED_FEATURES.
   #
   # Lives here rather than in snap_diff_test: its subject is the v1
-  # umbrella, and once 3.0 deletes that file the grep below is empty by
+  # umbrella, and once 2.1 deletes that file the grep below is empty by
   # construction and the guard can never fail again.
   test "bare require \"snap_diff\" never loads the umbrella capybara_screenshot_diff" do
     script = <<~RUBY

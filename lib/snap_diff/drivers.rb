@@ -49,7 +49,8 @@ module SnapDiff
       result
     end
 
-    # Canonical home of the detected-drivers list (3.0 readiness: it used
+    # Canonical home of the detected-drivers list (legacy-removal
+    # readiness: it used
     # to live only on Capybara::Screenshot::Diff::AVAILABLE_DRIVERS, so
     # `require "snap_diff/drivers"` alone left .available raising
     # NameError). Detection runs HERE, at this file's load, and the legacy
