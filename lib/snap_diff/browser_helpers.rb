@@ -5,9 +5,11 @@ require "snap_diff/region"
 module SnapDiff
   module BrowserHelpers
     def self.resize_window_if_needed
-      if ::Capybara::Screenshot.respond_to?(:window_size) && ::Capybara::Screenshot.window_size
-        resize_to(::Capybara::Screenshot.window_size)
-      end
+      # The respond_to? guard this replaced existed because the legacy
+      # mattr_accessor might not be installed yet; Config always has the
+      # attribute, so only the value matters now.
+      window_size = SnapDiff.config.window_size
+      resize_to(window_size) if window_size
     end
 
     def self.resize_to(window_size)

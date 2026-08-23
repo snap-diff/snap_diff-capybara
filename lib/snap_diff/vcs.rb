@@ -13,7 +13,7 @@ module SnapDiff
       git_root = git_root.chomp
       vcs_file_path = Pathname.new(screenshot_path).expand_path.relative_path_from(Pathname.new(git_root)).to_s
 
-      if Capybara::Screenshot.use_lfs
+      if SnapDiff.config.use_lfs
         tmp_path = "#{checkout_path}.tmp"
         success = system("git", "-C", root_path, "show", "HEAD:#{vcs_file_path}", out: tmp_path, err: File::NULL)
         if success

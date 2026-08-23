@@ -29,20 +29,25 @@ SnapDiff.assert_single_gem!
 
 # This lean entry must never load the umbrella "capybara_screenshot_diff"
 # -- snap_diff_test.rb's "bare require never loads the umbrella" guard
-# enforces it -- so nothing required below may reach back here.
+# enforces it -- so nothing required below may reach back here. None of
+# these requires reaches into lib/capybara* at all, so the canonical entry
+# point is exactly what 3.0 keeps.
 #
-# The image_compare forwarder (not "snap_diff/comparison" directly) is
-# deliberate: it installs snap_diff/legacy_shims, so the old
-# Capybara::Screenshot::Diff constants stay resolvable, with deprecation
-# warnings, in processes that only ever require "snap_diff".
 # "capybara/dsl" is needed directly (not just transitively) so
 # `Capybara.default_max_wait_time` in Config#default_options resolves even
 # when "snap_diff" is required standalone (SnapDiffTest's
 # "standalone-loadable in a fresh process" regression test).
+#
+# snap_diff/legacy_shims is deliberate and is the ONE line here that 3.0
+# drops: it carries the whole v1 surface (const_missing forwarders, the old
+# mattr_accessors, SnapDiff.start), so a process that only ever requires
+# "snap_diff" still resolves the old Capybara::Screenshot::Diff names --
+# with deprecation warnings -- exactly as it did when this file reached
+# through the capybara/screenshot/diff/* forwarders to get them.
 require "capybara/dsl"
-require "capybara/screenshot/diff/config_legacy"
-require "capybara/screenshot/diff/image_compare"
 require "snap_diff/config"
+require "snap_diff/comparison"
+require "snap_diff/legacy_shims"
 require "snap_diff/version"
 # SnapDiff.session/.reset/.pending_screenshots_message are part of the
 # documented core surface (docs/snapdiff.md object map lists them with no
@@ -63,18 +68,9 @@ module SnapDiff
     Comparison.new(current_path, baseline_path, config.default_options.merge(options))
   end
 
-  # v1-style configuration: yields the two legacy accessor holders
-  # (+Capybara::Screenshot+, +Capybara::Screenshot::Diff+). Canonical home;
-  # +Capybara::Screenshot::Diff.configure+ forwards here, and both names
-  # stay identical in call shape.
-  #
-  #   SnapDiff.start do |screenshot, diff|
-  #     screenshot.window_size = [1280, 1024]
-  #     diff.tolerance = 0.0005
-  #   end
-  def self.start
-    yield Capybara::Screenshot, Capybara::Screenshot::Diff
-  end
+  # SnapDiff.start -- the v1-shaped two-holder config block -- is defined in
+  # snap_diff/legacy_shims (required above), because the holders it yields
+  # are the v1 surface and it cannot outlive them.
 
   # Forward-looking configuration: yields the single consolidated
   # {SnapDiff::Config} object instead of the two old holders. Same

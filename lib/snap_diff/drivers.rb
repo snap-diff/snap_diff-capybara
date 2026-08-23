@@ -21,14 +21,45 @@ module SnapDiff
       @loaded ||= {}
     end
 
-    # Canonical read API for the detected-drivers list. The value itself
-    # stays on Capybara::Screenshot::Diff::AVAILABLE_DRIVERS (assigned in
-    # config_legacy.rb at load time, exactly when detection historically
-    # ran); this reads it live rather than caching, because that constant
-    # is the published stubbing point (image_compare_test stubs it to []
-    # to exercise the no-drivers error path).
+    # Which image drivers this process can actually load, in preference
+    # order. Tries the gem first and falls back to `require`, cleaning up
+    # the half-defined constant a failed native load leaves behind.
+    def self.detect_available
+      result = []
+      begin
+        result << :vips if defined?(Vips) || require("vips")
+      rescue LoadError
+        # vips not present
+        Object.send(:remove_const, :Vips) if defined?(Vips)
+      end
+      begin
+        result << :chunky_png if defined?(ChunkyPNG) || require("chunky_png")
+      rescue LoadError
+        # chunky_png not present
+        Object.send(:remove_const, :ChunkyPNG) if defined?(ChunkyPNG)
+      end
+      result
+    end
+
+    # Canonical home of the detected-drivers list (3.0 readiness: it used
+    # to live only on Capybara::Screenshot::Diff::AVAILABLE_DRIVERS, so
+    # `require "snap_diff/drivers"` alone left .available raising
+    # NameError). Detection runs HERE, at this file's load, and the legacy
+    # constant is now an eager same-object alias of this one.
+    AVAILABLE_DRIVERS = detect_available.freeze
+
+    # Canonical read API for the list above. Reads the constant live rather
+    # than caching, because the constant is the published stubbing point
+    # (image_compare_test stubs it to [] to exercise the no-drivers error
+    # path).
     def self.available
-      Capybara::Screenshot::Diff::AVAILABLE_DRIVERS
+      AVAILABLE_DRIVERS
     end
   end
 end
+
+# Drivers.for calls Utils.find_driver_class_for, and utils.rb requires this
+# file back -- so the require sits at the BOTTOM, after Drivers is fully
+# defined. Either file can then be required first: whichever runs second
+# finds a complete module, and neither touches the other at body-eval time.
+require "snap_diff/utils"

@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require "capybara_screenshot_diff/snap_manager"
+require "snap_diff/snap_manager"
 require_relative "screenshoter"
 require_relative "stable_screenshoter"
 require_relative "browser_helpers"
@@ -14,14 +14,14 @@ module SnapDiff
 
     def initialize(screenshot_full_name, options = {})
       @screenshot_full_name = screenshot_full_name
-      @driver_options = Capybara::Screenshot::Diff.default_options.merge(options)
+      @driver_options = SnapDiff.config.default_options.merge(options)
 
       @screenshot_format = @driver_options[:screenshot_format]
       @snapshot = SnapDiff::SnapManager.snapshot(screenshot_full_name, @screenshot_format)
     end
 
     def build_screenshot_assertion(skip_stack_frames: 0)
-      Capture::Viewport.prepare!(Capybara::Screenshot.window_size)
+      Capture::Viewport.prepare!(SnapDiff.config.window_size)
       prepare_screenshot_options
       check_base_screenshot
 
@@ -41,7 +41,7 @@ module SnapDiff
 
     # Captures a screenshot without comparing it to a baseline.
     def capture
-      Capture::Viewport.prepare!(Capybara::Screenshot.window_size)
+      Capture::Viewport.prepare!(SnapDiff.config.window_size)
       prepare_screenshot_options
 
       capture_options, comparison_options = extract_capture_and_comparison_options(driver_options)
@@ -67,11 +67,11 @@ module SnapDiff
     def check_base_screenshot
       @snapshot.checkout_base_screenshot
 
-      if Capybara::Screenshot::Diff.fail_if_new && !@snapshot.base_path.exist?
+      if SnapDiff.config.fail_if_new && !@snapshot.base_path.exist?
         raise SnapDiff::ExpectationNotMet.new(<<~ERROR.chomp, caller)
           No existing screenshot found for #{@snapshot.base_path}!
           To record baselines: RECORD_SCREENSHOTS=1 bundle exec rake test
-          To allow new screenshots: Capybara::Screenshot::Diff.fail_if_new = false
+          To allow new screenshots: SnapDiff.config.fail_if_new = false
         ERROR
       end
     end
@@ -80,7 +80,7 @@ module SnapDiff
       screenshoter = if capture_options[:stability_time_limit]
         StableScreenshoter.new(capture_options, comparison_options)
       else
-        Capybara::Screenshot::Diff.screenshoter.new(capture_options, comparison_options)
+        SnapDiff.config.screenshoter.new(capture_options, comparison_options)
       end
       screenshoter.take_comparison_screenshot(@snapshot)
     end

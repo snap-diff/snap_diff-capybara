@@ -33,7 +33,7 @@ module SnapDiff
   #
   # @return [String, nil] the pending message, or nil when there is nothing to report
   def self.pending_screenshots_message
-    return unless ::Capybara::Screenshot::Diff.pending_if_new && session.new_screenshots_present?
+    return unless SnapDiff.config.pending_if_new && session.new_screenshots_present?
 
     "No baseline for: #{session.new_screenshots.join(", ")}. Commit the captured screenshots to record them."
   end
@@ -96,7 +96,7 @@ module SnapDiff
     # @return [Array, nil] Returns an array of error messages if there are screenshot differences, otherwise nil.
     # @note This method is typically called at the end of a test to assert all screenshots are as expected.
     def self.verify_screenshots!(screenshots)
-      return unless ::Capybara::Screenshot.active? && ::Capybara::Screenshot::Diff.fail_on_difference
+      return unless SnapDiff.config.active? && SnapDiff.config.fail_on_difference
 
       test_screenshot_errors = screenshots.map do |assertion|
         assertion.validate

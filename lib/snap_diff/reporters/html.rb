@@ -8,7 +8,7 @@ require "json"
 # The auto-registration block at the bottom of this file registers with
 # SnapDiff::Reporting.
 require "snap_diff/reporting"
-require "capybara/screenshot/diff/config_legacy"
+require "snap_diff/config"
 
 module SnapDiff
   module Reporters
@@ -89,8 +89,8 @@ module SnapDiff
       end
 
       def self.default_output_path
-        root = Capybara::Screenshot.root || Pathname.pwd
-        root / Capybara::Screenshot.save_path / "snap_diff_report.html"
+        root = SnapDiff.config.root || Pathname.pwd
+        root / SnapDiff.config.save_path / "snap_diff_report.html"
       end
 
       private

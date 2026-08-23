@@ -23,18 +23,46 @@ class LegacyTreeIsAliasOnlyTest < ActiveSupport::TestCase
   # the v1 trees holds logic any more. config_legacy.rb was the last entry;
   # step 7b moved its derived config (.active? precedence, .screenshot_area
   # path assembly, .default_options incl. the vips tolerance literal) into
-  # SnapDiff::Config, and the Config::MAPPING accessor generator into
-  # snap_diff/config.rb alongside it, leaving only one-line forwarders.
+  # SnapDiff::Config, and the 3.0-readiness pass moved the remaining
+  # forwarders and the legacy accessor generator into
+  # snap_diff/legacy_shims.rb -- the one file that holds the v1 surface as
+  # code, and that 3.0 deletes together with these trees. There is not a
+  # single `def` left here.
   #
   # Keep it empty. Adding an entry back is a decision to keep behaviour on
   # the v1 side of the 3.0 deletion, so it needs a written reason here AND
   # an ADR-008 update -- never just to turn a red build green.
-  #
-  # (Diff::AVAILABLE_DRIVERS still lives in config_legacy.rb, but as a bare
-  # constant assignment it is alias-shaped and needs no exemption. It stays
-  # there on purpose -- see #227: test_helper reads it at boot and
-  # image_compare_test stubs it as the published no-drivers hook.)
   ALLOWED_WITH_CODE = {}.freeze
+
+  # A `def` in these trees is only acceptable as a THREE-line forwarder --
+  # signature, ONE delegating expression, `end` -- and this is that
+  # expression: a single method-call chain rooted at SnapDiff, passing its
+  # arguments straight through.
+  #
+  # SIMPLE_ARGS is where the strictness lives. Names, commas, `*`/`**`/`&`
+  # and keyword colons -- and nothing else. No parentheses, so a nested call
+  # cannot appear; no `.`, so neither can a bare receiver call; no `?`, `"`
+  # or `=`, so no conditional, literal or assignment. Two escapes this
+  # closes, both of which ran arbitrary code past the previous rule:
+  #
+  #   SnapDiff.config.x(File.exist?("/etc/passwd") ? raise("boom") : ENV.fetch("HOME"))
+  #   SnapDiff.config.tap { |c| File.write("/tmp/pwned", c.inspect); exit 1 }
+  #
+  # The second also slipped past the semicolon check, because the walk below
+  # steps over a def's body line -- fixed there.
+  #
+  # No block form at all: nothing in these trees has a `def` left, and an
+  # unbounded `{ ... }` is exactly the hole above. A yield-through forwarder
+  # that genuinely needs one is a decision to re-open here, deliberately.
+  # `...` is Ruby's argument forwarding -- the purest forwarder there is
+  # (CapybaraScreenshotDiff.serve uses it), so it is spelled out rather than
+  # let in by loosening the character set.
+  SIMPLE_ARGS = /\.\.\.|[\w\s,:*&]*/
+  FORWARDER_BODY = /\A
+    SnapDiff(::[A-Z]\w*)*      # SnapDiff, SnapDiff::Reporting, ...
+    (\.[a-z_]\w*[?!]?)+        # .config.active?, .compare, ...
+    (\((?:#{SIMPLE_ARGS})\))?  # at most one argument list, pass-through only
+  \z/x
 
   # Shapes that are pure compatibility plumbing rather than behaviour.
   ALIAS_SHAPES = /\A(
@@ -78,12 +106,22 @@ class LegacyTreeIsAliasOnlyTest < ActiveSupport::TestCase
   end
 
   # Walks the file's significant lines. A `def` is only acceptable when its
-  # whole body is a single line delegating into SnapDiff; anything else must
-  # match ALIAS_SHAPES.
+  # whole body is one FORWARDER_BODY expression; anything else must match
+  # ALIAS_SHAPES.
   def offences(file)
     rel = file.relative_path_from(LIB)
     lines = significant_lines(file)
-    found = []
+
+    # A semicolon is how several statements -- or an entire
+    # `def x; body; end` -- hide inside one "line", which would then be
+    # judged as a single line. Never alias-shaped, whatever it says.
+    #
+    # Scanned over EVERY line up front, not inside the walk below: the walk
+    # steps past a def's body line without re-examining it, so a semicolon
+    # there went unseen.
+    found = lines.filter_map do |line|
+      "#{rel}: `#{line}` puts more than one statement on a line" if line.include?(";")
+    end
     index = 0
 
     while index < lines.length
@@ -91,8 +129,8 @@ class LegacyTreeIsAliasOnlyTest < ActiveSupport::TestCase
 
       if line.start_with?("def ")
         body, terminator = lines[index + 1], lines[index + 2]
-        unless body.to_s.include?("SnapDiff") && terminator == "end"
-          found << "#{rel}: `#{line}` is not a one-line forwarder into SnapDiff"
+        unless FORWARDER_BODY.match?(body.to_s) && terminator == "end"
+          found << "#{rel}: `#{line}` is not a single-expression forwarder into SnapDiff"
         end
         index += 3
       else

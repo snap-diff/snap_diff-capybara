@@ -2,11 +2,11 @@
 
 lib = File.expand_path("lib", __dir__)
 $LOAD_PATH.unshift(lib) unless $LOAD_PATH.include?(lib)
-require "capybara/screenshot/diff/version"
+require "snap_diff/version"
 
 Gem::Specification.new do |spec|
   spec.name = "capybara-screenshot-diff"
-  spec.version = Capybara::Screenshot::Diff::VERSION
+  spec.version = SnapDiff::VERSION
   spec.authors = ["Uwe Kubosch"]
   spec.email = ["uwe@kubosch.no"]
   spec.summary = "Track your GUI changes with diff assertions"

@@ -125,9 +125,9 @@ Drivers abstract image processing operations. Shared default behavior lives in t
 | `merge` | Composite images | Not applicable |
 | `highlight_mask` | Conditional color overlay | Not applicable |
 
-**Auto-detection:** `Utils.detect_available_drivers` tries to load `:vips` first (via `ruby-vips` gem), then `:chunky_png`. The `:auto` driver mode picks the first available.
+**Auto-detection:** `SnapDiff::Drivers.detect_available` tries to load `:vips` first (via `ruby-vips` gem), then `:chunky_png`. The `:auto` driver mode picks the first available. `Utils.detect_available_drivers` is the older name and one-lines into it.
 
-**Registry (ADR-008 step 5b):** `SnapDiff::Drivers.loaded` is the canonical driver-class cache — a `name => class` hash filled lazily by `Utils.find_driver_class_for`, and the registration point for custom drivers (the legacy `Capybara::Screenshot::Diff::LOADED_DRIVERS` is an eager same-object alias, so registrations through either land in the same hash). `SnapDiff::Drivers.available` is the canonical read API for the detected list; the value itself still lives on `Capybara::Screenshot::Diff::AVAILABLE_DRIVERS`, which stays the published stubbing point. `SnapDiff::Drivers.for` resolves an options hash to a driver instance. See [Custom drivers](snapdiff.md#custom-drivers).
+**Registry (ADR-008 step 5b):** `SnapDiff::Drivers.loaded` is the canonical driver-class cache — a `name => class` hash filled lazily by `Utils.find_driver_class_for`, and the registration point for custom drivers (the legacy `Capybara::Screenshot::Diff::LOADED_DRIVERS` is an eager same-object alias, so registrations through either land in the same hash). `SnapDiff::Drivers.available` is the canonical read API for the detected list, and since the 3.0-readiness pass the value lives with it, as `SnapDiff::Drivers::AVAILABLE_DRIVERS` — that constant is now the published stubbing point, and the legacy `Capybara::Screenshot::Diff::AVAILABLE_DRIVERS` is an eager same-object alias of it. `SnapDiff::Drivers.for` resolves an options hash to a driver instance. See [Custom drivers](snapdiff.md#custom-drivers).
 
 ### 6. Difference Region Detection
 
@@ -221,7 +221,9 @@ Test begins
 
 Since ADR-008 step 1 the storage ownership is inverted from the original v2 consolidation: **`SnapDiff::Config` (`lib/snap_diff/config.rb`) IS the storage** — one eagerly-created instance, reachable as `SnapDiff.config`, holding every setting as a plain `attr_accessor`. It is the leaf of the config require graph and requires nothing that leads back to either entry point.
 
-The legacy `Capybara::Screenshot.*` / `Capybara::Screenshot::Diff.*` accessors are thin delegators generated from `Config::MAPPING` (both singleton and instance methods, matching what `mattr_accessor` used to define) that forward to that one object. One storage, two views — a write through either surface is visible through the other structurally, not by synchronization. `lib/capybara/screenshot/diff/config_legacy.rb` remains at the old path, but it now installs the delegating surface rather than owning the state.
+The legacy `Capybara::Screenshot.*` / `Capybara::Screenshot::Diff.*` accessors are thin delegators generated from `SnapDiff::LegacyShims::CONFIG_MAPPING` (both singleton and instance methods, matching what `mattr_accessor` used to define) that forward to that one object. One storage, two views — a write through either surface is visible through the other structurally, not by synchronization.
+
+Since the 3.0-readiness pass, `lib/snap_diff/legacy_shims.rb` is the single file that holds the v1 surface as code: the `const_missing` forwarders, `CONFIG_MAPPING` and its generator, the derived forwarders (`Screenshot.active?`, `Diff.configure`, `Diff.default_options`, …) and `SnapDiff.start`. `Config` itself names nothing from the v1 namespaces — it declares its settings in `Config::SETTINGS`, and `LegacyShims::CONFIG_MAPPING` says which legacy holder each one is exposed on (an invariant pinned by `snap_diff_config_test.rb`). `lib/capybara/screenshot/diff/config_legacy.rb` remains at the old path as a pair of requires.
 
 The two legacy views are organized into two namespaces:
 

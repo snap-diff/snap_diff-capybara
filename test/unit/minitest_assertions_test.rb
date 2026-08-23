@@ -24,7 +24,7 @@ module CapybaraScreenshotDiff
 
     test "#before_teardown skips the test when pending_if_new is enabled and a screenshot has no baseline" do
       SnapDiff::Vcs.stub(:checkout_vcs, false) do
-        Capybara::Screenshot::Diff.stub(:pending_if_new, true) do
+        SnapDiff.config.stub(:pending_if_new, true) do
           result = run_inner_test { screenshot("a") }
 
           assert_predicate result, :skipped?
@@ -50,7 +50,7 @@ module CapybaraScreenshotDiff
 
     test "#before_teardown does not mask a real teardown error behind a pending skip" do
       SnapDiff::Vcs.stub(:checkout_vcs, false) do
-        Capybara::Screenshot::Diff.stub(:pending_if_new, true) do
+        SnapDiff.config.stub(:pending_if_new, true) do
           result = run_inner_test(teardown: proc {
             super()
             raise "boom from teardown"
@@ -64,7 +64,7 @@ module CapybaraScreenshotDiff
 
     test "#before_teardown does not skip the test when pending_if_new is disabled" do
       SnapDiff::Vcs.stub(:checkout_vcs, false) do
-        Capybara::Screenshot::Diff.stub(:pending_if_new, false) do
+        SnapDiff.config.stub(:pending_if_new, false) do
           result = run_inner_test { screenshot("a") }
 
           assert_predicate result, :passed?

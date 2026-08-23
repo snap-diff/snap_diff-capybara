@@ -59,7 +59,7 @@ module SnapDiff
       snap = @manager.snapshot("unstable_end_to_end")
 
       error = nil
-      Capybara::Screenshot::Diff.stub(:screenshoter, alternating_screenshoter) do
+      SnapDiff.config.stub(:screenshoter, alternating_screenshoter) do
         error = assert_raises(CapybaraScreenshotDiff::UnstableImage) do
           StableScreenshoter
             .new({stability_time_limit: 0.05, wait: 0.2}, {driver: :chunky_png})
