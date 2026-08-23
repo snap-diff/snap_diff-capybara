@@ -199,6 +199,19 @@ Two deliberate consequences of the lazy shim design — both flagged for feedbac
 
 2. **Reopening `module Capybara::Screenshot::Diff::Drivers` shadows the shim.** The historical custom-driver monkey-patch pattern defines a fresh, empty `Drivers` module instead of reaching the real one. Define custom drivers under `SnapDiff::Drivers` instead — and note `BaseDriver` is gone as a superclass: `class MyDriver < BaseDriver` becomes `include SnapDiff::Driver` (it's a mixin now).
 
+#### Two moves that fail *silently* if you miss them
+
+**Stubbing the detected-drivers list.** The value moved to `SnapDiff::Drivers::AVAILABLE_DRIVERS`, and `Capybara::Screenshot::Diff::AVAILABLE_DRIVERS` is now an eager alias of it. *Reading* either is identical, but **stubbing the legacy name only rebinds the alias** — the gem keeps reading the canonical constant, so a test that stubs it to `[]` no longer exercises the no-drivers path and just passes for the wrong reason:
+
+```ruby
+# before
+Capybara::Screenshot::Diff.stub_const(:AVAILABLE_DRIVERS, []) { ... }
+# now
+SnapDiff::Drivers.stub_const(:AVAILABLE_DRIVERS, []) { ... }
+```
+
+**`SnapDiff::Config::MAPPING` is gone.** It split in two: `SnapDiff::Config::SETTINGS` (the setting names, no legacy knowledge) and `SnapDiff::LegacyShims::CONFIG_MAPPING` (which legacy holder each name hangs off). If you referenced `MAPPING` — iterating settings in a test helper, say — use `SETTINGS`; `CONFIG_MAPPING` is `@api private` and disappears in 3.0 with the rest of the v1 surface.
+
 ---
 
 ### FAQ
