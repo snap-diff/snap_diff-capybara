@@ -15,9 +15,10 @@ Gem::Specification.new do |spec|
   spec.required_ruby_version = ">= 3.2"
   spec.license = "MIT"
   spec.metadata["allowed_push_host"] = "https://rubygems.org/"
-  spec.files = `git ls-files -z`.split("\x0").reject do |f|
-    f.match(%r{(^(\.|tmp|bin|test|spec|features|gemfiles|scripts|foo)/)|(^(\.|Dockerfile|CONTRIBUTING|README))})
-  end
+  # Allow-list: everything a consumer needs at runtime plus the shipped docs.
+  # Build/dev files (gems.rb, Rakefile, the gemspec itself, tests, CI) stay out.
+  spec.files = `git ls-files -z`.split("\x0")
+    .grep(%r{\A(lib/|docs/|README\.md\z|LICENSE\.txt\z|CHANGELOG\.md\z)})
 
   spec.bindir = "exe"
   spec.executables = spec.files.grep(%r{^exe/}) { |f| File.basename(f) }

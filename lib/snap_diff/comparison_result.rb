@@ -67,8 +67,10 @@ module SnapDiff
       meta[:difference_level]
     end
 
+    # Serializable difference metrics. The raw diff mask image is excluded —
+    # it is an image object, not a metric, and is reachable via #diff_mask.
     def to_h
-      {area_size: region_area_size, region: coordinates}.merge!(meta)
+      {area_size: region_area_size, region: coordinates}.merge!(meta.except(:diff_mask))
     end
 
     def coordinates

@@ -41,6 +41,22 @@ module Capybara::Screenshot::Diff
       assert_not reporter.heatmap_diff_path.exist?, "heatmap diff should be cleaned"
     end
 
+    test "failure message reports metrics without leaking image objects" do
+      driver = SnapDiff::Drivers::VipsDriver.new
+      comparison = build_comparison_for(driver, "a.png", "b.png")
+      difference = driver.find_difference_region(comparison)
+      difference.meta[:difference_level] = 0.42
+
+      message = SnapDiff::Reporters::Default.new(difference).generate
+      metrics = message.lines.first
+
+      assert_includes metrics, "area_size"
+      assert_includes metrics, "region"
+      assert_includes metrics, "difference_level"
+      assert_not_includes metrics, "Vips::Image"
+      assert_not_includes metrics, "0x"
+    end
+
     private
 
     def build_comparison_for(driver, *images)
