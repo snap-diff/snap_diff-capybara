@@ -150,6 +150,134 @@ class LegacyEntryPointProbeTest < ActiveSupport::TestCase
     MSG
   end
 
+  # The canonical half of this claim lives in support_load_probe_test.rb; the
+  # v1 entry points get the same treatment here because the cycle they used
+  # to load through (drivers.rb <-> utils.rb) shouted at every user whose
+  # suite runs with warnings on -- which Rake::TestTask does by default.
+  test "no legacy entry point emits a circular require warning under -w" do
+    failures = LEGACY_ENTRY_POINTS.filter_map do |entry|
+      noise = SupportLoadProbeTest.verbose_load(entry).lines.grep(/circular require/)
+      "require \"#{entry}\" ->\n#{noise.join}" unless noise.empty?
+    end
+
+    assert_empty failures, <<~MSG
+      Legacy entry point(s) load through a `require` cycle:
+
+      #{failures.join("\n")}
+    MSG
+  end
+
+  # Every legacy constant a consumer might touch, as of v1.12.0's surface.
+  # UPGRADING.md tells adopters to migrate their `require` line FIRST and
+  # rename constants afterwards, so this half-migrated state -- canonical
+  # require, v1 constants -- is a supported one, not an exotic edge case.
+  # It used to kill a whole suite at load on `Capybara::Screenshot::Os`.
+  LEGACY_CONSTANTS = %w[
+    Capybara::Screenshot::Os
+    Capybara::Screenshot::BrowserHelpers
+    Capybara::Screenshot::Screenshoter
+    Capybara::Screenshot::Diff::Vcs
+    Capybara::Screenshot::Diff::StableScreenshoter
+    Capybara::Screenshot::Diff::ImagePreprocessor
+    Capybara::Screenshot::Diff::AreaCalculator
+    Capybara::Screenshot::Diff::AnnotationService
+    Capybara::Screenshot::Diff::Utils
+    Capybara::Screenshot::Diff::ScreenshotMatcher
+    Capybara::Screenshot::Diff::Drivers
+    Capybara::Screenshot::Diff::Drivers::BaseDriver
+    Capybara::Screenshot::Diff::Drivers::ChunkyPNGDriver
+    Capybara::Screenshot::Diff::ImageCompare
+    Capybara::Screenshot::Diff::Difference
+    Capybara::Screenshot::Diff::Comparison
+    Capybara::Screenshot::Diff::VERSION
+    Capybara::Screenshot::Diff::LOADED_DRIVERS
+    Capybara::Screenshot::Diff::AVAILABLE_DRIVERS
+    Capybara::Screenshot::Diff::Reporters::Default
+    Region
+    CapybaraScreenshotDiff::RED_RGBA
+    CapybaraScreenshotDiff::ORANGE_RGBA
+    CapybaraScreenshotDiff::SnapManager
+    CapybaraScreenshotDiff::Snap
+    CapybaraScreenshotDiff::ScreenshotNamer
+    CapybaraScreenshotDiff::AttemptsReporter
+    CapybaraScreenshotDiff::BacktraceFilter
+    CapybaraScreenshotDiff::ErrorWithFilteredBacktrace
+    CapybaraScreenshotDiff::ScreenshotAssertion
+    CapybaraScreenshotDiff::AssertionRegistry
+    CapybaraScreenshotDiff::CapybaraScreenshotDiffError
+    CapybaraScreenshotDiff::ExpectationNotMet
+    CapybaraScreenshotDiff::UnstableImage
+    CapybaraScreenshotDiff::WindowSizeMismatchError
+    CapybaraScreenshotDiff::DSL
+    CapybaraScreenshotDiff::Minitest::Assertions
+    CapybaraScreenshotDiff::Reporters::HTML
+  ].freeze
+
+  test "every legacy constant resolves under a canonical-only require" do
+    failures = ALL_ENTRY_POINTS.filter_map do |entry|
+      probe(entry, <<~RUBY)
+        ENV["SNAP_DIFF_SILENCE_DEPRECATIONS"] = "1"
+        require #{entry.inspect}
+        # Resolvability only -- same-object identity is pinned separately by
+        # test/legacy/namespace_forwarding_test.rb.
+        broken = #{LEGACY_CONSTANTS.inspect}.filter_map do |name|
+          begin
+            Object.const_get(name)
+            nil
+          rescue NameError => e
+            "\#{name}: \#{e.message.lines.first.strip}"
+          end
+        end
+        abort(broken.join("\n")) unless broken.empty?
+      RUBY
+    end
+
+    assert_empty failures, <<~MSG
+      Legacy constant(s) do not resolve under these entry points. A half-
+      migrated app -- canonical require, v1 constants, exactly what
+      UPGRADING.md walks users into -- dies on the first reference:
+
+      #{failures.join("\n")}
+    MSG
+  end
+
+  # Vips is optional, so its driver leaf only has to resolve where the
+  # library is actually installed.
+  test "the vips driver leaf resolves under a canonical-only require" do
+    skip "vips not available in this environment" unless SnapDiff::Drivers.available.include?(:vips)
+
+    assert_nil SupportLoadProbeTest.probe("snap_diff", <<~RUBY)
+      ENV["SNAP_DIFF_SILENCE_DEPRECATIONS"] = "1"
+      require "snap_diff"
+      Object.const_get("Capybara::Screenshot::Diff::Drivers::VipsDriver")
+    RUBY
+  end
+
+  # A legacy name whose replacement genuinely cannot load must say so in the
+  # user's vocabulary -- UPGRADING.md -- not leak a bare "uninitialized
+  # constant SnapDiff::Something" from gem internals.
+  test "an unloadable legacy constant points at the upgrade guide" do
+    out, status = Open3.capture2e(
+      RbConfig.ruby, "-Ilib", "-e", <<~RUBY, chdir: File.expand_path("../..", __dir__)
+        ENV["SNAP_DIFF_SILENCE_DEPRECATIONS"] = "1"
+        require "snap_diff"
+        mod = Module.new
+        SnapDiff::LegacyShims.install(mod, "Old::Prefix", {Gone: "SnapDiff::NoSuchThing"})
+        begin
+          mod::Gone
+        rescue NameError => e
+          puts e.message
+        end
+      RUBY
+    )
+
+    assert status.success?, out
+    assert_includes out, "SnapDiff::NoSuchThing"
+    assert_includes out, "docs/UPGRADING.md"
+    refute_includes out, "Reference `SnapDiff::NoSuchThing` directly",
+      "must not advise referencing a name we just failed to load"
+  end
+
   private
 
   def probe(entry, script)

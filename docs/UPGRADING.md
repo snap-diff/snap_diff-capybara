@@ -14,7 +14,7 @@ Version 2.0 introduces a new canonical namespace (`SnapDiff`) for cleaner, more 
 [SnapDiff — the canonical API](snapdiff.md): the same setup, configuration, and extension points
 with canonical names only, no legacy shapes to unlearn.
 
-**Breaking changes:** None for the DSL; deprecation warnings if you reference legacy constants (suppressible), plus two known alpha caveats (see below)
+**Breaking changes:** None for the DSL; one migration notice per process plus a deprecation warning per legacy constant you reference (both suppressible), plus two known alpha caveats (see below)
 
 ---
 
@@ -38,7 +38,7 @@ bundle exec rake test
 
 #### 1. New Canonical Namespace: `SnapDiff`
 
-The implementation now lives in `lib/snap_diff/` under the `SnapDiff` namespace. Every legacy constant still resolves — lazily, to the *same object* — but emits a one-time-per-constant deprecation warning. The main renames:
+The implementation now lives in `lib/snap_diff/` under the `SnapDiff` namespace. Every legacy constant still resolves to the *same object*. Most do so lazily and warn once each; a documented set stays eagerly defined and silent — see [Deprecation Warnings](#deprecation-warnings) for exactly which. The main renames:
 
 | Legacy name | v2 canonical name |
 |-------------|-------------------|
@@ -159,19 +159,70 @@ This means you can migrate your codebase incrementally **now**, before opting in
 
 ### Deprecation Warnings
 
-In v2.0, resolving a legacy *constant* emits one deprecation warning per constant per process:
+v2.0 emits two different things, and it is worth knowing which is which.
+
+#### 1. The migration notice — one line per process
+
+The first time a process touches *any* hookable legacy API, you get a single line:
+
+```
+[snap_diff deprecation] This process uses the v1 `Capybara::Screenshot*` / `CapybaraScreenshotDiff*` API. It still works in 2.x and is REMOVED in 3.0 -- see docs/UPGRADING.md for the SnapDiff replacements. Silence with `SnapDiff.silence_deprecations = true` or SNAP_DIFF_SILENCE_DEPRECATIONS=1. (shown once per process)
+```
+
+It fires once and never again, whichever door you came through:
+
+- a legacy config accessor — `Capybara::Screenshot.window_size = ...`, `Capybara::Screenshot::Diff.tolerance`
+- a lazily shimmed legacy constant (see below)
+- `include Capybara::Screenshot` / `include Capybara::Screenshot::Diff`
+
+It exists because most of the v1 surface **cannot** warn per use, so without it a 2.x app could
+be entirely silent right up to the bare `NameError` it would get on 3.0.
+
+#### 2. Per-constant warnings — one line per lazily shimmed constant
+
+Resolving a legacy constant that is shimmed through `const_missing` also warns, once per constant
+per process:
 
 ```
 [snap_diff deprecation] `Capybara::Screenshot::Diff::ImageCompare` is deprecated (constant); use `SnapDiff::Comparison` instead.
 ```
 
-**Warnings appear for:** legacy constant access — `Capybara::Screenshot::Diff::ImageCompare`, `::Difference`, `::Drivers`, `CapybaraScreenshotDiff::SnapManager`, etc.
+**These appear for:** `Capybara::Screenshot::{BrowserHelpers, Screenshoter}`;
+`Capybara::Screenshot::Diff::{Vcs, StableScreenshoter, ImagePreprocessor, AreaCalculator,
+AnnotationService, Utils, ScreenshotMatcher, Drivers, ImageCompare, Difference}`;
+`Capybara::Screenshot::Diff::Drivers::BaseDriver`; `CapybaraScreenshotDiff::{RED_RGBA,
+ORANGE_RGBA, SnapManager, Snap, ScreenshotNamer, AttemptsReporter, BacktraceFilter,
+ErrorWithFilteredBacktrace, ScreenshotAssertion, AssertionRegistry}`;
+`CapybaraScreenshotDiff::Reporters::HTML`.
 
-**Warnings do NOT appear for:**
-- Requiring the gem: `require "capybara_screenshot_diff/minitest"` etc. is not deprecated
-- The DSL: `screenshot`, `assert_matches_screenshot`, `capture_screenshot` are never deprecated
-- Settings access: `Capybara::Screenshot.blur_active_element`, `Capybara::Screenshot::Diff.tolerance=`, and the `Diff.configure` block stay silent — they remain the canonical storage that `SnapDiff.config` forwards to
-- A few advertised entry-point constants that stay eagerly defined by design: `Capybara::Screenshot::Os`, `CapybaraScreenshotDiff::DSL`, `Capybara::Screenshot::Diff::VERSION`, and the driver leaf classes (`Drivers::VipsDriver`, `Drivers::ChunkyPNGDriver`)
+`CapybaraScreenshotDiff::DSL` and `::Minitest::Assertions` are shimmed this way **only under a
+canonical `snap_diff*` require**. Under the v1 entry points — what an unmigrated app actually
+uses — they are eagerly defined and silent, like everything in the next section.
+
+#### Silent by design
+
+Some legacy names never warn individually, and that is deliberate — the migration notice above is
+the signal for all of them:
+
+- **Requiring the gem.** `require "capybara_screenshot_diff/minitest"` etc. is not deprecated.
+- **The DSL.** `screenshot`, `assert_matches_screenshot`, `capture_screenshot` are never deprecated.
+- **Settings access.** `Capybara::Screenshot.blur_active_element`, `Capybara::Screenshot::Diff.tolerance=`
+  and the `Diff.configure` block are plain delegators onto `SnapDiff.config`. There is no
+  `const_missing` to hook, so they cannot warn per call without adding one on every read.
+- **Eagerly defined constants.** `Capybara::Screenshot::Os`, `Capybara::Screenshot::Diff::VERSION`,
+  `::Comparison`, `::LOADED_DRIVERS`, `::AVAILABLE_DRIVERS`, `::Reporters::Default`, the top-level
+  `Region`, the `CapybaraScreenshotDiff` error classes, and — under the v1 entry points —
+  `CapybaraScreenshotDiff::DSL` / `::Minitest::Assertions`. `const_defined?` never triggers
+  `const_missing`, so these have to be real constants for adopter feature detection and `rescue`
+  clauses to keep working — which means nothing is left to hook.
+- **The driver leaf classes.** `Drivers::VipsDriver` / `Drivers::ChunkyPNGDriver` are autoloaded on
+  `SnapDiff::Drivers`, so the leaf name itself never warns. Reaching them through the old path still
+  warns once for `Capybara::Screenshot::Diff::Drivers` — that part is a `const_missing` shim.
+  Each leaf is only declared when its gem is actually installed, so
+  `defined?(...Drivers::VipsDriver)` stays `nil` without `ruby-vips`, exactly as in v1.
+
+Every one of those names resolves under a canonical `snap_diff*` require too, so migrating your
+`require` line first (as this guide recommends) never breaks a constant you have not renamed yet.
 
 Warnings go through `Kernel#warn`, so test suites that hook `Warning.warn` (e.g. raise-on-warning setups) see them like any other Ruby warning.
 
@@ -195,7 +246,7 @@ export SNAP_DIFF_SILENCE_DEPRECATIONS=1
 
 Two deliberate consequences of the lazy shim design — both flagged for feedback on [#166](https://github.com/snap-diff/snap_diff-capybara/issues/166):
 
-1. **`defined?` / `const_defined?` on lazily-shimmed legacy names returns `false`/`nil`.** The shims resolve via `const_missing`, which those checks never trigger. Feature detection like `defined?(Capybara::Screenshot::Diff::ImageCompare)` must move to the `SnapDiff::` name. Rescuing legacy *error classes* is unaffected — they remain eagerly defined.
+1. **`defined?` / `const_defined?` on lazily-shimmed legacy names returns `false`/`nil`.** The shims resolve via `const_missing`, which those checks never trigger. Feature detection like `defined?(Capybara::Screenshot::Diff::ImageCompare)` must move to the `SnapDiff::` name. Everything in [Silent by design](#silent-by-design) is unaffected — those names are real constants, so `defined?`, `const_defined?` and `rescue` all behave as they always did.
 
 2. **Reopening `module Capybara::Screenshot::Diff::Drivers` shadows the shim.** The historical custom-driver monkey-patch pattern defines a fresh, empty `Drivers` module instead of reaching the real one. Define custom drivers under `SnapDiff::Drivers` instead — and note `BaseDriver` is gone as a superclass: `class MyDriver < BaseDriver` becomes `include SnapDiff::Driver` (it's a mixin now).
 

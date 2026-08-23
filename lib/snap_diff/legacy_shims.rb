@@ -4,6 +4,9 @@ require "snap_diff/comparison"
 require "snap_diff/config"
 require "snap_diff/deprecation"
 require "snap_diff/drivers"
+require "snap_diff/errors"
+require "snap_diff/os"
+require "snap_diff/reporters/default"
 require "snap_diff/version"
 
 # THE v1 compatibility surface, in one file -- and the whole of it that is
@@ -30,31 +33,25 @@ require "snap_diff/version"
 # once per constant per process, silenceable via
 # SnapDiff.silence_deprecations or SNAP_DIFF_SILENCE_DEPRECATIONS=1.
 #
-# Deliberately eager-and-silent exceptions (plain constants, defined by
-# their own forwarder files, never warn):
+# Deliberately eager-and-silent exceptions (plain constants assigned BELOW,
+# never warn individually -- the once-per-process migration notice still
+# fires for the paths that CAN be hooked; see Deprecation.notice):
 #
-# - Capybara::Screenshot::Os and CapybaraScreenshotDiff::DSL (and the
-#   unmapped CapybaraScreenshotDiff::Minitest::Assertions): advertised
-#   entry-point constants probed with Object.const_defined? by
-#   support_load_probe_test.rb -- const_defined? never triggers
-#   const_missing, so a lazy shim would break that contract.
+# - Capybara::Screenshot::Os: an advertised entry-point constant probed with
+#   Object.const_defined? by support_load_probe_test.rb -- const_defined?
+#   never triggers const_missing, so a lazy shim would break that contract.
 # - Capybara::Screenshot::Diff::VERSION, and ::Comparison (the images
 #   struct): documented user-facing names that adopters feature-detect with
-#   defined?/const_defined?. Both are assigned eagerly BELOW rather than by
-#   their own forwarder files (version.rb, image_compare.rb): the core
-#   stopped requiring those forwarders in the 3.0-readiness pass, so nothing
-#   loaded them under a canonical entry point and both names silently
-#   vanished from six of them. This file is required by every entry point,
-#   canonical and legacy, so it is the only place the eager exceptions can
-#   actually be eager.
+#   defined?/const_defined?.
 # - Capybara::Screenshot::Diff::Reporters::Default (a documented subclassing
-#   extension point): same reasoning, but its forwarder
-#   (reporters/default.rb) is still loaded on every path that defines
-#   ::Reporters at all, so the assignment stays there.
+#   extension point): same reasoning.
+# - The CapybaraScreenshotDiff error classes: rescue-by-old-name and
+#   defined? feature detection must keep behaving exactly as before.
 # - Drivers::ChunkyPNGDriver / Drivers::VipsDriver: real constants on the
 #   shared SnapDiff::Drivers module (the Drivers alias is same-object by
 #   contract), so const_missing can never fire for the leaf names;
-#   resolving them through the old path still warns for ...::Drivers.
+#   resolving them through the old path still warns for ...::Drivers. They
+#   are `autoload`ed there, so naming one loads it.
 # - Diff::LOADED_DRIVERS: user code registers custom drivers by mutating
 #   this hash in place, so it must be the exact same object as the
 #   canonical SnapDiff::Drivers.loaded -- a lazy warn-once shim could not
@@ -64,6 +61,22 @@ require "snap_diff/version"
 #   canonical SnapDiff::Drivers::AVAILABLE_DRIVERS (same object;
 #   SnapDiff::Drivers.available is the canonical reader, and its constant is
 #   the stubbing point -- stubbing this alias only rebinds the alias).
+#
+# All of them are assigned HERE rather than in their own forwarder files
+# under lib/capybara*. Those forwarders are loaded only by the LEGACY entry
+# points, so a partially migrated app -- one that swapped its `require` line
+# for a canonical `snap_diff*` one first, exactly as UPGRADING.md tells it
+# to, and has not renamed its constants yet -- lost every one of them and
+# died on `uninitialized constant Capybara::Screenshot::Os`. This file is
+# required by every entry point, canonical and legacy, so it is the only
+# place the eager exceptions can actually be eager.
+#
+# CapybaraScreenshotDiff::DSL and ::Minitest::Assertions are the two that
+# CANNOT be eager here: snap_diff/dsl requires "snap_diff" (which requires
+# this file), and snap_diff/integrations/minitest pulls in the minitest gem,
+# which no canonical entry point should force on a process. They are mapped
+# lazily below instead, and stay eager under the legacy entry points that
+# load their forwarder files.
 
 # The v1 namespaces, predefined empty so CONFIG_MAPPING can name them at
 # class-body eval time. Everything below reopens them.
@@ -88,8 +101,42 @@ module SnapDiff
         return super(name) unless target
 
         Deprecation.warn("#{old_prefix}::#{name}", target)
-        Object.const_get(target)
+        LegacyShims.resolve("#{old_prefix}::#{name}", target)
       end
+    end
+
+    # The handful of replacements whose file name does not follow the gem's
+    # own convention (SnapDiff::AreaCalculator -> snap_diff/area_calculator).
+    REQUIRE_PATHS = {
+      "SnapDiff::Minitest::Assertions" => "snap_diff/integrations/minitest"
+    }.freeze
+
+    # Resolving an old name has to LOAD the replacement, not merely name it.
+    # The v1 entry points required the whole gem, so v1 code could say
+    # `Capybara::Screenshot::Diff::Utils` with nothing else required; the
+    # canonical entry points are lean, so the shim used to resolve its
+    # mapping and then die on a bare "uninitialized constant SnapDiff::Utils"
+    # -- an internal name the reader has no way to act on.
+    def self.resolve(old_name, target)
+      require_unit(target) unless Object.const_defined?(target)
+      Object.const_get(target)
+    rescue NameError
+      # Deliberately does NOT advise "reference #{target} directly": we just
+      # failed to load it, so that name does not exist either.
+      raise NameError, "`#{old_name}` maps to `#{target}`, which this process cannot load. " \
+        "See docs/UPGRADING.md for the v1 -> SnapDiff name map."
+    end
+
+    def self.require_unit(target)
+      require(REQUIRE_PATHS[target] || target
+        .gsub("::", "/")
+        .gsub(/([A-Z]+)([A-Z][a-z])/, '\1_\2')
+        .gsub(/([a-z\d])([A-Z])/, '\1_\2')
+        .downcase)
+    rescue LoadError
+      # No file of its own -- the name lives inside another unit
+      # (SnapDiff::RED_RGBA, ::BacktraceFilter). The const_get above decides
+      # whether it is already loaded.
     end
 
     # config attr name => [legacy module, legacy accessor name].
@@ -139,17 +186,36 @@ module SnapDiff
     def self.install_config_accessors
       CONFIG_MAPPING.each do |name, (mod, mattr)|
         [mod, mod.singleton_class].each do |target|
-          target.define_method(mattr) { SnapDiff.config.public_send(name) }
+          target.define_method(mattr) do
+            Deprecation.notice
+            SnapDiff.config.public_send(name)
+          end
           next if name == :root && target == mod
 
-          target.define_method(:"#{mattr}=") { |value| SnapDiff.config.public_send(:"#{name}=", value) }
+          target.define_method(:"#{mattr}=") do |value|
+            Deprecation.notice
+            SnapDiff.config.public_send(:"#{name}=", value)
+          end
         end
+      end
+    end
+
+    # `include Capybara::Screenshot::Diff` is the third way into the v1
+    # surface (it picks up the instance-level accessors installed above) and
+    # resolves no deprecated constant of its own, so it needs its own hook
+    # for the once-per-process notice.
+    def self.install_include_notice(mod)
+      mod.define_singleton_method(:included) do |base|
+        Deprecation.notice
+        super(base)
       end
     end
   end
 end
 
 SnapDiff::LegacyShims.install_config_accessors
+SnapDiff::LegacyShims.install_include_notice(Capybara::Screenshot)
+SnapDiff::LegacyShims.install_include_notice(Capybara::Screenshot::Diff)
 
 module SnapDiff
   # v1-style configuration: yields the two legacy accessor holders
@@ -173,6 +239,10 @@ end
 
 module Capybara
   module Screenshot
+    # EAGER same-object alias (see header): the only place it can be eager
+    # for a canonical-only require, which is what a half-migrated app has.
+    Os = SnapDiff::Os
+
     # Derived config, ex config_legacy.rb: one-line forwarders onto the
     # canonical implementations in SnapDiff::Config (ADR-008 step 7b).
     class << self
@@ -197,6 +267,10 @@ module Capybara
       Comparison = SnapDiff::Comparison::Images
       VERSION = SnapDiff::VERSION
 
+      module Reporters
+        Default = SnapDiff::Reporters::Default
+      end
+
       # Configure screenshot and diff settings in one block.
       #
       #   Capybara::Screenshot::Diff.configure do |screenshot, diff|
@@ -216,6 +290,7 @@ module Capybara
       end
 
       def self.default_options
+        SnapDiff::Deprecation.notice
         SnapDiff.config.default_options
       end
     end
@@ -225,6 +300,19 @@ end
 module CapybaraScreenshotDiff
   module Reporters
   end
+
+  # Predefined so the mapping below has a namespace to hang const_missing
+  # on; capybara_screenshot_diff/minitest reopens it with the eager alias.
+  module Minitest
+  end
+
+  # EAGER same-object aliases (see header): rescue-by-old-name and
+  # defined?/const_defined? feature detection must behave as they always
+  # have, under canonical and legacy requires alike.
+  CapybaraScreenshotDiffError = SnapDiff::Error
+  ExpectationNotMet = SnapDiff::ExpectationNotMet
+  UnstableImage = SnapDiff::UnstableImage
+  WindowSizeMismatchError = SnapDiff::WindowSizeMismatchError
 end
 
 SnapDiff::LegacyShims.install(Capybara::Screenshot, "Capybara::Screenshot", {
@@ -255,11 +343,16 @@ SnapDiff::LegacyShims.install(CapybaraScreenshotDiff, "CapybaraScreenshotDiff", 
   BacktraceFilter: "SnapDiff::BacktraceFilter",
   ErrorWithFilteredBacktrace: "SnapDiff::ErrorWithFilteredBacktrace",
   ScreenshotAssertion: "SnapDiff::ScreenshotAssertion",
-  AssertionRegistry: "SnapDiff::AssertionRegistry"
+  AssertionRegistry: "SnapDiff::AssertionRegistry",
+  DSL: "SnapDiff::DSL"
 }.freeze)
 
 SnapDiff::LegacyShims.install(CapybaraScreenshotDiff::Reporters, "CapybaraScreenshotDiff::Reporters", {
   HTML: "SnapDiff::Reporters::HTML"
+}.freeze)
+
+SnapDiff::LegacyShims.install(CapybaraScreenshotDiff::Minitest, "CapybaraScreenshotDiff::Minitest", {
+  Assertions: "SnapDiff::Minitest::Assertions"
 }.freeze)
 
 # BaseDriver dissolved into the SnapDiff::Driver mixin; the Drivers alias is

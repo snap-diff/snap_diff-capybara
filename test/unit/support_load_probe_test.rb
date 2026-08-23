@@ -170,6 +170,31 @@ class SupportLoadProbeTest < ActiveSupport::TestCase
     MSG
   end
 
+  # A circular `require` between two core files is invisible until $VERBOSE
+  # is on -- which Rake::TestTask turns on by default, i.e. the standard
+  # Rails/Minitest setup and how real adopters run. drivers.rb <-> utils.rb
+  # shouted this at every such user on every process start, with an 18-frame
+  # backtrace. Ruby only warns once per cycle per process, so this has to be
+  # a fresh process per entry point.
+  #
+  # Canonical entries only; the v1 ones are covered the same way from
+  # test/legacy/legacy_entry_point_probe_test.rb, which reuses verbose_load.
+  test "no canonical entry point emits a circular require warning under -w" do
+    failures = CANONICAL_ENTRY_POINTS.keys.filter_map do |entry|
+      noise = self.class.verbose_load(entry).lines.grep(/circular require/)
+      "require \"#{entry}\" ->\n#{noise.join}" unless noise.empty?
+    end
+
+    assert_empty failures, <<~MSG
+      Entry point(s) load through a `require` cycle. Ruby shouts about it on
+      stderr for every user whose suite runs with warnings on. Break the
+      cycle (move the shared unit, or defer the require into the method that
+      needs it) rather than muting it:
+
+      #{failures.join("\n")}
+    MSG
+  end
+
   # cucumber's World/Before/After/AfterAll only exist inside its runtime, so
   # a bare probe of a cucumber entry has to supply them or the require dies
   # before it reaches what is under test.
@@ -191,5 +216,16 @@ class SupportLoadProbeTest < ActiveSupport::TestCase
     out, status = Open3.capture2e(RbConfig.ruby, "-Ilib", "-e", preamble + script, chdir: project_root)
 
     "require \"#{entry}\" -> #{out}" unless status.success?
+  end
+
+  # Loads +entry+ in a fresh process with warnings ON, returning everything
+  # it printed. Public for the same reason as .probe above.
+  def self.verbose_load(entry)
+    project_root = File.expand_path("../..", __dir__)
+    preamble = entry.include?("cucumber") ? CUCUMBER_RUNTIME_STUB : ""
+    out, _status = Open3.capture2e(
+      RbConfig.ruby, "-w", "-Ilib", "-e", preamble + "require #{entry.inspect}", chdir: project_root
+    )
+    out
   end
 end

@@ -1,6 +1,14 @@
 # frozen_string_literal: true
 
 module SnapDiff
+  # utils.rb requires THIS file at its top. Requiring it back at load time
+  # made Ruby shout "circular require considered harmful" under $VERBOSE --
+  # which Rake::TestTask sets by default, i.e. every standard Rails/Minitest
+  # suite. Autoload breaks the cycle without narrowing the surface: nothing
+  # here touches Utils until a method runs, and requiring this file still
+  # leaves SnapDiff::Utils resolvable exactly as the eager require did.
+  autoload :Utils, "snap_diff/utils"
+
   # Compare two images and determine if they are equal, different, or within some comparison
   # range considering color values and difference area size.
   module Drivers
@@ -48,6 +56,22 @@ module SnapDiff
     # constant is now an eager same-object alias of this one.
     AVAILABLE_DRIVERS = detect_available.freeze
 
+    # The driver classes are documented names (the legacy
+    # `...::Drivers::VipsDriver` path is a same-object alias of this one), so
+    # naming one has to work without a prior require. Autoload rather than
+    # require: naming one must not cost every process the vips/chunky_png
+    # load, and Utils.find_driver_class_for still requires them explicitly.
+    #
+    # Gated on AVAILABLE_DRIVERS, which is why these sit BELOW it. Declaring
+    # them unconditionally made `const_defined?(:VipsDriver)` true on a box
+    # without ruby-vips (neither driver gem is a runtime dependency), so the
+    # documented v1 pattern `Diff.driver = :vips if defined?(...VipsDriver)`
+    # took the branch and then blew up on const_get. v1.12.0 loaded
+    # vips_driver.rb only from find_driver_class_for, so `defined?` was nil
+    # there -- this keeps that.
+    autoload :ChunkyPNGDriver, "snap_diff/drivers/chunky_png_driver" if AVAILABLE_DRIVERS.include?(:chunky_png)
+    autoload :VipsDriver, "snap_diff/drivers/vips_driver" if AVAILABLE_DRIVERS.include?(:vips)
+
     # Canonical read API for the list above. Reads the constant live rather
     # than caching, because the constant is the published stubbing point
     # (image_compare_test stubs it to [] to exercise the no-drivers error
@@ -57,9 +81,3 @@ module SnapDiff
     end
   end
 end
-
-# Drivers.for calls Utils.find_driver_class_for, and utils.rb requires this
-# file back -- so the require sits at the BOTTOM, after Drivers is fully
-# defined. Either file can then be required first: whichever runs second
-# finds a complete module, and neither touches the other at body-eval time.
-require "snap_diff/utils"
