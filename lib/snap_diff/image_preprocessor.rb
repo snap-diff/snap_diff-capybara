@@ -28,10 +28,10 @@ module SnapDiff
 
     private
 
-    def process_image(image, path)
+    def process_image(image, _path)
       result = image
       result = apply_skip_area(result) if skip_area
-      result = apply_median_filter(result, path) if median_filter_window_size
+      result = apply_median_filter(result) if median_filter_window_size
       result
     end
 
@@ -41,20 +41,11 @@ module SnapDiff
       end
     end
 
-    def apply_median_filter(image, path)
-      if driver.supports?(:filter_image_with_median)
-        driver.filter_image_with_median(image, median_filter_window_size)
-      else
-        warn_about_skipped_median_filter(path)
-        image
-      end
-    end
-
-    def warn_about_skipped_median_filter(path)
-      warn(
-        "[capybara-screenshot-diff] Median filter has been skipped for #{path} " \
-        "because it is not supported by #{driver.class}"
-      )
+    # Unconditional since 2.1: libvips is the only backend and it implements
+    # the filter. The `driver.supports?` guard (and the warning it fell back
+    # to) existed for chunky_png, which did not.
+    def apply_median_filter(image)
+      driver.filter_image_with_median(image, median_filter_window_size)
     end
 
     def skip_area

@@ -6,7 +6,9 @@ class BrowserScreenshotTest < SystemTestCase
   setup do
     SnapDiff.config.blur_active_element = true
     @original_tolerance = SnapDiff.config.tolerance
-    SnapDiff.config.tolerance = (SnapDiff.config.driver == :vips) ? 0.035 : 0.13
+    # Was branched on the driver (0.035 vips / 0.13 chunky_png); 2.1 left
+    # one backend, so only the vips figure survives.
+    SnapDiff.config.tolerance = 0.035
   end
 
   teardown do

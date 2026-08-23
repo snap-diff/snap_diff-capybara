@@ -57,8 +57,6 @@ jobs:
           ruby-version: "4.0"
 
       - run: bin/rake test
-        env:
-          SCREENSHOT_DRIVER: vips
 
   functional-test:
     name: Functional Test
@@ -81,7 +79,6 @@ jobs:
         env:
           COVERAGE: enabled
           DISABLE_SKIP_TESTS: 1
-          SCREENSHOT_DRIVER: vips
 
       - uses: ./.github/actions/upload-screenshots
         if: failure()
@@ -137,13 +134,9 @@ jobs:
 
     env:
       BUNDLE_GEMFILE: gemfiles/${{ matrix.gemfile }}
-      # The JRuby cells are the only place the vips driver runs on a non-MRI
-      # engine, and `bin/rake test` otherwise leaves them on chunky_png (the
-      # default in test/system_test_case.rb) -- so ruby-vips' FFI path was
-      # only ever loaded there, never driven end to end. Test Drivers covers
-      # both drivers on CRuby; chunky_png stays covered on JRuby by its own
-      # unit tests, which do not read this variable.
-      SCREENSHOT_DRIVER: ${{ contains(matrix.ruby-version, 'jruby') && 'vips' || 'chunky_png' }}
+      # SCREENSHOT_DRIVER is gone: 2.1 removed the driver abstraction, so every
+      # cell -- JRuby included -- runs libvips. ruby-vips' FFI path on JRuby is
+      # now a property of the whole matrix rather than of one variable.
 
     steps:
       - uses: actions/checkout@v7
@@ -173,7 +166,10 @@ jobs:
           max_attempts: 2
           command: bin/rake test
 
-  matrix-screenshot-driver:
+  # Was `matrix-screenshot-driver`, a capybara-driver x screenshot-driver grid.
+  # 2.1 removed the screenshot-driver axis, so this is a capybara-driver matrix
+  # and nothing else -- half the cells, same coverage.
+  matrix-capybara-driver:
     name: Test Drivers
     # Cost-intentional: full matrix stays off PRs by default (free-tier
     # Actions minutes). Runs on master pushes, manual dispatch, the weekly
@@ -188,7 +184,6 @@ jobs:
     strategy:
       matrix:
         capybara-driver: [ selenium_headless, selenium_chrome_headless, cuprite ]
-        screenshot-driver: [ vips, chunky_png ]
 
     runs-on: ubuntu-latest
 
@@ -200,7 +195,8 @@ jobs:
       - uses: ./.github/actions/setup-ruby-and-dependencies
         with:
           ruby-version: "4.0"
-          cache-apt-packages: ${{ matrix.screenshot-driver == 'vips' }}
+          # libvips is required now, not one of two options.
+          cache-apt-packages: true
 
       - name: Cache Selenium
         uses: actions/cache@v6
@@ -211,12 +207,11 @@ jobs:
       - run: bin/rake test:integration
         env:
           CAPYBARA_DRIVER: ${{ matrix.capybara-driver }}
-          SCREENSHOT_DRIVER: ${{ matrix.screenshot-driver }}
 
       - uses: ./.github/actions/upload-screenshots
         if: failure()
         with:
-          name: screenshots-${{ matrix.capybara-driver }}-${{ matrix.screenshot-driver }}
+          name: screenshots-${{ matrix.capybara-driver }}
 
   test-report-upload:
     name: Test Report Upload

@@ -7,7 +7,7 @@ export DOCKER_DEFAULT_PLATFORM=linux/amd64
 # Define allowed environment variables to pass to Docker
 ALLOWED_ENV_VARS=(
   "CI" "DEBUG" "TEST_ENV" "RAILS_ENV" "RACK_ENV" "COVERAGE" "DISABLE_ROLLBACK_COMPARISON_RUNTIME_FILES"
-  "RECORD_SCREENSHOTS" "TEST" "TESTOPTS" "SCREENSHOT_DRIVER"
+  "RECORD_SCREENSHOTS" "TEST" "TESTOPTS"
 )
 
 # Build the Docker env args string

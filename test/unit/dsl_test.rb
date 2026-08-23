@@ -31,11 +31,16 @@ class DSLTest < ActiveSupport::TestCase
     end
   end
 
+  # The reported figures are libvips': area_size and region come out as floats
+  # and there is no max_color_distance. They used to be chunky_png's (629 /
+  # [11,3,48,20] / max_color_distance 187.4) because a Comparison built without
+  # an explicit `driver:` fell back to chunky_png -- 2.1 deleted that driver
+  # and the selection that reached it, so this is the deletion showing through,
+  # not a drift in the reporter.
   test "#assert_image_not_changed generates correct error message for image mismatch" do
     message = assert_image_not_changed(["my_test.rb:42"], "name", make_comparison(:a, :c, destination: "screenshot.png"))
-    value = (RUBY_VERSION >= "2.4") ? 187.4 : 188
     assert_equal <<~MSG.chomp, message
-      Screenshot does not match for 'name': ({"area_size":629,"region":[11,3,48,20],"max_color_distance":#{value}})
+      Screenshot does not match for 'name': ({"area_size":684.0,"region":[11.0,3.0,49.0,21.0]})
       #{SnapDiff.config.root}/doc/screenshots/screenshot.png
       #{SnapDiff.config.root}/doc/screenshots/screenshot.base.diff.png
       #{SnapDiff.config.root}/doc/screenshots/screenshot.diff.png
@@ -44,26 +49,16 @@ class DSLTest < ActiveSupport::TestCase
     MSG
   end
 
-  test "#assert_image_not_changed includes shift distance in error message when specified" do
-    message = assert_image_not_changed(
-      ["my_test.rb:42"],
-      "name",
-      make_comparison(:a, :c, destination: "screenshot.png", shift_distance_limit: 1, driver: :chunky_png)
-    )
-    value = (RUBY_VERSION >= "2.4") ? 5.0 : 5
-    assert_equal <<~MSG.chomp, message
-      Screenshot does not match for 'name': ({"area_size":629,"region":[11,3,48,20],"max_color_distance":#{value},"max_shift_distance":15})
-      #{SnapDiff.config.root}/doc/screenshots/screenshot.png
-      #{SnapDiff.config.root}/doc/screenshots/screenshot.base.diff.png
-      #{SnapDiff.config.root}/doc/screenshots/screenshot.diff.png
-      #{SnapDiff.config.root}/doc/screenshots/screenshot.heatmap.diff.png
-      my_test.rb:42
-    MSG
-  end
+  # Two tests are deleted rather than repointed:
+  #
+  # - "includes shift distance in error message": `shift_distance_limit` is
+  #   implemented only by chunky_png and dies with it. libvips has no
+  #   shift-distance comparison, so there is no equivalent message.
+  # - "supports driver options for image comparison": there are no driver
+  #   options left to support.
 
-  test "#screenshot supports driver options for image comparison" do
-    skip "vips is disabled" unless defined?(Vips)
-    assert_not screenshot("a", driver: :vips)
+  test "#screenshot compares against the baseline and reports no difference" do
+    assert_not screenshot("a")
   end
 
   def assert_no_screenshot_jobs_scheduled

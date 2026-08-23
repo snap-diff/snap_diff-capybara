@@ -22,7 +22,8 @@ Stop shipping UI bugs. Take screenshots in your Capybara tests, commit baselines
 ```ruby
 # Gemfile
 gem 'capybara-screenshot-diff'
-gem 'ruby-vips'  # Optional: 10x faster comparisons
+# ruby-vips comes with the gem since 2.1; libvips itself is a system package
+# (brew install vips / apt-get install libvips).
 ```
 
 ```ruby
@@ -186,7 +187,7 @@ Set `window_size` for consistent dimensions and use `perceptual_threshold: 2.0` 
 <details>
 <summary><strong>Will this slow down my tests?</strong></summary>
 
-Comparisons add ~50ms per image with VIPS. Without `ruby-vips`, ChunkyPNG is used (slower but no system dependency). `stability_time_limit` adds wait time — keep it low (0.1-0.5s) or use `disable_animations` instead.
+Comparisons add ~50ms per image. `stability_time_limit` adds wait time — keep it low (0.1-0.5s) or use `disable_animations` instead.
 </details>
 
 <details>
@@ -197,7 +198,7 @@ Comparisons add ~50ms per image with VIPS. Without `ruby-vips`, ChunkyPNG is use
 
 ## Installation
 
-**Requirements:** Ruby 3.2+. Rails 7.1+ for Rails integration; non-Rails projects supported via `CapybaraScreenshotDiff.serve()`. For the `:vips` driver: [libvips 8.9+](https://libvips.github.io/libvips/install.html). On macOS: `brew install vips`. On Ubuntu: `apt-get install libvips-dev`.
+**Requirements:** Ruby 3.2+. Rails 7.1+ for Rails integration; non-Rails projects supported via `CapybaraScreenshotDiff.serve()`. Comparison runs on [libvips](https://libvips.github.io/libvips/install.html) (8.9+), a system package: `brew install vips` on macOS, `apt-get install libvips-dev` on Ubuntu. The `ruby-vips` binding is a runtime dependency of this gem since 2.1, so Bundler installs it for you.
 
 ## Docs
 
@@ -205,7 +206,7 @@ Comparisons add ~50ms per image with VIPS. Without `ruby-vips`, ChunkyPNG is use
 - [Framework Setup](docs/framework-setup.md) — Minitest, RSpec, Cucumber
 - [CI & Non-Rails Integration](docs/ci-integration.md) — GitHub Actions, reusable action, static sites, baseline updates
 - [Configuration Reference](docs/configuration.md) — all options explained
-- [Image Processing Drivers](docs/drivers.md) — VIPS, ChunkyPNG, perceptual threshold
+- [Image Processing](docs/drivers.md) — libvips, perceptual threshold, tolerance
 - [Screenshot Organization](docs/organization.md) — groups, sections, cropping, multi-browser
 - [Web UI & Custom Reporters](docs/reporters.md) — interactive report, custom reporters
 

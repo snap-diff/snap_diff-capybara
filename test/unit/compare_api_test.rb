@@ -32,24 +32,17 @@ class CompareApiTest < ActiveSupport::TestCase
     assert result.different?
   end
 
-  test ".compare accepts driver option" do
-    skip "VIPS not present" unless defined?(Vips)
-
-    result = SnapDiff.compare(
-      TEST_IMAGES_DIR / "a.png",
-      TEST_IMAGES_DIR / "a.png",
-      driver: :vips
-    )
+  # ".compare accepts driver option" is gone with the option: 2.1 removed
+  # driver selection, so there is nothing left to accept.
+  test ".compare compares two images with the configured defaults" do
+    result = SnapDiff.compare(TEST_IMAGES_DIR / "a.png", TEST_IMAGES_DIR / "a.png")
     assert result.quick_equal?
   end
 
   test ".compare accepts tolerance options" do
-    skip "VIPS not present" unless defined?(Vips)
-
     result = SnapDiff.compare(
       TEST_IMAGES_DIR / "a.png",
       TEST_IMAGES_DIR / "b.png",
-      driver: :vips,
       tolerance: 1.0
     )
     assert_not result.different?

@@ -2,20 +2,20 @@
 
 require "test_helper"
 
-# The REVERSE of legacy_tree_is_alias_only_test.rb, and the other half of
-# what makes the 2.1 deletion a `git rm`.
+# Keeps the removed names from creeping back into lib/.
 #
-# That test proves the v1 trees hold no logic. This one proves the canonical
-# core does not reach BACK into them -- which is the half that actually
-# breaks the gem if it is wrong: as long as any file under lib/snap_diff/
-# requires a `capybara/...` path or reads a `Capybara::Screenshot.*` /
-# `CapybaraScreenshotDiff::*` constant, deleting lib/capybara* leaves a core
-# that no longer loads.
+# Its twin (legacy_tree_is_alias_only_test.rb) proved the v1 trees held no
+# logic; the trees are gone and so is that test. This one used to prove the
+# core did not reach BACK into them, which is what made the deletion a
+# `git rm`. The deletion has happened -- a legacy `require` in lib/ now fails
+# loudly on its own -- so the surviving job is the quiet half: a NAME in a
+# string, a user-facing message or a docstring that mentions
+# `Capybara::Screenshot.*`, `SnapDiff::Drivers.available` or
+# `shift_distance_limit` still parses fine and simply lies.
 #
-# Scope: everything the 2.1 deletion KEEPS. Files that are themselves part of
-# the deletion set (DELETED_WITH_LEGACY_TREES below) live under lib/snap_diff/ only
-# because the generator for the v1 surface has to be code, and the v1 trees
-# have to stay alias-only -- they are legacy by design and go with it.
+# Scope: every file under lib/. The exclusion list this gate used to carry
+# (legacy_shims.rb, deprecation.rb -- files that existed to BUILD the v1
+# surface) is empty: they were deleted, not excluded.
 #
 # WHOLE-LINE comments are ignored: "ex +SnapDiff.config.active?+" on its
 # own line is history, not a dependency. Everything else on a code line
@@ -27,13 +27,10 @@ require "test_helper"
 class CoreTreeHasNoLegacyDepsTest < ActiveSupport::TestCase
   LIB = Pathname.new(__dir__).join("../../lib").expand_path
 
-  # Deleted alongside lib/capybara* in 2.1: these files exist to BUILD the
-  # v1 compatibility surface (const_missing shims, the legacy config
-  # accessor generator, the deprecation channel that announces both).
-  DELETED_WITH_LEGACY_TREES = %w[
-    snap_diff/legacy_shims.rb
-    snap_diff/deprecation.rb
-  ].freeze
+  # EMPTY, and it must stay that way. It named the two files that built the v1
+  # surface (legacy_shims.rb, deprecation.rb); 2.1 deleted them rather than
+  # exempting them, so there is nothing left under lib/ this gate skips.
+  DELETED_WITH_LEGACY_TREES = [].freeze
 
   CORE_FILES = (
     [LIB.join("snap_diff.rb")] + Dir[LIB.join("snap_diff/**/*.rb")].map { |p| Pathname.new(p) }
@@ -52,6 +49,20 @@ class CoreTreeHasNoLegacyDepsTest < ActiveSupport::TestCase
 
   # A read or write of a v1 namespace constant.
   LEGACY_CONSTANT = /(?<![\w:])(?:::)?(?:Capybara::Screenshot|CapybaraScreenshotDiff)\b/
+
+  # The OTHER half of what 2.1 removed -- the driver abstraction and the
+  # chunky_png-only setting. Same reasoning as LEGACY_CONSTANT: a core file
+  # naming one of these in a message or a default is a promise the gem can no
+  # longer keep.
+  REMOVED_SURFACE = /
+    SnapDiff::Driver\b
+    |SnapDiff::Drivers\.(loaded|available|for|registry|detect_available)\b
+    |AVAILABLE_DRIVERS
+    |LOADED_DRIVERS
+    |ChunkyPNGDriver
+    |shift_distance_limit
+    |silence_deprecations
+  /x
 
   # THE ALLOWLIST -- the whole point of this gate is that it shrinks.
   #
@@ -73,10 +84,10 @@ class CoreTreeHasNoLegacyDepsTest < ActiveSupport::TestCase
     offenders = CORE_FILES.flat_map { |file| offences(file) }
 
     assert_empty offenders, <<~MSG
-      The canonical core still depends on the v1 compatibility trees. Repoint
-      these at their snap_diff/* equivalents (`SnapDiff.config.*`,
-      `SnapDiff::Drivers.*`, `require "snap_diff/..."`) -- until they are gone,
-      `git rm lib/capybara*` breaks the gem:
+      lib/ names something 2.1 removed -- the v1 compatibility trees, the
+      driver abstraction, or shift_distance_limit. Repoint these at what the
+      gem actually has (`SnapDiff.config.*`, `SnapDiff::Drivers::VipsDriver`,
+      `require "snap_diff/..."`):
 
       #{offenders.join("\n")}
     MSG
@@ -113,6 +124,7 @@ class CoreTreeHasNoLegacyDepsTest < ActiveSupport::TestCase
       reason =
         if LEGACY_REQUIRE.match?(line) then "requires a v1 tree path"
         elsif LEGACY_CONSTANT.match?(line) then "references a v1 namespace constant"
+        elsif REMOVED_SURFACE.match?(line) then "names a surface 2.1 removed"
         end
       "#{rel}:#{number}: #{reason} -- `#{line}`" if reason
     end

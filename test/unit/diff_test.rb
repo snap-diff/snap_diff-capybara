@@ -113,12 +113,11 @@ class DiffTest < ActiveSupport::TestCase
     assert_equal "b/00_a", build_full_name(:a)
   end
 
-  test "detects available diff drivers" do
-    # NOTE for tests we are loading both drivers, so we expect that all of them are available
-    expected_drivers = defined?(Vips) ? %i[vips chunky_png] : %i[chunky_png]
-
-    assert_equal expected_drivers, SnapDiff::Drivers::AVAILABLE_DRIVERS
-  end
+  # "detects available diff drivers" is gone with driver detection itself:
+  # 2.1 removed SnapDiff::Drivers::AVAILABLE_DRIVERS along with the rest of the
+  # abstraction. There is nothing to detect when there is one backend, and
+  # `ruby-vips` is a gemspec runtime dependency, so its absence is a resolver
+  # error rather than a list this gem has to compute.
 
   test "aggregates failures on teardown for Minitest" do
     test_case = SampleMiniTestCase.new(:_test_sample_screenshot_error)
@@ -212,7 +211,7 @@ class DiffTest < ActiveSupport::TestCase
       set_test_images(snap, :a, :a)
 
       SnapDiff.config.stub(:screenshot_format, "webp") do
-        screenshot "a", driver: :vips
+        screenshot "a"
 
         assert_stored_screenshot("a.webp")
       end

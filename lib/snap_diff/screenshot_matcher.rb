@@ -61,7 +61,6 @@ module SnapDiff
 
       driver_options[:crop] = area_calculator.calculate_crop
       driver_options[:skip_area] = area_calculator.calculate_skip_area
-      driver_options[:driver] = SnapDiff::Drivers.for(driver_options[:driver])
     end
 
     def check_base_screenshot

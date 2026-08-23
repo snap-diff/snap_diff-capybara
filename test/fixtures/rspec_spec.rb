@@ -20,7 +20,6 @@ RSpec.describe "capybara_screenshot_diff/rspec", type: :feature do
     SnapDiff.config.root = Rails.root / "../test/fixtures/app"
     SnapDiff.config.add_os_path = true
     SnapDiff.config.add_driver_path = true
-    SnapDiff.config.driver = ENV.fetch("SCREENSHOT_DRIVER", "chunky_png").to_sym
     SnapDiff.config.tolerance = 0.5
   end
 
@@ -36,7 +35,7 @@ RSpec.describe "capybara_screenshot_diff/rspec", type: :feature do
   it "use custom matcher" do
     visit "/"
 
-    expect(page).to match_screenshot("index", skip_stack_frames: 1, driver: :chunky_png)
+    expect(page).to match_screenshot("index", skip_stack_frames: 1)
   end
 
   it "does not conflicts with rspec methods" do

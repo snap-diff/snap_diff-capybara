@@ -11,7 +11,6 @@ SnapDiff.configure do |config|
   config.stability_time_limit = 1
   config.blur_active_element = true
   config.hide_caret = true
-  config.driver = :vips
   config.tolerance = 0.0005
   config.color_distance_limit = 15
 end
@@ -52,13 +51,13 @@ exception: `Capybara::Screenshot.enabled` is `SnapDiff.config.screenshot_enabled
 
 ## Recommended tolerance values
 
-| Use Case | VIPS `tolerance` | ChunkyPNG `color_distance_limit` | `stability_time_limit` |
-|----------|-----------------|--------------------------------|----------------------|
+| Use Case | `tolerance` | `color_distance_limit` | `stability_time_limit` |
+|----------|-------------|------------------------|----------------------|
 | Animated/complex pages | 0.01 | 30 | 2s |
 | Standard Rails apps | 0.001 (default) | 15 | 1s |
 | Pixel-perfect design tests | 0.0001 | 5 | 1s |
 
-**Note:** VIPS defaults to `tolerance: 0.001` (allows 0.1% pixel difference). ChunkyPNG has no default tolerance.
+**Note:** `tolerance` defaults to 0.001 (allows 0.1% pixel difference).
 
 ## Choosing the Right Color Comparison Method
 
@@ -66,28 +65,26 @@ exception: `Capybara::Screenshot.enabled` is `SnapDiff.config.screenshot_enabled
 
 ### Step 1: Choose color comparison method (pick ONE)
 
-| Method | Scale | Driver | Best for |
-|--------|-------|--------|----------|
-| `perceptual_threshold` | 0-100+ (dE00) | VIPS only | Cross-OS/browser font rendering, anti-aliasing |
-| `color_distance_limit` | 0-510 (RGBA Euclidean) | VIPS, ChunkyPNG | Legacy setups, fine-grained RGB control |
+| Method | Scale | Best for |
+|--------|-------|----------|
+| `perceptual_threshold` | 0-100+ (dE00) | Cross-OS/browser font rendering, anti-aliasing |
+| `color_distance_limit` | 0-510 (RGBA Euclidean) | Fine-grained RGB control |
 
 **Recommendation:** Use `perceptual_threshold: 2.0` for most cases. It matches human perception and needs less tuning.
 
-**⚠️ Color comparison methods are exclusive:** `perceptual_threshold` and `color_distance_limit` cannot both be active — if you set both, `perceptual_threshold` wins and `color_distance_limit` is ignored. However, `tolerance` works with **both** methods and is applied by default for VIPS (0.001). This means even with `perceptual_threshold: 2.0`, the `tolerance: 0.001` default still filters results.
+**⚠️ Color comparison methods are exclusive:** `perceptual_threshold` and `color_distance_limit` cannot both be active — if you set both, `perceptual_threshold` wins and `color_distance_limit` is ignored. However, `tolerance` works with **both** methods and is applied by default (0.001). This means even with `perceptual_threshold: 2.0`, the `tolerance: 0.001` default still filters results.
 
 ### Step 2: Set tolerance (optional, independent)
 
 | Setting | What it does | Scale |
 |---------|--------------|-------|
-| `tolerance` | Maximum allowed *ratio* of different pixels (VIPS) or diff bounding box (ChunkyPNG) | 0.0-1.0 |
+| `tolerance` | Maximum allowed *ratio* of different pixels | 0.0-1.0 |
 
 **Example:** `tolerance: 0.001` allows 0.1% of the image to differ (e.g., 125 pixels in a 1280×1024 screenshot).
 
 **Key difference:**
 - `perceptual_threshold` / `color_distance_limit` → **"how different can a pixel be?"**
 - `tolerance` → **"how many pixels can differ?"**
-
-**⚠️ Driver difference:** VIPS counts actual different pixels. ChunkyPNG counts the bounding box area around differences — a single pixel diff creates a box, and the entire box area counts against tolerance. This makes ChunkyPNG stricter with the same tolerance value.
 
 ### Quick start
 
@@ -98,7 +95,7 @@ screenshot 'dashboard', perceptual_threshold: 2.0
 # Allow small noise regions
 screenshot 'dashboard', perceptual_threshold: 2.0, tolerance: 0.001
 
-# Legacy ChunkyPNG setup
+# Raw RGB distance instead of perceptual
 screenshot 'dashboard', color_distance_limit: 15
 ```
 
@@ -122,7 +119,6 @@ Just `require 'snap_diff/integrations/minitest'` (legacy: `capybara_screenshot_d
 | Setting | When to use |
 |---------|-------------|
 | `perceptual_threshold` | Anti-aliasing false positives across OS/browser versions |
-| `shift_distance_limit` | Content shifts by a few pixels (ChunkyPNG only — **removed in 2.1**) |
 | `area_size_limit` | Allow small diff regions below a pixel count |
 | `color_distance_limit` | Fine-tune raw RGB channel tolerance |
 | `median_filter_window_size` | Smooth noise before comparison (VIPS only) |
@@ -311,41 +307,21 @@ Capybara::Screenshot::Diff.color_distance_limit = 42
 ```
 
 
-### Allowed shift distance
+### Allowed shift distance — removed in 2.1
 
-> **Removed in 2.1.** `shift_distance_limit` is implemented only by the ChunkyPNG driver,
-> and 2.1 removes that driver — libvips becomes the only backend. Setting it anywhere
-> (`SnapDiff.config.shift_distance_limit =`, the legacy
-> `Capybara::Screenshot::Diff.shift_distance_limit =`, or `screenshot 'index',
-> shift_distance_limit: 2`) warns once per process in 2.0. There is no vips equivalent:
-> use `median_filter_window_size` (the faster answer to the same problem — see
-> [Drivers](drivers.md#median-filter-size-vips-only)), `tolerance`, or
-> `color_distance_limit`.
+The `shift_distance_limit` option let you tolerate small movements in the image (for example,
+jquery-tablesorter rendering the same table slightly differently each run). It was implemented
+only by the ChunkyPNG driver, and 2.1 removed that driver — libvips is the only backend now,
+and it has no shift-distance comparison.
 
-Sometimes you want to allow small movements in the images.  For example, jquery-tablesorter
-renders the same table slightly differently sometimes.  You can set set the shift distance
-threshold for the comparison using the `shift_distance_limit` option to the `screenshot`
-method:
+Setting it anywhere is a `NoMethodError` on the config object and an ignored key per
+screenshot. Use one of these instead:
 
-```ruby
-test 'color threshold' do
-  visit '/'
-  screenshot 'index', shift_distance_limit: 2
-end
-```
-
-The difference is calculated as maximum distance in either the X or the Y axis.
-You can also set this globally:
-
-```ruby
-Capybara::Screenshot::Diff.shift_distance_limit = 1
-```
-
-**Note:** For each increase in `shift_distance_limit` more pixels are searched for a matching color value, and
-this will impact performance **severely** if a match cannot be found.
-
-If `shift_distance_limit` is `nil` shift distance is not measured.  If `shift_distance_limit` is set,
-even to `0`, shift distance is measured and reported on image differences.
+| Instead of `shift_distance_limit` | Why |
+|---|---|
+| `median_filter_window_size` | The same idea, far faster — smooths the image before comparing. See [Image Processing](drivers.md#median-filter-size) |
+| `tolerance` | Allows a ratio of the pixels to differ, wherever they are |
+| `color_distance_limit` | Allows each pixel to differ by a colour distance |
 
 ### Allowed difference size
 
