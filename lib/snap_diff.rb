@@ -27,27 +27,13 @@ module SnapDiff
 end
 SnapDiff.assert_single_gem!
 
-# This lean entry must never load the umbrella "capybara_screenshot_diff"
-# -- snap_diff_test.rb's "bare require never loads the umbrella" guard
-# enforces it -- so nothing required below may reach back here. None of
-# these requires reaches into lib/capybara* at all, so the canonical entry
-# point is exactly what 3.0 keeps.
-#
 # "capybara/dsl" is needed directly (not just transitively) so
 # `Capybara.default_max_wait_time` in Config#default_options resolves even
 # when "snap_diff" is required standalone (SnapDiffTest's
 # "standalone-loadable in a fresh process" regression test).
-#
-# snap_diff/legacy_shims is deliberate and is the ONE line here that 3.0
-# drops: it carries the whole v1 surface (const_missing forwarders, the old
-# mattr_accessors, SnapDiff.start), so a process that only ever requires
-# "snap_diff" still resolves the old Capybara::Screenshot::Diff names --
-# with deprecation warnings -- exactly as it did when this file reached
-# through the capybara/screenshot/diff/* forwarders to get them.
 require "capybara/dsl"
 require "snap_diff/config"
 require "snap_diff/comparison"
-require "snap_diff/legacy_shims"
 require "snap_diff/version"
 # SnapDiff.session/.reset/.pending_screenshots_message are part of the
 # documented core surface (docs/snapdiff.md object map lists them with no
@@ -55,12 +41,10 @@ require "snap_diff/version"
 # whichever integration happens to be loaded.
 require "snap_diff/screenshot_assertion"
 
-# The canonical namespace for the gem. The old
-# +Capybara::Screenshot::Diff+ constants are same-object const_missing shims
-# (snap_diff/legacy_shims) that warn once per constant per process.
+# The namespace for the gem. 2.1 deleted the v1 +Capybara::Screenshot+ /
+# +CapybaraScreenshotDiff+ trees, so this is the only one.
 module SnapDiff
-  # Compare two images on disk with the configured defaults. Canonical home;
-  # +Capybara::Screenshot::Diff.compare+ forwards here.
+  # Compare two images on disk with the configured defaults.
   #
   # Note the argument order swap: callers pass baseline first (reading
   # "compare baseline against current"), Comparison takes current first.
@@ -68,14 +52,10 @@ module SnapDiff
     Comparison.new(current_path, baseline_path, config.default_options.merge(options))
   end
 
-  # SnapDiff.start -- the v1-shaped two-holder config block -- is defined in
-  # snap_diff/legacy_shims (required above), because the holders it yields
-  # are the v1 surface and it cannot outlive them.
-
-  # Forward-looking configuration: yields the single consolidated
-  # {SnapDiff::Config} object instead of the two old holders. Same
-  # underlying storage as +start+ / the old mattr_accessors -- this is a
-  # different *shape* of the same settings, not a second source of truth.
+  # THE config entry point (ADR-008): yields the single consolidated
+  # {SnapDiff::Config} object. +SnapDiff.start+ yielded the two v1 config
+  # holders, so it could not outlive them -- 2.1 removed it rather than
+  # renaming it.
   #
   #   SnapDiff.configure do |config|
   #     config.window_size = [1280, 1024]

@@ -4,9 +4,8 @@ require "pathname"
 require "fileutils"
 
 require "snap_diff/comparison_result"
-require "snap_diff/drivers"
+require "snap_diff/drivers/vips_driver"
 require "snap_diff/image_preprocessor"
-require "snap_diff/removal"
 require "snap_diff/reporters/default"
 
 module SnapDiff
@@ -41,7 +40,7 @@ module SnapDiff
       end
     end
 
-    TOLERABLE_OPTIONS = [:tolerance, :color_distance_limit, :shift_distance_limit, :area_size_limit].freeze
+    TOLERABLE_OPTIONS = [:tolerance, :color_distance_limit, :area_size_limit].freeze
 
     attr_reader :driver, :driver_options
     attr_reader :image_path, :base_image_path
@@ -54,14 +53,10 @@ module SnapDiff
       ensure_files_exist!
 
       @driver_options = options.freeze
-      # The per-comparison half of the shift_distance_limit removal (the
-      # global half is Config#shift_distance_limit=). Presence is not enough:
-      # config.default_options carries the key on EVERY comparison, nil for
-      # everyone who never set it.
-      if options[:shift_distance_limit]
-        Removal.warn_once(:shift_distance_limit, Removal::SHIFT_DISTANCE_LIMIT_REMOVED)
-      end
-      @driver = Drivers.for(@driver_options)
+      # One backend since 2.1, constructed rather than looked up: the driver
+      # is stateless, so nothing is gained by threading one instance through
+      # the options hash the way the registry used to.
+      @driver = Drivers::VipsDriver.new
       @without_tolerable_options = (driver_options.keys & TOLERABLE_OPTIONS).empty?
     end
 

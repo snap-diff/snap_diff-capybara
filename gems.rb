@@ -7,10 +7,8 @@ gemspec path: __dir__
 
 gem "rake"
 
-# Image processing libraries
-gem "chunky_png", ">= 1.3", require: false
-gem "oily_png", platform: :ruby, git: "https://github.com/wvanbergen/oily_png", ref: "44042006e79efd42ce4b52c1d78a4c70f0b4b1b2"
-gem "ruby-vips", require: false
+# ruby-vips is a gemspec runtime dependency since 2.1 (the only backend), so
+# it is not listed here. chunky_png/oily_png went with the chunky_png driver.
 
 group :test do
   gem "capybara", ">= 3.26"

@@ -21,7 +21,9 @@ class SystemTestCase < ActiveSupport::TestCase
     @orig_save_path = SnapDiff.config.save_path
     SnapDiff.config.save_path = "./doc/screenshots"
 
-    SnapDiff.config.driver = ENV.fetch("SCREENSHOT_DRIVER", "chunky_png").to_sym
+    # `SnapDiff.config.driver = ENV.fetch("SCREENSHOT_DRIVER", ...)` is gone
+    # with the setting: 2.1 made libvips the only backend, so there is nothing
+    # for the env var to select.
 
     # TODO: Makes configurations copying and restoring much easier
 
@@ -51,10 +53,11 @@ class SystemTestCase < ActiveSupport::TestCase
     SnapDiff.config.tolerance = @orig_tolerance
     Capybara.current_driver = Capybara.default_driver
 
-    if SnapDiff.config.driver == :vips
-      Vips.cache_set_max(0)
-      Vips.cache_set_max(1000)
-    end
+    # The vips cache flush that used to live here (cache_set_max 0 then 1000)
+    # papered over libvips serving a stale image when a screenshot path was
+    # rewritten within the same second. VipsDriver#from_file now passes
+    # `revalidate: true`, so the workaround is gone -- see the regression test
+    # in test/unit/drivers/vips_driver_test.rb.
   end
 
   private

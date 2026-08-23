@@ -5,7 +5,7 @@
 Screenshot tests depend on exact browser rendering, which varies across OS and browser versions. Use `bin/dtest` to run tests inside Docker for consistent, reproducible results matching CI:
 
 ```bash
-bin/dtest                          # Run all tests with all drivers
+bin/dtest                          # Run all tests against every Capybara driver
 bin/dtest test/integration/        # Run specific test directory
 ```
 

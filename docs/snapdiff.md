@@ -1,15 +1,11 @@
 # SnapDiff — the canonical API
 
-Everything in this gem lives under `SnapDiff` since v2. This page is the SnapDiff-native
-reference: setup, configuration, the object map, and the extension points — all using canonical
-names only.
+Everything in this gem lives under `SnapDiff`. This page is the reference: setup, configuration,
+the object map, and the extension points.
 
-The legacy `Capybara::Screenshot::Diff` / `CapybaraScreenshotDiff` names still work — they resolve
-to the same objects — and the rest of the docs still teach them. The first legacy API a process
-touches prints one migration notice; on top of that, *lazily shimmed* constants warn once each.
-Some legacy names are silent by design. [UPGRADING.md](UPGRADING.md#deprecation-warnings) lists
-exactly which is which. Nothing here replaces a working setup — it is what you write for **new** code.
-For migrating an existing suite, see [UPGRADING.md](UPGRADING.md).
+2.1 deleted the v1 `Capybara::Screenshot::Diff` / `CapybaraScreenshotDiff` namespaces outright —
+they are `NameError`s now, not deprecations. Migrating a suite that still uses them? See
+[UPGRADING.md](UPGRADING.md#upgrading-to-v21).
 
 ## Quick start
 
@@ -97,14 +93,13 @@ loads the Minitest integration. See
 
 ## Configuration
 
-All 27 settings live on one flat object, `SnapDiff.config` (a `SnapDiff::Config`).
+All 25 settings live on one flat object, `SnapDiff.config` (a `SnapDiff::Config`).
 
 ```ruby
 # test_helper.rb / rails_helper.rb
 SnapDiff.configure do |config|
   config.window_size = [1280, 1024]
   config.tolerance = 0.0005
-  config.driver = :vips
   config.save_path = "doc/screenshots"
 end
 
@@ -113,24 +108,10 @@ SnapDiff.config.hide_caret = true
 SnapDiff.config.tolerance          # => 0.0005
 ```
 
-`SnapDiff::Config` **is** the storage. The legacy `Capybara::Screenshot.*` and
-`Capybara::Screenshot::Diff.*` accessors are thin delegators onto it — one storage, two views —
-so a write through either surface is immediately visible through the other:
-
-```ruby
-SnapDiff.config.window_size = [1280, 1024]
-Capybara::Screenshot.window_size    # => [1280, 1024]
-```
-
-`SnapDiff.start` is the same call shape as the old `Capybara::Screenshot::Diff.configure`, if
-you prefer the two-holder form:
-
-```ruby
-SnapDiff.start do |screenshot, diff|
-  screenshot.window_size = [1280, 1024]
-  diff.tolerance = 0.0005
-end
-```
+`SnapDiff::Config` **is** the storage — one eagerly-created instance, every setting a plain
+`attr_accessor`. There is no second view of it: the v1 `Capybara::Screenshot.*` /
+`Capybara::Screenshot::Diff.*` delegators and the two-holder `SnapDiff.start` block were removed
+in 2.1.
 
 Three derived, read-only values are computed from the settings above:
 
@@ -141,9 +122,9 @@ Three derived, read-only values are computed from the settings above:
 | `SnapDiff.config.default_options` | The capture/compare defaults handed to `SnapDiff::Comparison` |
 
 Every option's meaning is documented in the
-[Configuration Reference](configuration.md) — the names are identical, only the receiver differs.
-The one rename: `Capybara::Screenshot.enabled` is `SnapDiff.config.screenshot_enabled`, because
-`SnapDiff.config.enabled` is taken by `Capybara::Screenshot::Diff.enabled`.
+[Configuration Reference](configuration.md). One name differs from its v1 spelling:
+`screenshot_enabled` is the old `Capybara::Screenshot.enabled`, because the bare `enabled` is
+taken by the old `Capybara::Screenshot::Diff.enabled`.
 
 ## Object map
 
@@ -153,7 +134,7 @@ integration require; a few objects need their own require, noted below.
 | Object | What it is for |
 |--------|----------------|
 | `SnapDiff.config`, `SnapDiff::Config` | Every setting, one flat object. The storage. |
-| `SnapDiff.configure`, `SnapDiff.start` | Config block helpers (consolidated / v1 shape) |
+| `SnapDiff.configure` | Config block helper — the single config entry point |
 | `SnapDiff.compare` | Compare two image files directly, no browser |
 | `SnapDiff::Comparison` | The layered comparison engine (ex `ImageCompare`) |
 | `SnapDiff::Comparison::Images` | Frozen bundle a comparison operates on: both images, their paths, the driver and the options |
@@ -165,8 +146,6 @@ integration require; a few objects need their own require, noted below.
 | `SnapDiff::ExpectationNotMet` | A screenshot did not match its baseline |
 | `SnapDiff::UnstableImage` | No stable capture within `stability_time_limit` / `wait` |
 | `SnapDiff::WindowSizeMismatchError` | Browser window is not the configured `window_size` |
-| `SnapDiff::Driver` | Mixin with the shared driver defaults (`require "snap_diff/driver"`) — **removed in 2.1** |
-| `SnapDiff::Drivers` | Driver factory and registry — `.for`, `.loaded`, `.available` — **removed in 2.1** |
 | `SnapDiff::Reporting` | Process-global reporter lifecycle (`require "snap_diff/reporting"`) |
 | `SnapDiff::Reporters::HTML` | The interactive HTML report (`require "snap_diff/reporters/html"`) |
 | `SnapDiff::Reporters::Default` | Builds the annotated diff images and the failure message |
@@ -262,73 +241,35 @@ SnapDiff.reset                           # always: notifies reporters, clears th
 SnapDiff::Reporting.finalize!
 ```
 
-## Custom drivers
+## Custom drivers — removed in 2.1
 
-> **Removed in 2.1 — no replacement.** libvips becomes the only backend, and the driver
-> abstraction goes with the choice: the `SnapDiff::Driver` mixin, the
-> `SnapDiff::Drivers.loaded` registry, `SnapDiff::Drivers.available`, and selecting a driver
-> by name. In 2.0 all of it still works and warns once per process (silence with
-> `SnapDiff.silence_deprecations = true` or `SNAP_DIFF_SILENCE_DEPRECATIONS=1`). Nothing
-> here migrates to a 2.1 shape — there is no 2.1 shape. If you maintain a driver, say so on
-> [#166](https://github.com/snap-diff/snap_diff-capybara/issues/166) before 2.1 ships.
+**There is no migration path, and that is deliberate.** 2.1 removed the driver abstraction
+whole: the `SnapDiff::Driver` mixin, the `SnapDiff::Drivers.loaded` registry,
+`SnapDiff::Drivers.available` detection, the `driver:` setting, and `driver: :auto`. libvips
+is the only backend, `ruby-vips` is a runtime dependency of this gem, and
+`SnapDiff::Drivers::VipsDriver` is wired in directly.
 
-A driver is a plain object that does the image work. Include `SnapDiff::Driver` for the shared
-defaults, then implement the operations the comparison engine calls:
+A third-party driver stops working on 2.1 and nothing replaces it. One backend is what keeps
+the comparison engine honest — every option means one thing, and the reported figures come
+from one implementation. If you maintain a driver, say so on
+[the issue tracker](https://github.com/snap-diff/snap_diff-capybara/issues); that is the only
+thing that can reopen this.
 
-```ruby
-require "snap_diff/driver"
+Everything the abstraction was used for from the outside has a direct answer:
 
-class MyDriver
-  include SnapDiff::Driver
-
-  # Provided by the mixin, override only if your image objects differ:
-  #   width_for(image), height_for(image), dimension(image),
-  #   image_area_size(image), same_dimension?(comparison), supports?(feature)
-
-  # Implement (this is what both bundled drivers implement):
-  #   from_file(path), load_images(base_path, new_path), save_image_to(image, path)
-  #   same_pixels?(comparison), find_difference_region(comparison)
-  #   crop(region, image), resize_image_to(image, w, h)
-  #   add_black_box(image, region), draw_rectangles(images, region, ...)
-end
-```
-
-`supports?(feature)` is just `respond_to?(feature)` — the engine uses it to skip optional
-operations. The VIPS driver additionally implements `filter_image_with_median`, `merge`,
-`highlight_mask` and `difference_level`; ChunkyPNG does not, and `supports?` is how that is
-detected. Look at `lib/snap_diff/drivers/chunky_png_driver.rb` for the smaller of the two
-reference implementations.
-
-### Registration
-
-`SnapDiff::Drivers.loaded` is the registry: a mutable `name => driver class` hash. Register by
-writing into it, then select the driver by that name:
-
-```ruby
-SnapDiff::Drivers.loaded[:my_driver] = MyDriver
-
-SnapDiff.config.driver = :my_driver          # globally
-screenshot "index", driver: :my_driver       # or per screenshot
-```
-
-Resolution goes through `SnapDiff::Drivers.for`, which looks the symbol up in `loaded` and calls
-`.new` on the class — **your driver class must be instantiable with no arguments**. A pre-built
-instance skips the registry entirely:
-
-```ruby
-screenshot "index", driver: MyDriver.new     # any non-Symbol is used as-is
-```
-
-`SnapDiff::Drivers.available` is the *detected* list (`[:vips, :chunky_png]`, filled at load time
-by probing for the `ruby-vips` and `chunky_png` gems). It is a read-only view of detection, not
-the registry — registering a custom driver does not add it there, and `driver: :auto` picks
-`available.first`. Custom drivers must always be named explicitly.
+| You used | Now |
+|---|---|
+| `SnapDiff.config.driver = :vips` | delete the line |
+| `screenshot "index", driver: :vips` | delete the option |
+| `driver: :auto` | delete it — there is one backend |
+| `SnapDiff::Drivers.available` to branch on what is installed | nothing to branch on; a missing `ruby-vips` is a Bundler resolution error |
+| `SnapDiff::Drivers.loaded[:mine] = MyDriver` | no replacement |
 
 ## Related
 
-- [Framework Setup](framework-setup.md) — the same three integrations under their legacy names
+- [Framework Setup](framework-setup.md) — the three integrations, one page each
 - [Configuration Reference](configuration.md) — what every option does
-- [Image Processing Drivers](drivers.md) — VIPS vs ChunkyPNG, perceptual threshold
+- [Image Processing](drivers.md) — libvips, perceptual threshold, tolerance
 - [Web UI & Custom Reporters](reporters.md) — the HTML report in detail
 - [Architecture](architecture.md) — how the pieces fit together internally
 - [UPGRADING.md](UPGRADING.md) — migrating an existing suite off the legacy names

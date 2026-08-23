@@ -7,16 +7,34 @@ rescue LoadError => e
   raise
 end
 
-require "snap_diff/driver"
-require "snap_diff/drivers"
 require "snap_diff/comparison_result"
 # Defines SnapDiff::RED_RGBA, the highlight_mask default color.
 require "snap_diff/annotation_service"
 
 module SnapDiff
   module Drivers
+    # THE image backend. 2.1 removed the driver abstraction (the
+    # +SnapDiff::Driver+ mixin, the +SnapDiff::Drivers+ registry and
+    # <tt>driver: :auto</tt> selection) along with the chunky_png driver, so
+    # this class is no longer one of several -- +ruby-vips+ is a runtime
+    # dependency and every comparison runs through here. The dimension
+    # helpers below came from the mixin; with one includer they live here.
+    #
+    # +Drivers+ survives only as the namespace this class has always been
+    # published under (docs/drivers.md), not as a registry.
     class VipsDriver
-      include SnapDiff::Driver
+      PNG_EXTENSION = ".png"
+
+      # libvips caches loader operations keyed on filename + mtime, and mtime
+      # has ONE-SECOND resolution -- so overwriting a path and re-reading it
+      # within the same second hands back the PREVIOUS image. This gem does
+      # exactly that: the screenshoter writes `<name>.png`, `checkout_base_screenshot`
+      # writes `<name>.base.png` from VCS, and the comparison then reads both.
+      #
+      # `revalidate: true` tells the loader to skip the cached result (libvips
+      # 8.15+). It was latent until 2.1 because comparisons built without an
+      # explicit driver defaulted to chunky_png, which always re-read the file.
+      REVALIDATE = Vips.at_least_libvips?(8, 15) ? {revalidate: true}.freeze : {}.freeze
 
       def find_difference_region(comparison)
         new_image, base_image, options = comparison.new_image, comparison.base_image, comparison.options
@@ -86,7 +104,7 @@ module SnapDiff
       end
 
       def from_file(filename)
-        result = ::Vips::Image.new_from_file(filename.to_s)
+        result = ::Vips::Image.new_from_file(filename.to_s, **REVALIDATE)
 
         result = result.colourspace(:srgb) if result.bands < 3
         result = result.bandjoin(255) if result.bands == 3
@@ -102,6 +120,30 @@ module SnapDiff
 
       def same_pixels?(comparison)
         (comparison.new_image == comparison.base_image).min == 255
+      end
+
+      # --- ex-SnapDiff::Driver mixin --------------------------------------
+      # Dimension helpers, unchanged. They were shared because there were two
+      # drivers; there is one.
+
+      def same_dimension?(comparison)
+        dimension(comparison.base_image) == dimension(comparison.new_image)
+      end
+
+      def height_for(image)
+        image.height
+      end
+
+      def width_for(image)
+        image.width
+      end
+
+      def image_area_size(image)
+        width_for(image) * height_for(image)
+      end
+
+      def dimension(image)
+        [width_for(image), height_for(image)]
       end
 
       def merge(new_image, base_image)

@@ -28,4 +28,13 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency "actionpack", ">= 7.1", "< 9"
   spec.add_development_dependency "activesupport", ">= 7.1", "< 9"
   spec.add_runtime_dependency "capybara", ">= 2", "< 4"
+  # 2.1 removed the driver abstraction: libvips is the only backend, so the
+  # gem that binds it is a hard dependency rather than something the user is
+  # told to add. Without this an install resolves fine and then dies at the
+  # first comparison -- a resolver error is the better failure.
+  #
+  # ruby-vips 2.x is the current major line; the gem itself needs system
+  # libvips >= 8.2, which no gemspec constraint can express -- see
+  # docs/drivers.md for the system package.
+  spec.add_runtime_dependency "ruby-vips", ">= 2.0", "< 3"
 end

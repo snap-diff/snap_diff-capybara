@@ -9,8 +9,7 @@ module SnapDiff
   #
   # The canonical home of the per-test session: the AssertionRegistry
   # holding the assertions and new-screenshot names of the test running
-  # here. CapybaraScreenshotDiff.registry / .reset /
-  # .pending_screenshots_message are thin forwarders over these.
+  # here.
   #
   # Note: Thread.current[] is *fiber*-local, so a session is per fiber, not
   # per thread. That is pre-existing, documented behaviour (issue #217);

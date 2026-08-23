@@ -4,16 +4,18 @@ require "tempfile"
 
 require_relative "os"
 require_relative "browser_helpers"
+require_relative "drivers/vips_driver"
 
 module SnapDiff
   class Screenshoter
     attr_reader :capture_options, :driver
 
     # @param capture_options [Hash] Options for capturing (window_size, wait, etc.)
-    # @param comparison_options [Hash] Options for image comparison (driver, tolerance, etc.)
-    def initialize(capture_options, comparison_options = {})
+    # @param _comparison_options [Hash] Ignored since 2.1 removed driver
+    #   selection; kept so the two-argument call sites stay unchanged.
+    def initialize(capture_options, _comparison_options = {})
       @capture_options = capture_options
-      @driver = SnapDiff::Drivers.for(comparison_options)
+      @driver = SnapDiff::Drivers::VipsDriver.new
     end
 
     def crop

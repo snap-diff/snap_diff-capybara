@@ -6,8 +6,7 @@ Generate an interactive Web UI report of screenshot differences:
 
 ```ruby
 # Add to test_helper.rb — one line, that's it
-require 'snap_diff/reporters/html'            # canonical
-# require 'capybara_screenshot_diff/reporters/html'   # legacy, same thing
+require 'snap_diff/reporters/html'
 ```
 
 After running tests, open the report (generated only when there are failures):
@@ -44,8 +43,7 @@ class MyReporter
 end
 
 # Register in test_helper.rb
-SnapDiff::Reporting.register(MyReporter.new)   # canonical — appends under the mutex
-# CapybaraScreenshotDiff.reporters << MyReporter.new   # legacy, same list, skips the lock
+SnapDiff::Reporting.register(MyReporter.new)   # appends under the mutex
 ```
 
 Reporters are notified before assertions are cleared on each test teardown. `finalize` runs from

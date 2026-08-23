@@ -124,28 +124,21 @@ class SnapDiffConfigTest < ActiveSupport::TestCase
     config.save_path = original_save_path
   end
 
-  # The vips tolerance floor in Config#default_options is the one literal in
-  # there that is not a stored setting, and deleting it left the full suite
-  # green (config.rb's then-arm had a hit count of 0): nothing ever asked for
-  # default_options with driver == :vips and no explicit tolerance.
-  test "default_options floors tolerance at 0.001 for vips and only for vips" do
-    original_driver, original_tolerance = config.driver, config.tolerance
+  # The tolerance floor in Config#default_options is the one literal in there
+  # that is not a stored setting. It used to be conditional on
+  # `driver == :vips`; 2.1 made libvips the only backend, so the condition was
+  # always true and is gone. The "and only for vips" half of this test went
+  # with the `driver` setting.
+  test "default_options floors tolerance at 0.001, and an explicit tolerance still wins" do
+    original_tolerance = config.tolerance
 
     begin
       config.tolerance = nil
-
-      config.driver = :vips
       assert_equal 0.001, config.default_options[:tolerance]
 
-      config.driver = :chunky_png
-      assert_nil config.default_options[:tolerance]
-
-      # An explicit tolerance still wins over the floor.
       config.tolerance = 0.5
-      config.driver = :vips
       assert_equal 0.5, config.default_options[:tolerance]
     ensure
-      config.driver = original_driver
       config.tolerance = original_tolerance
     end
   end

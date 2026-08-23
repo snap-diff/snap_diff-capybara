@@ -8,7 +8,7 @@ class ScreenshoterTest < ActiveSupport::TestCase
   include DSLStub
 
   test "#take_screenshot without wait skips image loading" do
-    screenshoter = SnapDiff::Screenshoter.new({wait: nil}, {driver: :chunky_png})
+    screenshoter = SnapDiff::Screenshoter.new({wait: nil})
 
     mock = ::Minitest::Mock.new
     mock.expect(:save_screenshot, true) { |path| path.include?("01_a.png") }
@@ -23,10 +23,7 @@ class ScreenshoterTest < ActiveSupport::TestCase
   end
 
   test "#take_screenshot with custom screenshot options" do
-    screenshoter = SnapDiff::Screenshoter.new(
-      {wait: nil, capybara_screenshot_options: {full: true}},
-      {driver: :chunky_png}
-    )
+    screenshoter = SnapDiff::Screenshoter.new({wait: nil, capybara_screenshot_options: {full: true}})
 
     mock = ::Minitest::Mock.new
     mock.expect(:save_screenshot, true) { |path, options| path.include?("01_a.png") && options[:full] }
@@ -41,14 +38,13 @@ class ScreenshoterTest < ActiveSupport::TestCase
   end
 
   test "#prepare_page_for_screenshot without wait does not raise any error" do
-    screenshoter = SnapDiff::Screenshoter.new({wait: nil}, {driver: :chunky_png})
+    screenshoter = SnapDiff::Screenshoter.new({wait: nil})
 
     assert_nil screenshoter.prepare_page_for_screenshot(timeout: nil) # does not raise an error
   end
 
-  test "#resize_if_needed halves a non-square retina screenshot to the expected window size via VipsDriver" do
-    skip "VIPS not present. Skipping VIPS driver tests." unless defined?(Vips)
-    screenshoter = SnapDiff::Screenshoter.new({}, {driver: :vips})
+  test "#resize_if_needed halves a non-square retina screenshot to the expected window size" do
+    screenshoter = SnapDiff::Screenshoter.new({})
     retina_image = Vips::Image.black(2560, 1600) # 2x window size, non-square
 
     resized = SnapDiff.config.stub(:window_size, [1280, 1024]) do

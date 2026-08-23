@@ -4,14 +4,12 @@
 # Uses absolute file:// paths so images load when opened directly in a browser.
 
 require "bundler/setup"
-require "capybara_screenshot_diff"
-require "capybara_screenshot_diff/minitest"
-require "capybara/screenshot/diff"
-require "capybara_screenshot_diff/reporters/html"
+require "snap_diff/integrations/minitest"
+require "snap_diff/reporters/html"
 
-output_path = CapybaraScreenshotDiff::Reporters::HTML.default_output_path
+output_path = SnapDiff::Reporters::HTML.default_output_path
 
-# Build real comparisons using the gem's own ImageCompare.
+# Build real comparisons using the gem's own Comparison.
 # Each pair gets a unique copy of the base image to avoid annotation file conflicts.
 pairs = [
   {name: "islands-map", base: "a", new: "b"},
@@ -20,7 +18,7 @@ pairs = [
 ]
 
 embed = ARGV.include?("--embed") || !!ENV["CI"]
-reporter = CapybaraScreenshotDiff::Reporters::HTML.new(output_path: output_path, embed_images: embed)
+reporter = SnapDiff::Reporters::HTML.new(output_path: output_path, embed_images: embed)
 fixtures = File.expand_path("../test/fixtures/images", __dir__)
 tmp_dir = File.expand_path("../tmp/sample_images", __dir__)
 FileUtils.mkdir_p(tmp_dir)
@@ -32,17 +30,17 @@ assertions = pairs.map do |pair|
   FileUtils.cp("#{fixtures}/#{pair[:base]}.png", base_copy)
   FileUtils.cp("#{fixtures}/#{pair[:new]}.png", new_copy)
 
-  compare = Capybara::Screenshot::Diff::ImageCompare.new(new_copy, base_copy, driver: :vips)
+  compare = SnapDiff::Comparison.new(new_copy, base_copy)
   compare.processed
 
-  CapybaraScreenshotDiff::ScreenshotAssertion.new(pair[:name]).tap { |a| a.compare = compare }
+  SnapDiff::ScreenshotAssertion.new(pair[:name]).tap { |a| a.compare = compare }
 end
 
 # Add passing assertions (identical images = no difference)
 passing = %w[dashboard settings profile users].map do |name|
-  compare = Capybara::Screenshot::Diff::ImageCompare.new("#{fixtures}/a.png", "#{fixtures}/a.png")
+  compare = SnapDiff::Comparison.new("#{fixtures}/a.png", "#{fixtures}/a.png")
   compare.processed
-  CapybaraScreenshotDiff::ScreenshotAssertion.new(name).tap { |a| a.compare = compare }
+  SnapDiff::ScreenshotAssertion.new(name).tap { |a| a.compare = compare }
 end
 
 reporter.record(assertions + passing)

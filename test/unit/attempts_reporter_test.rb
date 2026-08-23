@@ -27,7 +27,7 @@ module SnapDiff
     test "#generate returns the timeout message listing every attempt artifact" do
       snap = attempt_snapshot("unstable_message", %i[a b])
 
-      message = AttemptsReporter.new(snap, {driver: :chunky_png}, {wait: 2, stability_time_limit: 0.1}).generate
+      message = AttemptsReporter.new(snap, {}, {wait: 2, stability_time_limit: 0.1}).generate
 
       assert_match(/Could not get stable screenshot within 2s/, message)
       snap.find_attempts_paths.each do |attempt_path|
@@ -40,7 +40,7 @@ module SnapDiff
       newest_attempt = Pathname.new(snap.find_attempts_paths.max)
       original_bytes = newest_attempt.binread
 
-      AttemptsReporter.new(snap, {driver: :chunky_png}, {wait: 2, stability_time_limit: 0.1}).generate
+      AttemptsReporter.new(snap, {}, {wait: 2, stability_time_limit: 0.1}).generate
 
       assert_predicate newest_attempt, :exist?
       assert_not_equal original_bytes, newest_attempt.binread,
@@ -65,7 +65,7 @@ module SnapDiff
       SnapDiff.config.stub(:screenshoter, alternating_screenshoter) do
         error = assert_raises(SnapDiff::UnstableImage) do
           StableScreenshoter
-            .new({stability_time_limit: 0.05, wait: 0.2}, {driver: :chunky_png})
+            .new({stability_time_limit: 0.05, wait: 0.2}, {})
             .take_comparison_screenshot(snap)
         end
       end

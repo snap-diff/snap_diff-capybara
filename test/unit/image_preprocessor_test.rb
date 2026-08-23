@@ -43,9 +43,7 @@ class ImagePreprocessorTest < ActiveSupport::TestCase
     assert_equal :new_image, second_call[:image]
   end
 
-  test "#process_comparison applies median filter when VipsDriver is available and median_filter_window_size is specified" do
-    skip "VIPS not present. Skipping VIPS driver tests." unless defined?(Vips)
-
+  test "#process_comparison applies the median filter when median_filter_window_size is specified" do
     @driver = create_test_driver(is_vips: true)
     window_size = 3
     options = {median_filter_window_size: window_size}
@@ -66,25 +64,8 @@ class ImagePreprocessorTest < ActiveSupport::TestCase
     assert_equal :new_image, second_call[:image]
   end
 
-  test "process_comparison warns and skips median filter when VipsDriver is not available" do
-    window_size = 3
-    options = {
-      median_filter_window_size: window_size,
-      image_path: "some/path.png"
-    }
-
-    expected_warning = /Median filter has been skipped for.*because it is not supported/
-
-    comparison = SnapDiff::Comparison::Images.new(:new_image, :base_image, {}, @driver)
-
-    warning_output = capture_io do
-      preprocessor = SnapDiff::ImagePreprocessor.new(@driver, options)
-      result = preprocessor.process_comparison(comparison)
-
-      assert_equal comparison, result
-      assert_empty @driver.filter_calls
-    end
-
-    assert_match expected_warning, warning_output.join
-  end
+  # The "warns and skips the median filter when the driver does not support it"
+  # test is gone with the capability probe it exercised: chunky_png was the
+  # driver that lacked #filter_image_with_median, and 2.1 removed it. With
+  # libvips the only backend the fallback branch was unreachable.
 end

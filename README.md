@@ -3,7 +3,7 @@
 [![Test](https://github.com/snap-diff/snap_diff-capybara/actions/workflows/test.yml/badge.svg)](https://github.com/snap-diff/snap_diff-capybara/actions/workflows/test.yml)
 [![DeepWiki](https://img.shields.io/badge/DeepWiki-snap--diff%2Fsnap__diff--capybara-blue.svg?logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IndoaXRlIiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+PHBhdGggZD0iTTEyIDJhMTAgMTAgMCAxIDAgMCAyMCAxMCAxMCAwIDAgMCAwLTIweiIvPjxwYXRoIGQ9Ik0xMiA2djEyIi8+PHBhdGggZD0iTTYgMTJoMTIiLz48L3N2Zz4=)](https://deepwiki.com/snap-diff/snap_diff-capybara)
 
-# Capybara::Screenshot::Diff
+# SnapDiff for Capybara
 
 Stop shipping UI bugs. Take screenshots in your Capybara tests, commit baselines to git, and let CI catch visual regressions in pull requests — no cloud service, no subscription, runs entirely in your test suite.
 
@@ -11,9 +11,9 @@ Stop shipping UI bugs. Take screenshots in your Capybara tests, commit baselines
 
 **Why this gem?** Baselines live in git — review UI changes in pull requests like you review code. Runs offline, works in CI, zero vendor lock-in. Unlike Percy/Chromatic (paid SaaS), nothing to sign up for. Unlike BackstopJS, no Node required.
 
-> **2.0 experiment (beta):** the gem is moving to a `SnapDiff` canonical namespace. Opt in with `gem "capybara-screenshot-diff", "2.0.0.beta3"` (or the latest 2.0.0 prerelease; prereleases are never installed by default — normal installs stay on 1.x). Legacy names keep working; the first legacy API a process touches prints one migration notice (lazily shimmed constants also warn once each — see [which names warn](docs/UPGRADING.md#deprecation-warnings)), silenceable via `SnapDiff.silence_deprecations = true` or `SNAP_DIFF_SILENCE_DEPRECATIONS=1`. Writing new code? Start from [SnapDiff — the canonical API](docs/snapdiff.md), which uses canonical names only. Migrating an existing suite? See the [upgrade guide](docs/UPGRADING.md). Share feedback on [#166](https://github.com/snap-diff/snap_diff-capybara/issues/166).
+> **2.1 removed the v1 API.** Everything lives under `SnapDiff` now — the `Capybara::Screenshot::Diff` and `CapybaraScreenshotDiff` namespaces, the `capybara_screenshot_diff/*` require paths, the ChunkyPNG driver, the `driver:` setting and `shift_distance_limit` are gone, not deprecated. 2.0 was the transitional release where both APIs worked and everything that died warned. Coming from 1.x or 2.0? The [upgrade guide](docs/UPGRADING.md) has the change list; the real-world migration was 17 lines across two files.
 >
-> Starting with the 2.0 prereleases the gem is also published as [`snap_diff-capybara`](https://rubygems.org/gems/snap_diff-capybara) — identical content and versions under the forward-looking name, matching this repository. Install either; don't install both.
+> The gem is published under two names — [`snap_diff-capybara`](https://rubygems.org/gems/snap_diff-capybara) (matching this repository) and [`capybara-screenshot-diff`](https://rubygems.org/gems/capybara-screenshot-diff) — with identical content and versions. Install either; don't install both.
 
 ## Quick Start (5 minutes)
 
@@ -21,19 +21,20 @@ Stop shipping UI bugs. Take screenshots in your Capybara tests, commit baselines
 
 ```ruby
 # Gemfile
-gem 'capybara-screenshot-diff'
-gem 'ruby-vips'  # Optional: 10x faster comparisons
+gem 'snap_diff-capybara'
+# ruby-vips comes with the gem since 2.1; libvips itself is a system package
+# (brew install vips / apt-get install libvips).
 ```
 
 ```ruby
 # test/test_helper.rb
-require 'capybara_screenshot_diff/minitest'
+require 'snap_diff/integrations/minitest'
 ```
 
 ```ruby
 # test/application_system_test_case.rb
 class ApplicationSystemTestCase < ActionDispatch::SystemTestCase
-  include CapybaraScreenshotDiff::Minitest::Assertions
+  include SnapDiff::Minitest::Assertions
 end
 ```
 
@@ -86,8 +87,8 @@ For RSpec, Cucumber, or non-Rails setup, see [Framework Setup](docs/framework-se
 ### For Non-Rails Projects (Hugo, Jekyll, Static Sites)
 
 ```ruby
-require 'capybara_screenshot_diff/static'
-CapybaraScreenshotDiff.serve("_site")  # or "public", "build", "dist"
+require 'snap_diff/static'
+SnapDiff.serve("_site")  # or "public", "build", "dist"
 ```
 
 Then commit baselines to git just like Rails. [Full setup](docs/ci-integration.md#non-rails-projects-hugo-jekyll-static-sites).
@@ -98,7 +99,7 @@ The test fails with a clear message and generates diff files:
 
 ```text
 Screenshot does not match for 'homepage':
-({"area_size":1250,"region":[0,19,199,83],"max_color_distance":42.5})
+({"area_size":684.0,"region":[11.0,3.0,49.0,21.0],"difference_level":0.0653125})
 ```
 
 Open `doc/screenshots/homepage.diff.png` to see exactly what changed. If the change is intentional, delete the baseline and re-run to update it.
@@ -115,7 +116,7 @@ Add one line to get an interactive dashboard for reviewing all screenshot differ
 
 ```ruby
 # test/test_helper.rb
-require 'capybara_screenshot_diff/reporters/html'
+require 'snap_diff/reporters/html'
 ```
 
 After tests run, open `doc/screenshots/snap_diff_report.html`:
@@ -129,7 +130,9 @@ See [Web UI & Custom Reporters](docs/reporters.md) for full feature details and 
 Works without a browser — PDFs, generated images, CI artifacts:
 
 ```ruby
-result = Capybara::Screenshot::Diff.compare("baseline.png", "current.png")
+require 'snap_diff'
+
+result = SnapDiff.compare("baseline.png", "current.png")
 result.different?    # => true if visually different
 result.quick_equal?  # => true if byte-identical
 ```
@@ -138,8 +141,8 @@ result.quick_equal?  # => true if byte-identical
 
 - **Crop to element:** `screenshot "form", crop: "#main-form"`
 - **Ignore regions:** `screenshot "dashboard", skip_area: [".timestamp"]`
-- **Disable animations:** `Capybara::Screenshot.disable_animations = true`
-- **Set window size:** `Capybara::Screenshot.window_size = [1280, 1024]`
+- **Disable animations:** `SnapDiff.config.disable_animations = true`
+- **Set window size:** `SnapDiff.config.window_size = [1280, 1024]`
 
 ## Handling Flaky Tests
 
@@ -148,10 +151,10 @@ Defaults work for most Rails apps — `blur_active_element`, `hide_caret`, and `
 If screenshots differ between CI and local, set a comparison threshold:
 
 ```ruby
-Capybara::Screenshot::Diff.configure do |screenshot, diff|
-  screenshot.window_size = [1280, 1024]        # consistent viewport
-  diff.perceptual_threshold = 2.0              # ignore anti-aliasing (VIPS only)
-  # or: diff.tolerance = 0.001                 # percentage-based (default for VIPS)
+SnapDiff.configure do |config|
+  config.window_size = [1280, 1024]        # consistent viewport
+  config.perceptual_threshold = 2.0        # ignore anti-aliasing
+  # or: config.tolerance = 0.001           # percentage-based (the default)
 end
 ```
 
@@ -174,7 +177,7 @@ Delete the baseline file and re-run tests: `rm doc/screenshots/homepage.png && b
 <details>
 <summary><strong>CSS animations make my screenshots flaky</strong></summary>
 
-Enable `Capybara::Screenshot.disable_animations = true` to freeze CSS animations/transitions before each capture. Or use `stability_time_limit: 1` to wait for animations to finish.
+Enable `SnapDiff.config.disable_animations = true` to freeze CSS animations/transitions before each capture. Or use `stability_time_limit: 1` to wait for animations to finish.
 </details>
 
 <details>
@@ -186,7 +189,7 @@ Set `window_size` for consistent dimensions and use `perceptual_threshold: 2.0` 
 <details>
 <summary><strong>Will this slow down my tests?</strong></summary>
 
-Comparisons add ~50ms per image with VIPS. Without `ruby-vips`, ChunkyPNG is used (slower but no system dependency). `stability_time_limit` adds wait time — keep it low (0.1-0.5s) or use `disable_animations` instead.
+Comparisons add ~50ms per image. `stability_time_limit` adds wait time — keep it low (0.1-0.5s) or use `disable_animations` instead.
 </details>
 
 <details>
@@ -197,15 +200,15 @@ Comparisons add ~50ms per image with VIPS. Without `ruby-vips`, ChunkyPNG is use
 
 ## Installation
 
-**Requirements:** Ruby 3.2+. Rails 7.1+ for Rails integration; non-Rails projects supported via `CapybaraScreenshotDiff.serve()`. For the `:vips` driver: [libvips 8.9+](https://libvips.github.io/libvips/install.html). On macOS: `brew install vips`. On Ubuntu: `apt-get install libvips-dev`.
+**Requirements:** Ruby 3.2+. Rails 7.1+ for Rails integration; non-Rails projects supported via `SnapDiff.serve()`. Comparison runs on [libvips](https://libvips.github.io/libvips/install.html) (8.9+), a system package: `brew install vips` on macOS, `apt-get install libvips-dev` on Ubuntu. The `ruby-vips` binding is a runtime dependency of this gem since 2.1, so Bundler installs it for you.
 
 ## Docs
 
-- [SnapDiff — the canonical API](docs/snapdiff.md) — setup, config, object map, custom drivers & reporters, canonical names only
+- [SnapDiff — the canonical API](docs/snapdiff.md) — setup, config, object map, custom reporters
 - [Framework Setup](docs/framework-setup.md) — Minitest, RSpec, Cucumber
 - [CI & Non-Rails Integration](docs/ci-integration.md) — GitHub Actions, reusable action, static sites, baseline updates
 - [Configuration Reference](docs/configuration.md) — all options explained
-- [Image Processing Drivers](docs/drivers.md) — VIPS, ChunkyPNG, perceptual threshold
+- [Image Processing](docs/drivers.md) — libvips, perceptual threshold, tolerance
 - [Screenshot Organization](docs/organization.md) — groups, sections, cropping, multi-browser
 - [Web UI & Custom Reporters](docs/reporters.md) — interactive report, custom reporters
 
@@ -215,7 +218,7 @@ After checking out the repo, run `bin/setup` then `rake test`. See [Docker Testi
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md)
+See [CONTRIBUTING.md](https://github.com/snap-diff/snap_diff-capybara/blob/master/CONTRIBUTING.md)
 
 ## License
 

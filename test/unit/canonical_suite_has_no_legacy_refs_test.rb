@@ -5,18 +5,16 @@ require "test_helper"
 # The TEST-TREE half of the split that core_tree_has_no_legacy_deps_test.rb
 # guards for lib/.
 #
-# `rake test:canonical` is defined as "exactly what must still pass once
-# test/legacy/ and the v1 trees are gone". A test that ASSERTS legacy
-# behaviour from test/unit/ or test/integration/ is therefore a time bomb:
-# it passes today and fails the day the deletion lands, long after its author
-# has moved on. That has now happened three times in review -- a canonical
-# surface table demanding a shim-only method, legacy-constant probes written
-# into a canonical file, an umbrella guard that had to be relocated. Reviews
-# caught all three; this catches the fourth.
+# Before 2.1 this gate protected a FUTURE deletion: a test asserting legacy
+# behaviour passed then and would fail the day the v1 trees went. The deletion
+# has landed, so a legacy `require` now fails by itself and this gate no longer
+# has to predict anything. It stays for the half that still does not fail on
+# its own -- a legacy NAME in a string, a heredoc-embedded subprocess script,
+# an assertion message or a docstring. Those survive the deletion and start
+# lying the moment it happens.
 #
-# Scope: test/unit/ and test/integration/ -- the two trees `test:canonical`
-# runs and the deletion keeps. test/legacy/ is deliberately NOT policed: its
-# whole job is to exercise the legacy surface, and it is deleted with it.
+# Scope: test/unit/ and test/integration/ -- the whole suite now that
+# test/legacy/ is gone.
 #
 # WHOLE-LINE comments are ignored, same as the twin gate: a comment
 # explaining that a forwarder used to live under the old name is history, not
@@ -56,20 +54,24 @@ class CanonicalSuiteHasNoLegacyRefsTest < ActiveSupport::TestCase
   # A read or write of a v1 namespace constant.
   LEGACY_CONSTANT = /(?<![\w:])(?:::)?(?:Capybara::Screenshot|CapybaraScreenshotDiff)\b/
 
-  # The canonical-looking half of the legacy surface: names that live under
-  # SnapDiff:: but are DEFINED in legacy_shims.rb / deprecation.rb, so they
-  # are deleted with the v1 trees (ADR-008 -- SnapDiff.configure is the
-  # single config entry point). This is the shape of the first of the three
-  # incidents: a canonical gate demanding SnapDiff.start.
+  # The canonical-LOOKING half of what 2.1 removed: names spelled under
+  # SnapDiff:: that were nonetheless defined in the deleted files, so they
+  # resolve to nothing now. Kept as text patterns because that is exactly how
+  # they come back -- in a docstring or an assertion message, where Ruby will
+  # not complain.
   #
-  # SnapDiff.silence_deprecations is deliberately NOT here: it moved to
-  # snap_diff/removal.rb, a file the deletion keeps, because it is the one
-  # switch that also silences the 2.1 removal warnings (chunky_png,
-  # shift_distance_limit, the driver abstraction) -- which are announced from
-  # core files and have nothing to do with the v1 namespaces.
+  # SnapDiff.silence_deprecations and SnapDiff::Removal are here now: 2.0 kept
+  # them alive to announce this release, and this release removes the thing
+  # they announced, so there is nothing left to silence.
   LEGACY_SHIM_SURFACE = /
     SnapDiff\.start\b
     |SnapDiff::Deprecation\b
+    |SnapDiff::Removal\b
+    |SnapDiff::Driver\b
+    |SnapDiff::Drivers\.(loaded|available|for|registry|detect_available)\b
+    |AVAILABLE_DRIVERS
+    |LOADED_DRIVERS
+    |silence_deprecations
     |suppress_migration_notice
   /x
 
@@ -78,26 +80,35 @@ class CanonicalSuiteHasNoLegacyRefsTest < ActiveSupport::TestCase
   # Line-level on purpose: a file with one blessed line must still fail on
   # the second.
   #
-  # Two entries, and both are gates rather than tests of behaviour. A third
-  # entry is a signal that canonical tests are still entangled with the
-  # legacy surface -- it needs a decision, not a green build.
+  # Two entries, and both are gates rather than tests of behaviour: a detector
+  # has to spell what it detects. A third entry is a signal that the suite is
+  # still entangled with a removed surface -- it needs a decision, not a green
+  # build.
   ALLOWED = {
-    # Simulates the deletion for real (copies lib/, removes the trees, loads
-    # every canonical entry point). It names the deletion set and the edits
-    # by construction, and asserts its own gate line can reject an intact
-    # tree -- it cannot do that without spelling the doomed names.
-    "unit/legacy_deletion_test.rb" => [
-      '["snap_diff.rb", %(require "snap_diff/legacy_shims"), nil],',
-      '%(require "capybara_screenshot_diff/minitest"),',
-      'gate << "SnapDiff.start is still defined" if SnapDiff.respond_to?(:start)',
-      'gate << "CapybaraScreenshotDiff is still defined" if defined?(CapybaraScreenshotDiff)',
-      'assert_includes failure, "SnapDiff.start is still defined"'
-    ],
-    # The twin gate's own pattern literal. A detector has to spell what it
-    # detects; the line asserts nothing about legacy behaviour and is deleted
-    # with the trees it guards.
+    # The twin gate's own pattern literals. A detector has to spell what it
+    # detects; these lines assert nothing and scan lib/, not the suite.
     "unit/core_tree_has_no_legacy_deps_test.rb" => [
-      'LEGACY_CONSTANT = /(?<![\w:])(?:::)?(?:Capybara::Screenshot|CapybaraScreenshotDiff)\b/'
+      'LEGACY_CONSTANT = /(?<![\w:])(?:::)?(?:Capybara::Screenshot|CapybaraScreenshotDiff)\b/',
+      'SnapDiff::Driver\b',
+      '|SnapDiff::Drivers\.(loaded|available|for|registry|detect_available)\b',
+      "|AVAILABLE_DRIVERS",
+      "|LOADED_DRIVERS",
+      "|ChunkyPNGDriver",
+      "|shift_distance_limit",
+      "|silence_deprecations"
+    ],
+    # Same, for the gate that proves the removed surface STAYS removed. Its
+    # tables are the removal list itself -- it cannot assert a name is gone
+    # without spelling it -- and every line here is data in a table, never an
+    # assertion about legacy behaviour.
+    "unit/removed_surface_test.rb" => [
+      "Capybara::Screenshot",
+      "CapybaraScreenshotDiff",
+      "SnapDiff::Deprecation",
+      "SnapDiff::Removal",
+      "SnapDiff::Driver",
+      "SnapDiff::Drivers::AVAILABLE_DRIVERS",
+      "REMOVED_METHODS = %w[start silence_deprecations silence_deprecations=].freeze"
     ]
   }.freeze
 
@@ -109,13 +120,14 @@ class CanonicalSuiteHasNoLegacyRefsTest < ActiveSupport::TestCase
     offenders = CANONICAL_FILES.flat_map { |file| offences(file) }
 
     assert_empty offenders, <<~MSG
-      Canonical test(s) assert legacy behaviour. `rake test:canonical` is what
-      must still pass once test/legacy/ and the v1 trees are deleted, so these
-      lines are green today and red the day the deletion lands.
+      Test(s) name a surface 2.1 removed. The v1 trees, the deprecation
+      channel and the driver abstraction are gone, so these names resolve to
+      nothing -- and where they sit in a string or a docstring, nothing else
+      will say so.
 
-      Move the test to test/legacy/ (it dies with what it tests), or rewrite it
-      against the canonical surface (`SnapDiff.config.*`, `SnapDiff::Os`,
-      `SnapDiff::Minitest::Assertions`, `require "snap_diff/..."`):
+      Rewrite against what the gem actually has (`SnapDiff.config.*`,
+      `SnapDiff.configure`, `SnapDiff::Os`, `SnapDiff::Minitest::Assertions`,
+      `SnapDiff::Drivers::VipsDriver`, `require "snap_diff/..."`):
 
       #{offenders.join("\n")}
     MSG

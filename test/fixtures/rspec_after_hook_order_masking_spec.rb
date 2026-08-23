@@ -46,7 +46,6 @@ RSpec.describe "capybara_screenshot_diff/rspec after-hook ordering masking guard
     SnapDiff.config.root = Rails.root / "../test/fixtures/app"
     SnapDiff.config.add_os_path = true
     SnapDiff.config.add_driver_path = true
-    SnapDiff.config.driver = ENV.fetch("SCREENSHOT_DRIVER", "chunky_png").to_sym
     SnapDiff.config.tolerance = 0.5
     # This fixture runs standalone in its own subprocess (no
     # ActiveSupport::TestCase setup forcing this off), and CI sets $CI,
