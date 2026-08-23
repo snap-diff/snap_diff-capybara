@@ -27,7 +27,7 @@ require "open3"
 # CapybaraScreenshotDiff session surface, and the eager user-facing
 # constants under the old names -- are probed the same way from
 # test/legacy/legacy_entry_point_probe_test.rb, which is deleted with the v1
-# trees in 3.0.
+# trees in 2.1.
 class SupportLoadProbeTest < ActiveSupport::TestCase
   SKIP = {
     # "support/example" => "why it cannot load bare"
@@ -69,7 +69,7 @@ class SupportLoadProbeTest < ActiveSupport::TestCase
   #
   # SnapDiff.start is absent for a different reason: it is defined in
   # snap_diff/legacy_shims.rb and yields the two v1 config holders, so it
-  # cannot outlive them (#235). A CANONICAL gate demanding a method 3.0
+  # cannot outlive them (#235). A CANONICAL gate demanding a method 2.1
   # deletes is a gate that fails the day the deletion lands -- which is
   # exactly what it did. `.start` keeps its coverage on the legacy side:
   # test/legacy/legacy_forwarders_test.rb asserts what it yields and that it
@@ -79,7 +79,7 @@ class SupportLoadProbeTest < ActiveSupport::TestCase
   ].freeze
 
   # snap_diff-capybara is the canonical gem's Bundler entry point, so it is
-  # probed here rather than with the v1 ones: 3.0 keeps it (repointed at
+  # probed here rather than with the v1 ones: 2.1 keeps it (repointed at
   # snap_diff/integrations/minitest), it just stops carrying the
   # CapybaraScreenshotDiff surface.
   CANONICAL_ENTRY_POINTS = {

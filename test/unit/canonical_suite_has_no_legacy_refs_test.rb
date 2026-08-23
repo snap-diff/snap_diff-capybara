@@ -86,7 +86,7 @@ class CanonicalSuiteHasNoLegacyRefsTest < ActiveSupport::TestCase
     # every canonical entry point). It names the deletion set and the edits
     # by construction, and asserts its own gate line can reject an intact
     # tree -- it cannot do that without spelling the doomed names.
-    "unit/deletion_3_0_test.rb" => [
+    "unit/legacy_deletion_test.rb" => [
       '["snap_diff.rb", %(require "snap_diff/legacy_shims"), nil],',
       '%(require "capybara_screenshot_diff/minitest"),',
       'gate << "SnapDiff.start is still defined" if SnapDiff.respond_to?(:start)',

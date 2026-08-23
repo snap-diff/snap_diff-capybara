@@ -3,7 +3,7 @@
 require "test_helper"
 
 # The REVERSE of legacy_tree_is_alias_only_test.rb, and the other half of
-# what makes 3.0 a `git rm`.
+# what makes the 2.1 deletion a `git rm`.
 #
 # That test proves the v1 trees hold no logic. This one proves the canonical
 # core does not reach BACK into them -- which is the half that actually
@@ -12,8 +12,8 @@ require "test_helper"
 # `CapybaraScreenshotDiff::*` constant, deleting lib/capybara* leaves a core
 # that no longer loads.
 #
-# Scope: everything the 3.0 deletion KEEPS. Files that are themselves part of
-# the deletion set (DELETED_IN_3_0 below) live under lib/snap_diff/ only
+# Scope: everything the 2.1 deletion KEEPS. Files that are themselves part of
+# the deletion set (DELETED_WITH_LEGACY_TREES below) live under lib/snap_diff/ only
 # because the generator for the v1 surface has to be code, and the v1 trees
 # have to stay alias-only -- they are legacy by design and go with it.
 #
@@ -27,17 +27,17 @@ require "test_helper"
 class CoreTreeHasNoLegacyDepsTest < ActiveSupport::TestCase
   LIB = Pathname.new(__dir__).join("../../lib").expand_path
 
-  # Deleted alongside lib/capybara* in 3.0: these files exist to BUILD the
+  # Deleted alongside lib/capybara* in 2.1: these files exist to BUILD the
   # v1 compatibility surface (const_missing shims, the legacy config
   # accessor generator, the deprecation channel that announces both).
-  DELETED_IN_3_0 = %w[
+  DELETED_WITH_LEGACY_TREES = %w[
     snap_diff/legacy_shims.rb
     snap_diff/deprecation.rb
   ].freeze
 
   CORE_FILES = (
     [LIB.join("snap_diff.rb")] + Dir[LIB.join("snap_diff/**/*.rb")].map { |p| Pathname.new(p) }
-  ).sort.reject { |file| DELETED_IN_3_0.include?(file.relative_path_from(LIB).to_s) }.freeze
+  ).sort.reject { |file| DELETED_WITH_LEGACY_TREES.include?(file.relative_path_from(LIB).to_s) }.freeze
 
   # A require of anything in the v1 trees: `capybara/screenshot/...`,
   # `capybara_screenshot_diff...`, `capybara-screenshot-diff`. Plain
@@ -62,7 +62,7 @@ class CoreTreeHasNoLegacyDepsTest < ActiveSupport::TestCase
   #
   # EMPTY. It was seeded with all 64 core->legacy edges that existed the day
   # the gate was written, and every one of them is gone. Keep it empty: an
-  # entry is a decision to keep a core->legacy edge across the 3.0 deletion,
+  # entry is a decision to keep a core->legacy edge across the 2.1 deletion,
   # so it needs a written reason here AND an ADR-008 update -- never just a
   # red build turned green.
   ALLOWED = {}.freeze

@@ -167,7 +167,7 @@ about the old namespaces; the third is about the driver features 2.1 removes.
 The first time a process touches *any* hookable legacy API, you get a single line:
 
 ```
-[snap_diff deprecation] This process uses the v1 `Capybara::Screenshot*` / `CapybaraScreenshotDiff*` API. It still works in 2.x and is REMOVED in 3.0 -- see docs/UPGRADING.md for the SnapDiff replacements. Silence with `SnapDiff.silence_deprecations = true` or SNAP_DIFF_SILENCE_DEPRECATIONS=1. (shown once per process)
+[snap_diff deprecation] This process uses the v1 `Capybara::Screenshot*` / `CapybaraScreenshotDiff*` API. It still works in 2.0 and is REMOVED in 2.1 -- see docs/UPGRADING.md for the SnapDiff replacements. Silence with `SnapDiff.silence_deprecations = true` or SNAP_DIFF_SILENCE_DEPRECATIONS=1. (shown once per process)
 ```
 
 It fires once and never again, whichever door you came through:
@@ -177,7 +177,7 @@ It fires once and never again, whichever door you came through:
 - `include Capybara::Screenshot` / `include Capybara::Screenshot::Diff`
 
 It exists because most of the v1 surface **cannot** warn per use, so without it a 2.x app could
-be entirely silent right up to the bare `NameError` it would get on 3.0.
+be entirely silent right up to the bare `NameError` it would get on 2.1.
 
 #### 2. Per-constant warnings — one line per lazily shimmed constant
 
@@ -295,7 +295,7 @@ Capybara::Screenshot::Diff.stub_const(:AVAILABLE_DRIVERS, []) { ... }
 SnapDiff::Drivers.stub_const(:AVAILABLE_DRIVERS, []) { ... }
 ```
 
-**`SnapDiff::Config::MAPPING` is gone.** It split in two: `SnapDiff::Config::SETTINGS` (the setting names, no legacy knowledge) and `SnapDiff::LegacyShims::CONFIG_MAPPING` (which legacy holder each name hangs off). If you referenced `MAPPING` — iterating settings in a test helper, say — use `SETTINGS`; `CONFIG_MAPPING` is `@api private` and disappears in 3.0 with the rest of the v1 surface.
+**`SnapDiff::Config::MAPPING` is gone.** It split in two: `SnapDiff::Config::SETTINGS` (the setting names, no legacy knowledge) and `SnapDiff::LegacyShims::CONFIG_MAPPING` (which legacy holder each name hangs off). If you referenced `MAPPING` — iterating settings in a test helper, say — use `SETTINGS`; `CONFIG_MAPPING` is `@api private` and disappears in 2.1 with the rest of the v1 surface.
 
 ---
 

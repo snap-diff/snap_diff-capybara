@@ -3,7 +3,7 @@
 require "test_helper"
 require "open3"
 # The shared harness loads canonical entry points only, so a legacy-surface
-# test pulls in the v1 entry itself -- the require goes with the file in 3.0.
+# test pulls in the v1 entry itself -- the require goes with the file in 2.1.
 require "capybara_screenshot_diff"
 require "capybara_screenshot_diff/static"
 

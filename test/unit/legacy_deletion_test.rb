@@ -6,7 +6,7 @@ require "tmpdir"
 require "fileutils"
 require "unit/support_load_probe_test" # single source of truth for the canonical entry-point tables
 
-# THE 3.0 DELETION, ACTUALLY RUN.
+# THE 2.1 DELETION, ACTUALLY RUN.
 #
 # legacy_tree_is_alias_only_test.rb and core_tree_has_no_legacy_deps_test.rb
 # are STATIC proxies for one claim: `git rm` the v1 surface and the gem still
@@ -24,10 +24,10 @@ require "unit/support_load_probe_test" # single source of truth for the canonica
 # tmpdir. The subprocess is isolated from bundler as well (see #probe), but
 # that isolation is precisely the thing that silently stopped working last
 # time -- the gate line is what notices when it does.
-class Deletion30Test < ActiveSupport::TestCase
+class LegacyDeletionTest < ActiveSupport::TestCase
   PROJECT_ROOT = Pathname.new(File.expand_path("../..", __dir__))
 
-  # The 3.0 `git rm`, verbatim from the Rakefile's header comment (minus
+  # The 2.1 `git rm`, verbatim from the Rakefile's header comment (minus
   # test/legacy, which this test does not load).
   DELETED = %w[
     capybara
@@ -43,11 +43,11 @@ class Deletion30Test < ActiveSupport::TestCase
   # reworded, the edit must go red here rather than silently not applying and
   # leaving the probe to fail somewhere confusing.
   EDITS = [
-    # The one line in the canonical entry point that 3.0 drops.
+    # The one line in the canonical entry point that 2.1 drops.
     ["snap_diff.rb", %(require "snap_diff/legacy_shims"), nil],
     # The new gem name's Bundler entry point is KEPT, repointed off the v1
     # umbrella. It matches neither gate's file glob, so this is the only
-    # thing that checks its post-3.0 shape at all.
+    # thing that checks its post-2.1 shape at all.
     ["snap_diff-capybara.rb",
       %(require "capybara_screenshot_diff/minitest"),
       %(require "snap_diff/integrations/minitest")]
@@ -86,7 +86,7 @@ class Deletion30Test < ActiveSupport::TestCase
     end
   RUBY
 
-  test "every canonical entry point loads and keeps its surface after the 3.0 deletion" do
+  test "every canonical entry point loads and keeps its surface after the 2.1 deletion" do
     in_deleted_tree do |tree|
       failures = ENTRY_POINTS.filter_map do |entry, methods|
         probe(tree, <<~RUBY)
@@ -99,7 +99,7 @@ class Deletion30Test < ActiveSupport::TestCase
       end
 
       assert_empty failures, <<~MSG
-        `git rm` of the v1 surface breaks canonical entry point(s) -- 3.0 is a
+        `git rm` of the v1 surface breaks canonical entry point(s) -- 2.1 is a
         refactor, not a deletion, until these load:
 
         #{failures.join("\n")}
@@ -107,7 +107,7 @@ class Deletion30Test < ActiveSupport::TestCase
     end
   end
 
-  test "every canonical entry point defines its advertised constants after the 3.0 deletion" do
+  test "every canonical entry point defines its advertised constants after the 2.1 deletion" do
     in_deleted_tree do |tree|
       failures = SupportLoadProbeTest::CANONICAL_ADVERTISED_CONSTANTS.filter_map do |entry, constants|
         probe(tree, <<~RUBY)
@@ -154,14 +154,14 @@ class Deletion30Test < ActiveSupport::TestCase
     File.realpath(File.join(dir, "lib"))
   end
 
-  # Yields the path to a lib/ with the 3.0 deletion applied.
+  # Yields the path to a lib/ with the 2.1 deletion applied.
   def in_deleted_tree
     Dir.mktmpdir("snapdiff_deleted") do |dir|
       tree = copy_lib_to(dir)
 
       DELETED.each do |path|
         target = File.join(tree, path)
-        assert File.exist?(target), "3.0 deletion set names #{path}, which does not exist"
+        assert File.exist?(target), "2.1 deletion set names #{path}, which does not exist"
         FileUtils.rm_rf(target)
       end
 
@@ -169,7 +169,7 @@ class Deletion30Test < ActiveSupport::TestCase
         target = Pathname.new(File.join(tree, file))
         source = target.read
 
-        assert_includes source, line, "3.0 edit for #{file} no longer matches the file"
+        assert_includes source, line, "2.1 edit for #{file} no longer matches the file"
         target.write(source.sub(line + "\n", replacement ? replacement + "\n" : ""))
       end
 

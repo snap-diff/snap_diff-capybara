@@ -6,7 +6,7 @@ require "snap_diff/deprecation"
 
 # LEGACY SURFACE (test/legacy/, see the Rakefile): SnapDiff::Deprecation is
 # the channel that announces the v1 shims, so snap_diff/deprecation.rb and
-# this file are deleted together with lib/capybara* in 3.0.
+# this file are deleted together with lib/capybara* in 2.1.
 class SnapDiffDeprecationTest < ActiveSupport::TestCase
   def setup
     SnapDiff::Deprecation.reset!
@@ -186,7 +186,7 @@ class SnapDiffDeprecationTest < ActiveSupport::TestCase
 
     assert_equal 1, out.scan(NOTICE_MARKER).size, "expected exactly one migration notice, got:\n#{out}"
     assert_includes out, "docs/UPGRADING.md"
-    assert_includes out, "REMOVED in 3.0"
+    assert_includes out, "still works in 2.0 and is REMOVED in 2.1"
     assert_includes out, "SNAP_DIFF_SILENCE_DEPRECATIONS"
   end
 

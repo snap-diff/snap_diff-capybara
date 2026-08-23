@@ -13,7 +13,7 @@ require "legacy/namespace_forwarding_test" # single source of truth for the old-
 # namespace_forwarding_test.rb; this file pins only the warning behavior.
 #
 # LEGACY SURFACE (test/legacy/, see the Rakefile): deleted with lib/capybara*
-# and snap_diff/deprecation.rb in 3.0.
+# and snap_diff/deprecation.rb in 2.1.
 class LegacyNamespaceDeprecationTest < ActiveSupport::TestCase
   # Documented exceptions that stay EAGER (real constants, never warn):
   # - Os / DSL: advertised entry-point constants, probed with

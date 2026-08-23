@@ -42,7 +42,7 @@ class DriversTest < ActiveSupport::TestCase
   # Ported from namespace_forwarding_test (test/legacy/), which was the only
   # place pinning this: it asserted the v1 LOADED_DRIVERS constant is the
   # same object as this hash and that a registration through it shows up
-  # here. The v1 half dies in 3.0; the canonical half -- .loaded is ONE
+  # here. The v1 half dies in 2.1; the canonical half -- .loaded is ONE
   # memoized hash, mutated in place, so a driver registered into it stays
   # registered (Utils.find_driver_class_for caches through it) -- must not.
   test ".loaded is a single hash mutated in place, so registrations stick" do

@@ -7,7 +7,7 @@ require "unit/config_default_timing_test" # single source of truth for the probe
 # LEGACY SURFACE (test/legacy/, see the Rakefile).
 #
 # The v1 half of config_default_timing_test.rb. Two claims, both about the
-# old entry points and the old accessor view, both deleted in 3.0:
+# old entry points and the old accessor view, both deleted in 2.1:
 #
 # 1. every legacy entry point produces the SAME require-time defaults and
 #    the same freezing/liveness behaviour as the canonical ones -- proved by

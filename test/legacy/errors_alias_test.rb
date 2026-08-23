@@ -2,7 +2,7 @@
 
 require "test_helper"
 # The shared harness loads canonical entry points only, so a legacy-surface
-# test pulls in the v1 entry itself -- the require goes with the file in 3.0.
+# test pulls in the v1 entry itself -- the require goes with the file in 2.1.
 require "capybara_screenshot_diff"
 
 # ADR-008 step 2: the error classes live in SnapDiff (snap_diff/errors);
@@ -14,7 +14,7 @@ require "capybara_screenshot_diff"
 # warnings, so these tests double as proof the aliases stay warning-free.
 #
 # LEGACY SURFACE (test/legacy/, see the Rakefile): deleted with lib/capybara*
-# in 3.0. The hierarchy assertions that outlive the aliases moved to
+# in 2.1. The hierarchy assertions that outlive the aliases moved to
 # test/unit/errors_test.rb.
 class ErrorsAliasTest < ActiveSupport::TestCase
   # old constant path => new constant path
