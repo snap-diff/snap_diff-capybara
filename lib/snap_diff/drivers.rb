@@ -1,6 +1,14 @@
 # frozen_string_literal: true
 
 module SnapDiff
+  # utils.rb requires THIS file at its top. Requiring it back at load time
+  # made Ruby shout "circular require considered harmful" under $VERBOSE --
+  # which Rake::TestTask sets by default, i.e. every standard Rails/Minitest
+  # suite. Autoload breaks the cycle without narrowing the surface: nothing
+  # here touches Utils until a method runs, and requiring this file still
+  # leaves SnapDiff::Utils resolvable exactly as the eager require did.
+  autoload :Utils, "snap_diff/utils"
+
   # Compare two images and determine if they are equal, different, or within some comparison
   # range considering color values and difference area size.
   module Drivers
@@ -8,11 +16,6 @@ module SnapDiff
       driver_option = driver_options.is_a?(Hash) ? driver_options.fetch(:driver, :chunky_png) : driver_options
       return driver_option unless driver_option.is_a?(Symbol)
 
-      # Deferred: utils.rb requires THIS file at its top, so requiring it
-      # back at load time makes Ruby shout "circular require considered
-      # harmful" under $VERBOSE (which Rake::TestTask sets by default).
-      # Nothing here needs Utils until this method runs.
-      require "snap_diff/utils"
       Utils.find_driver_class_for(driver_option).new
     end
 

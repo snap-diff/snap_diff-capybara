@@ -157,7 +157,10 @@ class SnapDiffDeprecationTest < ActiveSupport::TestCase
     "config delegator (write)" => "Capybara::Screenshot.window_size = [80, 80]",
     "config delegator (read)" => "Capybara::Screenshot::Diff.tolerance",
     "const_missing constant" => "Capybara::Screenshot::Diff::ImageCompare",
-    "legacy include" => "Class.new { include Capybara::Screenshot::Diff }"
+    "legacy include" => "Class.new { include Capybara::Screenshot::Diff }",
+    # Hand-written forwarder, not one of the generated delegators above, so
+    # it needs its own Deprecation.notice and its own row here.
+    "hand-written derived reader" => "Capybara::Screenshot::Diff.default_options"
   }.freeze
 
   LEGACY_USE = LEGACY_DOORS.values.join("\n")
