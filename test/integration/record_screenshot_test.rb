@@ -8,7 +8,9 @@ class RecordScreenshotTest < SystemTestCase
     screenshot_group name[5..] unless SnapDiff.session.screenshot_namer.group
 
     @original_tolerance = SnapDiff.config.tolerance
-    SnapDiff.config.tolerance = (SnapDiff.config.driver == :vips) ? 0.035 : 0.7
+    # Was branched on the driver (0.035 vips / 0.7 chunky_png); 2.1 left
+    # one backend, so only the vips figure survives.
+    SnapDiff.config.tolerance = 0.035
   end
 
   teardown do
@@ -33,7 +35,7 @@ class RecordScreenshotTest < SystemTestCase
 
     visit "/"
 
-    screenshot "index-vips", screenshot_format: "webp", driver: :vips
+    screenshot "index-vips", screenshot_format: "webp"
   end
 
   def test_record_index_with_stability

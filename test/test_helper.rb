@@ -24,59 +24,25 @@ require "support/setup_capybara"
 
 require "snap_diff/integrations/minitest"
 
-# This suite IS the v1 surface, not a consumer of it: it configures through
-# `Capybara::Screenshot.*` below and exercises the legacy entry points on
-# purpose, so the once-per-process migration notice would fire on every run.
-# Mark it shown rather than silencing deprecations wholesale -- the
-# per-constant warnings must still reach the guard below and raise.
-SnapDiff::Deprecation.suppress_migration_notice!
-
-# Same reasoning for the OTHER half of the 2.1 story: this suite runs the
-# whole comparison matrix on chunky_png, sets shift_distance_limit, and reads
-# the driver registry on purpose -- it exercises those APIs rather than
-# depending on them. Suppressed here, asserted in a subprocess instead
-# (test/unit/removed_in_2_1_deprecation_test.rb), because "once per process"
-# cannot be measured inside one long-lived process anyway.
-SnapDiff::Removal.suppress!
-
-# v2 step 8: the suite exercises only canonical SnapDiff:: names, so any
-# legacy-shim deprecation warning during a test run is a bug in the
-# referencing test -- fail loud at the resolution site instead of letting
-# it scroll by on stderr. Tests that exercise the legacy surface on purpose
-# opt out per test: namespace_forwarding_test silences deprecations in its
-# own setup; the deprecation-machinery tests set `expected = true` around
-# the warnings they capture and assert on. A plain module flag (not a
-# thread-local) so warnings emitted from threads a test spawns are covered
-# too; tests run serially, so there is no cross-test race.
-module SnapDiffDeprecationGuard
-  singleton_class.attr_accessor :expected
-
-  def warn(message, ...)
-    if message.to_s.include?("[snap_diff deprecation]") && !SnapDiffDeprecationGuard.expected
-      raise "old-namespace constant resolved inside the test suite: #{message}"
-    end
-
-    super
-  end
-end
-Warning.extend(SnapDiffDeprecationGuard)
+# The deprecation machinery this file used to configure -- the migration
+# notice, the 2.1 removal warnings, and the `Warning` guard that raised on
+# any `[snap_diff deprecation]` line -- went with 2.1. There is no channel
+# left to suppress or to police: a legacy require now fails loudly by
+# itself, and the two static gates (core_tree_has_no_legacy_deps_test,
+# canonical_suite_has_no_legacy_refs_test) catch names that only appear in
+# text.
+#
+# The DriverCoverage banner/abort went the same way. It guarded against a
+# SILENT fallback to chunky_png when libvips was missing; with one backend a
+# missing libvips is a `require "vips"` LoadError at boot, not a quiet
+# downgrade.
 
 require "support/stub_test_methods"
 require "support/setup_capybara_drivers"
 require "support/test_helpers"
-require "support/driver_coverage"
 
 SnapDiff.config.root = Rails.root
 SnapDiff.config.save_path = "./doc/screenshots"
-
-puts DriverCoverage.banner(SnapDiff::Drivers.available)
-
-missing_drivers = DriverCoverage.missing_for_ci(
-  SnapDiff::Drivers.available,
-  ci: ENV["CI"],
-  exclude: ENV["CI_EXPECTED_DRIVERS_EXCLUDE"]&.split(",")&.map(&:to_sym)
-)
-abort("[capybara-screenshot-diff] CI is missing expected driver(s): #{missing_drivers.join(", ")}") if missing_drivers.any?
 
 class ActiveSupport::TestCase
   include TestHelpers::Assertions

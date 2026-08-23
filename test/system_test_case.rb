@@ -21,7 +21,9 @@ class SystemTestCase < ActiveSupport::TestCase
     @orig_save_path = SnapDiff.config.save_path
     SnapDiff.config.save_path = "./doc/screenshots"
 
-    SnapDiff.config.driver = ENV.fetch("SCREENSHOT_DRIVER", "chunky_png").to_sym
+    # `SnapDiff.config.driver = ENV.fetch("SCREENSHOT_DRIVER", ...)` is gone
+    # with the setting: 2.1 made libvips the only backend, so there is nothing
+    # for the env var to select.
 
     # TODO: Makes configurations copying and restoring much easier
 

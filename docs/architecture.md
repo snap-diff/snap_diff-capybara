@@ -42,11 +42,10 @@ Since the v2 namespace move (ADR-004), the implementation lives in `lib/snap_dif
                       │
                       ▼
 ┌──────────────────────────────────────────┐
-│  Drivers (image processing backends)     │
-│  ┌──────────┐ ┌──────────────────────┐   │
-│  │ Vips     │ │ ChunkyPNG            │   │
-│  │ (fast)   │ │ (no native deps)     │   │
-│  └──────────┘ └──────────────────────┘   │
+│  VipsDriver (the image backend)          │
+│  ┌────────────────────────────────────┐  │
+│  │ libvips via ruby-vips              │  │
+│  └────────────────────────────────────┘  │
 └──────────────────────────────────────────┘
 ```
 
@@ -108,40 +107,34 @@ The comparison engine uses a **layered optimization strategy** to balance speed 
 - `processed` guarantees the comparison is complete and returns the result with all metadata
 - `Comparison#analyze_difference` handles the actual pixel analysis, delegating to the driver
 
-### 5. Drivers (`lib/snap_diff/drivers/`)
+### 5. The image backend (`lib/snap_diff/drivers/vips_driver.rb`)
 
-Drivers abstract image processing operations. Shared default behavior lives in the `SnapDiff::Driver` mixin (`lib/snap_diff/driver.rb`) — it replaced the old `Drivers::BaseDriver` superclass, so concrete drivers `include SnapDiff::Driver` instead of inheriting. Each driver implements:
+`SnapDiff::Drivers::VipsDriver` does the image work. 2.1 removed the abstraction that used to sit around it — the `SnapDiff::Driver` mixin, the `SnapDiff::Drivers` registry (`.loaded` / `.available` / `.for` / `.detect_available`), the `driver:` setting and `driver: :auto`. `ruby-vips` is a gemspec runtime dependency, so there is nothing to detect and nothing to select; `Comparison` and `Screenshoter` each construct a `VipsDriver` directly (it is stateless). `Drivers` survives only as the namespace the class is published under.
 
-| Operation | VipsDriver | ChunkyPNGDriver |
-|-----------|-----------|-----------------|
-| `load_images` | Vips::Image from file | ChunkyPNG::Image from blob |
-| `same_dimension?` | Compare width × height | Same |
-| `same_pixels?` | Pixel-level equality | Same |
-| `find_difference_region` | Difference mask → Region | Row-by-row scan → Region |
-| `crop` | Vips image crop | ChunkyPNG crop |
-| `save_image_to` | Vips write_to_file | PNG save |
-| `filter_image_with_median` | Vips median filter | Not supported |
-| `add_black_box` | Draw filled rect | No-op (handled differently) |
-| `merge` | Composite images | Not applicable |
-| `highlight_mask` | Conditional color overlay | Not applicable |
+| Operation | VipsDriver |
+|-----------|-----------|
+| `load_images` | `Vips::Image` from file |
+| `same_dimension?` | Compare width × height |
+| `same_pixels?` | Pixel-level equality |
+| `find_difference_region` | Difference mask → Region |
+| `crop` | Vips image crop |
+| `save_image_to` | Vips `write_to_file` |
+| `filter_image_with_median` | Vips median filter |
+| `add_black_box` | Draw filled rect |
+| `merge` | Composite images |
+| `highlight_mask` | Conditional color overlay |
 
-**Auto-detection:** `SnapDiff::Drivers.detect_available` tries to load `:vips` first (via `ruby-vips` gem), then `:chunky_png`. The `:auto` driver mode picks the first available. `Utils.detect_available_drivers` is the older name and one-lines into it.
+**Loader cache:** `#from_file` passes `revalidate: true`. libvips caches loader operations on filename + mtime, and mtime has one-second resolution — without this, rewriting a screenshot path and re-reading it within the same second serves the PREVIOUS image. See the regression test in `test/unit/drivers/vips_driver_test.rb`.
 
-**Registry (ADR-008 step 5b):** `SnapDiff::Drivers.loaded` is the canonical driver-class cache — a `name => class` hash filled lazily by `Utils.find_driver_class_for`, and the registration point for custom drivers (the legacy `Capybara::Screenshot::Diff::LOADED_DRIVERS` is an eager same-object alias, so registrations through either land in the same hash). `SnapDiff::Drivers.available` is the canonical read API for the detected list, and since the 3.0-readiness pass the value lives with it, as `SnapDiff::Drivers::AVAILABLE_DRIVERS` — that constant is now the published stubbing point, and the legacy `Capybara::Screenshot::Diff::AVAILABLE_DRIVERS` is an eager same-object alias of it. `SnapDiff::Drivers.for` resolves an options hash to a driver instance. See [Custom drivers](snapdiff.md#custom-drivers).
+There is no custom-driver path; see [SnapDiff — the canonical API](snapdiff.md) and [Image Processing](drivers.md).
 
 ### 6. Difference Region Detection
 
-**VipsDriver** uses a **difference mask** approach:
+`VipsDriver` uses a **difference mask** approach:
 1. Compute absolute difference between images: `(new - base).abs`
 2. Optional: apply perceptual color distance (CIE dE00) instead of raw RGB
 3. Project the mask to find the bounding region of non-zero pixels
 4. Return the tight bounding box of all differences
-
-**ChunkyPNGDriver** uses **row-by-row scanning**:
-1. Scan top-to-bottom, left-to-right for first differing pixel
-2. Expand left/right boundaries within each differing row
-3. Extend bottom boundary to cover all differing rows
-4. Supports shift detection (expensive neighbor pixel search)
 
 ### 7. SnapManager & Snap (`lib/snap_diff/snap_manager.rb`, `lib/snap_diff/snap.rb`)
 
@@ -236,7 +229,7 @@ The two legacy views are organized into two namespaces:
 - `driver`, `tolerance`, `color_distance_limit`, `perceptual_threshold`, `shift_distance_limit`
 - `area_size_limit`, `skip_area`, `fail_if_new`, `fail_on_difference`, `delayed`
 
-The canonical way in is `SnapDiff.configure { |config| ... }` (all 27 settings flat on one object). `SnapDiff.start` and `Capybara::Screenshot::Diff.configure` are the two-holder block shape over the same storage — since ADR-008 step 7b, `Diff.configure` forwards to `SnapDiff.start` rather than the other way round.
+The canonical way in is `SnapDiff.configure { |config| ... }` (all 25 settings flat on one object). `SnapDiff.start` and `Capybara::Screenshot::Diff.configure` are the two-holder block shape over the same storage — since ADR-008 step 7b, `Diff.configure` forwards to `SnapDiff.start` rather than the other way round.
 
 `Config` also owns the derived values that used to live on the legacy modules: `active?` (ex `Capybara::Screenshot.active?`), `screenshot_area` / `screenshot_area_abs`, and `default_options` (ex `Capybara::Screenshot::Diff.default_options`, the option hash handed to `SnapDiff::Comparison`). The legacy module methods one-line forward here.
 
@@ -249,18 +242,13 @@ lib/
   snap_diff.rb                                 # SnapDiff module: compare/start/configure/config
   snap_diff/                                   # Canonical implementation (v2)
     dsl.rb                                     # screenshot(), screenshot_group(), etc.
-    config.rb                                  # SnapDiff::Config — THE storage for all 27 settings
+    config.rb                                  # SnapDiff::Config — THE storage for all 25 settings
     errors.rb                                  # Error / ExpectationNotMet / UnstableImage / WindowSizeMismatchError
     region.rb                                  # SnapDiff::Region — bounding box (+ eager top-level ::Region alias)
-    deprecation.rb                             # Warn-once-per-constant machinery
-    legacy_shims.rb                            # const_missing forwarders for the old namespaces
     comparison.rb                              # Layered comparison engine (ex-ImageCompare)
     comparison_result.rb                       # Comparison result value object (ex-Difference)
-    driver.rb                                  # SnapDiff::Driver mixin (ex-BaseDriver superclass)
-    drivers.rb                                 # Driver factory
     drivers/
-      vips_driver.rb                           # VIPS image processing
-      chunky_png_driver.rb                     # ChunkyPNG image processing
+      vips_driver.rb                           # THE image backend (libvips)
     capture/
       viewport.rb                              # Per-capture viewport preparation seam
     screenshoter.rb                            # Basic browser screenshot capture

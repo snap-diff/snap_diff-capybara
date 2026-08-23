@@ -2,7 +2,21 @@
 
 require "active_support/concern"
 
-# Shared contract tests for all image processing drivers.
+# The image-backend contract, exercised against SnapDiff::Drivers::VipsDriver.
+#
+# 2.1 removed the driver abstraction, so this is no longer a SHARED contract --
+# there is one includer. It is kept, not folded into vips_driver_test.rb,
+# because what it pins is still worth pinning and is a different KIND of claim
+# from the tests there: those cover vips-specific mechanics (annotation files,
+# class-level mask math, difference regions), while these are the behavioural
+# obligations the rest of the gem relies on -- Comparison, ImagePreprocessor,
+# Screenshoter and AnnotationService all call these methods and would break
+# silently if a signature or a slot order drifted.
+#
+# What did NOT survive the collapse: the `supports?(feature)` capability probe
+# (it existed so ImagePreprocessor could ask whether a driver implemented
+# median filtering -- chunky_png did not, vips does, so the question is gone),
+# and the value of running the same expectations against two implementations.
 # Include in any driver test class that uses DSLStub (provides make_comparison).
 module DriverContractTests
   extend ActiveSupport::Concern
@@ -40,17 +54,19 @@ module DriverContractTests
     end
 
     # Method presence / signature --------------------------------------------
-    # Pins the current de-facto driver interface so a v2 refactor (inheritance
-    # -> mixin, class renames) has a regression net. See dissent #4 in the v2
-    # architecture design: method NAMES are intentionally out of scope here.
+    # Pins the interface the rest of the gem calls into. It survived the
+    # inheritance -> mixin -> single-class collapse unchanged, which is the
+    # point: these names are what Comparison, ImagePreprocessor, Screenshoter
+    # and AnnotationService depend on.
 
-    test "[contract] driver implements the shared driver interface" do
+    test "[contract] driver implements the image-backend interface" do
       driver = make_comparison(:a, :a).driver
 
       %i[
         load_images add_black_box find_difference_region crop from_file
         save_image_to resize_image_to draw_rectangles same_pixels?
-        same_dimension? height_for width_for image_area_size dimension supports?
+        same_dimension? height_for width_for image_area_size dimension
+        filter_image_with_median
       ].each do |method_name|
         assert_respond_to driver, method_name, "driver should implement ##{method_name}"
       end
@@ -139,9 +155,8 @@ module DriverContractTests
     end
 
     # Option handling -----------------------------------------------------------
-    # tolerance/color_distance_limit/skip_area are supported identically by both
-    # drivers today; thresholds below are chosen with headroom on both drivers'
-    # actual measurements for the a/b and a/d fixture pairs.
+    # Thresholds below are chosen with headroom on the driver's actual
+    # measurements for the a/b and a/d fixture pairs.
 
     test "[contract] tolerance option treats small differences as equal" do
       comp = make_comparison(:a, :b, tolerance: 0.5)

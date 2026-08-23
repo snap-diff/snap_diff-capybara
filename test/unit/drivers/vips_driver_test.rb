@@ -3,11 +3,8 @@
 require "test_helper"
 require "support/driver_contract_tests"
 
-require "snap_diff/drivers/vips_driver" if defined?(Vips)
+require "snap_diff/drivers/vips_driver"
 
-# Nested in the canonical SnapDiff::Drivers namespace: reopening the old
-# Capybara::Screenshot::Diff::Drivers path would define a fresh Drivers
-# module there, shadowing the v2 step 6 lazy const_missing forwarder.
 module SnapDiff
   module Drivers
     class VipsDriverTest < ActiveSupport::TestCase
@@ -15,7 +12,6 @@ module SnapDiff
       include DriverContractTests
 
       setup do
-        skip "VIPS not present. Skipping VIPS driver tests." unless defined?(Vips)
         @new_screenshot_result = Tempfile.new(%w[screenshot .png], Rails.root)
       end
 
@@ -35,6 +31,10 @@ module SnapDiff
       # `checkout_base_screenshot` writes `<name>.base.png` from VCS, and the
       # comparison then reads both -- a stale read compares against an image
       # that is no longer on disk.
+      #
+      # It was LATENT while chunky_png existed: a Comparison built without an
+      # explicit driver defaulted to chunky_png, which re-read every time. 2.1
+      # makes vips the only backend, so this is now the only behaviour.
       #
       # The teardown above used to flush the whole vips cache
       # (`Vips.cache_set_max(0); Vips.cache_set_max(1000)`) to paper over this;
@@ -194,7 +194,7 @@ module SnapDiff
 
       def make_comparison(old_img, new_img, options = {})
         destination = Pathname.new(@new_screenshot_result.path)
-        super(old_img, new_img, destination: destination, **options.merge(driver: :vips))
+        super(old_img, new_img, destination: destination, **options)
       end
 
       def sample_region
@@ -203,10 +203,6 @@ module SnapDiff
     end
 
     class VipsDriverClassMethodsTest < ActiveSupport::TestCase
-      setup do
-        skip "VIPS not present. Skipping VIPS driver tests." unless defined?(Vips)
-      end
-
       test "VipsDriver.difference_region_by detects difference regions without color threshold" do
         old_image = Vips::Image.new_from_file("#{TEST_IMAGES_DIR}/a.png")
         new_image = Vips::Image.new_from_file("#{TEST_IMAGES_DIR}/b.png")

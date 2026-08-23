@@ -1,47 +1,41 @@
-# Image Processing Drivers
+# Image Processing
 
-> **Canonical equivalents.** Global settings shown here as
-> `Capybara::Screenshot::Diff.<option> = …` are also `SnapDiff.config.<option> = …` — same
-> option names, same storage, either surface works. Writing your own driver? See
-> [Custom drivers](snapdiff.md#custom-drivers) for the `SnapDiff::Driver` mixin and how
-> registration in `SnapDiff::Drivers.loaded` works.
+Comparison runs on [libvips](https://www.libvips.org/) through the
+[`ruby-vips`](https://www.rubydoc.info/gems/ruby-vips/Vips/Image) gem. There is nothing to
+configure and nothing to choose: `ruby-vips` is a runtime dependency of this gem, so Bundler
+installs it for you.
 
-## Removed in 2.1: everything on this page except VIPS
+**libvips itself is a system library** and is not installed by Bundler. Add it with your
+package manager:
 
-2.1 makes **libvips the only backend**. 2.0 is the transitional release — all of the
-following still works, and warns once per process naming 2.1. Silence the warnings with
-`SnapDiff.silence_deprecations = true` or `SNAP_DIFF_SILENCE_DEPRECATIONS=1`.
+```sh
+brew install vips           # macOS
+apt-get install libvips     # Debian/Ubuntu
+```
 
-| Removed in 2.1 | What to do in 2.0 |
+## Removed in 2.1: the driver abstraction
+
+2.0 shipped two backends and a way to pick between them. 2.1 removed the choice.
+
+| Removed in 2.1 | What to do instead |
 |---|---|
-| the `:chunky_png` driver | add `gem "ruby-vips"` to your Gemfile and drop `driver: :chunky_png` |
-| `driver: :auto` (and the `:auto` default) | with one backend there is nothing to choose; install `ruby-vips` and the default just works |
-| `shift_distance_limit` | ChunkyPNG-only. Use `median_filter_window_size`, `tolerance` or `color_distance_limit` — see [Configuration](configuration.md#allowed-shift-distance) |
+| the `:chunky_png` driver | install libvips (above); comparisons run on it automatically |
+| the `driver:` setting and `driver: :auto` | delete the line — there is one backend |
+| `shift_distance_limit` | ChunkyPNG-only, with no libvips equivalent. Use `median_filter_window_size`, `tolerance` or `color_distance_limit` |
 | `SnapDiff::Driver` (the custom-driver mixin) | nothing — see below |
 | `SnapDiff::Drivers.loaded` (the registry) | nothing — see below |
-| `SnapDiff::Drivers.available` (driver detection) | require `ruby-vips` instead of branching on a detected list |
+| `SnapDiff::Drivers.available` / `SnapDiff::Utils.detect_available_drivers` | nothing to detect; a missing `ruby-vips` is now a Bundler resolution error |
 
-Three related names on the same chopping block stay **silent**, and deliberately so:
-`SnapDiff::Drivers.for` (the gem calls it for every comparison — warning there would fire on
-setups that nothing in this table affects), `SnapDiff::Drivers.detect_available` /
-`SnapDiff::Utils.detect_available_drivers` (run at load, before any user code), and the legacy
-`Capybara::Screenshot::Diff::LOADED_DRIVERS` / `::AVAILABLE_DRIVERS` constant aliases (plain
-constants, nothing to hook). Reach the same values through `.loaded` / `.available` and you
-will hear about them.
+`SnapDiff::Drivers::VipsDriver` is the one name from this area that survives, and it is
+internal: nothing in normal use has to mention it.
 
-**libvips becomes a hard requirement.** Install it with your system package manager
-(`brew install vips`, `apt-get install libvips`) and add `gem "ruby-vips"`. A 2.1 process
-without it cannot compare images at all.
+**Custom drivers: there is no migration path.** The abstraction is removed whole — the
+mixin, the registry, and selection by name. Third-party drivers stop working and nothing
+replaces them. This was deliberate: one backend is what keeps the comparison engine honest.
+If you maintain one, say so on
+[the issue tracker](https://github.com/snap-diff/snap_diff-capybara/issues).
 
-**Custom drivers: there is no migration path.** The driver abstraction is removed whole —
-the `SnapDiff::Driver` mixin, the `SnapDiff::Drivers.loaded` registry, and driver
-selection by name. Third-party drivers stop working in 2.1 and nothing replaces them
-(the decision was made deliberately: no measurable demand, and one backend is what keeps
-the comparison engine honest). If you maintain one, say so on
-[the issue tracker](https://github.com/snap-diff/snap_diff-capybara/issues) before 2.1
-ships — that is the only thing that can change this.
-
-## Perceptual color comparison (VIPS only)
+## Perceptual color comparison
 
 By default, color differences are measured using raw RGB channel distance. This can produce
 false positives from anti-aliasing and sub-pixel font rendering — the same page rendered on
@@ -56,7 +50,7 @@ on the dE00 scale and are automatically ignored.
 screenshot 'dashboard', perceptual_threshold: 2.0
 
 # Global: apply to all screenshots
-Capybara::Screenshot::Diff.perceptual_threshold = 2.0
+SnapDiff.config.perceptual_threshold = 2.0
 
 # dE00 scale reference:
 #   < 1.0  — not perceptible by human eyes
@@ -75,42 +69,13 @@ These options use different scales and algorithms:
 - `perceptual_threshold` → CIE dE00 perceptual distance (0-100+)
 - `color_distance_limit` → Euclidean RGBA distance (0-510)
 
-**Choose one based on your driver setup:**
-- VIPS with `ruby-vips` gem → prefer `perceptual_threshold`
-- ChunkyPNG (no native dependencies) → use `color_distance_limit`
-
-## Available Image Processing Drivers
-
-There are several image processing supported by this gem.
-There are several options to setup active driver: `:auto`, `:chunky_png` and `:vips`.
-
-* `:auto` - will try to load `:vips` if there is gem `ruby-vips`, in other cases will load `:chunky_png`
-* `:chunky_png` and `:vips` will load correspondent driver
-
-> **2.1 keeps only `:vips`.** `:auto` and `:chunky_png` are removed; each warns once per
-> process in 2.0. If `:auto` is quietly running you on ChunkyPNG today (no `ruby-vips`
-> installed), the warning says so — that is the setup 2.1 breaks.
-
-## Enable VIPS image processing
-
-[Vips](https://www.rubydoc.info/gems/ruby-vips/Vips/Image) driver provides a faster comparison,
-and could be enabled by adding `ruby-vips` to `Gemfile`.
-
-If need to setup explicitly Vips driver, there are several ways to do this:
-
-* Globally: `Capybara::Screenshot::Diff.driver = :vips`
-* Per screenshot option: `screenshot 'index', driver: :vips`
-
-With enabled VIPS there are new alternatives to process differences, which are easier to find and support.
-For example, `shift_distance_limit` is a very heavy operation. Instead, use `median_filter_window_size`.
-
-## Tolerance level (vips only)
+## Tolerance level
 
 You can set a "tolerance" anywhere from 0% to 100%. This is the amount of change that's allowable.
 If the screenshot has changed by more than that amount, it'll flag it as a failure.
 
-This is alternative to "Allowed difference size", only the difference that area calculates including valid pixels.
-But "tolerance" compares only different pixels.
+This is an alternative to "Allowed difference size", where the difference area is calculated
+including valid pixels. "Tolerance" compares only different pixels.
 
 You can use the `tolerance` option to the `screenshot` method to set level:
 
@@ -125,11 +90,11 @@ end
 You can also set this globally:
 
 ```ruby
-# Default for VIPS is 0.001 (0.1% pixel difference allowed)
-Capybara::Screenshot::Diff.tolerance = 0.001
+# Default is 0.001 (0.1% pixel difference allowed)
+SnapDiff.config.tolerance = 0.001
 ```
 
-## Median filter size (vips only)
+## Median filter size
 
 This is an alternative to "Allowed shift distance", but much faster.
 You can find more about this strategy on [Median Filter](https://en.wikipedia.org/wiki/Median_filter).
