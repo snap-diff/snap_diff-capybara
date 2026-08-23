@@ -92,17 +92,6 @@ class CoreTreeHasNoLegacyDepsTest < ActiveSupport::TestCase
       "perceptual_threshold: [Capybara::Screenshot::Diff, :perceptual_threshold],",
       "screenshoter: [Capybara::Screenshot::Diff, :screenshoter],",
       "manager: [Capybara::Screenshot::Diff, :manager]"
-    ],
-    "snap_diff/dsl.rb" => [
-      "require \"capybara/screenshot/diff/config_legacy\"",
-      "require \"capybara/screenshot/diff/drivers\"",
-      "require \"capybara/screenshot/diff/screenshot_matcher\""
-    ],
-    "snap_diff/reporters/html.rb" => [
-      "require \"capybara/screenshot/diff/config_legacy\""
-    ],
-    "snap_diff/screenshot_matcher.rb" => [
-      "require \"capybara_screenshot_diff/snap_manager\""
     ]
   }.freeze
 

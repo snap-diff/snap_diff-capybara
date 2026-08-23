@@ -8,16 +8,17 @@
 require "snap_diff"
 
 # Must NOT require "capybara_screenshot_diff": that would cycle back here via
-# this file's old-path forwarder. Every Capybara::Screenshot reference below
-# sits inside a method body and resolves lazily at call time, so no eager
-# dependency on the umbrella is needed.
+# this file's old-path forwarder. Nothing from the v1 trees is required here
+# at all (3.0 readiness): the three requires below used to point at their
+# capybara/screenshot/diff/* forwarders, which made this unit depend on the
+# compatibility tree it is meant to replace.
 # DSL includes Capybara::DSL directly below, so it needs the base gem
 # loaded regardless of what pulled this file in.
 require "capybara/dsl"
-require "capybara/screenshot/diff/config_legacy"
-require "capybara/screenshot/diff/drivers"
+require "snap_diff/config"
+require "snap_diff/drivers"
 require "snap_diff/comparison"
-require "capybara/screenshot/diff/screenshot_matcher"
+require "snap_diff/screenshot_matcher"
 require_relative "screenshot_namer"
 require_relative "screenshot_assertion"
 

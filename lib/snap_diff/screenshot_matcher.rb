@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require "capybara_screenshot_diff/snap_manager"
+require "snap_diff/snap_manager"
 require_relative "screenshoter"
 require_relative "stable_screenshoter"
 require_relative "browser_helpers"

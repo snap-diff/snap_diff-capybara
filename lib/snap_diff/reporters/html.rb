@@ -8,7 +8,7 @@ require "json"
 # The auto-registration block at the bottom of this file registers with
 # SnapDiff::Reporting.
 require "snap_diff/reporting"
-require "capybara/screenshot/diff/config_legacy"
+require "snap_diff/config"
 
 module SnapDiff
   module Reporters
