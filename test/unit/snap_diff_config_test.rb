@@ -87,6 +87,69 @@ class SnapDiffConfigTest < ActiveSupport::TestCase
     config.enabled = original_diff
   end
 
+  # The two path-segment flags were only ever exercised TOGETHER (both true
+  # in test/system_test_case.rb and the rspec fixtures, both nil everywhere
+  # else), so either `if` could be deleted or swapped for the other flag and
+  # the whole suite stayed green. All four combinations, with the segment
+  # sources stubbed so the assertion names the expected path literally
+  # rather than recomputing it.
+  SCREENSHOT_AREA_COMBINATIONS = [
+    [nil, nil, "doc/screenshots"],
+    [true, nil, "doc/screenshots/fake_os"],
+    [nil, true, "doc/screenshots/fake_driver"],
+    [true, true, "doc/screenshots/fake_os/fake_driver"]
+  ].freeze
+
+  test "screenshot_area appends the os and driver segments independently" do
+    original_os, original_driver, original_save_path =
+      config.add_os_path, config.add_driver_path, config.save_path
+
+    SnapDiff::Os.stub(:name, "fake_os") do
+      Capybara.stub(:current_driver, :fake_driver) do
+        config.save_path = "doc/screenshots"
+
+        SCREENSHOT_AREA_COMBINATIONS.each do |add_os_path, add_driver_path, expected|
+          config.add_os_path = add_os_path
+          config.add_driver_path = add_driver_path
+
+          assert_equal expected, config.screenshot_area,
+            "screenshot_area with add_os_path=#{add_os_path.inspect}, " \
+            "add_driver_path=#{add_driver_path.inspect}"
+        end
+      end
+    end
+  ensure
+    config.add_os_path = original_os
+    config.add_driver_path = original_driver
+    config.save_path = original_save_path
+  end
+
+  # The vips tolerance floor in Config#default_options is the one literal in
+  # there that is not a stored setting, and deleting it left the full suite
+  # green (config.rb's then-arm had a hit count of 0): nothing ever asked for
+  # default_options with driver == :vips and no explicit tolerance.
+  test "default_options floors tolerance at 0.001 for vips and only for vips" do
+    original_driver, original_tolerance = config.driver, config.tolerance
+
+    begin
+      config.tolerance = nil
+
+      config.driver = :vips
+      assert_equal 0.001, config.default_options[:tolerance]
+
+      config.driver = :chunky_png
+      assert_nil config.default_options[:tolerance]
+
+      # An explicit tolerance still wins over the floor.
+      config.tolerance = 0.5
+      config.driver = :vips
+      assert_equal 0.5, config.default_options[:tolerance]
+    ensure
+      config.driver = original_driver
+      config.tolerance = original_tolerance
+    end
+  end
+
   test "writing root through config round-trips through the same Pathname coercion" do
     original = config.root
 

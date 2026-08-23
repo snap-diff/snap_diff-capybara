@@ -18,6 +18,24 @@ class SnapDiffTest < ActiveSupport::TestCase
     assert_equal 0.02, result.driver_options[:tolerance]
   end
 
+  # The test above only pins that an EXPLICIT option round-trips, so
+  # dropping `config.default_options.merge` from .compare entirely left the
+  # full suite green -- callers who configure once and then call .compare
+  # with no options silently lost every configured default.
+  test ".compare with no options still carries the configured defaults" do
+    original = SnapDiff.config.tolerance
+
+    begin
+      SnapDiff.config.tolerance = 0.0123
+
+      result = SnapDiff.compare(TEST_IMAGES_DIR / "a.png", TEST_IMAGES_DIR / "b.png")
+
+      assert_equal 0.0123, result.driver_options[:tolerance]
+    ensure
+      SnapDiff.config.tolerance = original
+    end
+  end
+
   # Regression test for a load-order bug: `require "snap_diff"` standalone
   # (nothing else preloaded) used to raise
   # `NameError: uninitialized constant ...ImageCompare::Drivers` because
