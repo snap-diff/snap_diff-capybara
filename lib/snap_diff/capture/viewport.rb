@@ -7,11 +7,8 @@ module SnapDiff
     # Per-capture viewport preparation seam.
     #
     # Called exactly once per capture, before the screenshoter runs and outside
-    # any stability retry loop. Today it only validates the window size
-    # (raise-only, never resizes) — the same guard ScreenshotMatcher carried
-    # inline before. When v3 adds scroll preservation / element-anchored
-    # capture it designs its own parameters here; adding an optional kwarg
-    # later is non-breaking, so none is reserved up front.
+    # any stability retry loop. It only validates the window size
+    # (raise-only, never resizes).
     module Viewport
       module_function
 

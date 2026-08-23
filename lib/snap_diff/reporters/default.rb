@@ -47,22 +47,6 @@ module SnapDiff
         annotation_service.annotate_and_save_images
       end
 
-      def save_annotation_for(image, image_path)
-        annotation_service.save_annotation_for(image, image_path)
-      end
-
-      def annotate_difference(image, region)
-        annotation_service.annotate_difference(image, region)
-      end
-
-      def annotate_skip_areas(image, skip_areas)
-        annotation_service.annotate_skip_areas(image, skip_areas)
-      end
-
-      def save(image, image_path)
-        annotation_service.save(image, image_path)
-      end
-
       def build_error_for_different_dimensions
         change_msg = [comparison.base_image, comparison.new_image]
           .map { |image| driver.dimension(image).join("x") }

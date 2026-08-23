@@ -40,7 +40,7 @@ class SnapDiffDeprecationTest < ActiveSupport::TestCase
 
   test "warns exactly once for repeated calls with the same subject" do
     lines = capture_warnings do
-      3.times { SnapDiff::Deprecation.warn("Old::Thing", "New::Thing", category: :constant) }
+      3.times { SnapDiff::Deprecation.warn("Old::Thing", "New::Thing") }
     end
 
     assert_equal 1, lines.size
@@ -54,7 +54,7 @@ class SnapDiffDeprecationTest < ActiveSupport::TestCase
   # file plays the part of "user code" -- the warning must point here.
   test "warning names the caller's file and line" do
     lines = capture_warnings do
-      SnapDiff::Deprecation.warn("Old::Where", "New::Where", category: :constant)
+      SnapDiff::Deprecation.warn("Old::Where", "New::Where")
     end
 
     assert_match(/called from #{Regexp.escape(File.expand_path(__FILE__))}:\d+/, lines.first)
@@ -62,8 +62,8 @@ class SnapDiffDeprecationTest < ActiveSupport::TestCase
 
   test "warns separately for different subjects" do
     lines = capture_warnings do
-      SnapDiff::Deprecation.warn("Old::A", "New::A", category: :constant)
-      SnapDiff::Deprecation.warn("Old::B", "New::B", category: :constant)
+      SnapDiff::Deprecation.warn("Old::A", "New::A")
+      SnapDiff::Deprecation.warn("Old::B", "New::B")
     end
 
     assert_equal 2, lines.size
@@ -73,7 +73,7 @@ class SnapDiffDeprecationTest < ActiveSupport::TestCase
     SnapDiff.silence_deprecations = true
 
     lines = capture_warnings do
-      SnapDiff::Deprecation.warn("Old::Thing", "New::Thing", category: :constant)
+      SnapDiff::Deprecation.warn("Old::Thing", "New::Thing")
     end
 
     assert_empty lines
@@ -83,7 +83,7 @@ class SnapDiffDeprecationTest < ActiveSupport::TestCase
     SnapDiff.silence_deprecations = false
 
     lines = capture_warnings do
-      SnapDiff::Deprecation.warn("Old::Thing", "New::Thing", category: :constant)
+      SnapDiff::Deprecation.warn("Old::Thing", "New::Thing")
     end
 
     assert_equal 1, lines.size
@@ -93,7 +93,7 @@ class SnapDiffDeprecationTest < ActiveSupport::TestCase
     ENV["SNAP_DIFF_SILENCE_DEPRECATIONS"] = "1"
 
     lines = capture_warnings do
-      SnapDiff::Deprecation.warn("Old::Thing", "New::Thing", category: :constant)
+      SnapDiff::Deprecation.warn("Old::Thing", "New::Thing")
     end
 
     assert_empty lines
@@ -103,7 +103,7 @@ class SnapDiffDeprecationTest < ActiveSupport::TestCase
     ENV["SNAP_DIFF_SILENCE_DEPRECATIONS"] = "true"
 
     lines = capture_warnings do
-      SnapDiff::Deprecation.warn("Old::Thing", "New::Thing", category: :constant)
+      SnapDiff::Deprecation.warn("Old::Thing", "New::Thing")
     end
 
     assert_empty lines
@@ -112,7 +112,7 @@ class SnapDiffDeprecationTest < ActiveSupport::TestCase
   test "thread-safe: N threads warning about the same subject emit exactly once" do
     lines = capture_warnings do
       threads = Array.new(20) do
-        Thread.new { SnapDiff::Deprecation.warn("Old::Racy", "New::Racy", category: :constant) }
+        Thread.new { SnapDiff::Deprecation.warn("Old::Racy", "New::Racy") }
       end
       threads.each(&:join)
     end
@@ -121,12 +121,12 @@ class SnapDiffDeprecationTest < ActiveSupport::TestCase
   end
 
   test "reset! clears the seen-set so a subject warns again" do
-    capture_warnings { SnapDiff::Deprecation.warn("Old::Thing", "New::Thing", category: :constant) }
+    capture_warnings { SnapDiff::Deprecation.warn("Old::Thing", "New::Thing") }
 
     SnapDiff::Deprecation.reset!
 
     lines = capture_warnings do
-      SnapDiff::Deprecation.warn("Old::Thing", "New::Thing", category: :constant)
+      SnapDiff::Deprecation.warn("Old::Thing", "New::Thing")
     end
 
     assert_equal 1, lines.size

@@ -4,16 +4,13 @@
 # snap_diff/ (this file, snap_diff/integrations/*, snap_diff/static) routes
 # through here, so this one line is what makes SnapDiff.configure/.start/
 # .compare/::VERSION -- and the dual-install guard -- present no matter
-# which of those paths the user picked. snap_diff.rb never requires this
-# file back, so the require graph stays acyclic.
+# which of those paths the user picked.
 require "snap_diff"
 
-# No require of "capybara_screenshot_diff" here: every Capybara::Screenshot
-# reference below is inside a method body, resolved lazily at call time, not
-# at this file's own load time -- so this unit has no eager dependency on
-# the umbrella entry point, and requiring it here would create a require
-# cycle back to capybara_screenshot_diff.rb (which requires this file's
-# old-path forwarder).
+# Must NOT require "capybara_screenshot_diff": that would cycle back here via
+# this file's old-path forwarder. Every Capybara::Screenshot reference below
+# sits inside a method body and resolves lazily at call time, so no eager
+# dependency on the umbrella is needed.
 # DSL includes Capybara::DSL directly below, so it needs the base gem
 # loaded regardless of what pulled this file in.
 require "capybara/dsl"
@@ -35,11 +32,11 @@ module SnapDiff
     include Capybara::DSL
 
     def screenshot_section(name)
-      screenshot_namer.section = name
+      SnapDiff.session.screenshot_namer.section = name
     end
 
     def screenshot_group(name)
-      screenshot_namer.group = name
+      SnapDiff.session.screenshot_namer.group = name
     end
 
     # Takes a screenshot and compares it against a baseline image.
@@ -76,8 +73,11 @@ module SnapDiff
       # Get the full name with section and group information
       full_name = SnapDiff.session.screenshot_namer.full_name(name)
 
-      # Build the screenshot assertion
-      assertion = build_screenshot_assertion(full_name, options, skip_stack_frames: skip_stack_frames + 1)
+      # Build the screenshot assertion; the actual comparison is deferred
+      # until ScreenshotAssertion#validate! runs.
+      assertion = SnapDiff::ScreenshotMatcher
+        .new(full_name, options)
+        .build_screenshot_assertion(skip_stack_frames: skip_stack_frames + 1)
 
       return false unless assertion
 
@@ -123,29 +123,6 @@ module SnapDiff
     # (e.g., waiting for Turbo, default skip areas).
     def assert_no_screenshot_changes(name, skip_stack_frames: 0, **opts)
       assert_matches_screenshot(name, skip_stack_frames: skip_stack_frames + 1, **opts)
-    end
-
-    private
-
-    # Builds a screenshot assertion object that can be validated immediately or later.
-    #
-    # This method constructs a screenshot assertion that encapsulates the comparison logic.
-    # The actual comparison is deferred until {ScreenshotAssertion#validate!} is called.
-    #
-    # @param name [String] The full name of the screenshot, including any section/group context.
-    # @param options [Hash] Options for screenshot taking and comparison.
-    #   See {#assert_matches_screenshot} for available options.
-    # @param skip_stack_frames [Integer] Number of stack frames to skip for error reporting.
-    # @return [ScreenshotAssertion, nil] The assertion object or nil if no assertion is needed.
-    # @see ScreenshotAssertion
-    def build_screenshot_assertion(name, options, skip_stack_frames: 0)
-      SnapDiff::ScreenshotMatcher
-        .new(name, options)
-        .build_screenshot_assertion(skip_stack_frames: skip_stack_frames + 1)
-    end
-
-    def screenshot_namer
-      SnapDiff.session.screenshot_namer
     end
   end
 end

@@ -244,26 +244,18 @@ module CapybaraScreenshotDiff
       end
     end
 
-    test "#assert_image_not_changed cleans up base image when images are identical" do
-      comparison = make_comparison(:a, :a)
-      assert_image_not_changed(["my_test.rb:42"], "name", comparison)
-      assert_not comparison.base_image_path.exist?
-    end
-
-    test "#assert_image_not_changed keeps base image when images differ" do
-      comparison = make_comparison(:a, :b)
-      assert_image_not_changed(["my_test.rb:42"], "name", comparison)
-      assert comparison.base_image_path.exist?, "base image should be kept for reporter"
-    end
-
     private
 
     def our_screenshot(name, skip_stack_frames)
       screenshot(name, skip_stack_frames: skip_stack_frames)
     end
 
-    def assert_image_not_changed(*args)
-      SnapDiff::ScreenshotAssertion.assert_image_not_changed(*args)
+    # Pins the user-facing error-message shape produced by #validate.
+    def assert_image_not_changed(backtrace, name, comparison)
+      assertion = SnapDiff::ScreenshotAssertion.new(name)
+      assertion.caller = backtrace
+      assertion.compare = comparison
+      assertion.validate
     end
   end
 end

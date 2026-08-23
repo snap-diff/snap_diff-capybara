@@ -29,8 +29,8 @@ module CapybaraScreenshotDiff
   # so the bare "snap_diff" entry gets them too; the old names resolve via
   # snap_diff/legacy_shims with a deprecation warning.
 
-  # ADR-008 step 2: the error classes moved to SnapDiff (snap_diff/errors).
-  # These are EAGER same-object aliases -- deliberately not const_missing
+  # The error classes live in SnapDiff (snap_diff/errors). These are EAGER
+  # same-object aliases -- deliberately not const_missing
   # shims -- so rescue-by-old-name and defined?/const_defined? feature
   # detection keep working exactly as before (const_defined? never
   # triggers const_missing).
@@ -50,7 +50,5 @@ require "capybara_screenshot_diff/dsl"
 # any registered `autoload :SnapDiff` before it ever fires (Ruby resolves
 # the constant the first time anything reopens it, autoload or not) --
 # so SnapDiff.start/.compare/.config would silently never be defined
-# without this. Safe to do eagerly, unlike before this file's units
-# moved: snap_diff.rb no longer requires this file back (it only needs
-# the leaf config_legacy.rb + image_compare.rb), so there is no cycle.
+# without this. Safe eagerly: snap_diff.rb never requires this file back.
 require "snap_diff"

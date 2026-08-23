@@ -3,8 +3,8 @@
 require "snap_diff/deprecation"
 require "snap_diff/drivers"
 
-# ADR-004 v2 step 6: const_missing-based forwarders for the pre-v2
-# namespaces. Every old-name lookup below resolves -- lazily -- to the exact
+# const_missing-based forwarders for the pre-v2 namespaces. Every old-name
+# lookup below resolves -- lazily -- to the exact
 # same object as its SnapDiff:: replacement (identity pinned by
 # test/unit/namespace_forwarding_test.rb) and emits a deprecation warning,
 # once per constant per process, silenceable via
@@ -50,7 +50,7 @@ module SnapDiff
         target = mapping[name]
         return super(name) unless target
 
-        Deprecation.warn("#{old_prefix}::#{name}", target, category: :constant)
+        Deprecation.warn("#{old_prefix}::#{name}", target)
         Object.const_get(target)
       end
     end
@@ -106,9 +106,9 @@ SnapDiff::LegacyShims.install(CapybaraScreenshotDiff::Reporters, "CapybaraScreen
   HTML: "SnapDiff::Reporters::HTML"
 }.freeze)
 
-# BaseDriver dissolved into the SnapDiff::Driver mixin (v2 step 4); the
-# Drivers alias is same-object, so the hook has to live on SnapDiff::Drivers
-# itself. `class MyDriver < BaseDriver` becomes `include SnapDiff::Driver`.
+# BaseDriver dissolved into the SnapDiff::Driver mixin; the Drivers alias is
+# same-object, so the hook has to live on SnapDiff::Drivers itself.
+# `class MyDriver < BaseDriver` becomes `include SnapDiff::Driver`.
 SnapDiff::LegacyShims.install(SnapDiff::Drivers, "Capybara::Screenshot::Diff::Drivers", {
   BaseDriver: "SnapDiff::Driver"
 }.freeze)
