@@ -5,6 +5,39 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v2.0.0.beta3] - 2026-08-23
+
+Fixes the canonical `SnapDiff` entry points, which were incomplete in beta2.
+If you are trying the 2.0 experiment on the new API, upgrade — beta2's
+documented quick start does not work.
+
+### Fixed
+- **`require "snap_diff/integrations/minitest"` (and rspec/cucumber/dsl/static)
+  now load the full `SnapDiff` surface.** In beta2 those entry points left
+  `SnapDiff.configure`, `.start`, `.compare` and `SnapDiff::VERSION` undefined,
+  so the quick start in the canonical guide raised `NoMethodError`
+- **The dual-install guard now runs on every canonical entry point.** In beta2
+  it lived only in `require "snap_diff"`, so the recommended path was the one
+  place it never fired
+- **Legacy entry points keep the full `CapybaraScreenshotDiff` session surface** —
+  `require "capybara/screenshot/diff/cucumber"` and
+  `require "capybara_screenshot_diff/static"` lost `verify`/`reset`/`reporters`
+  and friends in beta2 while the module stayed defined, so calls failed late
+- **`Capybara::Screenshot::Diff::Reporters::Default` and
+  `…::Diff::Comparison` are eager aliases again**, so `defined?` and
+  `const_defined?` report them as they did in beta1. beta2 made them lazy,
+  which silently broke feature detection — and made beta2's own compatibility
+  note inaccurate for those two constants
+- **`SnapDiff::Error` is now the catch-all the docs promise** —
+  `WindowSizeMismatchError` and `DualInstallError` inherit it, so
+  `rescue SnapDiff::Error` catches every error the gem raises
+- **`gem "snap_diff-capybara"` works with `Bundler.require`** — the gem had no
+  matching entry file, so Rails users got nothing loaded and a confusing
+  `NameError` later
+- Reporter failure warnings use one brand and name the failing reporter class
+
+---
+
 ## [v2.0.0.beta2] - 2026-08-23
 
 Third prerelease of the 2.0 opt-in experiment. This one finishes the namespace
