@@ -65,6 +65,19 @@ class SupportLoadProbeTest < ActiveSupport::TestCase
     Capybara::Screenshot::Diff::Comparison
   ].freeze
 
+  # The subset of EAGER_USER_FACING that must resolve under EVERY entry
+  # point, canonical ones included -- these are read directly (a version
+  # string, a struct), not just feature-detected, so a canonical-only app
+  # still hits them. The test above only covers the four legacy entries,
+  # which is how VERSION silently disappeared from six entry points when the
+  # core stopped requiring capybara/screenshot/diff/version.rb: nothing
+  # loaded the forwarder that assigned it, and const_missing does not fire
+  # for a constant legacy_shims deliberately leaves out of its map.
+  EAGER_EVERYWHERE = %w[
+    Capybara::Screenshot::Diff::VERSION
+    Capybara::Screenshot::Diff::Comparison
+  ].freeze
+
   ENTRY_POINTS = {
     "capybara_screenshot_diff" => %w[
       CapybaraScreenshotDiff::DSL Capybara::Screenshot::Os Capybara::Screenshot::Diff
@@ -193,6 +206,31 @@ class SupportLoadProbeTest < ActiveSupport::TestCase
     assert_empty failures, <<~MSG
       Legacy entry point(s) leave CapybaraScreenshotDiff half-present
       (the module answers `defined?` but not its own session methods):
+
+      #{failures.join("\n")}
+    MSG
+  end
+
+  # Every documented entry point, canonical and legacy. capybara_screenshot_diff/dsl
+  # is listed only here: it is not in ENTRY_POINTS or LEGACY_ENTRY_POINTS, which
+  # is exactly why it was the legacy entry that lost VERSION unnoticed.
+  ALL_ENTRY_POINTS = (
+    CANONICAL_ENTRY_POINTS.keys + LEGACY_ENTRY_POINTS + %w[capybara_screenshot_diff/dsl]
+  ).uniq.freeze
+
+  test "the eager user-facing constants resolve under every entry point" do
+    failures = ALL_ENTRY_POINTS.filter_map do |entry|
+      probe(entry, <<~RUBY)
+        require #{entry.inspect}
+        missing = #{EAGER_EVERYWHERE.inspect}.reject { |c| Object.const_defined?(c) }
+        abort("missing: \#{missing.join(", ")}") unless missing.empty?
+      RUBY
+    end
+
+    assert_empty failures, <<~MSG
+      Entry point(s) no longer resolve constants that are supposed to be eager
+      everywhere. `defined?` returns nil for these and const_missing does not
+      fire, so adopter feature detection fails silently:
 
       #{failures.join("\n")}
     MSG

@@ -4,6 +4,7 @@ require "snap_diff/comparison"
 require "snap_diff/config"
 require "snap_diff/deprecation"
 require "snap_diff/drivers"
+require "snap_diff/version"
 
 # THE v1 compatibility surface, in one file -- and the whole of it that is
 # code. lib/capybara* is alias-only by contract
@@ -37,13 +38,19 @@ require "snap_diff/drivers"
 #   entry-point constants probed with Object.const_defined? by
 #   support_load_probe_test.rb -- const_defined? never triggers
 #   const_missing, so a lazy shim would break that contract.
-# - Capybara::Screenshot::Diff::VERSION: the gemspec resolves it at build
-#   time; a lazy shim would make every `gem build` warn.
-# - Capybara::Screenshot::Diff::Reporters::Default (a documented subclassing
-#   extension point) and Capybara::Screenshot::Diff::Comparison (the images
+# - Capybara::Screenshot::Diff::VERSION, and ::Comparison (the images
 #   struct): documented user-facing names that adopters feature-detect with
-#   defined?/const_defined?. Assigned eagerly by their own forwarder files
-#   (reporters/default.rb, image_compare.rb).
+#   defined?/const_defined?. Both are assigned eagerly BELOW rather than by
+#   their own forwarder files (version.rb, image_compare.rb): the core
+#   stopped requiring those forwarders in the 3.0-readiness pass, so nothing
+#   loaded them under a canonical entry point and both names silently
+#   vanished from six of them. This file is required by every entry point,
+#   canonical and legacy, so it is the only place the eager exceptions can
+#   actually be eager.
+# - Capybara::Screenshot::Diff::Reporters::Default (a documented subclassing
+#   extension point): same reasoning, but its forwarder
+#   (reporters/default.rb) is still loaded on every path that defines
+#   ::Reporters at all, so the assignment stays there.
 # - Drivers::ChunkyPNGDriver / Drivers::VipsDriver: real constants on the
 #   shared SnapDiff::Drivers module (the Drivers alias is same-object by
 #   contract), so const_missing can never fire for the leaf names;
@@ -53,9 +60,10 @@ require "snap_diff/drivers"
 #   canonical SnapDiff::Drivers.loaded -- a lazy warn-once shim could not
 #   keep a mutable alias, and warning on a supported registration surface
 #   would be noise. Assigned eagerly below.
-# - Diff::AVAILABLE_DRIVERS: stays a real constant, aliased in
-#   config_legacy.rb from the canonical SnapDiff::Drivers::AVAILABLE_DRIVERS
-#   (same object; SnapDiff::Drivers.available is the canonical reader).
+# - Diff::AVAILABLE_DRIVERS: stays a real constant, aliased BELOW from the
+#   canonical SnapDiff::Drivers::AVAILABLE_DRIVERS (same object;
+#   SnapDiff::Drivers.available is the canonical reader, and its constant is
+#   the stubbing point -- stubbing this alias only rebinds the alias).
 
 # The v1 namespaces, predefined empty so CONFIG_MAPPING can name them at
 # class-body eval time. Everything below reopens them.
@@ -187,6 +195,7 @@ module Capybara
       LOADED_DRIVERS = SnapDiff::Drivers.loaded
       AVAILABLE_DRIVERS = SnapDiff::Drivers::AVAILABLE_DRIVERS
       Comparison = SnapDiff::Comparison::Images
+      VERSION = SnapDiff::VERSION
 
       # Configure screenshot and diff settings in one block.
       #

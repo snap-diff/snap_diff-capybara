@@ -1,17 +1,10 @@
 # frozen_string_literal: true
 
-require "snap_diff/version"
-
-# Deliberately EAGER and silent (v2 step 6 exception): this is a documented
-# name that adopters read directly, and const_defined? never triggers
-# const_missing. The gemspec used to resolve it at build time (which a lazy
-# warning shim would have made warn on every `gem build`); it reads
-# SnapDiff::VERSION now, so this file is pure compatibility. See
-# snap_diff/legacy_shims.rb for the full exception list.
-module Capybara
-  module Screenshot
-    module Diff
-      VERSION = SnapDiff::VERSION
-    end
-  end
-end
+# Capybara::Screenshot::Diff::VERSION is a documented name adopters read
+# directly, so it is assigned EAGERLY rather than shimmed -- const_defined?
+# never triggers const_missing. That assignment lives in
+# snap_diff/legacy_shims (required below) with the rest of the v1 surface,
+# because this file is no longer on any entry point's require path: the core
+# reads SnapDiff::VERSION, and so does the gemspec. Assigning it here too
+# would be a duplicate-constant warning, not a second safety net.
+require "snap_diff/legacy_shims"
