@@ -108,7 +108,7 @@ jobs:
       contains(github.event.pull_request.labels.*.name, 'full-ci')
     needs: [ functional-test ]
     runs-on: ubuntu-latest
-    timeout-minutes: ${{ contains(matrix.ruby-version, 'jruby') && 20 || 8 }}
+    timeout-minutes: ${{ contains(matrix.ruby-version, 'jruby') && 25 || 8 }}
     continue-on-error: ${{ matrix.experimental }}
     strategy:
       matrix:
@@ -134,6 +134,13 @@ jobs:
 
     env:
       BUNDLE_GEMFILE: gemfiles/${{ matrix.gemfile }}
+      # The JRuby cells are the only place the vips driver runs on a non-MRI
+      # engine, and `bin/rake test` otherwise leaves them on chunky_png (the
+      # default in test/system_test_case.rb) -- so ruby-vips' FFI path was
+      # only ever loaded there, never driven end to end. Test Drivers covers
+      # both drivers on CRuby; chunky_png stays covered on JRuby by its own
+      # unit tests, which do not read this variable.
+      SCREENSHOT_DRIVER: ${{ contains(matrix.ruby-version, 'jruby') && 'vips' || 'chunky_png' }}
 
     steps:
       - uses: actions/checkout@v7
@@ -147,7 +154,13 @@ jobs:
       - name: Run tests (with 2 retries)
         uses: nick-fields/retry@v4
         with:
-          timeout_minutes: ${{ contains(matrix.ruby-version, 'jruby') && 7 || 3 }}
+          # 7 minutes stopped being enough for JRuby once the suite grew past
+          # ~600 tests: every JRuby cell on master now burns all three attempts
+          # on `Timeout of 420000ms hit` and dies at the job cap, so the cell
+          # has stopped gating anything. Locally the full suite is 390s on
+          # JRuby with vips and 434s with chunky_png -- the budget is the
+          # problem, not the driver.
+          timeout_minutes: ${{ contains(matrix.ruby-version, 'jruby') && 15 || 3 }}
           max_attempts: 3
           command: bin/rake test
 
