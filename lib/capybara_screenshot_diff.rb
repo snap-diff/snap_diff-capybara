@@ -24,24 +24,15 @@ require "capybara/screenshot/diff/reporters/default"
 require "capybara_screenshot_diff/error_with_filtered_backtrace"
 require "snap_diff/errors"
 
-module CapybaraScreenshotDiff
-  # RED_RGBA / ORANGE_RGBA moved to SnapDiff (snap_diff/annotation_service)
-  # so the bare "snap_diff" entry gets them too; the old names resolve via
-  # snap_diff/legacy_shims with a deprecation warning.
-
-  # The error classes live in SnapDiff (snap_diff/errors). These are EAGER
-  # same-object aliases -- deliberately not const_missing
-  # shims -- so rescue-by-old-name and defined?/const_defined? feature
-  # detection keep working exactly as before (const_defined? never
-  # triggers const_missing).
-  CapybaraScreenshotDiffError = SnapDiff::Error
-
-  ExpectationNotMet = SnapDiff::ExpectationNotMet
-
-  UnstableImage = SnapDiff::UnstableImage
-
-  WindowSizeMismatchError = SnapDiff::WindowSizeMismatchError
-end
+# RED_RGBA / ORANGE_RGBA moved to SnapDiff (snap_diff/annotation_service) so
+# the bare "snap_diff" entry gets them too; the old names resolve via
+# snap_diff/legacy_shims with a deprecation warning.
+#
+# The four error classes (CapybaraScreenshotDiffError, ExpectationNotMet,
+# UnstableImage, WindowSizeMismatchError) used to be assigned here as EAGER
+# same-object aliases. They still are eager -- just from
+# snap_diff/legacy_shims, so a canonical-only require gets them too.
+require "snap_diff/legacy_shims"
 
 require "capybara_screenshot_diff/dsl"
 

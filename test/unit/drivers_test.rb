@@ -58,4 +58,34 @@ class DriversTest < ActiveSupport::TestCase
   test "detection is reachable under both the canonical and the documented Utils name" do
     assert_equal SnapDiff::Drivers.detect_available, SnapDiff::Utils.detect_available_drivers
   end
+
+  # Naming a driver class must work without a prior require (the leaves are
+  # autoloaded), but ONLY for drivers this process can actually load.
+  # Neither driver gem is a runtime dependency, and the documented v1
+  # pattern is `driver = :vips if defined?(...Drivers::VipsDriver)`: an
+  # unconditional autoload makes that truthy on a box without ruby-vips and
+  # the branch then dies on const_get. v1.12.0 loaded vips_driver.rb only
+  # from find_driver_class_for, so `defined?` was nil there.
+  test "an unavailable driver leaf stays undefined rather than autoloading into a crash" do
+    script = <<~RUBY
+      module Kernel
+        alias_method :__real_require, :require
+        def require(name)
+          raise LoadError, "cannot load such file -- vips" if name == "vips"
+          __real_require(name)
+        end
+      end
+      require "snap_diff/drivers"
+
+      abort("vips reported available") if SnapDiff::Drivers.available.include?(:vips)
+      abort("VipsDriver is const_defined? without ruby-vips") if
+        SnapDiff::Drivers.const_defined?(:VipsDriver)
+      abort("chunky_png leaf should still autoload") unless
+        SnapDiff::Drivers::ChunkyPNGDriver.is_a?(Class)
+    RUBY
+
+    out, status = Open3.capture2e(RbConfig.ruby, "-Ilib", "-e", script)
+
+    assert status.success?, out
+  end
 end

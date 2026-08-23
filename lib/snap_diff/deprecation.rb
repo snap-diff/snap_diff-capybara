@@ -25,10 +25,51 @@ module SnapDiff
     # caller who has customized +Warning+ behavior.
     MUTEX = Mutex.new
     @seen = {}
+    @notified = false
+    @notice_suppressed = false
+
+    # The ONE line a v1 user gets, whichever door they came through. Most of
+    # the v1 surface cannot warn per use -- the config accessors are plain
+    # delegators and the eager aliases never reach const_missing -- so
+    # without this a 2.x app is completely silent right up to the bare
+    # NameError it gets on 3.0. Deliberately generic and once per process:
+    # an actionable signal, not per-call stderr noise.
+    MIGRATION_NOTICE =
+      "[snap_diff deprecation] This process uses the v1 `Capybara::Screenshot*` / " \
+      "`CapybaraScreenshotDiff*` API. It still works in 2.x and is REMOVED in 3.0 -- " \
+      "see docs/UPGRADING.md for the SnapDiff replacements. Silence with " \
+      "`SnapDiff.silence_deprecations = true` or SNAP_DIFF_SILENCE_DEPRECATIONS=1. " \
+      "(shown once per process)"
 
     class << self
+      # Emit {MIGRATION_NOTICE}, exactly once per process. Called from every
+      # v1 entry that can be hooked: the const_missing shims (via {.warn}),
+      # the generated legacy config accessors, and `include
+      # Capybara::Screenshot[::Diff]`.
+      # @return [void]
+      def notice
+        return if @notified || @notice_suppressed || SnapDiff.silence_deprecations?
+
+        first_time = MUTEX.synchronize { @notified ? false : (@notified = true) }
+        Kernel.warn(MIGRATION_NOTICE) if first_time
+      end
+
+      # @api private
+      #
+      # Suppresses {MIGRATION_NOTICE} for the rest of the process, without
+      # touching the per-constant warnings. For hosts that ARE the v1
+      # surface rather than users of it -- this gem's own test suite, which
+      # configures through `Capybara::Screenshot.*` by design and would
+      # otherwise print the notice on every run. Deliberately survives
+      # {reset!}, which exists to give a single test a clean slate.
+      # @return [void]
+      def suppress_migration_notice!
+        MUTEX.synchronize { @notice_suppressed = true }
+      end
+
       # Emit a deprecation warning for +subject+, exactly once per unique
-      # +subject+ per process.
+      # +subject+ per process -- preceded, the first time round, by
+      # {MIGRATION_NOTICE}.
       #
       # @param subject [String] the deprecated old-namespace name being
       #   referenced, e.g. "Capybara::Screenshot::Diff::ImageCompare"
@@ -36,6 +77,8 @@ module SnapDiff
       # @return [void]
       def warn(subject, replacement)
         return if SnapDiff.silence_deprecations?
+
+        notice
 
         first_time = MUTEX.synchronize do
           @seen.key?(subject) ? false : (@seen[subject] = true)
@@ -52,7 +95,10 @@ module SnapDiff
       # the suite.
       # @return [void]
       def reset!
-        MUTEX.synchronize { @seen.clear }
+        MUTEX.synchronize do
+          @seen.clear
+          @notified = false
+        end
       end
 
       private

@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "test_helper"
+require "open3"
 require "snap_diff/deprecation"
 
 # LEGACY SURFACE (test/legacy/, see the Rakefile): SnapDiff::Deprecation is
@@ -133,5 +134,100 @@ class SnapDiffDeprecationTest < ActiveSupport::TestCase
     end
 
     assert_equal 1, lines.size
+  end
+
+  # --- the once-per-process migration notice ---
+  #
+  # Most of the v1 surface cannot warn per use: the legacy config accessors
+  # are plain delegators, and the eagerly-aliased constants (Os, the error
+  # classes, VERSION) never reach const_missing. Exercising all 14 legacy
+  # APIs a real setup file touches under -w produced ZERO warnings, so a 2.x
+  # app was completely silent right up to the bare NameError it would get on
+  # 3.0. {MIGRATION_NOTICE} is the one line that closes that gap; these
+  # probes run in subprocesses because "once per process" is the contract.
+
+  NOTICE_MARKER = "shown once per process"
+
+  # Every door into the v1 surface that CAN be hooked, each on its own so a
+  # regression in one is not masked by another still firing. (The eagerly
+  # aliased constants -- Os, the error classes, VERSION -- are deliberately
+  # absent: they never reach const_missing, which is exactly why the notice
+  # has to exist and why UPGRADING.md documents them as silent by design.)
+  LEGACY_DOORS = {
+    "config delegator (write)" => "Capybara::Screenshot.window_size = [80, 80]",
+    "config delegator (read)" => "Capybara::Screenshot::Diff.tolerance",
+    "const_missing constant" => "Capybara::Screenshot::Diff::ImageCompare",
+    "legacy include" => "Class.new { include Capybara::Screenshot::Diff }"
+  }.freeze
+
+  LEGACY_USE = LEGACY_DOORS.values.join("\n")
+
+  LEGACY_DOORS.each do |door, code|
+    test "the migration notice fires for the #{door}, on its own" do
+      out = run_probe(<<~RUBY)
+        require "capybara_screenshot_diff"
+        3.times { #{code} }
+      RUBY
+
+      assert_equal 1, out.scan(NOTICE_MARKER).size, "expected exactly one migration notice, got:\n#{out}"
+    end
+  end
+
+  test "the migration notice fires exactly once per process, however many legacy APIs are used" do
+    out = run_probe(<<~RUBY)
+      require "capybara_screenshot_diff"
+      3.times do
+      #{LEGACY_USE}
+      end
+    RUBY
+
+    assert_equal 1, out.scan(NOTICE_MARKER).size, "expected exactly one migration notice, got:\n#{out}"
+    assert_includes out, "docs/UPGRADING.md"
+    assert_includes out, "REMOVED in 3.0"
+    assert_includes out, "SNAP_DIFF_SILENCE_DEPRECATIONS"
+  end
+
+  test "the migration notice does not fire for a purely canonical setup" do
+    out = run_probe(<<~RUBY)
+      require "snap_diff/integrations/minitest"
+      SnapDiff.configure { |c| c.window_size = [80, 80] }
+      SnapDiff.config.tolerance
+      SnapDiff::Comparison
+      SnapDiff::Os
+    RUBY
+
+    assert_equal "", out.strip, "canonical-only usage must stay silent"
+  end
+
+  test "the migration notice is silenced by the SnapDiff.silence_deprecations accessor" do
+    out = run_probe(<<~RUBY)
+      require "capybara_screenshot_diff"
+      SnapDiff.silence_deprecations = true
+      #{LEGACY_USE}
+    RUBY
+
+    assert_equal "", out.strip
+  end
+
+  test "the migration notice is silenced by SNAP_DIFF_SILENCE_DEPRECATIONS" do
+    out = run_probe(<<~RUBY, "SNAP_DIFF_SILENCE_DEPRECATIONS" => "1")
+      require "capybara_screenshot_diff"
+      #{LEGACY_USE}
+    RUBY
+
+    assert_equal "", out.strip
+  end
+
+  private
+
+  # Runs +script+ in a fresh process with only lib/ on the load path and
+  # returns whatever it wrote to stderr, minus warnings from other gems.
+  def run_probe(script, env = {})
+    project_root = File.expand_path("../..", __dir__)
+    _out, err, status = Open3.capture3(
+      env, RbConfig.ruby, "-Ilib", "-e", script, chdir: project_root
+    )
+    assert_predicate status, :success?, err
+    err.lines.grep(/\[snap_diff/).join
   end
 end

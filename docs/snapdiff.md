@@ -4,9 +4,11 @@ Everything in this gem lives under `SnapDiff` since v2. This page is the SnapDif
 reference: setup, configuration, the object map, and the extension points — all using canonical
 names only.
 
-The legacy `Capybara::Screenshot::Diff` / `CapybaraScreenshotDiff` names still work (they resolve
-to the same objects, with a one-time deprecation warning per constant), and the rest of the docs
-still teach them. Nothing here replaces a working setup — it is what you write for **new** code.
+The legacy `Capybara::Screenshot::Diff` / `CapybaraScreenshotDiff` names still work — they resolve
+to the same objects — and the rest of the docs still teach them. The first legacy API a process
+touches prints one migration notice; on top of that, *lazily shimmed* constants warn once each.
+Some legacy names are silent by design. [UPGRADING.md](UPGRADING.md#deprecation-warnings) lists
+exactly which is which. Nothing here replaces a working setup — it is what you write for **new** code.
 For migrating an existing suite, see [UPGRADING.md](UPGRADING.md).
 
 ## Quick start

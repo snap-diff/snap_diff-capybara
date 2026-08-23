@@ -24,6 +24,13 @@ require "support/setup_capybara"
 
 require "snap_diff/integrations/minitest"
 
+# This suite IS the v1 surface, not a consumer of it: it configures through
+# `Capybara::Screenshot.*` below and exercises the legacy entry points on
+# purpose, so the once-per-process migration notice would fire on every run.
+# Mark it shown rather than silencing deprecations wholesale -- the
+# per-constant warnings must still reach the guard below and raise.
+SnapDiff::Deprecation.suppress_migration_notice!
+
 # v2 step 8: the suite exercises only canonical SnapDiff:: names, so any
 # legacy-shim deprecation warning during a test run is a bug in the
 # referencing test -- fail loud at the resolution site instead of letting
