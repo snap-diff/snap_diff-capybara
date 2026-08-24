@@ -48,7 +48,7 @@ exception: `Capybara::Screenshot.enabled` is `SnapDiff.config.screenshot_enabled
 `SnapDiff.config.enabled` is taken by `Capybara::Screenshot::Diff.enabled`. See
 [SnapDiff — the canonical API](snapdiff.md) for the full SnapDiff-native surface.
 
-**Note:** Setting `Capybara::Screenshot.enabled = false` is sufficient to disable all screenshots. There is no need to define no-op modules or monkey-patch the gem.
+**Note:** Setting `SnapDiff.config.screenshot_enabled = false` is sufficient to disable all screenshots. There is no need to define no-op modules or monkey-patch the gem.
 
 ## Record modes — accepting changes
 
@@ -227,14 +227,17 @@ unless the desired window size can be achieved.
 If you want to skip taking screen shots, set
 
 ```ruby
-Capybara::Screenshot.enabled = false
+SnapDiff.config.screenshot_enabled = false
 ```
 
 You can of course set this by an environment variable
 
 ```ruby
-Capybara::Screenshot.enabled = ENV['TAKE_SCREENSHOTS']
+SnapDiff.config.screenshot_enabled = ENV['TAKE_SCREENSHOTS']
 ```
+
+A disabled screenshot is not an assertion, and Minitest is told so: a test whose only assertion
+was a screenshot reports as missing assertions rather than as a pass over nothing.
 
 ### Disabling diff
 

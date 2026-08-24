@@ -35,8 +35,12 @@ module DSLStub
     @manager.provision_snap_with(snap, fixture_image_path_from(expected, snap.format), version: :base)
   end
 
+  # `difference` is part of the real Comparison contract (attr_reader), and
+  # SnapDiff::Reporting.count reads it to tally the run without triggering
+  # a comparison the way `different?` would.
   ImageCompareStub = Struct.new(
-    :driver, :driver_options, :shift_distance_limit, :quick_equal?, :different?, :reporter, keyword_init: true
+    :driver, :driver_options, :shift_distance_limit, :quick_equal?, :different?, :difference, :reporter,
+    keyword_init: true
   )
 
   def build_image_compare_stub(equal: true)
@@ -46,7 +50,8 @@ module DSLStub
       driver_options: SnapDiff.config.default_options,
       shift_distance_limit: nil,
       quick_equal?: equal,
-      different?: !equal
+      different?: !equal,
+      difference: TestDoubles::TestDifference.new(!equal)
     )
   end
 

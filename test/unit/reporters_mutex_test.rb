@@ -60,7 +60,10 @@ class ReportersMutexTest < ActiveSupport::TestCase
 
     SnapDiff::Reporting.reporters << mutating_reporter
 
-    assertions = [:some, :assertions]
+    # Shaped like real assertions: notify tallies them on the way through,
+    # and a bare Symbol would make it warn about a double, not about the
+    # snapshot behaviour under test.
+    assertions = [SnapDiff::ScreenshotAssertion.new("some"), SnapDiff::ScreenshotAssertion.new("assertions")]
 
     assert_nothing_raised do
       SnapDiff::Reporting.notify(assertions)

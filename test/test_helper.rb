@@ -116,8 +116,7 @@ class ActiveSupport::TestCase
     # Process-global, like the reporter list: without this the whole suite's
     # baseline-less screenshots pile up and get listed in one enormous line
     # at the end of `rake test`.
-    SnapDiff::Reporting.reset_missing_baselines!
-    SnapDiff::Reporting.reset_rerecorded_baselines!
+    SnapDiff::Reporting.reset_run_totals!
   end
 
   def persist_comparisons?

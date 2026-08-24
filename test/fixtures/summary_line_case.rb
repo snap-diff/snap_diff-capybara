@@ -13,7 +13,10 @@
 #   SNAP_CASES  -- comma-separated subset of verified,changed,new (may be empty)
 require "minitest/autorun"
 require "snap_diff/integrations/minitest"
-require "snap_diff/reporters/html"
+# The HTML report is a FEATURE and stays opt-in; the summary line is core
+# honesty and must print either way. SNAP_NO_REPORTER runs the documented
+# Rails setup, which registers no reporter at all.
+require "snap_diff/reporters/html" unless ENV["SNAP_NO_REPORTER"]
 require "fileutils"
 require "pathname"
 

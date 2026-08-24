@@ -20,6 +20,30 @@ The report includes a sidebar with thumbnails, side-by-side comparison with diff
 
 **Note:** The report is not generated when all screenshots match.
 
+## The end-of-run summary
+
+Every run ends with what it actually did, whether or not you require a reporter:
+
+```
+[snap_diff] 12 verified, 1 changed, 2 new (not verified).
+```
+
+- **verified** — a committed baseline existed and was compared
+- **changed** — of those, the ones that differed
+- **new** — captured but *not* compared, for want of a committed baseline: neither a pass nor a
+  failure. Commit the files to turn them into baselines.
+
+`0 verified` is printed as `NOTHING WAS VERIFIED`, because it is the only signal for the failures
+no per-assertion rule can see: a `rake test` that ran zero system tests, or an inherited `GIT_DIR`
+sending every baseline lookup to the wrong repository. Both leave a green suite that compared
+nothing.
+
+Requiring `snap_diff/reporters/html` adds one more line, naming the file it wrote:
+
+```
+[snap_diff] Report: doc/screenshots/snap_diff_report.html
+```
+
 ## Parallel test runs
 
 `finalize` — the hook that writes the report — runs from the framework's end-of-suite hook. Whether

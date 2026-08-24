@@ -38,24 +38,29 @@ class ParallelReportMergeTest < ActiveSupport::TestCase
     FileUtils.rm_rf(SnapDiff::Reporting.parallel_fragments_dir)
   end
 
-  test "records from forked workers reach the parent's report and summary" do
-    fork_worker { @reporter.record([build_failing_assertion("worker_a")]) }
+  # Through `Reporting.notify`, the real path: a worker has to hand back BOTH
+  # halves -- the reporter's records and the counts Reporting keeps itself
+  # (issue #269) -- or the merged run is wrong in exactly the case this whole
+  # file is about.
+  test "records and counts from forked workers reach the parent" do
+    fork_worker { SnapDiff::Reporting.notify([build_failing_assertion("worker_a")]) }
     fork_worker do
-      @reporter.record([build_failing_assertion("worker_b"), build_passing_assertion("worker_b_ok")])
+      SnapDiff::Reporting.notify([build_failing_assertion("worker_b"), build_passing_assertion("worker_b_ok")])
       SnapDiff::Reporting.record_missing_baseline("worker_b_new")
     end
 
     # The bug, restated as an assertion: the parent holds nothing of its own.
     assert_equal 0, @reporter.total
+    assert_equal 0, SnapDiff::Reporting.verified
 
     SnapDiff::Reporting.merge_parallel_fragments!
 
     assert_equal 3, @reporter.total
     assert_equal 2, @reporter.failed
-    # The summary line must count the MERGED totals -- one worker's numbers
-    # would be wrong in exactly the case this whole file is about.
-    assert_equal "[snap_diff] 3 verified, 2 changed, 1 new (not verified). Report: #{@output_path}",
-      @reporter.summary
+    # The counts line must total the MERGED runs -- one worker's numbers
+    # would be wrong here.
+    assert_equal "[snap_diff] 3 verified, 2 changed, 1 new (not verified).",
+      SnapDiff::Reporting.counts_summary
 
     # Symbol keys, like an entry recorded in this process: `failures` is
     # public, and an array whose shape depends on which process filled it
@@ -65,6 +70,7 @@ class ParallelReportMergeTest < ActiveSupport::TestCase
     @reporter.finalize
 
     assert_predicate @output_path, :exist?
+    assert_equal "[snap_diff] Report: #{@output_path}", @reporter.summary
   end
 
   test "the parent removes the fragments it merged" do

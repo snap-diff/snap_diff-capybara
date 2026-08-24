@@ -19,9 +19,24 @@ module SnapDiff
     @mutex = Mutex.new
     @missing_baselines = Set.new
     @rerecorded_baselines = Set.new
+    @verified = 0
+    @changed = 0
 
     class << self
       attr_reader :reporters, :mutex
+
+      # How many screenshots were compared to a committed baseline, and how
+      # many of those differed.
+      #
+      # These counters live HERE, not in a reporter (issue #269). Counting
+      # is core honesty; writing an HTML file is a feature. The summary
+      # exists to catch the failure modes no per-assertion rule can see -- a
+      # run where zero system tests executed, or where an inherited GIT_DIR
+      # redirected every baseline lookup -- and `0 verified` is the only
+      # signal for either. It shipped inside Reporters::HTML, the gem's one
+      # and only `register` call site, so the documented Rails setup (which
+      # requires just the Minitest integration) printed nothing at all.
+      attr_reader :verified, :changed
 
       # Remembers a screenshot that had no COMMITTED baseline and was
       # therefore never compared.
@@ -43,9 +58,16 @@ module SnapDiff
       end
 
       # @api private
-      # Per-test isolation for this gem's own suite.
-      def reset_missing_baselines!
-        @mutex.synchronize { @missing_baselines.clear }
+      # Per-test isolation for this gem's own suite: everything {finalize!}
+      # reports, cleared in one call. One surface rather than one reset per
+      # tally, so a tally added later cannot be forgotten at the call site.
+      def reset_run_totals!
+        @mutex.synchronize do
+          @missing_baselines.clear
+          @rerecorded_baselines.clear
+          @verified = 0
+          @changed = 0
+        end
       end
 
       # Remembers a screenshot re-recorded by `record: :all` -- captured as
@@ -56,11 +78,6 @@ module SnapDiff
       # second happened.
       def record_rerecorded_baseline(name)
         @mutex.synchronize { !!@rerecorded_baselines.add?(name) }
-      end
-
-      # @api private
-      def reset_rerecorded_baselines!
-        @mutex.synchronize { @rerecorded_baselines.clear }
       end
 
       # Registers a reporter for the rest of the process. The canonical way
@@ -80,6 +97,18 @@ module SnapDiff
       def notify(assertions)
         return if assertions.nil? || assertions.empty?
 
+        # Warned about and skipped, never raised: `notify` runs inside every
+        # test's teardown (SnapDiff.reset), and a raise here would abort the
+        # reset before it clears the registry -- leaking one test's
+        # assertions into the next. A tally must not be able to take a
+        # user's suite down. Same contract the reporter loop below applies,
+        # and just as loud: unconditional, not DEBUG-gated.
+        begin
+          count(assertions)
+        rescue => e
+          warn "[snap_diff] Could not tally the run (#{e.class}: #{e.message})"
+        end
+
         reporters_snapshot = @mutex.synchronize { @reporters.dup }
         return if reporters_snapshot.empty?
 
@@ -90,10 +119,70 @@ module SnapDiff
         end
       end
 
-      # End-of-suite hook: finalizes each reporter and prints its summary.
-      # A raising reporter is warned about and skipped; the rest are still
-      # finalized.
+      # Tallies a finished test's assertions. An assertion with no
+      # `compare` never reached a baseline, so it is neither verified nor
+      # changed -- it is counted, if at all, by {record_missing_baseline}.
+      def count(assertions)
+        verified = 0
+        changed = 0
+
+        assertions.each do |assertion|
+          compare = assertion.compare
+          next unless compare
+
+          verified += 1
+          changed += 1 if compare.difference&.different?
+        end
+
+        @mutex.synchronize do
+          @verified += verified
+          @changed += changed
+        end
+      end
+
+      # The last line of the run, and the only place it says what it
+      # actually did:
+      #
+      #   verified -- a committed baseline existed and was compared
+      #   changed  -- of those, the ones that differed
+      #   new      -- captured but NOT compared, for want of a committed
+      #               baseline: neither a pass nor a failure
+      #
+      # Printed on every run, passing or failing, reporter or no reporter,
+      # and never nil. "N screenshots compared" counted only what it
+      # compared, so it was silent about exactly the screenshots it did not
+      # -- and silent altogether when it compared nothing, which is the one
+      # case worth shouting about.
+      def counts_summary
+        verified, changed, new_count, rerecorded = @mutex.synchronize {
+          [@verified, @changed, @missing_baselines.size, @rerecorded_baselines.size]
+        }
+        line = "[snap_diff] #{verified} verified, #{changed} changed, #{new_count} new (not verified)."
+
+        # `record: :all` (#274) accepts the rendering as the new baseline
+        # without comparing, so those are neither verified nor changed --
+        # and not "new" either, which is a different fact. Only shown when
+        # it happened; the names are on their own line below.
+        line += " #{rerecorded} re-recorded (not verified)." if rerecorded.positive?
+
+        # The shout is for an UNEXPLAINED zero -- a suite that ran no system
+        # tests, a GIT_DIR pointed at the wrong repository. Re-recording
+        # explains it, and the user asked for it: shouting there is a false
+        # alarm, and false alarms are how the real one stops being read.
+        if verified.zero? && rerecorded.zero?
+          return "#{line} NOTHING WAS VERIFIED -- no screenshot was compared to a committed baseline."
+        end
+
+        line
+      end
+
+      # End-of-suite hook: prints the counts, then finalizes each reporter
+      # and prints its summary. A raising reporter is warned about and
+      # skipped; the rest are still finalized -- and the counts line is
+      # already out, so no reporter can take it down with it.
       def finalize!
+        $stdout.puts counts_summary
+
         @mutex.synchronize { @reporters.dup }.each do |reporter|
           reporter.finalize
           if (msg = reporter.summary)
@@ -160,6 +249,8 @@ module SnapDiff
         payload = {
           "missing_baselines" => @mutex.synchronize { @missing_baselines.to_a },
           "rerecorded_baselines" => @mutex.synchronize { @rerecorded_baselines.to_a },
+          "verified" => @verified,
+          "changed" => @changed,
           "reporters" => @mutex.synchronize { @reporters.dup }
             .map { |reporter| reporter.dump_state if reporter.respond_to?(:dump_state) }
         }
@@ -182,10 +273,19 @@ module SnapDiff
         Dir[File.join(parallel_fragments_dir, "*.json")].sort.each do |fragment|
           payload = JSON.parse(File.read(fragment))
 
-          @mutex.synchronize { payload["missing_baselines"].each { |name| @missing_baselines << name } }
-          # `to_a` on a fresh install predates this key: a fragment written
-          # by an older worker has no "rerecorded_baselines" at all.
-          @mutex.synchronize { payload.fetch("rerecorded_baselines", []).each { |name| @rerecorded_baselines << name } }
+          # Only "missing_baselines" is read without a default: it is the
+          # one key every version of this fragment has ever written. Every
+          # key added since is `fetch`ed with one, because the fragments
+          # directory is keyed by pid under the system temp dir -- a
+          # recycled pid can hand this merge a fragment left behind by an
+          # older version of the gem, and a partial payload must not take
+          # the run down.
+          @mutex.synchronize do
+            payload["missing_baselines"].each { |name| @missing_baselines << name }
+            payload.fetch("rerecorded_baselines", []).each { |name| @rerecorded_baselines << name }
+            @verified += payload.fetch("verified", 0)
+            @changed += payload.fetch("changed", 0)
+          end
 
           reporters_snapshot = @mutex.synchronize { @reporters.dup }
           payload["reporters"].each_with_index do |state, index|
