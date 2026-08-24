@@ -90,6 +90,8 @@ class CanonicalSuiteHasNoLegacyRefsTest < ActiveSupport::TestCase
       '["snap_diff.rb", %(require "snap_diff/legacy_shims"), nil],',
       '%(require "capybara_screenshot_diff/minitest" if defined?(::Minitest)),',
       '%(require "capybara_screenshot_diff"),',
+      '["snap_diff-capybara.rb", %(require "snap_diff/deprecation"), nil],',
+      '["snap_diff-capybara.rb", %(SnapDiff::Deprecation.canonical_entry_point!), nil]',
       'gate << "SnapDiff.start is still defined" if SnapDiff.respond_to?(:start)',
       'gate << "CapybaraScreenshotDiff is still defined" if defined?(CapybaraScreenshotDiff)',
       'assert_includes failure, "SnapDiff.start is still defined"'

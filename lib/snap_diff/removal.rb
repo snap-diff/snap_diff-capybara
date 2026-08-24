@@ -40,6 +40,25 @@ module SnapDiff
       "driver, which is removed with it. libvips has no shift-distance comparison -- drop the " \
       "option and tune `tolerance` / `color_distance_limit` instead. See docs/configuration.md."
 
+    # Also one subject with several call sites -- the setting's writer
+    # (Config) and the raw per-screenshot / per-compare option hashes.
+    # Deliberately value-blind: `driver: :vips` warns too. It is the knob
+    # that picks between implementations, and 2.1 leaves one implementation,
+    # so the line goes whatever it currently says.
+    DRIVER_REMOVED =
+      "The `driver` setting and the per-screenshot `driver:` option are REMOVED in 2.1: libvips " \
+      "becomes the only backend, so there is nothing left to select. Drop the option and depend " \
+      "on the `ruby-vips` gem instead. See docs/drivers.md."
+
+    # Not a removal: 2.0 announces it and 2.1 turns it into an ArgumentError.
+    # The whole reason unrecognised keys need announcing is that the options
+    # hash was frozen but never validated, so a typo -- or a v1 option that
+    # no longer exists -- configured nothing, silently, forever.
+    def self.unknown_option(key)
+      "`#{key.inspect}` is not a recognised screenshot option, so it does nothing. 2.1 raises " \
+        "ArgumentError for it. Check the spelling against the option list in docs/configuration.md."
+    end
+
     MUTEX = Mutex.new
     @seen = {}
     @suppressed = false

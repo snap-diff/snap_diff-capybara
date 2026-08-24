@@ -79,11 +79,12 @@ module SnapDiff
       manager
     ].freeze
 
-    # shift_distance_limit is excluded from the generated writers and hand
-    # written below (it announces its 2.1 removal); generating it here too
-    # would print Ruby's "method redefined" warning on every load.
-    attr_accessor(*(SETTINGS - %i[root shift_distance_limit]))
-    attr_reader :root, :shift_distance_limit
+    # shift_distance_limit and driver are excluded from the generated
+    # writers and hand written below (they announce their 2.1 removal);
+    # generating them here too would print Ruby's "method redefined"
+    # warning on every load.
+    attr_accessor(*(SETTINGS - %i[root shift_distance_limit driver]))
+    attr_reader :root, :shift_distance_limit, :driver
 
     def initialize
       # Every setting gets its ivar up front (nil-defaulted ones included)
@@ -124,6 +125,15 @@ module SnapDiff
     def shift_distance_limit=(value)
       Removal.warn_once(:shift_distance_limit, Removal::SHIFT_DISTANCE_LIMIT_REMOVED) unless value.nil?
       @shift_distance_limit = value
+    end
+
+    # Same shape, same reason: the writer only. #default_options reads
+    # +driver+ on every comparison for everyone, and #initialize seeds the
+    # +:auto+ default straight into the ivar, so only a user deliberately
+    # picking a backend hears about it.
+    def driver=(value)
+      Removal.warn_once(:driver_setting, Removal::DRIVER_REMOVED)
+      @driver = value
     end
 
     # --- Derived config (ADR-008 step 7b) -------------------------------

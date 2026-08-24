@@ -146,10 +146,18 @@ class LegacyNamespaceDeprecationTest < ActiveSupport::TestCase
 
       _out, err, status = Open3.capture3(RbConfig.ruby, "-Ilib", "-e", body, chdir: PROJECT_ROOT)
 
+      # ADR-010: requiring a v1-named entry point is itself use of the v1
+      # API and now announces itself once. That line is the ENTRY's, not
+      # internal code's -- what this test is about is a per-constant warning,
+      # which can only come from the gem naming an old constant internally.
+      # Canonical entries stay held to zero output of any kind.
+      noise = err.lines.grep(/deprecation/)
+      noise = noise.grep_v(/This process uses the v1/) if kind == :legacy
+
       if !status.success?
         "require \"#{entry}\": probe failed:\n#{err}"
-      elsif err.include?("deprecation")
-        "require \"#{entry}\": internal use emitted deprecation output:\n#{err}"
+      elsif !noise.empty?
+        "require \"#{entry}\": internal use emitted deprecation output:\n#{noise.join}"
       end
     end
 

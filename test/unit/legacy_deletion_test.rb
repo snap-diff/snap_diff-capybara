@@ -59,7 +59,13 @@ class LegacyDeletionTest < ActiveSupport::TestCase
       %(require "snap_diff/integrations/minitest" if defined?(::Minitest))],
     ["snap_diff-capybara.rb",
       %(require "capybara_screenshot_diff"),
-      %(require "snap_diff")]
+      %(require "snap_diff")],
+    # The ADR-010 canonical-entry marker: it exists only to keep the v1
+    # migration notice off canonical users while this file still loads the
+    # v1 umbrella. With the umbrella gone there is nothing to suppress, and
+    # snap_diff/deprecation.rb is deleted above -- so both lines go.
+    ["snap_diff-capybara.rb", %(require "snap_diff/deprecation"), nil],
+    ["snap_diff-capybara.rb", %(SnapDiff::Deprecation.canonical_entry_point!), nil]
   ].freeze
 
   ENTRY_POINTS = SupportLoadProbeTest::CANONICAL_ENTRY_POINTS

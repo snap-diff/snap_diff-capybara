@@ -43,6 +43,31 @@ module SnapDiff
 
     TOLERABLE_OPTIONS = [:tolerance, :color_distance_limit, :shift_distance_limit, :area_size_limit].freeze
 
+    # Every key anything downstream of here actually reads -- capture
+    # options included, because ScreenshotMatcher hands the same hash to the
+    # screenshoter and only carves :crop / :stability_time_limit / :wait out
+    # of the copy it passes on.
+    #
+    # Written out rather than derived from Config#default_options: that hash
+    # is what the gem merges in, so deriving from it would make the check
+    # agree with itself and validate nothing about the keys a USER adds.
+    KNOWN_OPTIONS = %i[
+      area_size_limit
+      capybara_screenshot_options
+      color_distance_limit
+      crop
+      delayed
+      driver
+      median_filter_window_size
+      perceptual_threshold
+      screenshot_format
+      shift_distance_limit
+      skip_area
+      stability_time_limit
+      tolerance
+      wait
+    ].freeze
+
     attr_reader :driver, :driver_options
     attr_reader :image_path, :base_image_path
     attr_reader :difference, :error_message
@@ -54,6 +79,13 @@ module SnapDiff
       ensure_files_exist!
 
       @driver_options = options.freeze
+      # THE no-silent-no-op check (ADR-010). Every option hash in the gem
+      # reaches this constructor, so a key nothing reads is caught here
+      # whichever entry point produced it. Frozen-but-unvalidated is how a
+      # misspelt `tolerence:` bought a green suite that compared nothing.
+      (options.keys - KNOWN_OPTIONS).each do |key|
+        Removal.warn_once(:"unknown_option_#{key}", Removal.unknown_option(key))
+      end
       # The per-comparison half of the shift_distance_limit removal (the
       # global half is Config#shift_distance_limit=). Presence is not enough:
       # config.default_options carries the key on EVERY comparison, nil for

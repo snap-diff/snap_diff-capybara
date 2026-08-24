@@ -1,5 +1,10 @@
 # frozen_string_literal: true
 
+# The one legacy entry point that does NOT go through the umbrella, so it
+# carries its own marker.
+require "snap_diff/deprecation"
+SnapDiff::Deprecation.legacy_entry_point!
+
 require "snap_diff/dsl"
 
 # Deliberately EAGER and silent (v2 step 6 exception): DSL is an advertised

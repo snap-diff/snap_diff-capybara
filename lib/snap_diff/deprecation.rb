@@ -33,6 +33,7 @@ module SnapDiff
     @seen = {}
     @notified = false
     @notice_suppressed = false
+    @canonical_entry = false
 
     # The ONE line a v1 user gets, whichever door they came through. Most of
     # the v1 surface cannot warn per use -- the config accessors are plain
@@ -58,6 +59,36 @@ module SnapDiff
 
         first_time = MUTEX.synchronize { @notified ? false : (@notified = true) }
         Kernel.warn(MIGRATION_NOTICE) if first_time
+      end
+
+      # @api private
+      #
+      # Called at the TOP of every v1-NAMED entry file, before that file's
+      # own requires. Requiring one of those paths IS use of the v1 API,
+      # and it is the ONE door a suite that merely calls `screenshot` goes
+      # through: every other door ({LEGACY_DOORS} in the probe test) needs
+      # the user to call something, which is how beta3 shipped a v1-only
+      # app that produced zero deprecation output.
+      #
+      # Position matters. The marker must run before the file's requires,
+      # because lib/capybara-screenshot-diff.rb reaches the canonical entry
+      # point below on its way in, and a marker placed after that require
+      # would be swallowed by {canonical_entry_point!}.
+      # @return [void]
+      def legacy_entry_point!
+        notice unless @canonical_entry
+      end
+
+      # @api private
+      #
+      # Claimed by lib/snap_diff-capybara.rb -- the canonical gem-name
+      # entry -- which loads the v1 umbrella itself. Without this, "the v1
+      # files got loaded" would be indistinguishable from "a v1 user", and
+      # every `gem "snap_diff-capybara"` app would be told to migrate off
+      # an API it never touched.
+      # @return [void]
+      def canonical_entry_point!
+        @canonical_entry = true
       end
 
       # @api private

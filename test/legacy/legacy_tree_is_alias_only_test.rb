@@ -77,7 +77,12 @@ class LegacyTreeIsAliasOnlyTest < ActiveSupport::TestCase
     private\z |
     (extend|include)\s |
     [A-Z]\w*\s*=\s |          # constant alias: Foo = SnapDiff::Foo
-    def_delegators?\s
+    def_delegators?\s |
+    # The v1 entry-point marker (ADR-010). Deliberately spelled out to the
+    # exact two calls rather than admitting bare method calls generally:
+    # these files must stay `git rm`-able, and announcing "a v1 door was
+    # used" is compatibility plumbing that dies with the door.
+    SnapDiff::Deprecation\.(legacy|canonical)_entry_point!\z
   )/x
 
   test "every legacy file is aliases and forwarders only" do

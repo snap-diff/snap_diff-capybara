@@ -65,6 +65,10 @@ module SnapDiff
   # Note the argument order swap: callers pass baseline first (reading
   # "compare baseline against current"), Comparison takes current first.
   def self.compare(baseline_path, current_path, **options)
+    # BEFORE the merge, which is the last moment `driver:` still means "the
+    # caller asked for a backend" rather than "config.default_options
+    # carries the key for everyone".
+    Removal.warn_once(:driver_setting, Removal::DRIVER_REMOVED) if options.key?(:driver)
     Comparison.new(current_path, baseline_path, config.default_options.merge(options))
   end
 
