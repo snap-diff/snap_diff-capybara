@@ -34,17 +34,22 @@ class MinitestActivationWarningTest < ActiveSupport::TestCase
       "the remedy must name the canonical require, not another deprecated one")
   end
 
+  # It was a bare Kernel#warn, so the documented switch did not reach it --
+  # a deprecation you cannot silence is one more thing users learn to ignore.
+  test "the warning is silenced by the documented deprecation switch" do
+    assert_equal "", warnings_from(%(require "capybara/screenshot/diff"),
+      "SNAP_DIFF_SILENCE_DEPRECATIONS" => "1")
+  end
+
   private
 
   # Runs +script+ in a fresh process with only lib/ on the load path and
   # returns its stderr if the activation warning is in there (the message is
   # multi-line, so grepping for the marker line would drop the remedy), "" if
-  # it is not. The v1-namespace channel is silenced so nothing else can match.
-  def warnings_from(script)
+  # it is not.
+  def warnings_from(script, env = {})
     project_root = File.expand_path("../..", __dir__)
-    _out, err, status = Open3.capture3(
-      {"SNAP_DIFF_SILENCE_DEPRECATIONS" => "1"}, RbConfig.ruby, "-Ilib", "-e", script, chdir: project_root
-    )
+    _out, err, status = Open3.capture3(env, RbConfig.ruby, "-Ilib", "-e", script, chdir: project_root)
     assert_predicate status, :success?, err
     err.include?("[DEPRECATION]") ? err : ""
   end

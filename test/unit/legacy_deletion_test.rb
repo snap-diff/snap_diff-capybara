@@ -48,9 +48,18 @@ class LegacyDeletionTest < ActiveSupport::TestCase
     # The new gem name's Bundler entry point is KEPT, repointed off the v1
     # umbrella. It matches neither gate's file glob, so this is the only
     # thing that checks its post-2.1 shape at all.
+    #
+    # Two lines since the minitest feature detection landed: the file loads
+    # the gem unconditionally (minitest is not a runtime dependency, so
+    # `Bundler.require` must not die in an RSpec-only bundle) and activates
+    # the Minitest integration only when minitest is really there. The
+    # conditional line goes first -- it contains the shorter one.
     ["snap_diff-capybara.rb",
-      %(require "capybara_screenshot_diff/minitest"),
-      %(require "snap_diff/integrations/minitest")]
+      %(require "capybara_screenshot_diff/minitest" if defined?(::Minitest)),
+      %(require "snap_diff/integrations/minitest" if defined?(::Minitest))],
+    ["snap_diff-capybara.rb",
+      %(require "capybara_screenshot_diff"),
+      %(require "snap_diff")]
   ].freeze
 
   ENTRY_POINTS = SupportLoadProbeTest::CANONICAL_ENTRY_POINTS
