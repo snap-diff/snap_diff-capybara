@@ -214,4 +214,97 @@ class ScreenshotMatcherTest < ActiveSupport::TestCase
       assert_empty SnapDiff.session.new_screenshots
     end
   end
+
+  # --- THE FALSE GREEN -------------------------------------------------
+  #
+  # Baselines are read from git (`git show HEAD:<path>`), never from disk,
+  # and `fail_if_new` is false off CI by design. So a screenshot with no
+  # COMMITTED baseline is not compared at all: no assertion is registered,
+  # the test passes whatever the page looks like, and the capture silently
+  # overwrites the PNG that was sitting on disk. That is the product's core
+  # promise failing quietly, in the default local configuration, for every
+  # new user -- it has to be said out loud.
+
+  test "#build_screenshot_assertion warns when nothing was compared for lack of a committed baseline" do
+    name = "c_#{Time.now.nsec}"
+    path = SnapDiff::SnapManager.path_for(name).path
+
+    _out, err = capture_io do
+      SnapDiff::Vcs.stub(:checkout_vcs, false) do
+        SnapDiff::ScreenshotMatcher.new(name).build_screenshot_assertion
+      end
+    end
+
+    assert_match(/No committed baseline/, err)
+    assert_includes err, path.to_s, "the warning must name the real screenshot, not the .base temp file"
+    assert_no_match(/\.base\.png/, err)
+    assert_match(/[Cc]ommit/, err, "the warning must say what to do about it")
+    # The check has to run BEFORE the capture, or every screenshot looks
+    # like it already had a file sitting there.
+    assert_no_match(/already there/, err)
+  end
+
+  test "#build_screenshot_assertion warns once per screenshot, not once per run" do
+    name = "c_#{Time.now.nsec}"
+
+    _out, err = capture_io do
+      SnapDiff::Vcs.stub(:checkout_vcs, false) do
+        2.times { SnapDiff::ScreenshotMatcher.new(name).build_screenshot_assertion }
+      end
+    end
+
+    assert_equal 1, err.scan("No committed baseline").size, err
+  end
+
+  # The genuinely confusing case: the user SEES a PNG in doc/screenshots and
+  # assumes it is the baseline. It is not one until it is committed.
+  test "#build_screenshot_assertion flags an uncommitted screenshot already on disk" do
+    name = "c_#{Time.now.nsec}"
+    path = SnapDiff::SnapManager.path_for(name).path
+    path.dirname.mkpath
+    FileUtils.cp(File.expand_path("a.png", TEST_IMAGES_DIR), path)
+
+    _out, err = capture_io do
+      SnapDiff::Vcs.stub(:checkout_vcs, false) do
+        SnapDiff::ScreenshotMatcher.new(name).build_screenshot_assertion
+      end
+    end
+
+    assert_match(/not a baseline until it is committed/, err)
+  end
+
+  test "#build_screenshot_assertion stays quiet when a committed baseline exists" do
+    _out, err = capture_io do
+      SnapDiff::Vcs.stub(:checkout_vcs, true) do
+        snap = create_snapshot_for(:a, :c)
+        SnapDiff::ScreenshotMatcher.new(snap.full_name).build_screenshot_assertion
+      end
+    end
+
+    assert_no_match(/No committed baseline/, err)
+  end
+
+  # The other half of the same message. It used to name `<...>.base.png` (a
+  # generated temp file nobody creates or commits), promise
+  # `RECORD_SCREENSHOTS=1`, which nothing in lib/ has ever read, and point at
+  # the legacy namespace in the release whose headline is SnapDiff.
+  test "the fail_if_new error tells the truth about the file and the fix" do
+    name = "c_#{Time.now.nsec}"
+    path = SnapDiff::SnapManager.path_for(name).path
+
+    error = SnapDiff::Vcs.stub(:checkout_vcs, false) do
+      SnapDiff.config.stub(:fail_if_new, true) do
+        assert_raises(SnapDiff::ExpectationNotMet) do
+          SnapDiff::ScreenshotMatcher.new(name).build_screenshot_assertion
+        end
+      end
+    end
+
+    assert_includes error.message, path.to_s
+    assert_no_match(/\.base\.png/, error.message)
+    assert_no_match(/RECORD_SCREENSHOTS/, error.message)
+    # The canonical name, not the v1 namespace it used to print in the
+    # release whose headline is SnapDiff.
+    assert_includes error.message, "SnapDiff.config.fail_if_new = false"
+  end
 end

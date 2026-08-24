@@ -13,9 +13,27 @@ module SnapDiff
   module Reporting
     @reporters = []
     @mutex = Mutex.new
+    @missing_baselines = Set.new
 
     class << self
       attr_reader :reporters, :mutex
+
+      # Remembers a screenshot that had no COMMITTED baseline and was
+      # therefore never compared.
+      #
+      # @return [Boolean] true the first time this name is seen -- the
+      #   "warn once per screenshot" gate for ScreenshotMatcher, and the
+      #   tally behind {finalize!}'s summary line. Kept here rather than in
+      #   the matcher because the end-of-run summary is this module's job.
+      def record_missing_baseline(name)
+        @mutex.synchronize { !!@missing_baselines.add?(name) }
+      end
+
+      # @api private
+      # Per-test isolation for this gem's own suite.
+      def reset_missing_baselines!
+        @mutex.synchronize { @missing_baselines.clear }
+      end
 
       # Registers a reporter for the rest of the process. The canonical way
       # in: the append happens under the mutex, so concurrent registrations
@@ -56,6 +74,26 @@ module SnapDiff
         rescue => e
           warn "[snap_diff] Reporter #{reporter.class} failed (#{e.class}: #{e.message})"
         end
+
+        if (msg = missing_baselines_summary)
+          $stdout.puts msg
+        end
+      end
+
+      # The reporters' own summary counts what WAS compared ("N screenshots
+      # compared, no failures") and so says nothing about the screenshots
+      # that were skipped for want of a committed baseline -- the very ones
+      # that passed without being looked at. The last line of the run is the
+      # best chance to correct that impression.
+      #
+      # @return [String, nil] nil when every screenshot had a baseline
+      def missing_baselines_summary
+        names = @mutex.synchronize { @missing_baselines.to_a }
+        return if names.empty?
+
+        label = (names.size == 1) ? "1 screenshot" : "#{names.size} screenshots"
+        "[snap_diff] #{label} had no committed baseline and #{(names.size == 1) ? "was" : "were"} NOT compared: " \
+          "#{names.join(", ")}. Commit the captured file(s) to enable comparison."
       end
     end
   end
