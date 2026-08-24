@@ -7,16 +7,30 @@ class MinitestAssertionsTest < ActiveSupport::TestCase
   # inspect how before_teardown resolved (passed/skipped/failed) without polluting
   # the outer test's own assertions/reporting.
   #
+  # Rails 7.2+ only. `defined?` rather than a version comparison: the
+  # question is whether the constant is there to prepend, and edge/main can
+  # move independently of the version string.
+  RAILS_HAS_ASSERTION_ALARM = defined?(ActiveSupport::Testing::TestsWithoutAssertions)
+
   # @param teardown [Proc, nil] optional replacement `teardown` method, to
   #   simulate a user teardown that runs after `before_teardown`. Calls
   #   `super()` first so DSLStub's own cleanup still happens.
   # @param like_rails [Boolean] prepend the module Rails prepends into every
   #   ActiveSupport::TestCase, to observe its missing-assertions alarm.
   def run_inner_test(teardown: nil, like_rails: false, &block)
+    # Without the module there is no alarm to observe, and running anyway would
+    # assert that a thing which cannot fire did not fire -- green for the wrong
+    # reason, which is the failure mode this whole release exists to remove.
+    skip "ActiveSupport::Testing::TestsWithoutAssertions is Rails 7.2+" if like_rails && !RAILS_HAS_ASSERTION_ALARM
+
     test_class = Class.new(::Minitest::Test) do
       # The real thing, not a stand-in: Rails prepends exactly this,
-      # unconditionally, at active_support/test_case.rb:205.
-      prepend ActiveSupport::Testing::TestsWithoutAssertions if like_rails
+      # unconditionally, at active_support/test_case.rb:205 -- but only since
+      # Rails 7.2. On 7.1 the constant does not exist, so the alarm this test
+      # observes is simply not a feature of that version. Skip rather than
+      # stub: a hand-rolled stand-in would assert that OUR code cooperates
+      # with a module Rails never prepends there, which proves nothing.
+      prepend ActiveSupport::Testing::TestsWithoutAssertions if like_rails && RAILS_HAS_ASSERTION_ALARM
 
       include SnapDiff::Minitest::Assertions
       include DSLStub
