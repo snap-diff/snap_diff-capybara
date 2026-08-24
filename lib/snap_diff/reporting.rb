@@ -29,6 +29,14 @@ module SnapDiff
         @mutex.synchronize { !!@missing_baselines.add?(name) }
       end
 
+      # How many screenshots were captured but never compared. The "new"
+      # count on the end-of-run summary line, and live state: it is the
+      # number of screenshots that actually went down the no-baseline path
+      # this run, not a number derived from what the run should have done.
+      def missing_baselines_count
+        @mutex.synchronize { @missing_baselines.size }
+      end
+
       # @api private
       # Per-test isolation for this gem's own suite.
       def reset_missing_baselines!
@@ -80,11 +88,10 @@ module SnapDiff
         end
       end
 
-      # The reporters' own summary counts what WAS compared ("N screenshots
-      # compared, no failures") and so says nothing about the screenshots
-      # that were skipped for want of a committed baseline -- the very ones
-      # that passed without being looked at. The last line of the run is the
-      # best chance to correct that impression.
+      # The reporters' summary line carries the COUNT of screenshots that
+      # were captured without a committed baseline ("N new (not
+      # verified)"); this line names them, so the next thing the reader
+      # does is `git add` the right files.
       #
       # @return [String, nil] nil when every screenshot had a baseline
       def missing_baselines_summary

@@ -170,18 +170,18 @@ class HTMLReporterTest < ActiveSupport::TestCase
     assert_nil result
   end
 
-  test "#summary returns screenshot count and status" do
+  test "#summary counts what was verified, what changed, and what was never compared" do
+    SnapDiff::Reporting.record_missing_baseline("never_compared")
+
     reporter = SnapDiff::Reporters::HTML.new(output_path: @output_path)
     reporter.record([build_passing_assertion("ok"), build_failing_assertion("fail")])
     reporter.finalize
 
-    summary = reporter.summary
-    assert_includes summary, "1 failure"
-    assert_includes summary, "2 screenshots"
-    assert_includes summary, @output_path.to_s
+    assert_equal "[snap_diff] 2 verified, 1 changed, 1 new (not verified). Report: #{@output_path}",
+      reporter.summary
   end
 
-  test "#summary pluralizes failures label for multiple failures" do
+  test "#summary counts every changed screenshot, not just the first" do
     reporter = SnapDiff::Reporters::HTML.new(output_path: @output_path)
     reporter.record([
       build_failing_assertion("first failure"),
@@ -190,25 +190,39 @@ class HTMLReporterTest < ActiveSupport::TestCase
     reporter.finalize
 
     summary = reporter.summary
-    assert_includes summary, "2 failures"
-    assert_includes summary, "2 screenshots"
+    assert_includes summary, "2 verified, 2 changed"
     assert_includes summary, @output_path.to_s
   end
 
-  test "#summary when all pass shows no failures" do
+  test "#summary when all pass reports zero changed and omits the report path" do
     reporter = SnapDiff::Reporters::HTML.new(output_path: @output_path)
     reporter.record([build_passing_assertion("ok")])
     reporter.finalize
 
     summary = reporter.summary
-    assert_includes summary, "1 screenshot"
-    assert_includes summary, "no failures"
+    assert_equal "[snap_diff] 1 verified, 0 changed, 0 new (not verified).", summary
     refute_includes summary, @output_path.to_s
   end
 
-  test "#summary when no screenshots recorded" do
+  # Zero verified is the whole tell for the failure modes no assertion can
+  # report: a suite that ran no system tests at all, or one whose baseline
+  # lookup was redirected to another repository. The line must be printed
+  # (never nil) and must not read like a pass.
+  test "#summary shouts when nothing was verified" do
     reporter = SnapDiff::Reporters::HTML.new(output_path: @output_path)
-    assert_nil reporter.summary
+
+    assert_equal "[snap_diff] 0 verified, 0 changed, 0 new (not verified). " \
+      "NOTHING WAS VERIFIED -- no screenshot was compared to a committed baseline.",
+      reporter.summary
+  end
+
+  test "#summary counts screenshots captured with no committed baseline even when nothing was verified" do
+    SnapDiff::Reporting.record_missing_baseline("a")
+    SnapDiff::Reporting.record_missing_baseline("b")
+
+    reporter = SnapDiff::Reporters::HTML.new(output_path: @output_path)
+
+    assert_includes reporter.summary, "0 verified, 0 changed, 2 new (not verified)."
   end
 
   test "#finalize can retry after write_report failure" do
