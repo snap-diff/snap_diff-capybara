@@ -536,7 +536,9 @@ screenshot. That wait is gone.)
 So content that arrives late — lazy-loaded images, JS-injected widgets, anything
 behind an unresolved fetch — has to be settled *before* the assertion, or its
 mask will be empty and the unstable region will be compared. Settle it in the
-readiness block described below.
+[readiness block](#the-readiness-block) described below; the two cases people
+hit most (webfonts and lazy images) are written out in
+[Recipes](#recipes).
 
 If a selector matched nothing in *every* screenshot of a run, the end-of-run
 summary names it:
@@ -584,6 +586,58 @@ In RSpec, call `assert_matches_screenshot` directly rather than through the
 binds the block by Ruby's `{}`/`do...end` precedence rather than by intent, so
 the matcher does not take one. In Cucumber the DSL is in the World, so step
 definitions pass a block the same way a Minitest test does.
+
+#### Recipes
+
+These are the workarounds people hand-roll anyway. The block is where they
+belong, because that is the only place they are skipped when screenshots are
+off.
+
+**Webfonts.** A font swapping in mid-capture reflows every line of text that
+uses it, so the same page renders two different ways depending on when the
+screenshot lands — the classic "it only fails on CI" flake. People usually
+paper over it with a `skip_area`, a loosened `tolerance` and a retry, all three
+of which weaken the comparison everywhere. Wait for the swap instead:
+
+```ruby
+assert_matches_screenshot 'home' do
+  page.evaluate_async_script(
+    'var done = arguments[0]; document.fonts.ready.then(function(){ done(true) })'
+  )
+end
+```
+
+`document.fonts.ready` resolves once every font used by the current layout has
+loaded (or failed) — and on a warm cache that has already happened, so the call
+returns on the first round trip. It is a Font Loading API promise, supported in
+every browser Capybara drives.
+
+There is deliberately no built-in font wait: it would be a browser round trip
+imposed on every screenshot in every suite, and a driver-compatibility surface
+the gem would own forever, in exchange for one line you can write yourself.
+
+**Lazy-loaded images.** Anything behind `loading="lazy"`, an IntersectionObserver
+or an unresolved fetch is simply not there when the screenshot is taken. Force
+it in, then come back:
+
+```ruby
+assert_matches_screenshot 'gallery', skip_area: ['article img'] do
+  scroll_to :bottom
+  assert_text 'End of gallery'
+  scroll_to :top
+end
+```
+
+Note the order: `skip_area: ['article img']` masks what exists **at assertion
+time**, so the images have to be in the DOM before the mask is resolved. A
+selector for content that has not loaded yet produces an empty mask and the
+unstable region is compared anyway — see [Skipping an area](#skipping-an-area).
+
+**What does not belong here.** Waits that every screenshot needs regardless
+(`disable_animations`, `hide_caret`) are configuration, not readiness. And the
+block runs once per assertion, not once per stability retry, so it cannot be
+used to nudge a page that keeps moving — for that, see
+[When the page will not settle](#when-the-page-will-not-settle).
 
 The arguments are `[left, top, right, bottom]` for the area you want to ignore.  You can also set this globally:
 
