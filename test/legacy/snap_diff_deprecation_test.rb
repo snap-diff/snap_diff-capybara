@@ -176,6 +176,53 @@ class SnapDiffDeprecationTest < ActiveSupport::TestCase
     end
   end
 
+  # --- the require doors ------------------------------------------------
+  #
+  # THE beta3 HOLE. Every door above needs the user to CALL something. A v1
+  # suite that requires a v1 entry point and then only calls `screenshot`
+  # touches no config delegator, no const_missing and no legacy include --
+  # so beta3 shipped with docs describing three warning channels and a
+  # v1-only app producing zero output. Requiring a v1-NAMED file is itself
+  # use of the v1 API, and is the one door every such app goes through.
+  #
+  # capybara_screenshot_diff/cucumber is absent for the same reason as in
+  # legacy_entry_point_probe_test: it calls World(...) at load.
+  V1_REQUIRE_DOORS = %w[
+    capybara/screenshot/diff
+    capybara-screenshot-diff
+    capybara_screenshot_diff
+    capybara_screenshot_diff/dsl
+    capybara_screenshot_diff/minitest
+    capybara_screenshot_diff/rspec
+  ].freeze
+
+  V1_REQUIRE_DOORS.each do |entry|
+    test "the migration notice fires for `require #{entry.inspect}` alone" do
+      out = run_probe(%(require #{entry.inspect}))
+
+      assert_equal 1, out.scan(NOTICE_MARKER).size, "expected exactly one migration notice, got:\n#{out}"
+    end
+  end
+
+  # The mirror image, and the reason the doors above cannot simply be "the
+  # v1 files got loaded": the canonical gem-name entry point loads the whole
+  # v1 umbrella itself, so a `gem "snap_diff-capybara"` user would eat a
+  # notice about an API they never touched.
+  CANONICAL_REQUIRE_DOORS = %w[
+    snap_diff
+    snap_diff-capybara
+    snap_diff/dsl
+    snap_diff/integrations/minitest
+  ].freeze
+
+  CANONICAL_REQUIRE_DOORS.each do |entry|
+    test "`require #{entry.inspect}` alone stays silent" do
+      out = run_probe(%(require #{entry.inspect}))
+
+      assert_equal "", out.strip, "canonical entry points must not warn"
+    end
+  end
+
   test "the migration notice fires exactly once per process, however many legacy APIs are used" do
     out = run_probe(<<~RUBY)
       require "capybara_screenshot_diff"
@@ -202,14 +249,41 @@ class SnapDiffDeprecationTest < ActiveSupport::TestCase
     assert_equal "", out.strip, "canonical-only usage must stay silent"
   end
 
+  # The accessor silences everything from the moment it is set -- which is
+  # necessarily AFTER the entry point that loaded SnapDiff in the first
+  # place. Setting it needs the constant, and the constant needs a require.
   test "the migration notice is silenced by the SnapDiff.silence_deprecations accessor" do
     out = run_probe(<<~RUBY)
+      require "snap_diff/deprecation"
+      SnapDiff.silence_deprecations = true
+      require "capybara_screenshot_diff"
+      #{LEGACY_USE}
+    RUBY
+
+    assert_equal "", out.strip
+  end
+
+  # ...which is why the env var is the channel UPGRADING.md points a
+  # Bundler.require user at: with `gem "capybara-screenshot-diff"` in the
+  # Gemfile, the v1 entry point loads before any line of their code runs,
+  # so the accessor has no moment early enough to cover it.
+  test "the accessor cannot silence the require-time notice, and the env var can" do
+    late = run_probe(<<~RUBY)
       require "capybara_screenshot_diff"
       SnapDiff.silence_deprecations = true
       #{LEGACY_USE}
     RUBY
 
-    assert_equal "", out.strip
+    assert_equal 1, late.scan(NOTICE_MARKER).size,
+      "the require itself warns before the accessor can be set"
+
+    early = run_probe(<<~RUBY, "SNAP_DIFF_SILENCE_DEPRECATIONS" => "1")
+      require "capybara_screenshot_diff"
+      SnapDiff.silence_deprecations = true
+      #{LEGACY_USE}
+    RUBY
+
+    assert_equal "", early.strip
   end
 
   test "the migration notice is silenced by SNAP_DIFF_SILENCE_DEPRECATIONS" do

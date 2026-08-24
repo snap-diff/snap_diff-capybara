@@ -18,6 +18,12 @@
 # zero-require Rails path and still activates the assertions. Absent gets a
 # line saying so -- a gem that loads and then does nothing, silently, is its
 # own bug report.
+# This IS the canonical door, and it loads the v1 umbrella below -- so claim
+# the process before that require, or every canonical user is told to
+# migrate off an API they never touched.
+require "snap_diff/deprecation"
+SnapDiff::Deprecation.canonical_entry_point!
+
 require "capybara_screenshot_diff"
 
 begin

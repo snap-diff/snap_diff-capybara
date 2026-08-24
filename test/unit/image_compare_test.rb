@@ -63,11 +63,11 @@ class ImageCompareTest < ActiveSupport::TestCase
     assert_equal 0.02, comp.driver_options[:tolerance]
   end
 
-  test "#initialize with dimensions creates valid comparison" do
-    comp = make_comparison(:b, dimensions: [80, 80])
-    assert comp.quick_equal?
-    assert_not comp.different?
-  end
+  # `dimensions: [80, 80]` used to be here, and was the only thing this
+  # example added over the identical-images case above. Nothing in the gem
+  # has ever read that key -- it configured nothing, silently, which is the
+  # exact class OptionValidationTest now closes. The option validation found
+  # it; the example went with it rather than pinning a no-op.
 
   test "#initialize with :auto driver selects vips when available" do
     skip "VIPS not present. Skipping VIPS driver tests." unless defined?(Vips)

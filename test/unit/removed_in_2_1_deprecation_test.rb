@@ -44,10 +44,13 @@ class RemovedIn21DeprecationTest < ActiveSupport::TestCase
       3.times { #{compare(driver: :chunky_png)} }
     RUBY
 
-    assert_equal 1, lines.size, lines.join
-    assert_match(/chunky_png/, lines.first)
-    assert_match(/REMOVED in 2\.1/, lines.first)
-    assert_match(/vips/, lines.first)
+    # Counts the chunky lines, not every line: picking a driver AT ALL is
+    # its own removal (see the driver-setting examples below), so this
+    # caller legitimately hears two different things.
+    chunky = lines.grep(/chunky_png driver/)
+    assert_equal 1, chunky.size, lines.join
+    assert_match(/REMOVED in 2\.1/, chunky.first)
+    assert_match(/vips/, chunky.first)
   end
 
   test "selecting chunky_png through SnapDiff.config.driver warns once" do
@@ -57,8 +60,7 @@ class RemovedIn21DeprecationTest < ActiveSupport::TestCase
       3.times { #{compare} }
     RUBY
 
-    assert_equal 1, lines.size, lines.join
-    assert_match(/chunky_png/, lines.first)
+    assert_equal 1, lines.grep(/chunky_png driver/).size, lines.join
   end
 
   # THE CASE THAT MATTERS MOST: these users never asked for chunky_png and
@@ -142,18 +144,63 @@ class RemovedIn21DeprecationTest < ActiveSupport::TestCase
     assert_match(/REMOVED in 2\.1/, lines.first)
   end
 
+  # --- the `driver` setting and the `driver:` option -------------------
+  #
+  # The abstraction goes, so the knob that picks between implementations
+  # goes with it -- whichever value it is set to. `driver: :vips` is the
+  # case that needs saying out loud: it warns about nothing today (it is
+  # the surviving backend) and it is exactly the line that stops existing
+  # in 2.1.
+
+  test "setting the driver on the config warns once, whatever the value" do
+    lines = probe(<<~RUBY)
+      require "snap_diff"
+      3.times { SnapDiff.config.driver = :vips }
+    RUBY
+
+    assert_equal 1, lines.size, lines.join
+    assert_match(/`driver`/, lines.first)
+    assert_match(/REMOVED in 2\.1/, lines.first)
+  end
+
+  test "passing driver: per comparison warns once, whatever the value" do
+    lines = probe(<<~RUBY)
+      require "snap_diff"
+      3.times { #{compare(driver: :vips)} }
+    RUBY
+
+    driver = lines.grep(/`driver`/)
+    assert_equal 1, driver.size, lines.join
+    assert_match(/REMOVED in 2\.1/, driver.first)
+  end
+
+  # The trap that made shift_distance_limit hard: config.default_options
+  # carries :driver on EVERY comparison. Presence in the merged hash is not
+  # evidence that the user asked for it.
+  test "the driver: key config always merges in does not warn by itself" do
+    out = probe_stderr(<<~RUBY)
+      require "snap_diff"
+      3.times { #{compare} }
+    RUBY
+
+    assert_empty out.lines.grep(/`driver`/), "config's own default must not warn at the user"
+  end
+
   # --- what must stay silent -------------------------------------------
 
   # The mutation that matters for everyone who is NOT affected: a plain vips
   # setup, comparing images, must not gain a single line of stderr -- and the
   # gem's own drivers include the mixin themselves, so an unscoped `included`
   # hook would fire here.
+  #
+  # No `config.driver = :vips` here any more: that line is itself removed in
+  # 2.1 and now warns (see the driver-setting examples above). Leaving vips
+  # to :auto is what an unaffected setup looks like on this box.
   test "a plain vips setup with no chunky or shift usage stays silent" do
     skip "libvips not available on this box" unless SnapDiff::Drivers::AVAILABLE_DRIVERS.include?(:vips)
 
     out = probe_stderr(<<~RUBY)
       require "snap_diff"
-      SnapDiff.config.driver = :vips
       3.times { #{compare} }
       SnapDiff::Drivers::VipsDriver
     RUBY
@@ -188,8 +235,8 @@ class RemovedIn21DeprecationTest < ActiveSupport::TestCase
       end
     RUBY
 
-    assert_equal 5, lines.size, lines.join
-    assert_equal 5, lines.uniq.size, "duplicate warning text: #{lines.join}"
+    assert_equal 6, lines.size, lines.join
+    assert_equal 6, lines.uniq.size, "duplicate warning text: #{lines.join}"
   end
 
   # --- silencing --------------------------------------------------------

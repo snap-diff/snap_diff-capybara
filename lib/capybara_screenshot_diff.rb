@@ -1,5 +1,12 @@
 # frozen_string_literal: true
 
+# The v1 umbrella, and the file every legacy entry point except
+# capybara_screenshot_diff/dsl reaches. Marked here rather than in each of
+# them; snap_diff-capybara.rb (which loads this umbrella for canonical
+# users) claims the process first, so this stays quiet for them.
+require "snap_diff/deprecation"
+SnapDiff::Deprecation.legacy_entry_point!
+
 require "capybara/dsl"
 require "capybara/screenshot/diff/config_legacy"
 require "capybara/screenshot/diff/version"

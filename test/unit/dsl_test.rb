@@ -222,6 +222,22 @@ class DSLTest < ActiveSupport::TestCase
     end
   end
 
+  # ADR-010: the per-screenshot `driver:` key is REMOVED in 2.1, so a user
+  # who passes it has to hear about it -- and the DSL is how most of them
+  # pass it. The message, once-per-process and silencing contracts are
+  # proven in a subprocess by removed_in_2_1_deprecation_test; what THIS
+  # example guards is the seam that test cannot reach, because the DSL
+  # resolves `:driver` to a driver instance before Comparison ever sees the
+  # hash. Asserting the routing, not the output: SnapDiff::Removal is
+  # suppressed suite-wide (test_helper) and cannot be un-suppressed.
+  test "#capture_screenshot routes a user's driver: option to the removal channel" do
+    assert_includes removal_subjects_for(driver: :vips), :driver_setting
+  end
+
+  test "#capture_screenshot does not announce the driver removal when the user did not ask for one" do
+    assert_not_includes removal_subjects_for, :driver_setting
+  end
+
   test "#capture_screenshot does not raise even when a differing baseline exists" do
     SnapDiff::Vcs.stub(:checkout_vcs, true) do
       snap = create_snapshot_for(:a, :c)
@@ -244,6 +260,23 @@ class DSLTest < ActiveSupport::TestCase
   end
 
   private
+
+  # Every removal subject the channel is asked to announce while the DSL
+  # captures one screenshot with +options+.
+  def removal_subjects_for(**options)
+    subjects = []
+    recorder = ->(subject, _message) { subjects << subject }
+
+    SnapDiff::Vcs.stub(:checkout_vcs, true) do
+      SnapDiff::Removal.stub(:warn_once, recorder) do
+        # :c, like the other capture examples -- ScreenshoterStub copies the
+        # like-named fixture, so the name has to be one that exists.
+        capture_screenshot(:c, **options)
+      end
+    end
+
+    subjects
+  end
 
   def our_screenshot(name, skip_stack_frames)
     screenshot(name, skip_stack_frames: skip_stack_frames)

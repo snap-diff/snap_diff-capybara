@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require "snap_diff/removal"
 require "snap_diff/snap_manager"
 require_relative "screenshoter"
 require_relative "stable_screenshoter"
@@ -15,6 +16,9 @@ module SnapDiff
 
     def initialize(screenshot_full_name, options = {})
       @screenshot_full_name = screenshot_full_name
+      # BEFORE the merge below -- see SnapDiff.compare. Afterwards `:driver`
+      # is present for every caller and proves nothing.
+      Removal.warn_once(:driver_setting, Removal::DRIVER_REMOVED) if options.key?(:driver)
       @driver_options = SnapDiff.config.default_options.merge(options)
 
       @screenshot_format = @driver_options[:screenshot_format]

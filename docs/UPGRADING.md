@@ -172,8 +172,13 @@ This means you can migrate your codebase incrementally **now**, before opting in
 
 ### Deprecation Warnings
 
-v2.0 emits three different things, and it is worth knowing which is which. The first two are
-about the old namespaces; the third is about the driver features 2.1 removes.
+v2.0 emits four different things, and it is worth knowing which is which. The first two are
+about the old namespaces; the third is about the driver features 2.1 removes; the fourth is
+about options that never did anything.
+
+Everything 2.1 removes warns in 2.0, and every warning names 2.1. Nothing you can still write
+in 2.0 does nothing quietly — if a setting is on its way out, or was never read at all, you
+hear about it once per process.
 
 #### 1. The migration notice — one line per process
 
@@ -185,12 +190,29 @@ The first time a process touches *any* hookable legacy API, you get a single lin
 
 It fires once and never again, whichever door you came through:
 
+- **requiring a v1-named entry point** — `require "capybara/screenshot/diff"`,
+  `"capybara-screenshot-diff"`, `"capybara_screenshot_diff"`, or any of
+  `capybara_screenshot_diff/{dsl,minitest,rspec,cucumber}`. With `gem "capybara-screenshot-diff"`
+  in the Gemfile, `Bundler.require` opens this door for you at boot.
 - a legacy config accessor — `Capybara::Screenshot.window_size = ...`, `Capybara::Screenshot::Diff.tolerance`
 - a lazily shimmed legacy constant (see below)
 - `include Capybara::Screenshot` / `include Capybara::Screenshot::Diff`
 
 It exists because most of the v1 surface **cannot** warn per use, so without it a 2.x app could
-be entirely silent right up to the bare `NameError` it would get on 2.1.
+be entirely silent right up to the bare `NameError` it would get on 2.1. The require door is
+what makes the rest of the list a safety net rather than the only mechanism: a suite that
+requires the gem and only calls `screenshot` touches none of the other four.
+
+The canonical entry points — `require "snap_diff"`, `"snap_diff-capybara"`, `"snap_diff/dsl"`,
+`"snap_diff/integrations/*"` — never fire it, even though `snap_diff-capybara` loads the v1
+compatibility files internally.
+
+> **Silencing a require-time notice needs the env var.** `SnapDiff.silence_deprecations = true`
+> only takes effect from the line that sets it, and you cannot set it before the require that
+> defines `SnapDiff`. Under `Bundler.require` there is no earlier moment at all. Use
+> `SNAP_DIFF_SILENCE_DEPRECATIONS=1` in the environment, or
+> `require "snap_diff/deprecation"; SnapDiff.silence_deprecations = true` ahead of everything
+> else.
 
 #### 2. Per-constant warnings — one line per lazily shimmed constant
 
@@ -227,19 +249,15 @@ warns once per process per subject, through the same channel and the same silenc
 | read `SnapDiff::Drivers.loaded` (the custom-driver registry) | the registry | nothing — custom drivers are removed, see below |
 | read `SnapDiff::Drivers.available` | driver detection | require `ruby-vips` instead of branching on a detected list |
 | `include SnapDiff::Driver` in your own driver class | the driver mixin | nothing — see below |
+| set a driver **at all** — `SnapDiff.config.driver =`, the legacy `Capybara::Screenshot::Diff.driver =`, or `screenshot "index", driver: …` | the `driver` setting and the `driver:` option | delete the line. With libvips the only backend there is nothing to select |
 
-> **The one removal on this list that 2.0 cannot warn you about: the `driver:` setting
-> itself.** `SnapDiff.config.driver = :vips` and the legacy
-> `Capybara::Screenshot::Diff.driver = :vips` are **silent** in 2.0 and raise
-> `NoMethodError: undefined method 'driver='` in 2.1, at config time before any test runs.
-> The per-screenshot form — `screenshot "index", driver: :vips` — is silent in 2.0 **and**
-> in 2.1: per-screenshot options are a free-form hash, so an unknown key is simply inert.
-> Warning on any of this would fire on the recommended configuration, so this note is the
-> warning: **delete the line, and grep for the per-screenshot one.** With libvips the only
-> backend there is nothing to select, and the default just works. The same goes for
-> `driver: :auto` on a machine that *has* `ruby-vips` — the `:auto` warning above only
-> fires when `:auto` actually falls back to ChunkyPNG, because that is the case where 2.1
-> stops the process comparing at all.
+> **`driver: :vips` warns too, and that is deliberate.** The warning is not about the *value*
+> you picked — it is about the setting existing. `SnapDiff.config.driver = :vips` raises
+> `NoMethodError: undefined method 'driver='` in 2.1, at config time before any test runs, and
+> `screenshot "index", driver: :vips` becomes an `ArgumentError` for an unknown option. Both
+> are lines to delete, not lines to change. `driver: :auto` on a machine that *has* libvips is
+> the one place the option still says something — and the `:auto` row above covers the case
+> that matters, where `:auto` silently lands on ChunkyPNG.
 
 ```
 [snap_diff deprecation] `driver: :auto` selected chunky_png because libvips is not available in this process. The chunky_png driver is REMOVED in 2.1, when libvips (the `ruby-vips` gem) becomes required -- install it now, or this setup stops comparing on 2.1. See docs/drivers.md. Silence with `SnapDiff.silence_deprecations = true` or SNAP_DIFF_SILENCE_DEPRECATIONS=1. (shown once per process) (called from /app/test/test_helper.rb:12)
@@ -259,12 +277,27 @@ so warning there would fire on setups that are not affected by anything on this 
 detection (`SnapDiff::Drivers.detect_available` / `SnapDiff::Utils.detect_available_drivers`)
 runs at load, before any user code.
 
+#### 4. Unknown screenshot options — warned in 2.0, raised in 2.1
+
+Per-screenshot options used to be a free-form hash: anything the gem did not read was frozen,
+carried around, and ignored. A misspelt `tolerence:` bought you a green suite that compared
+nothing and never said so. 2.0 warns once per unknown key; 2.1 raises `ArgumentError`.
+
+```
+[snap_diff deprecation] `:tolerence` is not a recognised screenshot option, so it does nothing. 2.1 raises ArgumentError for it. Check the spelling against the option list in docs/configuration.md. Silence with `SnapDiff.silence_deprecations = true` or SNAP_DIFF_SILENCE_DEPRECATIONS=1. (shown once per process) (called from /app/test/features/home_test.rb:14)
+```
+
+It applies to every route into a comparison — `screenshot`, `assert_matches_screenshot`,
+`capture_screenshot` and `SnapDiff.compare`. Recognised keys are `area_size_limit`,
+`capybara_screenshot_options`, `color_distance_limit`, `crop`, `delayed`, `driver`,
+`median_filter_window_size`, `perceptual_threshold`, `screenshot_format`,
+`shift_distance_limit`, `skip_area`, `stability_time_limit`, `tolerance` and `wait`.
+
 #### Silent by design
 
 Some legacy names never warn individually, and that is deliberate — the migration notice above is
 the signal for all of them:
 
-- **Requiring the gem.** `require "capybara_screenshot_diff/minitest"` etc. is not deprecated.
 - **The DSL.** `screenshot`, `assert_matches_screenshot`, `capture_screenshot` are never deprecated.
 - **Settings access.** `Capybara::Screenshot.blur_active_element`, `Capybara::Screenshot::Diff.tolerance=`
   and the `Diff.configure` block are plain delegators onto `SnapDiff.config`. There is no
@@ -363,7 +396,7 @@ All settings and baselines are compatible with v1.x. Simply pin your Gemfile bac
 - [ ] Run your system tests (`bin/rails test:system`, not `rake test`) to verify no regressions
 - [ ] Read the warnings it prints — each one names something 2.1 removes
 - [ ] Add `gem "ruby-vips"` if you are not already on it (2.1 makes libvips the only backend)
-- [ ] Drop `driver:` from your config — it is silent in 2.0 and gone in 2.1
+- [ ] Drop `driver:` from your config and your `screenshot` calls — 2.0 warns about it, 2.1 removes it
 - [ ] (Optional, but do it before 2.1) Migrate config and constants to the `SnapDiff` namespace
 - [ ] (Optional) Silence deprecation warnings if not ready to migrate
 - [ ] Report anything surprising on [the issue tracker](https://github.com/snap-diff/snap_diff-capybara/issues)
