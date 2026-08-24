@@ -127,6 +127,19 @@ jobs:
           - ruby-version: "4.0"
             gemfile: rails81_gems.rb
             experimental: false
+          # Rails 7.1 does not support Ruby 4.0. Its gemspec says `>= 2.7.0`,
+          # but that is a floor with no upper bound, not a statement of
+          # support: 7.1 shipped in Oct 2023, years before Ruby 4, and Rails
+          # never tested it there. We have been propping the pair up rather
+          # than testing it -- `rails71_gems.rb` carries an explicit
+          # `require: logger` purely because Ruby 3.5+/4.0 dropped logger from
+          # the default gems, and #283 added a `TestsWithoutAssertions` guard
+          # for the same cell. Gating releases on a combination upstream does
+          # not support means our red is their unsupported config, not our bug.
+          # 7.1 stays covered on 3.3 and 3.4, which Rails does support.
+          - ruby-version: "4.0"
+            gemfile: rails71_gems.rb
+            experimental: false
         include:
           - ruby-version: "4.0"
             gemfile: edge_gems.rb
