@@ -472,8 +472,6 @@ Capybara::Screenshot::Diff.area_size_limit = 42
 Sometimes you have expected change that you want to ignore.
 You can use the `skip_area` option with `[left, top, right, bottom]`
 or css selector like `'#footer'` or `'.container .skipped_element'` to the `screenshot` method to ignore an area.
-Be aware that if the selector is not in the page then the library will wait the default wait time for it to appear.
-Therefore, it is best to only use css selectors for skip_areas you know will be in the page:
 
 ```ruby
 test 'unstable area' do
@@ -481,6 +479,52 @@ test 'unstable area' do
   screenshot 'index', skip_area: [[17, 6, 27, 16], '.container .skipped_element', '#footer']
 end
 ```
+
+**`skip_area` masks what is on the page at assertion time — it does not wait.**
+A selector is resolved against the DOM as it is when the screenshot is taken; one
+that matches nothing masks nothing, immediately. (Until 2.0 it blocked for
+`Capybara.default_max_wait_time` per unmatched selector — 5s each, on every
+screenshot. That wait is gone.)
+
+So content that arrives late — lazy-loaded images, JS-injected widgets, anything
+behind an unresolved fetch — has to be settled *before* the assertion, or its
+mask will be empty and the unstable region will be compared. Settle it in the
+readiness block described below.
+
+### The readiness block
+
+`assert_matches_screenshot` and `capture_screenshot` (and the `screenshot` /
+`assert_no_screenshot_changes` wrappers) take an optional block. It runs once,
+after the enabled check and before the capture:
+
+```ruby
+test 'gallery' do
+  visit '/gallery'
+  assert_matches_screenshot 'gallery', skip_area: ['article img'] do
+    scroll_to :bottom
+    assert_text 'End of gallery'
+    scroll_to :top
+  end
+end
+```
+
+**Why a block rather than the line above it:** work in the block is skipped when
+screenshots are off. Both methods return immediately when
+`SnapDiff.config.enabled` (or `screenshot_enabled`) is false, so a
+`preload_all_images` written on the preceding line still pays for its browser
+round-trips — scroll, wait, scroll back — for a screenshot that is never taken.
+Inside the block it costs nothing, which is what makes turning visual tests off
+actually free.
+
+Errors raised in the block are yours and propagate unchanged. It is not a hook:
+there is no configuration-level equivalent, no after-block, and it runs once per
+assertion rather than once per stability retry.
+
+In RSpec, call `assert_matches_screenshot` directly rather than through the
+`match_screenshot` matcher — `expect(page).to match_screenshot('x') { ... }`
+binds the block by Ruby's `{}`/`do...end` precedence rather than by intent, so
+the matcher does not take one. In Cucumber the DSL is in the World, so step
+definitions pass a block the same way a Minitest test does.
 
 The arguments are `[left, top, right, bottom]` for the area you want to ignore.  You can also set this globally:
 
