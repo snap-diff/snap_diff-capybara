@@ -114,7 +114,16 @@ module SnapDiff
     def initialize
       @assertions = []
       @new_screenshots = []
+      @checked_out_baselines = Set.new
       @screenshot_namer = SnapDiff::ScreenshotNamer.new
+    end
+
+    # Called by Snap#checkout_base_screenshot when git really handed us a
+    # baseline. Same thread as the reading below -- a test's checkout and
+    # its comparison happen in one call stack -- so no synchronization is
+    # needed or wanted here.
+    def record_baseline_checkout(name)
+      @checked_out_baselines << name
     end
 
     def add_assertion(assertion)
@@ -129,7 +138,21 @@ module SnapDiff
       !@assertions.empty?
     end
 
+    # "No baseline exists" reaches here for two very different reasons. One
+    # is legitimate and warned about: nothing was ever committed for this
+    # name. The other is impossible in a correct run -- git gave us a
+    # baseline moments ago and it is gone now -- and used to be recorded as
+    # if it were the first, leaving the test green having compared nothing.
+    # That is the silently-wrong case measured in #217: two concurrent
+    # tests asserting the SAME name, where one's archive_baseline! moves
+    # the baseline the other just checked out.
     def record_new_screenshot(name)
+      raise SnapDiff::Error.new(<<~ERROR.chomp, caller) if @checked_out_baselines.include?(name)
+        The baseline for '#{name}' was checked out and then disappeared before it could be compared -- nothing was verified.
+        Every artifact path derives from the screenshot name alone, so two tests asserting '#{name}' at the same time race on one set of files: the one that finishes first archives the baseline the other is still using.
+        Give those screenshots distinct names, or do not run them concurrently.
+      ERROR
+
       @new_screenshots.push(name)
     end
 
@@ -151,6 +174,7 @@ module SnapDiff
     def reset
       @assertions.clear
       @new_screenshots.clear
+      @checked_out_baselines.clear
       @screenshot_namer = SnapDiff::ScreenshotNamer.new
     end
   end
