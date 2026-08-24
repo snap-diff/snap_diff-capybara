@@ -152,17 +152,15 @@ Include:
 
 To release a new version:
 
-1. Update the version number in [lib/capybara/screenshot/diff/version.rb](lib/capybara/screenshot/diff/version.rb)
+1. Update the version number in [lib/snap_diff/version.rb](lib/snap_diff/version.rb) — the
+   only place it lives; the gemspec and the legacy
+   `lib/capybara/screenshot/diff/version.rb` both read it
 2. Update [CHANGELOG.md](CHANGELOG.md) with the new version and date
-3. Create a GitHub Release:
-   - Go to [Actions → Release](https://github.com/snap-diff/snap_diff-capybara/actions/workflows/release.yml)
-   - Click **Run workflow**, enter the version number
-   - The workflow will: test → tag → publish to RubyGems → create GitHub Release
+3. Go to [Actions → Release](https://github.com/snap-diff/snap_diff-capybara/actions/workflows/release.yml),
+   click **Run workflow** and enter the version number. The workflow verifies the version
+   against `lib/`, tests, tags, publishes **both** gem names, and creates the GitHub Release.
 
-Or manually:
-
-```bash
-bundle exec rake release
-```
-
-This creates a git tag, pushes commits and tags, and pushes the `.gem` file to [rubygems.org](https://rubygems.org).
+**Do not use `rake release`.** It is inherited from `bundler/gem_tasks` and publishes only
+`capybara-screenshot-diff`, skipping the `snap_diff-capybara` mirror — the two gems must
+never diverge in version. The full runbook, including the trusted-publishing prerequisites
+and what to do when a run fails halfway, is in [docs/RELEASE_PREP.md](docs/RELEASE_PREP.md).

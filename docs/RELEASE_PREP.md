@@ -1,44 +1,81 @@
-# Release Preparation — v1.15.1
+# Release runbook
 
-## Summary
+Maintainer-only. This file is deliberately excluded from the packaged gem.
 
-HIGH-severity VipsDriver resize fix (retina halving could enlarge screenshots
-and corrupt baselines) plus the driver contract tests that caught it.
+Releases are **one `workflow_dispatch`**. There is no `rake release`, no manual
+`gem push`, and no local credential. Everything below either happens in CI or has to
+be committed to `master` before you dispatch.
 
-## Release Checklist
+## What the Release workflow does
 
-### Pre-Release
+[`.github/workflows/release.yml`](../.github/workflows/release.yml), dispatched from
+[Actions → Release](https://github.com/snap-diff/snap_diff-capybara/actions/workflows/release.yml)
+with a single `version` input (e.g. `2.0.0`, or `2.1.0.beta1`):
 
-- [x] Update version to `1.15.1`
-- [x] Run tests: `bundle exec rake test:unit` (376 runs, 0 failures)
-- [x] Update CHANGELOG.md
+1. **Verify version** — reads `Capybara::Screenshot::Diff::VERSION` out of `lib/` and
+   fails if it does not equal the input. This is the guard that makes the dispatch
+   safe: the version lives in `lib/snap_diff/version.rb` and must already be on
+   `master`.
+2. **Test** — `bundle exec rake test:unit` on Ruby 4.0.
+3. **Tag** — creates and pushes `v<version>`. Idempotent: it skips if the tag already
+   exists at HEAD and fails loudly if it exists at a *different* commit. A failed run
+   can be re-dispatched without cleanup.
+4. **Publish `capybara-screenshot-diff`** — `rubygems/release-gem@v1`, via RubyGems
+   trusted publishing (OIDC). No API key is stored anywhere.
+5. **Publish the `snap_diff-capybara` mirror** — the same gemspec is loaded, renamed
+   in memory, built and pushed. The mirror gemspec is *generated in CI, never
+   committed*, so local `gem build` and the `gemspec` directive in `gems.rb` stay
+   unambiguous. It reuses the credential `release-gem` already set up, which covers
+   any gem whose rubygems.org settings trust this repo + workflow.
+6. **GitHub Release** — body links to the CHANGELOG and upgrade guide **at the tag**.
+   Prerelease status is auto-detected from the tag, so `v2.1.0.beta1` lands as
+   *Pre-release* and never displaces the *Latest* badge.
 
-### Release (One Click)
+### Prerequisites that live outside this repo
 
-1. Push to GitHub
-2. Go to [Actions → Release](https://github.com/snap-diff/snap_diff-capybara/actions/workflows/release.yml)
-3. Click **Run workflow**, enter `1.15.1`
-4. Workflow will: test → tag → publish to RubyGems → create GitHub Release
+- **Both** gem names must trust this repo + `release.yml` as a trusted publisher on
+  rubygems.org — `capybara-screenshot-diff` **and** `snap_diff-capybara`. If only one
+  does, step 4 or 5 fails after the tag is already pushed; re-dispatch after fixing.
+- Branch protection on `master` must allow the workflow's tag push.
 
-### Post-Release
+## Before you dispatch
 
-- [ ] Verify on [RubyGems](https://rubygems.org/gems/capybara-screenshot-diff)
-- [ ] Verify GitHub Release created
+- [ ] `lib/snap_diff/version.rb` bumped to the exact version you will type into the
+      workflow. Nothing else holds a version — the gemspec, the legacy
+      `capybara/screenshot/diff/version.rb` and the mirror gemspec all read it.
+- [ ] `CHANGELOG.md` has a section for this version with a real date (not
+      `unreleased`), written for someone upgrading from the last **stable** release
+      rather than from the previous prerelease.
+- [ ] Docs carry no stale version pins — `README.md`, `docs/UPGRADING.md`,
+      `docs/snapdiff.md`. Grep for the previous version string.
+- [ ] `mise x ruby@4.0.6 -- bundle exec rake test` (full suite, both gates) and
+      `mise x ruby@4.0.6 -- bundle exec standardrb` are green.
+- [ ] CI is green on `master` at the commit you are releasing — the workflow only
+      runs `test:unit`, which is a subset.
+- [ ] `gem build capybara-screenshot-diff.gemspec` and inspect the file list if
+      anything touched the gemspec allow-list. `*.gem` is gitignored, but delete the
+      artifact anyway — a stale one in the working tree is confusing.
 
-## What Changed
+### Prereleases
 
-### Added
-- `SnapDiff::Config` — flat, additive consolidation of all 27 settings
-  (`SnapDiff.config` / `SnapDiff.configure`); old accessors stay canonical
+Nothing special to configure. Use a prerelease version string (`2.1.0.beta1`) in
+`version.rb` and in the dispatch input. RubyGems never resolves a prerelease by
+default, and GitHub marks the release *Pre-release* on its own.
 
-### Fixed
-- `pending_if_new` no longer converts real teardown/after-hook failures into
-  pending tests (Minitest defers to `after_teardown`; RSpec uses `append_after`;
-  known residual for consumer `append_after` hooks documented)
-- `BacktraceFilter` custom `lib_directory` matches on a path boundary
+## After
 
-### Internal
-- Guard tests for failure masking and skip-area/VCS-baseline regressions;
-  two files merged into sole consumers (constant paths preserved)
+- [ ] Both gems visible and at the same version:
+      [capybara-screenshot-diff](https://rubygems.org/gems/capybara-screenshot-diff),
+      [snap_diff-capybara](https://rubygems.org/gems/snap_diff-capybara). A version
+      published under only one name is the failure mode to watch for — the two gems
+      ship identical files and the dual-install guard assumes they never diverge.
+- [ ] GitHub Release created, with the right Latest/Pre-release status.
+- [ ] `gem install capybara-screenshot-diff -v <version>` in a scratch dir resolves.
 
-See [CHANGELOG.md](../CHANGELOG.md) for full details.
+## If a run fails halfway
+
+Re-dispatch the same version. The tag step is idempotent and `gem push` rejects a
+duplicate version, so the only real hazard is a mirror push that failed for a
+credential reason — fix the trusted-publisher settings and re-dispatch. **Never**
+retag: the workflow refuses to move an existing tag and you should not do it by hand
+either.
