@@ -48,9 +48,86 @@ exception: `Capybara::Screenshot.enabled` is `SnapDiff.config.screenshot_enabled
 `SnapDiff.config.enabled` is taken by `Capybara::Screenshot::Diff.enabled`. See
 [SnapDiff — the canonical API](snapdiff.md) for the full SnapDiff-native surface.
 
-**Note:** `fail_if_new` defaults to `true` in CI environments (when `ENV['CI']` is set to a non-empty value). New screenshots are allowed locally but rejected in CI — no configuration needed. Setting it yourself outranks the environment: `fail_if_new = false` stays `false` under `CI=true`, and `fail_if_new = true` stays `true` off CI. Assign `nil` to hand it back to the environment.
-
 **Note:** Setting `Capybara::Screenshot.enabled = false` is sufficient to disable all screenshots. There is no need to define no-op modules or monkey-patch the gem.
+
+## Record modes — accepting changes
+
+`record` is the single setting for *what happens when a screenshot has no committed baseline, or
+when you want to accept the ones that changed*. It replaces `fail_if_new`, which is removed in 2.1.
+
+```ruby
+SnapDiff.config.record = :once   # what a local run already does; see Precedence below for CI
+```
+
+| Mode | Missing baseline | Baseline present | Reach for it when |
+|------|------------------|------------------|-------------------|
+| `:once` | recorded, not compared | compared | the default — you want a normal run |
+| `:none` | **fails** with the `git add` command attached | compared | every screenshot must already be recorded |
+| `:all` | recorded | **re-recorded, not compared** | you changed the UI on purpose and want the new rendering to become the baseline |
+
+### `:all` — the bulk-accept verb
+
+After an intentional redesign that changed forty screenshots, re-record them in one run rather
+than accepting them one failure at a time:
+
+```ruby
+# test_helper.rb. There is no CLI flag — the gem has no runner to hang one on —
+# so gate it on an environment variable of your own if you want one:
+SnapDiff.config.record = ENV["ACCEPT_SCREENSHOTS"] ? :all : :once
+```
+
+```bash
+ACCEPT_SCREENSHOTS=1 bin/rails test:system     # with the line above in test_helper.rb
+```
+
+Every screenshot is written to its baseline path and nothing is compared, so `git status` lists
+exactly what changed. Review the images, then commit them — see
+[Accepting an intentional change](../README.md#accepting-an-intentional-change).
+
+At the end of the run the gem names what it accepted:
+
+```
+[snap_diff] record: :all re-recorded 3 screenshots WITHOUT comparing: checkout/cart, checkout/payment, checkout/review. Review the result before committing -- an unintended change is accepted just as silently.
+```
+
+> **`:all` refuses to run under CI** (when `ENV['CI']` is set to a non-empty value). It accepts
+> every rendering by design, so a mode left in a committed config file would buy you a build that
+> compares nothing and passes forever, with the "recorded" screenshots discarded when the runner
+> is torn down. Re-record locally, where you can look at the result.
+>
+> A CI job that needs to record screenshots with **no baseline yet** does not need `:all`:
+> `record = :once` records those and still compares everything that has a baseline. See
+> [CI integration](ci-integration.md).
+
+### Per screenshot
+
+```ruby
+assert_matches_screenshot "flaky_widget", record: :none   # this one must already exist
+```
+
+### Precedence
+
+**An explicitly set mode outranks `fail_if_new`; `fail_if_new` decides only when no mode was set.**
+That is the same rule `fail_if_new` itself has over the `CI` sniff — explicit outranks implicit, all
+the way down. Per screenshot outranks the config; the config outranks `fail_if_new`.
+
+With **nothing** set, `record` reads back as `:none` under CI and `:once` off it — which is exactly
+what `fail_if_new` has always done, so a suite that never mentions `record` behaves as it always
+did. The missing-baseline default is deliberately unchanged: failing only under CI is what Jest,
+AVA, Vitest, testthat and jest-image-snapshot all chose, and a screenshot baseline recorded on your
+laptop is often worthless on another OS. `:none` makes strictness an explicit choice instead.
+
+| You wrote | `record` reads | Missing baseline |
+|-----------|----------------|------------------|
+| nothing, off CI | `:once` | recorded |
+| nothing, under CI | `:none` | fails |
+| `record = :once` | `:once` | recorded, on CI too |
+| `record = :none` | `:none` | fails, off CI too |
+| `record = :once`, `fail_if_new = true` | `:once` | recorded — the mode wins |
+| `record = nil`, `fail_if_new = true` | `:none` | fails — nil hands it back |
+
+A misspelt mode raises `ArgumentError` at the point you set it, rather than reading back as
+"nobody said".
 
 ## Recommended tolerance values
 
@@ -107,7 +184,8 @@ screenshot 'dashboard', color_distance_limit: 15
 ## Configuration Tiers
 
 **Tier 1 — Zero config (works immediately):**
-`blur_active_element`, `hide_caret`, and `fail_if_new` (in CI) are enabled by default.
+`blur_active_element` and `hide_caret` are on by default, and `record` behaves as `:none` in CI
+(a missing baseline fails) and `:once` off it.
 Just `require 'snap_diff/integrations/minitest'` (legacy: `capybara_screenshot_diff/minitest`) and call `screenshot`.
 
 **Tier 2 — Set when tests are flaky:**
@@ -174,6 +252,10 @@ Capybara::Screenshot::Diff.enabled = ENV['COMPARE_SCREENSHOTS']
 
 ### Tolerate screenshot differences
 
+> **Removed in 2.1.** A screenshot that differs from its baseline fails — that is what the gem is
+> for. To *accept* a difference, re-record it: [`record = :all`](#record-modes--accepting-changes).
+> It keeps working for the whole 2.x line and warns once per process.
+
 To allow screenshot differences, but still fail on functional errors, you can set the following option:
 
 ```ruby
@@ -184,6 +266,11 @@ It defaults to `true`.  This can be useful in continuous integration to a genera
 report while still reporting functional errors.
 
 ### Does not tolerate new screenshots
+
+> **Removed in 2.1, superseded by [`record`](#record-modes--accepting-changes).**
+> `record = :none` is `fail_if_new = true`; `record = :once` is `fail_if_new = false`. Unlike the
+> boolean, a mode means the same thing on CI and off it. It keeps working for the whole 2.x line and
+> warns once per process.
 
 To fail the test if a new screenshot is taken, set the following option:
 
@@ -196,7 +283,16 @@ that does not have a corresponding previous image to compare against.
 This can be useful in situations where you want to ensure
 that every screenshot taken by your tests corresponds to an expected state of your application.
 
+`fail_if_new` defaults to `true` in CI environments (when `ENV['CI']` is set to a non-empty value).
+Setting it yourself outranks the environment: `fail_if_new = false` stays `false` under `CI=true`.
+Assign `nil` to hand it back to the environment. Setting `record` outranks it either way.
+
 ### Marks new screenshots as pending
+
+> **Removed in 2.1.** It skips the test instead of saying what to do about the missing baseline.
+> [`record = :none`](#record-modes--accepting-changes) fails with the `git add` command attached;
+> `record = :once` records the screenshot and names it in the end-of-run summary. It keeps working
+> for the whole 2.x line and warns once per process.
 
 To mark tests as pending (skipped) if a new screenshot is taken without a baseline, set:
 

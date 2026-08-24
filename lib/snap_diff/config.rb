@@ -69,6 +69,7 @@ module SnapDiff
       capybara_screenshot_options
       delayed
       area_size_limit
+      record
       fail_if_new
       pending_if_new
       fail_on_difference
@@ -83,14 +84,33 @@ module SnapDiff
       manager
     ].freeze
 
-    # shift_distance_limit and driver are excluded from the generated
-    # writers and hand written below (they announce their 2.1 removal);
-    # fail_if_new is excluded from the generated READER (it falls back to
-    # the environment). Generating them here too would print Ruby's
+    # The record modes, in the order they escalate: do nothing new, refuse
+    # to record, record everything. See {#record}.
+    RECORD_MODES = %i[once none all].freeze
+
+    # @api private
+    #
+    # Shared by {#record=} and the per-screenshot `record:` option, which is
+    # resolved in {SnapDiff::ScreenshotMatcher}. A misspelt mode must not
+    # read back as "nobody said" and silently mean today's behaviour --
+    # that is the exact silent no-op ADR-010 exists to stop.
+    def self.validate_record_mode!(mode)
+      return mode if mode.nil? || RECORD_MODES.include?(mode)
+
+      raise ArgumentError,
+        "unknown record mode #{mode.inspect} -- one of #{RECORD_MODES.map(&:inspect).join(", ")} (or nil)"
+    end
+
+    # shift_distance_limit, driver and the three older new-screenshot
+    # booleans are excluded from the generated writers and hand written
+    # below (they announce their 2.1 removal, or validate); fail_if_new and
+    # record are excluded from the generated READER (both fall back rather
+    # than returning storage). Generating them here too would print Ruby's
     # "method redefined" warning on every load.
-    attr_accessor(*(SETTINGS - %i[root shift_distance_limit driver fail_if_new]))
-    attr_reader :root, :shift_distance_limit, :driver
-    attr_writer :fail_if_new
+    attr_accessor(*(SETTINGS - %i[
+      root shift_distance_limit driver record fail_if_new pending_if_new fail_on_difference
+    ]))
+    attr_reader :root, :shift_distance_limit, :driver, :pending_if_new, :fail_on_difference
 
     def initialize
       # Every setting gets its ivar up front (nil-defaulted ones included)
@@ -138,6 +158,63 @@ module SnapDiff
     # the inverse of jest#12288.
     def fail_if_new
       @fail_if_new.nil? ? !ENV["CI"].to_s.empty? : @fail_if_new
+    end
+
+    # Announces the 2.1 removal. The writer, not the reader: {#record} reads
+    # +fail_if_new+ on every screenshot for everyone, and #initialize stores
+    # no default at all, so only a user who sets it hears about it.
+    def fail_if_new=(value)
+      Removal.warn_once(:fail_if_new, Removal::FAIL_IF_NEW_REMOVED)
+      @fail_if_new = value
+    end
+
+    # Same shape, same reason: SnapDiff.pending_screenshots_message reads
+    # this for everyone, and #initialize seeds the +false+ default straight
+    # into the ivar.
+    def pending_if_new=(value)
+      Removal.warn_once(:pending_if_new, Removal::PENDING_IF_NEW_REMOVED)
+      @pending_if_new = value
+    end
+
+    # Same: ScreenshotAssertion.verify_screenshots! reads it once per test
+    # for everyone, and #initialize seeds the +true+ default.
+    def fail_on_difference=(value)
+      Removal.warn_once(:fail_on_difference, Removal::FAIL_ON_DIFFERENCE_REMOVED)
+      @fail_on_difference = value
+    end
+
+    # THE ACCEPT WORKFLOW (#259). What to do about a screenshot whose
+    # baseline is missing -- or, for +:all+, about every screenshot there
+    # is. VCR-shaped: modes in config, because there is no runner to hang a
+    # CLI flag on.
+    #
+    # +:once+:: (default) record a screenshot that has no committed
+    #           baseline; compare against the baseline when there is one.
+    # +:none+:: strict. A missing baseline always fails.
+    # +:all+::  re-record. Every screenshot is written as the new baseline
+    #           and nothing is compared -- the bulk-accept verb, for the
+    #           redesign that changed forty screenshots at once. Refused
+    #           under CI (see {SnapDiff::ScreenshotMatcher}).
+    #
+    # PRECEDENCE: an explicitly set mode outranks +fail_if_new+; nil means
+    # nobody said, and only then does +fail_if_new+ answer -- so a setup
+    # with no +record+ line behaves EXACTLY as it did before this setting
+    # existed, CI sniff and all. +:none+ is the mode spelling of
+    # <tt>fail_if_new = true</tt> and +:once+ of <tt>= false</tt>, which is
+    # why the fallback can express today's behaviour without a special case
+    # anywhere downstream: the matcher branches on the mode alone.
+    #
+    # The missing-baseline DEFAULT is deliberately unchanged -- failing only
+    # under CI is what Jest, AVA, Vitest, testthat and jest-image-snapshot
+    # all chose, and a locally recorded screenshot baseline is often
+    # worthless across OS. +:none+ makes strictness an explicit choice
+    # instead; that is the whole point of having the mode.
+    def record
+      @record || (fail_if_new ? :none : :once)
+    end
+
+    def record=(mode)
+      @record = Config.validate_record_mode!(mode)
     end
 
     # Overrides the generated accessor above to announce the 2.1 removal

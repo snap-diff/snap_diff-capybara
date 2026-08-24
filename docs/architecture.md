@@ -234,13 +234,13 @@ The two legacy views are organized into two namespaces:
 
 **`Capybara::Screenshot::Diff`** — comparison settings:
 - `driver`, `tolerance`, `color_distance_limit`, `perceptual_threshold`, `shift_distance_limit`
-- `area_size_limit`, `skip_area`, `fail_if_new`, `fail_on_difference`, `delayed`
+- `area_size_limit`, `skip_area`, `record`, `fail_if_new`, `fail_on_difference`, `delayed`
 
-The canonical way in is `SnapDiff.configure { |config| ... }` (all 27 settings flat on one object). `SnapDiff.start` and `Capybara::Screenshot::Diff.configure` are the two-holder block shape over the same storage — since ADR-008 step 7b, `Diff.configure` forwards to `SnapDiff.start` rather than the other way round.
+The canonical way in is `SnapDiff.configure { |config| ... }` (all 28 settings flat on one object). `SnapDiff.start` and `Capybara::Screenshot::Diff.configure` are the two-holder block shape over the same storage — since ADR-008 step 7b, `Diff.configure` forwards to `SnapDiff.start` rather than the other way round.
 
 `Config` also owns the derived values that used to live on the legacy modules: `active?` (ex `Capybara::Screenshot.active?`), `screenshot_area` / `screenshot_area_abs`, and `default_options` (ex `Capybara::Screenshot::Diff.default_options`, the option hash handed to `SnapDiff::Comparison`). The legacy module methods one-line forward here.
 
-**Default timing contract:** every *stored* default is evaluated once, in `Config#initialize`, which runs at require time of `config.rb` — the same load moment the old `mattr_accessor` default blocks evaluated at. `root` (from `Rails.root`) must never become a lazy read-time default. Two values are deliberately live: `default_options[:wait]`, a method-body read of `Capybara.default_max_wait_time`, and `fail_if_new`, whose reader falls back to `ENV["CI"]` whenever nothing explicit was set — an explicit setting outranks the environment, so the sniff cannot be frozen into storage.
+**Default timing contract:** every *stored* default is evaluated once, in `Config#initialize`, which runs at require time of `config.rb` — the same load moment the old `mattr_accessor` default blocks evaluated at. `root` (from `Rails.root`) must never become a lazy read-time default. Two values are deliberately live: `default_options[:wait]`, a method-body read of `Capybara.default_max_wait_time`, and `fail_if_new`, whose reader falls back to `ENV["CI"]` whenever nothing explicit was set — an explicit setting outranks the environment, so the sniff cannot be frozen into storage. `record` is the third: its reader falls back to `fail_if_new` (`:none` when it is on, `:once` when it is off), which is what makes the record modes a rename of the existing behaviour rather than a change to it — the matcher branches on the mode alone and a suite with no `record` line takes exactly the branches it always took.
 
 ## File Layout
 
@@ -249,7 +249,7 @@ lib/
   snap_diff.rb                                 # SnapDiff module: compare/start/configure/config
   snap_diff/                                   # Canonical implementation (v2)
     dsl.rb                                     # screenshot(), screenshot_group(), etc.
-    config.rb                                  # SnapDiff::Config — THE storage for all 27 settings
+    config.rb                                  # SnapDiff::Config — THE storage for all 28 settings
     errors.rb                                  # Error / ExpectationNotMet / UnstableImage / WindowSizeMismatchError
     region.rb                                  # SnapDiff::Region — bounding box (+ eager top-level ::Region alias)
     deprecation.rb                             # Warn-once-per-constant machinery

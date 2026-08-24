@@ -253,15 +253,23 @@ jobs:
 
 </details>
 
-> **`CI: ""` is what makes this job able to record a *new* baseline.** `fail_if_new`
-> defaults to `true` whenever `ENV["CI"]` is set and non-empty, and the check runs
-> **before** the capture ([`screenshot_matcher.rb`](https://github.com/snap-diff/snap_diff-capybara/blob/master/lib/snap_diff/screenshot_matcher.rb)
-> — `check_base_screenshot` precedes `capture_screenshot`). So on a stock GitHub Actions
-> runner a screenshot with no committed baseline raises `No existing screenshot found for
-> …` and **nothing is written to disk** — the commit step then finds nothing to commit,
-> whatever the error message suggests. Clearing `CI` for this one step (or setting
-> `SnapDiff.config.fail_if_new = false`) lets both new and changed baselines land.
-> *Changed* baselines are rewritten either way; only new ones need this.
+> **Set the record mode, or clear `CI`, to let this job record a *new* baseline.** With
+> nothing set, a missing baseline fails whenever `ENV["CI"]` is set and non-empty — so on a
+> stock GitHub Actions runner a screenshot with no committed baseline raises `No existing
+> screenshot found for …`. `SnapDiff.config.record = :once`
+> (or clearing `CI` for this one step, or the older `SnapDiff.config.fail_if_new = false`)
+> records new baselines instead. *Changed* baselines are rewritten either way; only new ones
+> need this. See [Record modes](configuration.md#record-modes--accepting-changes).
+>
+> The screenshot itself **is** written before the raise ([`screenshot_matcher.rb`](https://github.com/snap-diff/snap_diff-capybara/blob/master/lib/snap_diff/screenshot_matcher.rb)
+> — `capture_screenshot` precedes `fail_if_new_screenshot`), so the `git add` the message names
+> is a command you can actually run. But the raise still fails the test it happened in, and a red
+> job usually never reaches the commit step — which is why a recording job sets the mode rather
+> than relying on the files being there.
+>
+> **`record = :all` is not the mode for this job** — it refuses to run under CI, because it
+> would accept every *changed* rendering unreviewed as well. `:once` records what is new and
+> keeps comparing everything that already has a baseline.
 
 **How it works:**
 1. Go to Actions → "Update Screenshot Baselines" → "Run workflow"

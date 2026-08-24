@@ -18,6 +18,7 @@ module SnapDiff
     @reporters = []
     @mutex = Mutex.new
     @missing_baselines = Set.new
+    @rerecorded_baselines = Set.new
 
     class << self
       attr_reader :reporters, :mutex
@@ -45,6 +46,21 @@ module SnapDiff
       # Per-test isolation for this gem's own suite.
       def reset_missing_baselines!
         @mutex.synchronize { @missing_baselines.clear }
+      end
+
+      # Remembers a screenshot re-recorded by `record: :all` -- captured as
+      # the new baseline with nothing compared against it. A separate tally
+      # from {record_missing_baseline} on purpose: "there was no baseline"
+      # and "there was one and we accepted the new rendering over it" are
+      # different facts, and the summary must not claim the first when the
+      # second happened.
+      def record_rerecorded_baseline(name)
+        @mutex.synchronize { !!@rerecorded_baselines.add?(name) }
+      end
+
+      # @api private
+      def reset_rerecorded_baselines!
+        @mutex.synchronize { @rerecorded_baselines.clear }
       end
 
       # Registers a reporter for the rest of the process. The canonical way
@@ -88,6 +104,10 @@ module SnapDiff
         end
 
         if (msg = missing_baselines_summary)
+          $stdout.puts msg
+        end
+
+        if (msg = rerecorded_baselines_summary)
           $stdout.puts msg
         end
       end
@@ -139,6 +159,7 @@ module SnapDiff
       def dump_parallel_fragment
         payload = {
           "missing_baselines" => @mutex.synchronize { @missing_baselines.to_a },
+          "rerecorded_baselines" => @mutex.synchronize { @rerecorded_baselines.to_a },
           "reporters" => @mutex.synchronize { @reporters.dup }
             .map { |reporter| reporter.dump_state if reporter.respond_to?(:dump_state) }
         }
@@ -162,6 +183,9 @@ module SnapDiff
           payload = JSON.parse(File.read(fragment))
 
           @mutex.synchronize { payload["missing_baselines"].each { |name| @missing_baselines << name } }
+          # `to_a` on a fresh install predates this key: a fragment written
+          # by an older worker has no "rerecorded_baselines" at all.
+          @mutex.synchronize { payload.fetch("rerecorded_baselines", []).each { |name| @rerecorded_baselines << name } }
 
           reporters_snapshot = @mutex.synchronize { @reporters.dup }
           payload["reporters"].each_with_index do |state, index|
@@ -186,6 +210,22 @@ module SnapDiff
         label = (names.size == 1) ? "1 screenshot" : "#{names.size} screenshots"
         "[snap_diff] #{label} had no committed baseline and #{(names.size == 1) ? "was" : "were"} NOT compared: " \
           "#{names.join(", ")}. Commit the captured file(s) to enable comparison."
+      end
+
+      # The other half of "nothing was compared", and the louder one:
+      # `record: :all` accepts whatever the page rendered as the new
+      # baseline. Names the screenshots that really went down that path this
+      # run, so `git add` lands on the right files -- and so nobody commits
+      # forty accepted regressions without being told they were accepted.
+      #
+      # @return [String, nil] nil when nothing was re-recorded
+      def rerecorded_baselines_summary
+        names = @mutex.synchronize { @rerecorded_baselines.to_a }
+        return if names.empty?
+
+        label = (names.size == 1) ? "1 screenshot" : "#{names.size} screenshots"
+        "[snap_diff] record: :all re-recorded #{label} WITHOUT comparing: #{names.join(", ")}. " \
+          "Review the result before committing -- an unintended change is accepted just as silently."
       end
     end
   end
