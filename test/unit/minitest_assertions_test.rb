@@ -10,8 +10,14 @@ class MinitestAssertionsTest < ActiveSupport::TestCase
   # @param teardown [Proc, nil] optional replacement `teardown` method, to
   #   simulate a user teardown that runs after `before_teardown`. Calls
   #   `super()` first so DSLStub's own cleanup still happens.
-  def run_inner_test(teardown: nil, &block)
+  # @param like_rails [Boolean] prepend the module Rails prepends into every
+  #   ActiveSupport::TestCase, to observe its missing-assertions alarm.
+  def run_inner_test(teardown: nil, like_rails: false, &block)
     test_class = Class.new(::Minitest::Test) do
+      # The real thing, not a stand-in: Rails prepends exactly this,
+      # unconditionally, at active_support/test_case.rb:205.
+      prepend ActiveSupport::Testing::TestsWithoutAssertions if like_rails
+
       include SnapDiff::Minitest::Assertions
       include DSLStub
 
@@ -44,6 +50,59 @@ class MinitestAssertionsTest < ActiveSupport::TestCase
 
       assert_predicate result, :passed?
       assert_equal 2, result.assertions
+    end
+  end
+
+  # Issue #270. The counter was bumped before the `active?` guard inside
+  # `super`, so with screenshots disabled a test whose only assertion was a
+  # screenshot reported `1 runs, 1 assertions, 0 failures` -- nothing
+  # captured, nothing compared, and a green line claiming otherwise.
+  test "a disabled screenshot is not counted as a Minitest assertion" do
+    SnapDiff.config.stub(:active?, false) do
+      result = run_inner_test { screenshot("a") }
+
+      assert_predicate result, :passed?
+      assert_equal 0, result.assertions, "nothing was captured and nothing was compared"
+    end
+  end
+
+  # The payoff: Rails prepends TestsWithoutAssertions into every
+  # ActiveSupport::TestCase, so a correct count turns Rails itself into a
+  # free per-test alarm for exactly this case.
+  test "Rails' missing-assertions alarm fires when the only assertion was a disabled screenshot" do
+    SnapDiff.config.stub(:active?, false) do
+      _out, err = capture_io do
+        run_inner_test(like_rails: true) { screenshot("a") }
+      end
+
+      assert_match(/Test is missing assertions: `test_it`/, err)
+    end
+  end
+
+  test "Rails' missing-assertions alarm stays quiet for a test with other assertions" do
+    SnapDiff.config.stub(:active?, false) do
+      _out, err = capture_io do
+        run_inner_test(like_rails: true) do
+          screenshot("a")
+          assert true
+        end
+      end
+
+      refute_match(/Test is missing assertions/, err,
+        "the test asserted something; the disabled screenshot is not the whole story")
+    end
+  end
+
+  # And the alarm must not fire when screenshots ARE active: the screenshot
+  # is the assertion then.
+  test "Rails' missing-assertions alarm stays quiet for an active screenshot" do
+    SnapDiff::Vcs.stub(:checkout_vcs, false) do
+      _out, err = capture_io do
+        run_inner_test(like_rails: true) { screenshot("a") }
+      end
+
+      # Not assert_empty: the no-committed-baseline notice shares this stream.
+      refute_match(/Test is missing assertions/, err)
     end
   end
 

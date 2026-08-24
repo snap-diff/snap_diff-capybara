@@ -9,6 +9,17 @@ require "snap_diff/reporting"
 RSpec::Matchers.define :match_screenshot do |name, **options|
   description { "match screenshot '#{name}'" }
 
+  # The literal `true` is deliberate, not the Minitest miscount of issue
+  # #270. `assert_matches_screenshot` returns false when screenshots are
+  # disabled, and returning that here would FAIL the example for a config
+  # switch the user set on purpose. A real mismatch does not come back as
+  # false either -- it raises SnapDiff::ExpectationNotMet, or is deferred
+  # to the append_after hook below.
+  #
+  # There is nothing to hand off to the way Minitest hands off to Rails'
+  # TestsWithoutAssertions: RSpec has no assertion count, so a disabled
+  # screenshot leaves an example that passed having checked nothing, and
+  # only the end-of-run `0 verified` line can see it.
   match do |_page|
     assert_matches_screenshot(name, **options)
     true
