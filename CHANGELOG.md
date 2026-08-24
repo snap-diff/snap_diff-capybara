@@ -21,7 +21,7 @@ kept as history. This entry is the one to read if you are coming from **1.15.1**
 ### Upgrading from 1.15.1: change the version, run your suite
 
 ```ruby
-gem "capybara-screenshot-diff", "2.0.0.beta3"   # current 2.0 prerelease; 2.0.0 final is not out yet
+gem "capybara-screenshot-diff", "2.0.0.beta4"   # current 2.0 prerelease; 2.0.0 final is not out yet
 ```
 
 Pin the exact prerelease until 2.0.0 ships: Bundler never resolves a prerelease from a plain
@@ -156,9 +156,14 @@ and assigning `nil` hands the setting back to the environment.
 - **The gem loads in a bundle without Rails, and in a bundle without Minitest.** See
   *Changed* below; both were load-time crashes in 1.15.1
 
-<!-- PLACEHOLDER: record modes (`record: :once` / `:none` / `:all`) land in a separate
-     PR. Do not describe them here until that PR merges — fill this in from its
-     description, then delete this comment. -->
+- **Accepting an intentional change is one setting, not folklore.** `record` replaces
+  `fail_if_new` (removed in 2.1): `:once` records a missing baseline and compares the rest —
+  what a local run already did; `:none` **fails** on a missing baseline with the `git add`
+  command attached, and is what CI gets by default; `:all` re-records every screenshot and
+  compares nothing, the bulk-accept verb for the run after an intentional redesign. 1.15.1
+  documented `RECORD_SCREENSHOTS=1` in four files and printed it in its own error message,
+  and nothing in the gem ever read that variable — accepting a change was answered in issue
+  comments for six years and never in the docs. See `docs/configuration.md` (#259)
 
 ### What you will see in your test output
 
@@ -377,6 +382,64 @@ One removal 2.0 cannot warn about, written down instead: the legacy `LOADED_DRIV
 ### Unchanged
 - Ruby 3.2+, Capybara `>= 2, < 4`, the `screenshot` / `assert_matches_screenshot`
   DSL, every capture and comparison option, baseline file names and formats
+
+---
+
+## [v2.0.0.beta4] - 2026-08-24
+
+The prerelease the 2.0.0 entry above describes. beta3 fixed the canonical entry
+points; **beta4 is where the behaviour changes land** — the four green-suite bugs,
+the accept workflow, the failure message, and the deprecation warnings that make
+2.1's removals visible. If you are on beta3, this is not an optional bump: beta3
+still passes green on a screenshot it never compared.
+
+Read the `[v2.0.0]` section above for the full story. This section is the delta
+from beta3.
+
+### Added
+- **Record modes** — `SnapDiff.config.record = :once | :none | :all` replace
+  `fail_if_new` (removed in 2.1). `:all` is the bulk-accept verb after an
+  intentional redesign (#259)
+- **A summary line that counts what was verified**, not just what was compared:
+  `[snap_diff] 12 verified, 1 changed, 2 new (not verified)`. It comes from the
+  HTML reporter (#261, #269)
+- **An optional readiness block** — `assert_matches_screenshot("home") { preload_all_images }`
+  runs the block *inside* the assertion, so it is skipped along with the screenshot
+  when screenshots are off, and a run-level tally names every `skip_area` selector
+  that never matched an element (#277)
+- **Deprecation warnings for everything 2.1 removes**, including `chunky_png`,
+  `shift_distance_limit`, the driver abstraction and the whole v1 namespace. Nothing
+  2.1 deletes is silent in 2.0 (#246, #263)
+
+### Fixed
+- **A screenshot with no committed baseline no longer passes green** (#255)
+- **An inherited `GIT_DIR` no longer redirects every baseline lookup** — every git
+  hook exports one, and the whole suite passed under it (#256)
+- **libvips no longer serves stale pixels** when a screenshot is rewritten inside the
+  same second; its loader cache keys on filename + mtime at one-second resolution (#254)
+- **The HTML report survives Rails' fork-parallel test runs** — `parallelize(workers:)`
+  previously wrote no report and printed no summary line at all (#258)
+- **A baseline that disappears mid-test raises** instead of passing green (#217)
+- **The failure message is legible** — baseline first, every artifact labelled, a
+  denominator on the pixel count, and a `judged against:` line (#264)
+- **No printed path or command that is not derived from live state** — the source of
+  the `RECORD_SCREENSHOTS` folklore (#260)
+- **JRuby no longer hangs at teardown** joining leftover server and browser threads (#248)
+
+### Performance
+- **Matching assertions stop decoding both PNGs**, and the repo root is memoised
+  under a lock instead of spawning `git rev-parse` once per screenshot: 63.5 ms →
+  44.5 ms end to end for one matching 1440x900 assertion (#250, #253)
+- **`skip_area` no longer pays an implicit stabilization wait.** Measured on a real
+  suite: 10.012 s → 0.009 s. **See the caveat below** (#272)
+
+### Caveat, and it is the reason #277 shipped in the same beta
+Removing `skip_area`'s implicit wait (#272) means a selector that is not yet in the
+DOM when the assertion runs now yields **no mask**, silently, where it previously
+resolved after the wait. Nothing in 1.15.1 or beta3 told you a mask was missing.
+The run-level tally (#277) is the replacement signal: any `skip_area` selector that
+matched nothing during the run is named at the end. If you relied on the old wait,
+that tally is where you will see it — and the readiness block is where you fix it.
 
 ---
 

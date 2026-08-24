@@ -22,7 +22,7 @@ with canonical names only, no legacy shapes to unlearn.
 
 ```ruby
 # In your Gemfile
-gem "capybara-screenshot-diff", "2.0.0.beta3"   # current 2.0 prerelease; 2.0.0 final is not out yet
+gem "capybara-screenshot-diff", "2.0.0.beta4"   # current 2.0 prerelease; 2.0.0 final is not out yet
 ```
 
 **Pin the exact prerelease.** An unpinned `gem "capybara-screenshot-diff"` resolves to the 1.x
@@ -428,7 +428,7 @@ All settings and baselines are compatible with v1.x. Simply pin your Gemfile bac
 
 ### Summary Checklist
 
-- [ ] Pin `gem "capybara-screenshot-diff", "2.0.0.beta3"` in your Gemfile (`"~> 2.0"` once 2.0.0 ships)
+- [ ] Pin `gem "capybara-screenshot-diff", "2.0.0.beta4"` in your Gemfile (`"~> 2.0"` once 2.0.0 ships)
 - [ ] Run `bundle install`
 - [ ] Run your system tests (`bin/rails test:system`, not `rake test`) to verify no regressions
 - [ ] Read the warnings it prints — each one names something 2.1 removes

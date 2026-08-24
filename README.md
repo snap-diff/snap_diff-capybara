@@ -23,7 +23,7 @@ Stop shipping UI bugs. Take screenshots in your Capybara tests, commit baselines
 
 ```ruby
 # Gemfile
-gem 'capybara-screenshot-diff', '2.0.0.beta3'   # current 2.0 prerelease; 2.0.0 final is not out yet
+gem 'capybara-screenshot-diff', '2.0.0.beta4'   # current 2.0 prerelease; 2.0.0 final is not out yet
 gem 'ruby-vips'                                 # The image backend. Needs libvips — see Installation below
 ```
 
