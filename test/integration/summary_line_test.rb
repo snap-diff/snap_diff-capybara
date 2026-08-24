@@ -68,6 +68,28 @@ class SummaryLineTest < ActiveSupport::TestCase
     assert_includes out, "NOTHING WAS VERIFIED"
   end
 
+  # `record: :all` (#274) re-records without comparing. Through the summary
+  # path (#269) that is neither verified nor changed, and NOT "new" either
+  # -- there was a baseline, it was just not consulted. Asserted on a
+  # finished process because the two features never met before this branch.
+  test "a run that only re-recorded says so instead of crying NOTHING WAS VERIFIED" do
+    out, status = run_case("rerecorded")
+
+    assert status.success?, out
+    assert_includes out, "[snap_diff] 0 verified, 0 changed, 0 new (not verified). 1 re-recorded (not verified)."
+    # The shout is for an UNEXPLAINED zero. The user asked for this one, and
+    # a false alarm here is how the real alarm stops being read.
+    refute_includes out, "NOTHING WAS VERIFIED"
+    assert_includes out, "record: :all re-recorded 1 screenshot WITHOUT comparing: rerecorded"
+  end
+
+  test "a mixed run counts verified and re-recorded separately" do
+    out, status = run_case("verified,rerecorded")
+
+    assert status.success?, out
+    assert_includes out, "[snap_diff] 1 verified, 0 changed, 0 new (not verified). 1 re-recorded (not verified)."
+  end
+
   private
 
   # Builds a throwaway git repo with COMMITTED baselines for `verified` and
@@ -80,6 +102,7 @@ class SummaryLineTest < ActiveSupport::TestCase
       FileUtils.mkdir_p("#{repo}/screenshots")
       FileUtils.cp(fixture_image_path_from("a"), "#{repo}/screenshots/verified.png")
       FileUtils.cp(fixture_image_path_from("a"), "#{repo}/screenshots/changed.png")
+      FileUtils.cp(fixture_image_path_from("a"), "#{repo}/screenshots/rerecorded.png")
       git = ["git", "-C", repo, "-c", "user.email=t@example.com", "-c", "user.name=t"]
       Open3.capture2e(*git, "init", "-q")
       Open3.capture2e(*git, "add", "screenshots")

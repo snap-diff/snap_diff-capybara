@@ -34,7 +34,8 @@ class FileCopyScreenshoter < SnapDiff::Screenshoter
   CAPTURES = {
     "verified" => "a.png",
     "changed" => "b.png",
-    "new" => "a.png"
+    "new" => "a.png",
+    "rerecorded" => "b.png"
   }.freeze
 
   def take_screenshot(screenshot_path)
@@ -52,7 +53,18 @@ SnapDiff.config.fail_if_new = false
 class SummaryLineCase < Minitest::Test
   include SnapDiff::Minitest::Assertions
 
+  # `record: :all` accepts whatever rendered as the new baseline. This one
+  # has a COMMITTED baseline that differs, and the mode ignores it -- the
+  # interaction worth asserting on a finished process.
+  RECORD_ALL = %w[rerecorded].freeze
+
   CASES.each do |name|
-    define_method(:"test_#{name}") { assert_matches_screenshot(name) }
+    define_method(:"test_#{name}") do
+      if RECORD_ALL.include?(name)
+        assert_matches_screenshot(name, record: :all)
+      else
+        assert_matches_screenshot(name)
+      end
+    end
   end
 end

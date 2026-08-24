@@ -47,6 +47,10 @@ class ParallelReportMergeTest < ActiveSupport::TestCase
     fork_worker do
       SnapDiff::Reporting.notify([build_failing_assertion("worker_b"), build_passing_assertion("worker_b_ok")])
       SnapDiff::Reporting.record_missing_baseline("worker_b_new")
+      # Rides the same fragment as the counts above (#274 + #269). Both
+      # tallies are written by the same worker and merged by the same
+      # parent, and neither may cost the other.
+      SnapDiff::Reporting.record_rerecorded_baseline("worker_b_accepted")
     end
 
     # The bug, restated as an assertion: the parent holds nothing of its own.
@@ -59,8 +63,9 @@ class ParallelReportMergeTest < ActiveSupport::TestCase
     assert_equal 2, @reporter.failed
     # The counts line must total the MERGED runs -- one worker's numbers
     # would be wrong here.
-    assert_equal "[snap_diff] 3 verified, 2 changed, 1 new (not verified).",
+    assert_equal "[snap_diff] 3 verified, 2 changed, 1 new (not verified). 1 re-recorded (not verified).",
       SnapDiff::Reporting.counts_summary
+    assert_includes SnapDiff::Reporting.rerecorded_baselines_summary, "worker_b_accepted"
 
     # Symbol keys, like an entry recorded in this process: `failures` is
     # public, and an array whose shape depends on which process filled it
@@ -96,6 +101,23 @@ class ParallelReportMergeTest < ActiveSupport::TestCase
 
     assert_equal 1, @reporter.total
     assert_equal 0, SnapDiff::Reporting.missing_baselines_count
+  end
+
+  # The fragments directory is keyed by pid under the system temp dir, so a
+  # recycled pid can hand this merge a fragment written by an older version
+  # of the gem -- one with none of the keys added since. Every key but
+  # "missing_baselines" is read with a default for exactly this.
+  test "a fragment written before the newer tallies existed still merges" do
+    fork_worker { SnapDiff::Reporting.notify([build_failing_assertion("current")]) }
+
+    dir = SnapDiff::Reporting.parallel_fragments_dir
+    File.write(File.join(dir, "99998.json"), JSON.generate({"missing_baselines" => ["ancient"], "reporters" => []}))
+
+    SnapDiff::Reporting.merge_parallel_fragments!
+
+    assert_equal 1, SnapDiff::Reporting.verified, "the current worker's counts survived the old fragment"
+    assert_equal 1, SnapDiff::Reporting.missing_baselines_count
+    assert_includes SnapDiff::Reporting.missing_baselines_summary, "ancient"
   end
 
   # Serial and `parallelize(with: :threads)` both record in the process that
