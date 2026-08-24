@@ -1,259 +1,431 @@
-# Competitive landscape — observations for ideation
+# Snapshot and visual-regression tools — reference
 
-Durable record of what other tools do and why. Kept **out of `docs/`** on purpose:
-`docs/` is packaged into the gem, and users do not want our competitor notes.
+Factual reference on how these tools behave. No recommendations; conclusions
+drawn for this project live in the ADRs.
 
-Everything below was **executed on a real machine** unless marked *(read)*.
-Versions: Playwright 1.62.1 · Jest 30 · insta 1.48.0 · VCR 6.4.0 / WebMock 3.26.2
-· SimpleCov 1.1.1 · RuboCop 1.89.0 · RSpec 3.13. Dated 2026-08-24.
+Kept out of `docs/` because `docs/` is packaged into the gem.
 
----
+**Observed 2026-08-24.** Versions: Playwright 1.62.1 · Jest 30 · insta 1.48.0 +
+cargo-insta 1.48.0 · VCR 6.4.0 · WebMock 3.26.2 · SimpleCov 1.1.1 · RuboCop
+1.89.0 · RSpec 3.13 · activesupport 8.1.3.1.
 
-## The two moments that decide a visual-testing tool
-
-Everything here is organised around them, because our own customer research
-found both broken:
-
-- **M1 — the miss.** A green bar on a page that changed. Kills trust permanently.
-- **M2 — the accept.** "This change is intentional, take the new picture." The
-  most frequent daily action, forever.
-
-Two more surfaced during the research:
-- **M3 — the stale baseline.** A baseline no test references. Nobody tells you.
-- **M4 — the silent skip.** Any path where the tool did not actually compare.
+Rows marked **(measured)** were executed locally and the output is verbatim.
+Rows marked **(source)** were read from the tool's code, docs, or issue tracker.
 
 ---
 
-## Per tool
+## 1. Behaviour on a missing baseline
 
-### Playwright `toHaveScreenshot` — the DevX benchmark
+The defining question for a snapshot tool: what happens when there is nothing to
+compare against.
 
-**Behaviour.** Four update modes: `missing` (default — writes an absent baseline
-**and still fails**), `changed` (bare `-u`), `all`, `none`. Measured exit codes:
+| Tool | Local | CI | Writes the artifact? | Default changed over time? |
+|---|---|---|---|---|
+| Playwright `toHaveScreenshot` | fail | fail | yes | no — never had a passing default |
+| Jest `toMatchSnapshot` | pass | fail | not on CI | yes — Jest 20, 2017 (source: jest#3456) |
+| jest-image-snapshot | pass | fail | not on CI | inherits Jest |
+| Vitest | pass | fail | not on CI | yes (source: vitest#3227) |
+| AVA | pass | fail | not on CI | yes — 2.0.0, documented breaking change |
+| testthat (R) | pass + warning | fail | writes, then fails | yes — 3.3.0, 2025-11-13 |
+| insta (Rust) | fail | fail | `.snap.new` only, not on CI | no |
+| syrupy (Python) | fail | fail | no | no — designed so |
+| pytest-regressions | fail | fail | yes | no |
+| ApprovalTests / `approvals` (Ruby) | fail | fail | `.received` only | no |
+| cupaloy (Go) | fail | fail | no | no |
+| rspec-snapshot (Ruby) | pass | pass | yes | no |
+| VCR `:once` (Ruby) | pass | pass | yes | no |
+| VCR `:none` (Ruby) | raise | raise | no | no |
+| Applitools Eyes | varies by SDK | varies | server-side | `saveNewTests` defaults true in Cypress/Protractor SDKs, false in the Playwright SDK |
+| Percy | n/a | first build auto-approved on default branch | server-side | — |
+| Chromatic | n/a | new story = change requiring approval | server-side | — |
 
-| mode | first run | 51st screenshot | exit |
-|---|---|---|---|
-| default `missing` | writes baseline, **fails** | writes, fails | 1 |
-| `none` | writes nothing, fails | writes nothing, fails | 1 |
-| `changed` / `all` | writes, **passes** | writes, passes | 0 |
+CI detection is by environment variable in Jest, AVA, Vitest, insta and testthat.
+Playwright and syrupy do not vary by environment.
 
-**Pros.** Record-and-fail is the only model where the failure carries its own
-fix — the next action is re-running the same command, so it costs zero new
-knowledge. Baselines are named `{test}-{browser}-{platform}.png`, which makes
-mac-vs-Linux mismatch *structurally impossible* rather than tribal knowledge.
-Labelled, relative, ordered failure paths (`Expected:` / `Received:` / `Diff:`),
-and `Diff:` is omitted when there is none — the block is honest about what exists.
-Four HTML-report view modes; the **Slider** (drag a wipe line across both images)
-is what people actually use to judge intent. `--only-changed [ref]` is git-native
-("Only supports Git" is stated as *their* limitation; it is our premise).
+**No tool was found that adopted fail-on-missing and later reverted it.**
+Searched changelogs and issue trackers for Playwright, Jest, Vitest, AVA,
+testthat, insta, syrupy and jest-image-snapshot. Related but not reversals:
+testthat has an open request to make it configurable (testthat#2320, opened
+2026-02-03); insta narrowed its CI override so explicit flags win (insta#924);
+testthat added a `fail_on_new = FALSE` path after a downstream broke
+(testthat#2293).
 
-**Cons.** The failure text contains **no instruction** — fine only because
-"run it again" is the right move. `--update-snapshots=none` prints one character
-less and re-running does **not** fix it: a genuine dead end, the worst message in
-the set. No third status: a freshly recorded baseline is machine-indistinguishable
-from a real regression in the JSON reporter (`status=failed`, `unexpected: 1`).
-Writes baselines into CI workspaces that then evaporate — pure waste. Record-and-fail
-also interacts badly with `retries: 1`: the re-run passes, so it reads as flake
-(maintainer confirms in playwright#38046).
+---
 
-**Steal:** the mode ladder's *semantics*, labelled paths, platform-in-filename,
-the report's slider. **Don't steal:** the instruction-free message.
+## 2. Per tool
 
-### Jest `toMatchSnapshot` — the environment split
+### Playwright — `toHaveScreenshot`
 
-**Behaviour.** Local: writes and **passes** (`3 snapshots written`, exit 0).
-Under `--ci` *or* a detected `CI` env var: writes nothing and **fails**.
+**Update modes** (source, `--help`): `-u, --update-snapshots [mode]`, choices
+`all`, `changed`, `missing`, `none`. No flag defaults to `missing`; a bare `-u`
+means `changed`.
 
-**Pros.** `Snapshots: 1 written, 2 passed, 3 total` — the only three-way status
-line any of these tools produces in a *passing* run, and it costs one string.
-Its CI message is the best sentence in the whole survey because it explains **why
-this behaved differently from your laptop**: *"This is likely because this test is
-run in a continuous integration (CI) environment in which snapshots are not
-written by default."* No other tool answers that question, and it is the first
-one every user asks.
+**(measured)** Exit codes, one missing baseline among two passing:
 
-**Cons.** Local `3 passed` with a brand-new snapshot nobody has looked at is a
-green bar asserting something never checked — for a *binary* baseline no reviewer
-will diff, that is worse than for JSON. The fix command (`-u`) differs from the run
-command, so it must be learned: 3 commands to a trustworthy green vs Playwright's 2.
-Env-detection has bitten them: for all of Jest 27, `CI=1 npx jest` wrote snapshots
-and passed while `npx jest --ci` failed, because config read `argv.ci` rather than
-detected state *(read: jest#12288)*.
+| mode | baseline written | exit |
+|---|---|---|
+| default (`missing`) | yes | 1 |
+| `none` | no | 1 |
+| `changed` | yes | 0 |
+| `all` | yes | 0 |
 
-**Steal:** the three-way count line, and the why-is-this-different sentence.
+**(measured)** First run, no baselines:
+```
+Error: A snapshot doesn't exist at /…/alpha-darwin.png, writing actual.
+  2 failed
+```
+Second run, unchanged: `2 passed (541ms)`. Under `none` the message is
+`A snapshot doesn't exist at /…/gamma-darwin.png.` — no trailing clause, and
+re-running does not resolve it.
 
-### Rust `insta` — the best middle state
+**(source)** `toMatchSnapshot.ts:198` builds that message; `:211` returns a
+literal `false`, so the file is written on the same run the test fails.
 
-**Behaviour.** Writes `.snap.new` beside `.snap` and fails (exit 101). Under
-`CI=true`, writes nothing and drops exactly one line — the review hint, because
-there is nothing to review.
+**Failure output (measured):** paths are relative to project root, labelled and
+ordered — `Expected:` / `Received:` / `Diff:`. `Diff:` is absent when no diff
+exists.
 
-**Pros.** "Recorded but not verified" is a **first-class, queryable, reviewable**
-state, not a line of text: `cargo insta pending-snapshots` lists them,
-`accept`/`reject` resolve them. `--unreferenced=warn|reject|delete` solves M3 in
-the same tool. `cargo insta test --accept` is a one-command path. The failure text
-names the exact command, inside the failure body, next to the diff — the best
-instruction of the four. CLI flags take precedence over the `CI` env var, deliberately
-narrowed after Ruff hit the opposite *(read: insta#924)* — **normally CLI flags
-outrank environment variables**, and our current default has the inverse shape.
+**Baseline naming (source):** `{testName}-{browser}-{platform}.png`, e.g.
+`example-1-chromium-darwin.png`, in `{testFile}-snapshots/`. Rationale given in
+docs and issue #22337: rendering differs across operating systems.
 
-**Cons.** Requires a companion binary (`cargo-insta`). The two-file dance is more
-machinery than a screenshot gem may want.
+**Status model (measured):** the JSON reporter reports a newly recorded baseline
+as `status=failed`, `unexpected: 1` — identical to a real difference. No separate
+state.
 
-**Steal:** pending-state as a queryable thing; `--unreferenced`; explicit-outranks-env.
+**Retries (source, playwright#38046):** a maintainer states that missing-baseline
+failures are deliberately not retried, because a retry would pass and the run
+would be reported as flaky.
 
-### VCR (Ruby) — the closest precedent we have
+**Other:** `--only-changed [ref]` runs only test files changed vs a git ref
+("Only supports Git"). HTML report offers four view modes — Diff, Actual, Side by
+side, Slider (`imageDiffView.tsx:103-113`).
 
-**Behaviour.** Record modes are **Ruby config**, not CLI flags:
-`:once` (default) records when the cassette is absent and passes — but **raises**
-when something new appears in an existing cassette. `:none` raises on anything
-missing. Also `:new_episodes`, `:all`.
+### Jest — `toMatchSnapshot`
 
-**Pros.** `:once` already implements the compromise everyone else is groping
-toward: *bootstrapping is fine; adding to an established recording is not.* The
-error message is the best-designed in Ruby: it **restates the effective config
-back at you** (`:record => :none`, `:match_requests_on => [...]`), enumerates every
-escape route *including "if you're surprised, here's how to debug"*, and uses
-**versioned doc links** (`?v=6-4-0`) that can never point at docs for an API you
-do not have. Being config-shaped, it is the proof that a mode ladder does **not**
-need a test runner to hang a flag on.
+**(measured)** Local, fresh project: `› 2 snapshots written`, `Tests: 2 passed`,
+exit 0. New test added to a passing suite:
+`Snapshots: 1 written, 2 passed, 3 total`, exit 0.
 
-**Cons.** The `:once` recovery advice is *"delete the cassette file and re-run"* —
-i.e. throw away 50 good recordings to add the 51st. No CLI switch, so changing
-mode is an edit-run-revert cycle. 22 lines of stack trace after the message.
+**(measured)** With `--ci`, or with `CI=true` and no flag:
+```
+New snapshot was not written. The update flag must be explicitly passed to write a new snapshot.
 
-**Steal:** config-shaped record modes; restating effective config in errors;
-versioned doc links. **Don't steal:** delete-everything recovery advice.
+This is likely because this test is run in a continuous integration (CI) environment in which snapshots are not written by default.
+```
+`Tests: 3 failed`, exit 1. Summary line: `Inspect your code changes or re-run
+jest with '-u' to update them.`
 
-### WebMock (Ruby) — errors that emit the fix
+**(source)** `--help`: "`--ci` … This option is on by default in most popular CI
+environments. It will prevent snapshots from being written unless explicitly
+requested." Docs state the rationale: "since new snapshots automatically pass,
+they should not pass a test run on a CI system."
 
-Prints the literal `stub_request(...)` snippet, pre-filled with the request it
-just saw. **Generated from live state, so it cannot drift.** This is the antidote
-to how `RECORD_SCREENSHOTS=1` rotted in our own error message for years.
+**Status line:** `Snapshots: N written, N passed, N total` — three states on one
+line, in passing runs.
 
-> **Rule: never print a command in an error message that is not generated from live state.**
+**(source, jest#12288)** Throughout Jest 27, `CI=1 npx jest` wrote snapshots and
+passed while `npx jest --ci` failed: the config consulted `argv.ci` rather than
+detected CI state. Fixed in Jest 28.
 
-### SimpleCov (Ruby) — the closest analog for report + threshold
+### insta (Rust)
 
-Four lines, each earning its place: what it is, what was required, **where to look
-first** (lowest-coverage files), and how the process ended — with a **distinct exit
-code 2** for "the tool ran fine, your content failed the gate", separable from a crash.
+**(measured)** Plain `cargo test`, no snapshots: writes
+`…__alpha_renders.snap.new`, test FAILED, exit 101. Failure body ends
+`To update snapshots run 'cargo insta review'`.
 
-**Steal:** the four-line shape; a distinct exit code for gate-failure.
+**(measured)** `cargo insta pending-snapshots` lists awaiting files with
+per-snapshot `review` / `accept` / `reject` commands. `cargo insta accept`
+resolves them; `cargo insta test --accept` is a single-command path.
 
-### RuboCop / Standard — bulk-accept with a built-in exit plan
+**(measured)** Under `CI=true`: no `.snap.new` written, and the review hint line
+is omitted. Everything else identical.
 
-`--auto-gen-config` writes `.rubocop_todo.yml`; `.rubocop.yml` becomes one line.
-The todo file **states its own expiry condition** ("The point is for the user to
-remove these configuration records one by one") and carries `# Offense count: N`
-per entry — the size of what was swallowed. Plain output marks fixables inline
-and totals them (`16 offenses autocorrectable`), so users learn `-a` exists **by
-reading a failure**, not docs.
+**(measured)** `--unreferenced=warn|reject|delete` detects baselines no test
+references: `warn` exits 0 with a list, `reject` exits 1, `delete` removes them.
 
-**Steal:** the count line that teaches the fix command; accepted-state-as-debt framing.
-**Don't steal:** a `.snap_diff_todo.yml` — our accepted state is already PNGs in git,
-which is more reviewable than a YAML exclusion list.
+**(source, insta#924, 1.48.0)** `CI=true` normally implies `--check`; explicit
+options such as `--accept` now take precedence. Reported from Ruff, on the
+principle that CLI flags outrank environment variables.
 
-### RSpec — failure output as the signature feature
+### VCR (Ruby)
 
-`example_status_persistence_file_path` is a human-readable table;
-`--only-failures` and `--next-failure` read it. Ruby-native precedent our users
-already know, and the model behind "re-run only what failed, then accept it".
+**Record modes (source):** `:once` (default), `:none`, `:new_episodes`, `:all`.
+Set in Ruby — `VCR.use_cassette("x", record: :none)` or
+`config.default_cassette_options` — not via CLI.
 
-### Percy — the anti-lesson, from the category leader
+**(measured)** `:once`, no cassette: records, exit 0, no output. `:once` with an
+existing cassette and a new interaction: raises. `:none`, missing cassette: raises.
 
+**(measured)** The `:none` error:
+```
+An HTTP request has been made that VCR does not know how to handle:
+  GET http://example.com/
+
+VCR is currently using the following cassette:
+  - /…/cassettes/brand_new.yml
+    - :record => :none
+    - :match_requests_on => [:method, :uri]
+
+Under the current configuration VCR can not find a suitable HTTP interaction
+to replay and is prevented from recording new requests. There are a few ways
+you can deal with this:
+
+  * If you're surprised VCR is raising this error
+    and want insight about how VCR attempted to handle the request,
+    you can use the debug_logger configuration option to log more details [1].
+  * You can use the :new_episodes record mode to allow VCR to
+    record this new request to the existing cassette [2].
+  * If you want VCR to ignore this request (and others like it), you can
+    set an `ignore_request` callback [3].
+  * The current record mode (:none) does not allow requests to be recorded. …
+
+[1] https://benoittgt.github.io/vcr/?v=6-4-0#/configuration/debug_logging
+[2] https://benoittgt.github.io/vcr/?v=6-4-0#/record_modes/new_episodes
+[3] https://benoittgt.github.io/vcr/?v=6-4-0#/configuration/ignore_request
+[4] https://benoittgt.github.io/vcr/?v=6-4-0#/record_modes/none
+```
+Followed by ~22 lines of stack trace. Doc links carry the version (`?v=6-4-0`).
+The message restates the cassette's effective configuration.
+
+Under `:once` the final bullet differs: "You can delete the cassette file and
+re-run your tests to allow the cassette to be recorded with this request."
+
+### WebMock (Ruby)
+
+**(measured)** On an unregistered request, prints a ready-to-paste stub built
+from the observed request:
+```
+You can stub this request with the following snippet:
+
+stub_request(:post, "http://example.com/api/users").
+  with(
+    body: "{\"name\":\"bob\"}",
+    headers: { 'Content-Type'=>'application/json', 'Host'=>'example.com' }).
+  to_return(status: 200, body: "", headers: {})
+```
+
+### SimpleCov (Ruby)
+
+**(measured)** With `minimum_coverage line: 90` and 50% actual:
+```
+Coverage report generated for RSpec to coverage/index.html
+Line coverage: 6 / 12 (50.00%)
+Line coverage (50.00%) is below the expected minimum coverage (90.00%).
+  Lowest-coverage files (line):
+     50.00%  lib/thing.rb
+SimpleCov failed with exit 2 due to a coverage related error
+```
+Exit code **2**, distinct from 1. Source: `exit_codes/minimum_overall_coverage_check.rb:25,:37`.
+
+### RuboCop / Standard
+
+**(measured)** `rubocop --auto-gen-config` writes `.rubocop_todo.yml` and adds
+`inherit_from:` to `.rubocop.yml`. Generated file header:
+```
+# This configuration was generated by `rubocop --auto-gen-config`
+# on 2026-08-24 06:52:30 UTC using RuboCop version 1.89.0.
+# The point is for the user to remove these configuration records
+# one by one as the offenses are removed from the code base.
+
+# Offense count: 1
+# This cop supports safe autocorrection (--autocorrect).
+Layout/EmptyLineBetweenDefs:
+  Exclude:
+    - 'bad.rb'
+```
+Plain output marks correctable offences inline (`[Correctable]`) and totals them:
+`1 file inspected, 19 offenses detected, 16 offenses autocorrectable`.
+
+### RSpec
+
+**(measured)** `example_status_persistence_file_path` writes a human-readable table:
+```
+example_id                | status | run_time        |
+------------------------- | ------ | --------------- |
+./spec2/demo_spec.rb[1:1] | failed | 0.00914 seconds |
+```
+Consumed by `--only-failures` and `--next-failure`. `--bisect` narrows
+order-dependent failures.
+
+### Minitest
+
+**(measured)** Prints `Run options: --seed 22661` at the start of every run,
+passing or failing.
+
+### Percy
+
+**(measured)** With no token:
 ```
 $ npx @percy/cli exec -- echo hi
 [percy] Skipping visual tests
 [percy] Error: Missing Percy token
-$ echo $? → 0
+[percy] Command "echo hi" exited with status: 0
+$ echo $?
+0
 ```
+**(source)** Approval is server-side and build-scoped: `build:approve <build-id>`,
+`build:unapprove`, `build:reject`. Percy's "Visual Git" maintains per-branch
+baselines and, per their docs, "does not rely on Git commit information".
 
-Prints the word `Error`, says it is skipping every visual test, and **exits 0**.
-A CI job that loses its token goes green forever — **M1 shipped at scale**.
-Approval is server state (`build:approve <build-id>`), and their "Visual Git"
-explicitly *"does not rely on Git commit information"* — the opposite of our premise.
+### Chromatic
 
-> **Rule: misconfiguration must be a non-zero exit.**
+**(source, `--help`)**
+```
+--auto-accept-changes [branch]     If there are any changes to the build, automatically accept them. Only for [branch], if specified.
+--exit-zero-on-changes [branch]    If all snapshots render but there are visual changes, exit with code 0 rather than the usual exit code 1.
+--skip [branch]                    Skip Chromatic tests, but mark the commit as passing.
+--ignore-last-build-on-branch <branch>   Do not use the last build on this branch as a baseline if it is no longer in history (i.e. branch was rebased).
+```
+Each is separately named and branch-scopable. TurboSnap (dependency-traced
+test selection) is configured via `--trace-changed`, `--untraced`, `--externals`,
+`--storybook-base-dir`.
 
-### Chromatic — every unearned green needs a name
+### jest-image-snapshot
 
-`--auto-accept-changes [branch]`, `--exit-zero-on-changes [branch]`, `--skip [branch]`,
-`--ignore-last-build-on-branch`. **Every route to a green bar without a real
-comparison has its own flag, name, and branch scope.** You cannot land there by
-accident, and a reviewer reading CI config sees it. This is the cure for M4.
+**(source)** `OutdatedSnapshotReporter` appends every touched baseline path to
+`.jest-image-snapshot-touched-files` during a run and set-differences at the end.
+Gated on `JEST_IMAGE_SNAPSHOT_TRACK_OBSOLETE`. README states: "Do not run a
+*partial* test suite with this flag as it may consider snapshots of tests that
+weren't run to be obsolete." Also supports inline diff images in iTerm2/WezTerm
+via terminal escape codes, gated on a terminal allow-list plus an env var.
 
-### jest-image-snapshot — stale-baseline detection
+### Argos
 
-`OutdatedSnapshotReporter`: append every touched baseline path during the run,
-set-difference at the end. Opt-in, and the README is candid about why:
-*"Do not run a partial test suite with this flag as it may consider snapshots of
-tests that weren't run to be obsolete."* **Obsolescence is only knowable from a
-full run** — so the correct first version reports, never deletes. Also embeds diff
-images in iTerm2 via escape codes: charming, two config options and a terminal
-allow-list, for something a labelled path does for everyone.
+**(source)** Until a build has run on the default branch, PR builds are labelled
+**orphan** — a status distinct from both pass and fail.
 
-### Argos — naming the third state
+### testthat (R)
 
-Until a build has run on the default branch, PR builds are marked **orphan** — a
-distinct, named, visible status. Not a pass, not a failure. The conceptual fix for M1.
+**(source)** 3.3.0 NEWS: "`expect_snapshot()` and friends will now fail when
+creating a new snapshot on CI. This is usually a signal that you've forgotten to
+run it locally before committing (#1461)." Issue #1461 was open 2021-09-28 →
+2025-08-01. Implementation: `fail_on_new <- self$fail_on_new %||% on_ci()`; the
+file variant copies the snapshot and *then* fails.
 
-### Where we looked and found nothing
+The same release added `snapshot_download_gh()` for retrieving snapshots written
+by CI. 3.3.1 narrowed the hint to jobs named "R-CMD-check" (#2300).
 
-Applitools (no CLI text obtainable without an account) · `percy-capybara`
-specifically (nothing Capybara-specific worth quoting) · Lost Pixel's user-facing
-messages · Reddit/HN first-run-friction complaints (they live in issue trackers,
-not forums) · a Rails/rubyonrails stance on missing fixtures.
+Subsequent reports: #2293 — a downstream (`shinytest2`) relied on screenshot
+snapshots never failing, resolved by adding a `fail_on_new == FALSE` path.
+#2320 (open) requests configurability, arguing that a package with no committed
+snapshots is bootstrapping rather than regressing, and proposing the default be
+derived from whether a snapshot directory already exists.
 
----
+### rspec-snapshot (Ruby)
 
-## Defaults: who fails on a missing baseline
-
-The single most useful table here, because it decided a live argument.
-
-| Tool | local | CI | writes it? | changed over time? |
-|---|---|---|---|---|
-| Playwright | **FAIL** | **FAIL** | yes | never had a pass default |
-| Jest | pass | **FAIL** | not on CI | **yes** — Jest 20, 2017 |
-| jest-image-snapshot | pass | **FAIL** | not on CI | inherits Jest |
-| Vitest | pass | **FAIL** | not on CI | **yes** |
-| AVA | pass | **FAIL** | not on CI | **yes** — 2.0.0, breaking change |
-| testthat (R) | pass + warn | **FAIL** | **writes then fails** | **yes** — 3.3.0, Nov 2025 |
-| insta | **FAIL** | **FAIL** | `.snap.new` only | no |
-| syrupy (Py) | **FAIL** | **FAIL** | no | no, by design |
-| ApprovalTests / `approvals` (Ruby) | **FAIL** | **FAIL** | `.received` only | no |
-| **rspec-snapshot (Ruby)** | pass | **pass** | yes | no — request open 3½ years |
-| VCR `:once` (Ruby) | pass | pass | yes | no |
-
-**The consensus is CI-only failure.** Playwright is the sole always-fail and is
-greenfield with no migration to perform. A tool that flipped this default and
-*reverted* does not exist — searched, found none. The nearest things: testthat
-shipped it after a **four-year** deliberation and already has an open request to
-disable it from a maintainer with many visual snapshots; insta narrowed its CI
-override; a downstream broke because it relied on "new screenshot never fails".
-
-**Screenshots are not text snapshots.** A locally-generated screenshot baseline is
-often worthless — Playwright stamps `-darwin` into filenames precisely because
-fonts and antialiasing differ across OS. So "fail locally so the developer records
-one" produces a baseline that fails CI anyway. This is why we did **not** flip.
-
-**Migration precedent, four data points, consistent:** major version documented as
-breaking (AVA), or minor but CI-gated only (Jest, testthat), a named user-settable
-knob rather than an env var, and **ship the retrieval path in the same release** —
-testthat added `snapshot_download_gh()` alongside, because "CI wrote the baseline
-then failed" is unactionable when the artifact dies with the runner. Nobody used a
-deprecation cycle or a legacy mode.
+**(source)** Creates the snapshot file and passes, in CI as well as locally.
+Issue #32, "Tests pass in CI if no snapshot is found", opened 2022-10-18, open as
+of 2026-04-07. Issue #38, "Project status?", also open.
 
 ---
 
-## Ideas parked, with the reason (do not re-propose without new evidence)
+## 3. Cross-cutting mechanisms
 
-- **Approval UI / dashboards** (Percy, Chromatic, Argos, Applitools) — need a
-  service and a build database. Out of model. The local equivalent of "approve"
-  is `git add` of a file the tool just regenerated, and it is *better* for review:
-  a diff, not a database row.
-- **TurboSnap-style dependency tracing** — four flags to configure one feature.
-  The cheap version is "only run tests whose baseline or test file changed vs main".
-- **Terminal image embedding** — works for some users on some terminals.
-- **`.snap_diff_todo.yml`** — our accepted state is already PNGs in git.
-- **RBS/Sorbet** — freezes an interface we are actively shrinking.
+**Accept / update workflows**
+
+| Tool | Mechanism | Re-runs the test? |
+|---|---|---|
+| Playwright | `--update-snapshots`, `--last-failed` | yes |
+| Jest | `-u` / `--updateSnapshot` | yes |
+| insta | `cargo insta review\|accept\|reject`, `test --accept` | `test --accept` does |
+| BackstopJS | `backstop approve` (source: `approve.js`, copies `failed_diff_*` to reference), `--filter` | no — promotes artifacts |
+| Lost Pixel | `update` mode via arg, `-m`, or `LOST_PIXEL_MODE` env | yes |
+| RuboCop | `--auto-gen-config` (exclusion file), `-a` (fix source) | n/a |
+| VCR | change record mode in source | yes |
+| Percy / Chromatic / Argos | server-side approval UI | no |
+
+**"Recorded but not verified" as a distinct state**
+
+- insta: `.snap.new` file, `pending-snapshots` subcommand, suppressed under CI.
+- Jest: a word in the summary — `N written` alongside `N passed`, `N failed`.
+- Argos: a named build status, "orphan".
+- Playwright: none — indistinguishable from a failure in the JSON reporter.
+
+**Stale-baseline detection**
+
+- insta: `--unreferenced=warn|reject|delete`.
+- jest-image-snapshot: opt-in touched-file tracking, report only.
+- Others surveyed: none found.
+
+**Exit codes observed (measured)**
+
+| Situation | Playwright | Jest | insta | VCR | SimpleCov |
+|---|---|---|---|---|---|
+| missing baseline, local | 1 | 0 | 101 | 0 (`:once`) / 1 (`:none`) | n/a |
+| missing baseline, CI | 1 | 1 | 101 | same | n/a |
+| gate failure | 1 | 1 | 101 | 1 | **2** |
+| misconfiguration | 1 | 1 | 101 | 1 | 1 |
+
+Percy exits 0 on missing configuration (see above).
+
+**Distribution of platform-specific baselines.** Playwright encodes browser and
+platform in the filename by default. jest-image-snapshot, BackstopJS and
+rspec-snapshot do not. Third-party Capybara users of `capybara-screenshot-diff`
+were observed setting an equivalent option manually (`add_os_path`).
+
+---
+
+## 4. Migration precedents for changing a default
+
+Four cases where a snapshot tool changed its missing-baseline behaviour:
+
+| Tool | Vehicle | Scope of change | Accompanying work |
+|---|---|---|---|
+| Jest 20 (2017) | feature release | CI only | — |
+| AVA 2.0.0 (2019) | major, listed under "Breaking changes" | CI only | — |
+| Vitest | feature release | CI only | — |
+| testthat 3.3.0 (2025) | feature release | CI only | `snapshot_download_gh()` shipped in the same release |
+
+None used a deprecation cycle, a warning period, or a legacy mode. All exposed a
+named user-settable option (`--ci`/`updateSnapshot`, `fail_on_new`) rather than
+relying solely on environment detection.
+
+---
+
+## 5. Not covered
+
+- **Applitools** — CLI text and behaviour not obtainable without an account.
+- **percy-capybara specifically** — the CLI it drives was exercised; nothing
+  Capybara-specific was observed beyond the above.
+- **Lost Pixel user-facing messages** — mode dispatch was read
+  (`utils.ts:56-58`); no failure output captured.
+- **factory_bot, Capybara's own matcher errors, RSpec `--bisect`** — not exercised.
+- **Community discussion outside issue trackers** — searched Reddit and HN for
+  first-run-friction reports; nothing citable found.
+- **A Rails/rubyonrails position** on missing fixtures or baselines — searched,
+  none found.
+
+---
+
+## Sources
+
+Playwright: [TestConfig](https://playwright.dev/docs/api/class-testconfig) ·
+[#38046](https://github.com/microsoft/playwright/issues/38046) ·
+[#23090](https://github.com/microsoft/playwright/issues/23090) ·
+[#22337](https://github.com/microsoft/playwright/issues/22337).
+Jest: [#3456](https://github.com/jestjs/jest/pull/3456) ·
+[#12288](https://github.com/jestjs/jest/issues/12288) ·
+[snapshot docs](https://jestjs.io/docs/snapshot-testing).
+jest-image-snapshot: [#281](https://github.com/americanexpress/jest-image-snapshot/issues/281).
+Vitest: [#3227](https://github.com/vitest-dev/vitest/issues/3227) ·
+[snapshot guide](https://vitest.dev/guide/snapshot).
+AVA: [#1585](https://github.com/avajs/ava/issues/1585) ·
+[2.0.0](https://github.com/avajs/ava/releases/tag/v2.0.0).
+testthat: [NEWS](https://github.com/r-lib/testthat/blob/main/NEWS.md) ·
+[#1461](https://github.com/r-lib/testthat/issues/1461) ·
+[#2149](https://github.com/r-lib/testthat/pull/2149) ·
+[#2293](https://github.com/r-lib/testthat/issues/2293) ·
+[#2320](https://github.com/r-lib/testthat/issues/2320).
+insta: [CHANGELOG](https://github.com/mitsuhiko/insta/blob/master/CHANGELOG.md) ·
+[#924](https://github.com/mitsuhiko/insta/pull/924).
+syrupy: [README](https://github.com/syrupy-project/syrupy/blob/main/README.md).
+pytest-regressions: [overview](https://pytest-regressions.readthedocs.io/en/latest/overview.html).
+cupaloy: [repo](https://github.com/bradleyjkemp/cupaloy).
+ApprovalTests.Ruby: [repo](https://github.com/approvals/ApprovalTests.Ruby).
+rspec-snapshot: [#32](https://github.com/levinmr/rspec-snapshot/issues/32).
+VCR: [record modes](https://rspec.help/vcr/record-modes/) ·
+[no_cassette](https://andrewmcodes.gitbook.io/vcr/cassettes/no_cassette).
+Applitools: [advanced configuration](https://applitools.com/docs/eyes/playwright/api/advanced-configuration).
+Percy: [approval workflow](https://www.browserstack.com/docs/percy/build-results/approval).
+Chromatic: [branching and baselines](https://www.chromatic.com/docs/branching-and-baselines/).
