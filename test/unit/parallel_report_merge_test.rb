@@ -220,7 +220,16 @@ class ParallelReportMergeTest < ActiveSupport::TestCase
 
   # Runs the block in a real forked child, then the exact hook Rails runs
   # inside a parallel worker before it exits.
+  #
+  # JRuby has no `fork` (`Process.respond_to?(:fork)` is false, and calling it
+  # raises NotImplementedError), so Rails' fork-parallel mode -- the entire
+  # subject of this file -- cannot happen there. JRuby suites parallelize with
+  # threads, which record in the process that finalizes and are covered by
+  # "merging is a no-op when no worker ever forked" above. Skipping is the
+  # honest report: the behaviour is inapplicable, not untested.
   def fork_worker(&block)
+    skip "Rails' fork-parallel mode needs Kernel#fork, which #{RUBY_ENGINE} does not implement" unless Process.respond_to?(:fork)
+
     pid = fork do
       block.call
       ActiveSupport::Testing::Parallelization.run_cleanup_hooks.each { |hook| hook.call(0) }
