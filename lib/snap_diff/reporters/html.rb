@@ -67,17 +67,31 @@ module SnapDiff
       def passed = total - failures.size
       def failed = failures.size
 
+      # The last line of the run, and the only place it says what it
+      # actually did:
+      #
+      #   verified -- a committed baseline existed and was compared
+      #   changed  -- of those, the ones that differed
+      #   new      -- captured but NOT compared, for want of a committed
+      #               baseline: neither a pass nor a failure
+      #
+      # Printed on every run, passing or failing, and never nil. "N
+      # screenshots compared" counted only what it compared, so it was
+      # silent about exactly the screenshots it did not -- and silent
+      # altogether when it compared nothing, which is the one case worth
+      # shouting about: no assertion runs, so nothing else in the output
+      # can notice a suite that ran no tests, or a baseline lookup pointed
+      # at the wrong repository.
       def summary
-        return if total.zero?
+        line = "[snap_diff] #{total} verified, #{failed} changed, " \
+          "#{Reporting.missing_baselines_count} new (not verified)."
 
-        screenshots_label = (total == 1) ? "1 screenshot" : "#{total} screenshots"
+        return "#{line} NOTHING WAS VERIFIED -- no screenshot was compared to a committed baseline." if total.zero?
+        return line if failures.empty?
 
-        if failures.empty?
-          "[snap_diff] #{screenshots_label} compared, no failures."
-        else
-          failures_label = (failures.size == 1) ? "1 failure" : "#{failures.size} failures"
-          "[snap_diff] #{screenshots_label} compared, #{failures_label}. Report: #{output_path}"
-        end
+        # Both customer personas named this path as the best output in the
+        # product. It is only here when a report was actually written.
+        "#{line} Report: #{output_path}"
       end
 
       def render

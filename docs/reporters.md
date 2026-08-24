@@ -29,7 +29,7 @@ that hook fires in the process holding the results depends on how your runner pa
 | --- | --- |
 | Serial | Written, complete. |
 | `parallelize(with: :threads)` (also the default on JRuby) | Written, complete — same failures and counts as a serial run; only the order of the entries differs. |
-| `parallelize(workers: N)` (Rails' default, forks) | **Not written at all** — and the `[snap_diff] N screenshots compared …` summary line is not printed either. |
+| `parallelize(workers: N)` (Rails' default, forks) | **Not written at all** — and the `[snap_diff] N verified, N changed, N new …` summary line is not printed either. |
 | One process per worker (`parallel_tests`, RSpec, CI sharding) | Written, but only the **last** process to finish is in it; the others are overwritten. |
 
 Under Rails' forking parallelism the workers hold the results but never finalize: Minitest skips its
