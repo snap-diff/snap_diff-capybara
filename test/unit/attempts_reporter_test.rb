@@ -67,6 +67,28 @@ module SnapDiff
       assert_operator coords[3], :>=, region.bottom, "bottom edge must not shave the region"
     end
 
+    # A one-pixel-wide change (a ticker digit, a caret) yields left == right,
+    # because Region carries WIDTH and `from_edge_coordinates` computes it as
+    # `right - left`. Emitting those edges verbatim suggests a mask of width 0:
+    # it masks NOTHING, the page still will not settle, and the user is told to
+    # paste a fix that cannot work. That is the same "under-covers but looks
+    # like it worked" failure the outward rounding above exists to prevent --
+    # this is its degenerate case, which floor/ceil alone cannot reach.
+    # Observed on CI: [216,52,216,65].
+    test "#mask_coordinates never yields a mask that covers nothing" do
+      snap = attempt_snapshot("mask_degenerate", %i[a b])
+      reporter = AttemptsReporter.new(snap, {driver: :chunky_png}, {wait: 2, stability_time_limit: 0.1})
+      # One column at x=216, thirteen rows tall: width 0 in Region terms.
+      region = SnapDiff::Region.new(216, 52, 0, 13)
+
+      left, top, right, bottom = reporter.send(:mask_coordinates, region)
+
+      assert_operator right, :>, left, "a mask with right == left covers no pixels"
+      assert_operator bottom, :>, top, "a mask with bottom == top covers no pixels"
+      assert_equal [216, 52, 217, 65], [left, top, right, bottom]
+      assert_operator SnapDiff::Region.from_edge_coordinates(left, top, right, bottom).width, :>=, 1
+    end
+
     test "#generate returns the timeout message listing every attempt artifact" do
       snap = attempt_snapshot("unstable_message", %i[a b])
 

@@ -171,9 +171,17 @@ module SnapDiff
     # OUTWARD -- floor the near edges, ceil the far ones. Truncating instead
     # would shave the right/bottom edge and leave the moving pixels exposed,
     # which is worse than suggesting nothing.
+    # Round OUTWARD so the mask covers the region rather than shaving it, and
+    # never emit an edge pair that collapses: Region carries WIDTH, and
+    # `from_edge_coordinates` derives it as `right - left`, so a one-pixel-wide
+    # change (a ticker digit, a caret) arrives here as left == right and would
+    # be suggested as a mask of width 0 -- one that masks nothing, leaves the
+    # page unstable, and tells the user to paste a fix that cannot work.
     def mask_coordinates(region)
       left, top, right, bottom = region.to_edge_coordinates
-      [left.floor, top.floor, right.ceil, bottom.ceil]
+      left, top = left.floor, top.floor
+
+      [left, top, [right.ceil, left + 1].max, [bottom.ceil, top + 1].max]
     end
 
     def settling_lines(settling, animating)
