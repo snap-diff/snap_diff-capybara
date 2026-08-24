@@ -9,26 +9,90 @@ Kept out of `docs/` because `docs/` is packaged into the gem.
 cargo-insta 1.48.0 · VCR 6.4.0 · WebMock 3.26.2 · SimpleCov 1.1.1 · RuboCop
 1.89.0 · RSpec 3.13 · activesupport 8.1.3.1.
 
-Rows marked **(measured)** were executed locally and the output is verbatim.
-Rows marked **(source)** were read from the tool's code, docs, or issue tracker.
+### How the measurements were taken
+
+Every `(measured)` row is verbatim stdout/stderr from a command run on **one
+machine**: macOS on Apple silicon, retina display, versions as listed above. Each
+ran once unless the row says otherwise. `(source)` rows were read from the tool's
+own code, `--help`, docs, or issue tracker at the URL in Sources.
+
+**What one run proves.** Exit codes and message text are deterministic given a
+fixed version and fixture, so a single run is adequate evidence for those.
+Timings, seeds and timestamps are not properties of the tool and appear only
+because output is quoted verbatim — specifically `2 passed (541ms)`,
+`--seed 22661` (Minitest re-randomises per run), `0.00914 seconds` in the RSpec
+table, and the `2026-08-24 06:52:30 UTC` stamp in the RuboCop header.
+
+**The `-darwin` suffix is this machine, not a constant.** `alpha-darwin.png` and
+`example-1-chromium-darwin.png` carry the platform token of the host that ran
+them; on Linux the same baselines are `-linux`. That is Playwright's naming
+scheme working, not an artifact of the transcript.
+
+**Retina did not distort the figures**, because none of the quoted numbers are
+pixel dimensions, and because Playwright's `toHaveScreenshot` defaults to
+`scale: "css"` — screenshots normalise to CSS pixels, so a 2x display does not
+double baseline dimensions. Any future measurement reporting image dimensions,
+file sizes or diff-pixel counts must state the device pixel ratio.
+
+**Fixture-dependent numbers are not tool properties.**
+`1 file inspected, 19 offenses detected` and `Line coverage: 6 / 12 (50.00%)`
+describe throwaway fixtures, not RuboCop or SimpleCov. They illustrate output
+*shape*; the counts carry no information.
+
+**Not recorded at the time, therefore unknown:** which runner the Ruby
+measurements used (`activesupport 8.1.3.1` appears in the version list but
+nowhere in the body), whether anything beyond the tools' own stubbing was in
+place for the VCR and WebMock runs, and whether the Playwright project drove a
+real browser. A re-measurement should capture these.
+
+Note that **SimpleCov 1.1.1 was released 2026-08-12**, twelve days before these
+observations — that row describes a then-new release.
+
+### Scope and selection
+
+Three overlapping groups, chosen deliberately and **not sampled**: (a) image-based
+visual-regression tools (Playwright, jest-image-snapshot, BackstopJS, Lost Pixel,
+Percy, Chromatic, Argos, Applitools); (b) value-snapshot libraries across
+languages, chosen for ecosystem spread rather than popularity (Jest, Vitest, AVA,
+insta, syrupy, pytest-regressions, cupaloy, testthat, ApprovalTests,
+rspec-snapshot); (c) Ruby tools that are *not* snapshot tools but solve the
+adjacent "record on first run" or "gate a build" problem (VCR, WebMock, SimpleCov,
+RuboCop, RSpec, Minitest), included because Ruby conventions are relevant to a
+Ruby reader.
+
+**Known exclusions.** No commercial tool was exercised beyond its free CLI
+surface; Applitools was excluded for want of an account. Storybook's test-runner,
+Loki, reg-suit, Wraith, Galen and Cypress image plugins were not examined.
+Nothing was excluded for behaving in a particular way.
+
+**Any third-party usage observation would come from GitHub code search over
+public repositories, which is a biased sample** — it sees only public, indexed
+and, through result ranking and caps, disproportionately popular repositories.
+Counts from it are lower bounds on public usage, not estimates of usage overall.
 
 ---
 
+## Scope of this reference
+
+This document concentrates on **first-run and missing-baseline behaviour**, and
+on how each tool is configured and what it prints. That emphasis is a choice of
+the author, not a claim about what matters most in the field. Areas deliberately
+not covered are listed at the end.
+
 ## 1. Behaviour on a missing baseline
 
-The defining question for a snapshot tool: what happens when there is nothing to
-compare against.
+Sorted by ecosystem, then alphabetically.
 
 | Tool | Local | CI | Writes the artifact? | Default changed over time? |
 |---|---|---|---|---|
-| Playwright `toHaveScreenshot` | fail | fail | yes | no — never had a passing default |
-| Jest `toMatchSnapshot` | pass | fail | not on CI | yes — Jest 20, 2017 (source: jest#3456) |
+| Playwright `toHaveScreenshot` | fail | fail | yes | no |
+| Jest `toMatchSnapshot` | pass | fail | not on CI | yes (jest#3456) |
 | jest-image-snapshot | pass | fail | not on CI | inherits Jest |
-| Vitest | pass | fail | not on CI | yes (source: vitest#3227) |
-| AVA | pass | fail | not on CI | yes — 2.0.0, documented breaking change |
-| testthat (R) | pass + warning | fail | writes, then fails | yes — 3.3.0, 2025-11-13 |
+| Vitest | pass | fail | not on CI | yes (vitest#3227) |
+| AVA | pass | fail | not on CI | yes (2.0.0) |
+| testthat (R) | pass + warning | fail | writes, then fails | yes (3.3.0) |
 | insta (Rust) | fail | fail | `.snap.new` only, not on CI | no |
-| syrupy (Python) | fail | fail | no | no — designed so |
+| syrupy (Python) | fail | fail | no | no |
 | pytest-regressions | fail | fail | yes | no |
 | ApprovalTests / `approvals` (Ruby) | fail | fail | `.received` only | no |
 | cupaloy (Go) | fail | fail | no | no |
@@ -42,13 +106,18 @@ compare against.
 CI detection is by environment variable in Jest, AVA, Vitest, insta and testthat.
 Playwright and syrupy do not vary by environment.
 
-**No tool was found that adopted fail-on-missing and later reverted it.**
-Searched changelogs and issue trackers for Playwright, Jest, Vitest, AVA,
-testthat, insta, syrupy and jest-image-snapshot. Related but not reversals:
-testthat has an open request to make it configurable (testthat#2320, opened
-2026-02-03); insta narrowed its CI override so explicit flags win (insta#924);
-testthat added a `fail_on_new = FALSE` path after a downstream broke
-(testthat#2293).
+No tool was found that adopted fail-on-missing and later reverted it. Search
+scope: changelogs and issue trackers for Playwright, Jest, Vitest, AVA, testthat,
+insta, syrupy and jest-image-snapshot, as of 2026-08-24. **The observation window
+is short for the only recent adopter** — testthat 3.3.0 shipped roughly nine
+months before this was written, so its absence of a reversal carries little
+weight.
+
+Subsequent activity on that change, described without adjudicating whether it
+constitutes a reversal: testthat#2293 added a `fail_on_new == FALSE` code path
+after a downstream package (`shinytest2`) broke; testthat#2320 (open) requests
+that the default be configurable; insta#924 narrowed its CI override so explicit
+flags take precedence over the `CI` environment variable.
 
 ---
 
@@ -58,7 +127,9 @@ testthat added a `fail_on_new = FALSE` path after a downstream broke
 
 **Update modes** (source, `--help`): `-u, --update-snapshots [mode]`, choices
 `all`, `changed`, `missing`, `none`. No flag defaults to `missing`; a bare `-u`
-means `changed`.
+means `changed`. These modes are **not listed on the visual-comparison guide
+page** (playwright.dev/docs/test-snapshots, checked 2026-08-24); CLI `--help` was
+the only observed source.
 
 **(measured)** Exit codes, one missing baseline among two passing:
 
@@ -316,9 +387,23 @@ derived from whether a snapshot directory already exists.
 
 **(source)** Creates the snapshot file and passes, in CI as well as locally.
 Issue #32, "Tests pass in CI if no snapshot is found", opened 2022-10-18, open as
-of 2026-04-07. Issue #38, "Project status?", also open.
+of 2026-04-07.
 
 ---
+
+## 2b. Tolerance and anti-aliasing configuration
+
+| Tool | Knobs | Defaults | Noise handling |
+|---|---|---|---|
+| Playwright `toHaveScreenshot` | `threshold`, `maxDiffPixels`, `maxDiffPixelRatio` | `threshold` 0.2 (YIQ colour space); the other two unset | `animations: "disabled"`, `caret: "hide"`, `scale: "css"` by default; `mask` overlays locators; `stylePath` injects CSS |
+| jest-image-snapshot | `failureThreshold`, `failureThresholdType`, `comparisonMethod`, `customDiffConfig.threshold`, `blur`, `allowSizeMismatch` | `failureThreshold` 0, type `pixel`, method `pixelmatch`, pixelmatch `threshold` 0.01, `blur` 0, `allowSizeMismatch` false | `blur` (Gaussian, px) for cross-resolution scaling noise; `ssim` as an alternative to per-pixel comparison |
+
+Both default to **pixelmatch**. Note that Playwright's `threshold` and
+jest-image-snapshot's `customDiffConfig.threshold` are the *same pixelmatch
+parameter* with defaults a factor of twenty apart — 0.2 against 0.01.
+
+Sources: [PageAssertions](https://playwright.dev/docs/api/class-pageassertions#page-assertions-to-have-screenshot-1) ·
+[jest-image-snapshot](https://github.com/americanexpress/jest-image-snapshot).
 
 ## 3. Cross-cutting mechanisms
 
@@ -357,29 +442,37 @@ of 2026-04-07. Issue #38, "Project status?", also open.
 | gate failure | 1 | 1 | 101 | 1 | **2** |
 | misconfiguration | 1 | 1 | 101 | 1 | 1 |
 
-Percy exits 0 on missing configuration (see above).
+insta surfaces failures as `cargo test` panics; **101 is Rust's panic exit code**
+and does not vary by situation, so its column carries no information beyond
+"failed".
+
+Percy exits 0 when no token is configured. Per their documentation this is
+deliberate, so that forks and PRs without access to repository secrets do not
+fail the build.
 
 **Distribution of platform-specific baselines.** Playwright encodes browser and
 platform in the filename by default. jest-image-snapshot, BackstopJS and
-rspec-snapshot do not. Third-party Capybara users of `capybara-screenshot-diff`
-were observed setting an equivalent option manually (`add_os_path`).
+rspec-snapshot do not.
 
 ---
 
-## 4. Migration precedents for changing a default
+## 4. History of default changes
 
-Four cases where a snapshot tool changed its missing-baseline behaviour:
+Four tools changed their missing-baseline behaviour after release:
 
-| Tool | Vehicle | Scope of change | Accompanying work |
+| Tool | Release | Change | Notes |
 |---|---|---|---|
-| Jest 20 (2017) | feature release | CI only | — |
-| AVA 2.0.0 (2019) | major, listed under "Breaking changes" | CI only | — |
-| Vitest | feature release | CI only | — |
-| testthat 3.3.0 (2025) | feature release | CI only | `snapshot_download_gh()` shipped in the same release |
+| Jest | 20 (2017) | stopped writing snapshots on CI | jest#3456 |
+| AVA | 2.0.0 (2019) | fails on CI when no snapshot found | listed under "Breaking changes" |
+| Vitest | — | fails on CI rather than writing | vitest#3227 |
+| testthat | 3.3.0 | fails when creating a new snapshot on CI | `snapshot_download_gh()` added in the same release, for retrieving snapshots written by CI |
 
-None used a deprecation cycle, a warning period, or a legacy mode. All exposed a
-named user-settable option (`--ci`/`updateSnapshot`, `fail_on_new`) rather than
-relying solely on environment detection.
+In all four the change applied to CI only; local behaviour was unchanged. None
+used a deprecation cycle or a legacy mode. Each exposes a named user-settable
+option (`--ci` / `updateSnapshot`, `fail_on_new`) alongside environment detection.
+
+The testthat 3.3.0 release date is not given in `NEWS.md` and was not confirmed;
+the CRAN package page lists only the current version.
 
 ---
 
@@ -395,6 +488,20 @@ relying solely on environment detection.
   first-run-friction reports; nothing citable found.
 - **A Rails/rubyonrails position** on missing fixtures or baselines — searched,
   none found.
+- **testthat 3.3.0 / 3.3.1 release dates** — absent from `NEWS.md` and from the
+  CRAN package page; obtainable only from the CRAN Archive listing, not fetched.
+- **Cost** — not researched. Percy, Chromatic, Argos and Applitools price per
+  snapshot or screenshot with tiers that change frequently; no figures captured
+  and none should be inferred from this document.
+- **Second and subsequent failures of the same baseline** — not exercised for any
+  tool. Whether output, exit code or artifact naming differs on a repeat failure
+  is unknown.
+- **Colour-blind accessibility of diff artefacts** — not assessed. No tool's diff
+  rendering was checked against a deuteranopia or protanopia simulation, and none
+  surveyed was observed documenting a colour-blind-safe palette.
+- **Baseline storage growth over time** — not measured for any tool.
+- **Tolerance/anti-aliasing for tools other than Playwright and
+  jest-image-snapshot** — not gathered.
 
 ---
 
