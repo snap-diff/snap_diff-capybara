@@ -95,10 +95,11 @@ contract one release ahead is the mitigation. 2.0 warns once per process for eac
 | `include SnapDiff::Driver` in your own driver | nothing — custom drivers have no migration path |
 
 Two removals 2.0 cannot warn about, so they are written down instead: **`driver:`
-as a setting goes away entirely** (`SnapDiff.config.driver = :vips` and
-`Capybara::Screenshot::Diff.driver = :vips` raise `NoMethodError` on 2.1 — delete
-the line, one backend needs no selection), and the legacy `LOADED_DRIVERS` /
-`AVAILABLE_DRIVERS` constants are plain aliases with nothing to hook.
+as a setting goes away entirely** — `SnapDiff.config.driver = :vips` and
+`Capybara::Screenshot::Diff.driver = :vips` raise `NoMethodError` on 2.1, and the
+per-screenshot `screenshot "x", driver: :vips` is silently ignored there. Delete
+both; one backend needs no selection. The legacy `LOADED_DRIVERS` /
+`AVAILABLE_DRIVERS` constants are also plain aliases with nothing to hook.
 
 ### Added
 - **`SnapDiff` is the canonical namespace** — the implementation lives in

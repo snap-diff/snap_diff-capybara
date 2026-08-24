@@ -216,14 +216,17 @@ warns once per process per subject, through the same channel and the same silenc
 | `include SnapDiff::Driver` in your own driver class | the driver mixin | nothing — see below |
 
 > **The one removal on this list that 2.0 cannot warn you about: the `driver:` setting
-> itself.** `SnapDiff.config.driver = :vips` (and the legacy
-> `Capybara::Screenshot::Diff.driver = :vips`, and the per-screenshot `driver:` override)
-> is **silent** in 2.0 and raises `NoMethodError: undefined method 'driver='` in 2.1.
-> Warning on it would fire on the recommended configuration, so this note is the warning:
-> **delete the line.** With libvips the only backend there is nothing to select, and the
-> default just works. The same goes for `driver: :auto` on a machine that *has*
-> `ruby-vips` — the `:auto` warning above only fires when `:auto` actually falls back to
-> ChunkyPNG, because that is the case where 2.1 stops the process comparing at all.
+> itself.** `SnapDiff.config.driver = :vips` and the legacy
+> `Capybara::Screenshot::Diff.driver = :vips` are **silent** in 2.0 and raise
+> `NoMethodError: undefined method 'driver='` in 2.1, at config time before any test runs.
+> The per-screenshot form — `screenshot "index", driver: :vips` — is silent in 2.0 **and**
+> in 2.1: per-screenshot options are a free-form hash, so an unknown key is simply inert.
+> Warning on any of this would fire on the recommended configuration, so this note is the
+> warning: **delete the line, and grep for the per-screenshot one.** With libvips the only
+> backend there is nothing to select, and the default just works. The same goes for
+> `driver: :auto` on a machine that *has* `ruby-vips` — the `:auto` warning above only
+> fires when `:auto` actually falls back to ChunkyPNG, because that is the case where 2.1
+> stops the process comparing at all.
 
 ```
 [snap_diff deprecation] `driver: :auto` selected chunky_png because libvips is not available in this process. The chunky_png driver is REMOVED in 2.1, when libvips (the `ruby-vips` gem) becomes required -- install it now, or this setup stops comparing on 2.1. See docs/drivers.md. Silence with `SnapDiff.silence_deprecations = true` or SNAP_DIFF_SILENCE_DEPRECATIONS=1. (shown once per process) (called from /app/test/test_helper.rb:12)
