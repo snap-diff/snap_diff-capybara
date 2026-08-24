@@ -97,18 +97,22 @@ module SnapDiff
     # region that overlaps one we have already seen is the same place, moved
     # or resized, so the place grows to cover both.
     #
-    # ponytail: first-overlap wins, so a chain of regions that each overlap
-    # the next merges into one area. That is the right answer for the case
-    # this message exists for (something animating in one spot) and only ever
-    # UNDER-counts areas, which cannot turn churn into a masking suggestion.
+    # Merge every area the incoming region touches, not just the first.
+    # A grew to overlap C only after absorbing B, so first-overlap-wins would
+    # leave A and C as separate areas -- each then present in fewer pairs than
+    # the whole, so a single animation reads as churn and no mask is offered.
+    # Safe in the sense that it never invents a mask, but it withholds the one
+    # suggestion this message exists to make.
     def cluster(regions)
       regions.each_with_object([]) do |region, areas|
-        existing = areas.find { |area| area.region.intersect?(region) }
-        if existing
-          existing.region = union(existing.region, region)
-          existing.pairs += 1
-        else
+        touching = areas.select { |area| area.region.intersect?(region) }
+        if touching.empty?
           areas << Area.new(region, 1)
+        else
+          merged = touching.reduce(region) { |acc, area| union(acc, area.region) }
+          pairs = touching.sum(&:pairs) + 1
+          areas.reject! { |area| touching.include?(area) }
+          areas << Area.new(merged, pairs)
         end
       end
     end

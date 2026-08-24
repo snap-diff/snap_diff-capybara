@@ -30,6 +30,26 @@ module SnapDiff
     # integers, and the message's own regex silently failed to match. Truncating
     # would shave the right/bottom edge and leave the moving pixels exposed,
     # which is worse than suggesting nothing at all.
+    # A chain: A touches B, B touches C, A does NOT touch C. First-overlap-wins
+    # would leave two areas, each seen in fewer pairs than the chain as a whole,
+    # so one animation reads as churn and no mask is offered.
+    test "#cluster merges every transitively overlapping region into one area" do
+      snap = attempt_snapshot("transitive_cluster", %i[a b])
+      reporter = AttemptsReporter.new(snap, {driver: :chunky_png}, {wait: 2, stability_time_limit: 0.1})
+
+      a = SnapDiff::Region.new(0, 0, 20, 10)    # 0..20
+      c = SnapDiff::Region.new(30, 0, 20, 10)   # 30..50 -- does NOT touch a
+      b = SnapDiff::Region.new(15, 0, 20, 10)   # 15..35 -- bridges them
+
+      areas = reporter.send(:cluster, [a, c, b])
+
+      assert_equal 1, areas.size, "the bridge should merge all three: #{areas.map { |x| x.region.to_edge_coordinates }.inspect}"
+      assert_equal 3, areas.first.pairs, "a merged area keeps every pair it was seen in"
+      edges = areas.first.region.to_edge_coordinates
+      assert_operator edges[0], :<=, 0
+      assert_operator edges[2], :>=, 50
+    end
+
     test "#mask_coordinates yields integers that round OUTWARD to cover the region" do
       snap = attempt_snapshot("mask_rounding", %i[a b])
       reporter = AttemptsReporter.new(snap, {driver: :chunky_png}, {wait: 2, stability_time_limit: 0.1})
