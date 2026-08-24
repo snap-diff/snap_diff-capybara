@@ -73,4 +73,21 @@ module SnapDiff
   end
 end
 
-::Minitest.after_run { SnapDiff::Reporting.finalize! } if ::Minitest.respond_to?(:after_run)
+# Under Rails' `parallelize(workers: N)` the tests run in forked children
+# that never reach `after_run`, so the report and the summary line were
+# lost on every suite past the parallelization threshold (issue #258).
+# Registering the worker-side hook has to happen before `parallelize`
+# forks; with `Bundler.require` this file loads before
+# ActiveSupport::TestCase exists, so try now and again when it appears.
+unless SnapDiff::Reporting.install_parallel_hooks!
+  if defined?(::ActiveSupport) && ::ActiveSupport.respond_to?(:on_load)
+    ::ActiveSupport.on_load(:active_support_test_case) { SnapDiff::Reporting.install_parallel_hooks! }
+  end
+end
+
+if ::Minitest.respond_to?(:after_run)
+  ::Minitest.after_run do
+    SnapDiff::Reporting.merge_parallel_fragments!
+    SnapDiff::Reporting.finalize!
+  end
+end

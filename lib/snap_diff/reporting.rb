@@ -1,5 +1,9 @@
 # frozen_string_literal: true
 
+require "fileutils"
+require "json"
+require "tmpdir"
+
 module SnapDiff
   # Process-global reporter lifecycle: registration, per-test notification,
   # end-of-suite finalization. One list of reporters for the whole process,
@@ -86,6 +90,87 @@ module SnapDiff
         if (msg = missing_baselines_summary)
           $stdout.puts msg
         end
+      end
+
+      # --- fork-parallel reports (issue #258) ---------------------------
+      #
+      # Under Rails' default `parallelize(workers: N)` the tests run in
+      # forked children, and Minitest skips `after_run` in a forked child
+      # (`allow_fork = false`, minitest.rb:64/79). So every worker holds
+      # records and never finalizes, while the parent finalizes and holds
+      # none: no report, no summary line. Pass/fail is unaffected -- the
+      # failures marshal back over DRb -- which is what makes it quiet.
+      #
+      # Rails runs `run_cleanup_hooks` INSIDE the worker just before it
+      # exits (parallelization/worker.rb:31), so each worker dumps its
+      # records there, and the parent merges the fragments in the
+      # `Minitest.after_run` it does reach.
+
+      # Registers the worker-side dump with Rails, once per process.
+      #
+      # Feature-detected twice over: the gem must load without Rails at
+      # all, and with `Bundler.require` it loads BEFORE
+      # ActiveSupport::TestCase exists, so the caller retries from
+      # `ActiveSupport.on_load`.
+      #
+      # @return [Boolean] true when the hook is registered (now or already)
+      def install_parallel_hooks!
+        return true if @parallel_owner_pid
+        return false unless defined?(::ActiveSupport::Testing::Parallelization)
+
+        @parallel_owner_pid = Process.pid
+        ::ActiveSupport::Testing::Parallelization.run_cleanup_hook { dump_parallel_fragment }
+        true
+      end
+
+      # Outside the repository on purpose: it holds run-scoped scratch, and
+      # the alternative -- somewhere under `save_path` -- is a directory
+      # users `git add`.
+      #
+      # Keyed by the pid recorded at install time, which happens in the
+      # parent before any fork: `Process.pid` here would give each worker a
+      # directory of its own that the parent never looks in.
+      def parallel_fragments_dir
+        File.join(Dir.tmpdir, "snap_diff-fragments-#{@parallel_owner_pid}")
+      end
+
+      # Worker side. Writes to a `.tmp` name and renames it into place, so
+      # a worker killed mid-write leaves nothing the merge will read.
+      def dump_parallel_fragment
+        payload = {
+          "missing_baselines" => @mutex.synchronize { @missing_baselines.to_a },
+          "reporters" => @mutex.synchronize { @reporters.dup }
+            .map { |reporter| reporter.dump_state if reporter.respond_to?(:dump_state) }
+        }
+
+        FileUtils.mkdir_p(parallel_fragments_dir)
+        tmp = File.join(parallel_fragments_dir, "#{Process.pid}.json.tmp")
+        File.write(tmp, JSON.generate(payload))
+        File.rename(tmp, File.join(parallel_fragments_dir, "#{Process.pid}.json"))
+      end
+
+      # Parent side, called just before {finalize!}. A no-op when nothing
+      # forked, which is what keeps serial and `with: :threads` -- both of
+      # which record in the process that finalizes -- exactly as they were.
+      #
+      # Reporters are matched by position: registration happens at require
+      # time, before any fork, so the list is identical in every process.
+      def merge_parallel_fragments!
+        return unless @parallel_owner_pid == Process.pid
+
+        Dir[File.join(parallel_fragments_dir, "*.json")].sort.each do |fragment|
+          payload = JSON.parse(File.read(fragment))
+
+          @mutex.synchronize { payload["missing_baselines"].each { |name| @missing_baselines << name } }
+
+          reporters_snapshot = @mutex.synchronize { @reporters.dup }
+          payload["reporters"].each_with_index do |state, index|
+            reporter = reporters_snapshot[index]
+            reporter.merge_state!(state) if state && reporter.respond_to?(:merge_state!)
+          end
+        end
+
+        FileUtils.rm_rf(parallel_fragments_dir)
       end
 
       # The reporters' summary line carries the COUNT of screenshots that

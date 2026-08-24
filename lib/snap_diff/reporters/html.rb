@@ -64,6 +64,22 @@ module SnapDiff
         @output_path ||= Pathname.new(@explicit_output_path || self.class.default_output_path)
       end
 
+      # Fork-parallel handoff (issue #258). A forked worker never reaches
+      # `Minitest.after_run`, so it hands its records to the parent as
+      # plain data instead. JSON on purpose -- boring, and a half-written
+      # file is discarded rather than half-read. Image paths were resolved
+      # against `output_path`, which is the same in both processes.
+      def dump_state
+        @mutex.synchronize { {"total" => @total, "failures" => @failures} }
+      end
+
+      def merge_state!(state)
+        @mutex.synchronize do
+          @total += state["total"]
+          @failures.concat(state["failures"].map { |entry| entry.transform_keys(&:to_sym) })
+        end
+      end
+
       def passed = total - failures.size
       def failed = failures.size
 
