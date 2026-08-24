@@ -203,6 +203,19 @@ class ImageCompareRefactorTest < ActiveSupport::TestCase
     assert_predicate comparison, :different?
   end
 
+  test "#different? skips decoding both images when the files are byte-identical" do
+    comparison = make_comparison(:a, :a)
+    load_calls = 0
+    comparison.driver.define_singleton_method(:load_images) do |*args|
+      load_calls += 1
+      super(*args)
+    end
+
+    refute_predicate comparison, :different?
+
+    assert_equal 0, load_calls, "byte-identical files must not be decoded to answer #different?"
+  end
+
   # Test #dimensions_changed? method
   test "#dimensions_changed? returns true when images have different dimensions" do
     comparison = make_comparison(:portrait, :a)
