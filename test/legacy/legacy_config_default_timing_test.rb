@@ -39,12 +39,12 @@ class LegacyConfigDefaultTimingTest < ActiveSupport::TestCase
   RUBY
 
   ENTRY_POINTS.each do |entry|
-    test "#{entry}: defaults snapshot matches; ENV/pwd frozen at require, wait live" do
+    test "#{entry}: defaults snapshot matches; pwd frozen at require, wait and fail_if_new live" do
       run_probe(ConfigDefaultTimingTest::SNAPSHOT_SCRIPT, {"PROBE_ENTRY" => entry, "CI" => nil})
     end
 
-    test "#{entry}: CI=1 before require turns fail_if_new on; unset after require does not turn it off" do
-      run_probe(ConfigDefaultTimingTest::CI_SET_SCRIPT, {"PROBE_ENTRY" => entry, "CI" => "1"})
+    test "#{entry}: an explicit fail_if_new outranks ENV['CI'], which is otherwise read live" do
+      run_probe(ConfigDefaultTimingTest::CI_PRECEDENCE_SCRIPT, {"PROBE_ENTRY" => entry, "CI" => "1"})
     end
 
     test "#{entry}: Rails.root defined before require wins; reassigning it after require is not seen" do

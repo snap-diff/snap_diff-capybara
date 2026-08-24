@@ -29,14 +29,18 @@ module SnapDiff
   # through the other structurally, not by synchronization.
   #
   # Default timing contract (pinned by config_default_timing_test.rb):
-  # every default below is evaluated ONCE, in #initialize, which runs at
-  # require time of this file (the eager +Config.new+ at the bottom) -- the
-  # same load moment the old +mattr_accessor+ default blocks evaluated at.
-  # In particular +fail_if_new+ (from <tt>ENV["CI"]</tt>) and +root+ (from
-  # +Rails.root+ / pwd) must never become lazy read-time defaults, memoized
-  # or not. The one deliberately LIVE value, +default_options[:wait]+, is
-  # not storage at all: it stays a method-body read of
-  # +Capybara.default_max_wait_time+ in +#default_options+.
+  # every stored default below is evaluated ONCE, in #initialize, which runs
+  # at require time of this file (the eager +Config.new+ at the bottom) --
+  # the same load moment the old +mattr_accessor+ default blocks evaluated
+  # at. In particular +root+ (from +Rails.root+ / pwd) must never become a
+  # lazy read-time default, memoized or not.
+  #
+  # Two values are deliberately LIVE and are not storage at all:
+  # +default_options[:wait]+ stays a method-body read of
+  # +Capybara.default_max_wait_time+ in +#default_options+, and
+  # +fail_if_new+ falls back to <tt>ENV["CI"]</tt> in its reader whenever
+  # nothing explicit was set -- see {#fail_if_new} for why freezing that
+  # sniff into storage let the environment outrank the user.
   class Config
     # Every setting this object stores, in the order the two legacy holders
     # used to declare them.
@@ -81,10 +85,12 @@ module SnapDiff
 
     # shift_distance_limit and driver are excluded from the generated
     # writers and hand written below (they announce their 2.1 removal);
-    # generating them here too would print Ruby's "method redefined"
-    # warning on every load.
-    attr_accessor(*(SETTINGS - %i[root shift_distance_limit driver]))
+    # fail_if_new is excluded from the generated READER (it falls back to
+    # the environment). Generating them here too would print Ruby's
+    # "method redefined" warning on every load.
+    attr_accessor(*(SETTINGS - %i[root shift_distance_limit driver fail_if_new]))
     attr_reader :root, :shift_distance_limit, :driver
+    attr_writer :fail_if_new
 
     def initialize
       # Every setting gets its ivar up front (nil-defaulted ones included)
@@ -104,7 +110,7 @@ module SnapDiff
       @capybara_screenshot_options = {}
       # Capybara::Screenshot::Diff side.
       @delayed = true
-      @fail_if_new = !ENV["CI"].nil? && !ENV["CI"].empty?
+      # No stored default for fail_if_new on purpose -- see the reader.
       @pending_if_new = false
       @fail_on_difference = true
       @enabled = true
@@ -115,6 +121,23 @@ module SnapDiff
 
     def root=(path)
       @root = Pathname(path).expand_path
+    end
+
+    # An explicit setting outranks the environment. nil means nobody said,
+    # and only then does the CI sniff answer -- read live, so a CI variable
+    # that appears at any point is honoured, not just one that happened to
+    # be exported before the gem was required. Assigning nil hands the
+    # setting back to the environment.
+    #
+    # This is a precedence rule, not a change of default: failing only under
+    # CI stays (a locally recorded baseline is often worthless across OS).
+    # Storing the sniff instead, as this did, made the two indistinguishable
+    # -- `fail_if_new = false` and "CI was absent at require time" were the
+    # same false, so the environment could win. Same fix as insta#924
+    # ("normally, CLI flags take precedence over environment variables") and
+    # the inverse of jest#12288.
+    def fail_if_new
+      @fail_if_new.nil? ? !ENV["CI"].to_s.empty? : @fail_if_new
     end
 
     # Overrides the generated accessor above to announce the 2.1 removal

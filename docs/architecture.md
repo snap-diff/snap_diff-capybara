@@ -240,7 +240,7 @@ The canonical way in is `SnapDiff.configure { |config| ... }` (all 27 settings f
 
 `Config` also owns the derived values that used to live on the legacy modules: `active?` (ex `Capybara::Screenshot.active?`), `screenshot_area` / `screenshot_area_abs`, and `default_options` (ex `Capybara::Screenshot::Diff.default_options`, the option hash handed to `SnapDiff::Comparison`). The legacy module methods one-line forward here.
 
-**Default timing contract:** every default is evaluated once, in `Config#initialize`, which runs at require time of `config.rb` — the same load moment the old `mattr_accessor` default blocks evaluated at. `fail_if_new` (from `ENV["CI"]`) and `root` (from `Rails.root`) must never become lazy read-time defaults. The one deliberately live value is `default_options[:wait]`, a method-body read of `Capybara.default_max_wait_time`.
+**Default timing contract:** every *stored* default is evaluated once, in `Config#initialize`, which runs at require time of `config.rb` — the same load moment the old `mattr_accessor` default blocks evaluated at. `root` (from `Rails.root`) must never become a lazy read-time default. Two values are deliberately live: `default_options[:wait]`, a method-body read of `Capybara.default_max_wait_time`, and `fail_if_new`, whose reader falls back to `ENV["CI"]` whenever nothing explicit was set — an explicit setting outranks the environment, so the sniff cannot be frozen into storage.
 
 ## File Layout
 

@@ -9,14 +9,18 @@ require "open3"
 #
 # Current behavior being pinned:
 #
-# - the ENV/pwd-derived defaults (fail_if_new from ENV["CI"], root from
-#   Rails.root/pwd) are evaluated ONCE, when snap_diff/config.rb is first
-#   required. Mutating ENV, cwd, or Rails.root after the require -- even
-#   before the first read -- must NOT change the value. A refactor that
-#   turns any of these into a lazy (read-time) default, memoized or not,
-#   goes red here.
+# - the pwd-derived default (root, from Rails.root/pwd) is evaluated ONCE,
+#   when snap_diff/config.rb is first required. Mutating cwd or Rails.root
+#   after the require -- even before the first read -- must NOT change the
+#   value. A refactor that turns it into a lazy (read-time) default,
+#   memoized or not, goes red here.
 # - default_options[:wait] is the opposite: it reads
 #   Capybara.default_max_wait_time at CALL time, live, every call.
+# - fail_if_new is live too, and deliberately so: it has no stored default,
+#   so an unset one asks ENV["CI"] on every read while an explicit setting
+#   outranks the environment. That is the whole point -- a frozen sniff
+#   cannot tell "the user asked for false" from "CI was absent at require".
+#   See CI_PRECEDENCE_SCRIPT and snap_diff_config_test.rb.
 #
 # Canonical entry points only, read through SnapDiff.config only. The v1
 # entry points and the "both surfaces agree" half re-run these same scripts
@@ -52,13 +56,12 @@ class ConfigDefaultTimingTest < ActiveSupport::TestCase
 
     require ENV.fetch("PROBE_ENTRY")
 
-    ENV["CI"] = "1"
     require "tmpdir"
     Dir.chdir(Dir.tmpdir)
 
     # Expected default values (CI unset, no Rails, at require time).
-    # fail_if_new false / root == launch pwd also pin require-time
-    # evaluation: ENV["CI"] and cwd were changed above, pre-first-read.
+    # root == launch pwd also pins require-time evaluation: cwd was changed
+    # above, pre-first-read.
     {
       add_driver_path: nil,
       add_os_path: nil,
@@ -95,15 +98,34 @@ class ConfigDefaultTimingTest < ActiveSupport::TestCase
     Capybara.default_max_wait_time = 42.5
     check("default_options[:wait] follows Capybara.default_max_wait_time set after require",
       42.5, SnapDiff.config.default_options[:wait])
+
+    # fail_if_new is live too: CI appearing after the require is seen.
+    ENV["CI"] = "1"
+    check("fail_if_new follows ENV['CI'] set after require", true, SnapDiff.config.fail_if_new)
   RUBY
 
-  # Probe B: ENV["CI"] present (non-empty) BEFORE the require flips the
-  # fail_if_new default on -- and unsetting it after the require does not
-  # flip it back (frozen at require time).
-  CI_SET_SCRIPT = CHECK_HELPER + <<~RUBY
+  # Probe B: fail_if_new precedence. The ENV["CI"] sniff is the FALLBACK,
+  # read live in both directions; an explicit setting outranks it whenever
+  # the variable appears (insta#924, jest#12288). Entered with CI=1 set
+  # before the require, so a require-time freeze is distinguishable.
+  CI_PRECEDENCE_SCRIPT = CHECK_HELPER + <<~RUBY
     require ENV.fetch("PROBE_ENTRY")
+    check("CI=1 at require", true, SnapDiff.config.fail_if_new)
+
     ENV.delete("CI")
-    check(:fail_if_new, true, SnapDiff.config.fail_if_new)
+    check("CI unset after require is seen", false, SnapDiff.config.fail_if_new)
+
+    ENV["CI"] = "1"
+    SnapDiff.config.fail_if_new = false
+    check("explicit false outranks CI=1", false, SnapDiff.config.fail_if_new)
+
+    ENV.delete("CI")
+    SnapDiff.config.fail_if_new = true
+    check("explicit true outranks CI unset", true, SnapDiff.config.fail_if_new)
+
+    ENV["CI"] = "1"
+    SnapDiff.config.fail_if_new = nil
+    check("nil hands it back to the environment", true, SnapDiff.config.fail_if_new)
   RUBY
 
   # Probe C: a Rails module with .root defined BEFORE the require wins over
@@ -125,12 +147,12 @@ class ConfigDefaultTimingTest < ActiveSupport::TestCase
   RUBY
 
   ENTRY_POINTS.each do |entry|
-    test "#{entry}: defaults snapshot matches; ENV/pwd frozen at require, wait live" do
+    test "#{entry}: defaults snapshot matches; pwd frozen at require, wait and fail_if_new live" do
       run_probe(SNAPSHOT_SCRIPT, {"PROBE_ENTRY" => entry, "CI" => nil})
     end
 
-    test "#{entry}: CI=1 before require turns fail_if_new on; unset after require does not turn it off" do
-      run_probe(CI_SET_SCRIPT, {"PROBE_ENTRY" => entry, "CI" => "1"})
+    test "#{entry}: an explicit fail_if_new outranks ENV['CI'], which is otherwise read live" do
+      run_probe(CI_PRECEDENCE_SCRIPT, {"PROBE_ENTRY" => entry, "CI" => "1"})
     end
 
     test "#{entry}: Rails.root defined before require wins; reassigning it after require is not seen" do

@@ -162,6 +162,47 @@ class SnapDiffConfigTest < ActiveSupport::TestCase
     end
   end
 
+  # --- fail_if_new precedence ------------------------------------------
+  #
+  # NOT about what the default IS: failing only under CI stays, deliberately
+  # (a locally recorded baseline is often worthless across OS). This is only
+  # about who wins. An explicit setting outranks the environment sniff --
+  # the ordering insta narrowed to in insta#924 after Ruff hit it ("normally,
+  # CLI flags take precedence over environment variables"), and the one Jest
+  # got backwards for a whole major version in jest#12288, where reading
+  # argv.ci instead of detected CI state made `CI=1 jest` and `jest --ci`
+  # disagree.
+  #
+  # For "explicit wins" to mean anything the fallback has to be live: while
+  # the CI sniff was frozen into the ivar at require time there was no way to
+  # tell "the user asked for false" from "CI was absent when we loaded".
+  def with_env_ci(value)
+    original = ENV["CI"]
+    ENV["CI"] = value
+    yield
+  ensure
+    ENV["CI"] = original
+  end
+
+  test "an unset fail_if_new reads ENV['CI'] live, not once at require time" do
+    config.fail_if_new = nil
+
+    with_env_ci(nil) { assert_equal false, config.fail_if_new }
+    with_env_ci("") { assert_equal false, config.fail_if_new, "an empty CI is not CI" }
+    with_env_ci("true") { assert_equal true, config.fail_if_new }
+  end
+
+  test "an explicit fail_if_new outranks ENV['CI'] in both directions" do
+    config.fail_if_new = false
+    with_env_ci("true") { assert_equal false, config.fail_if_new, "the user said false under CI=true" }
+
+    config.fail_if_new = true
+    with_env_ci(nil) { assert_equal true, config.fail_if_new, "the user said true off CI" }
+
+    config.fail_if_new = nil
+    with_env_ci("true") { assert_equal true, config.fail_if_new, "nil hands it back to the environment" }
+  end
+
   test "SnapDiff.configure yields the SnapDiff.config object" do
     yielded = nil
     SnapDiff.configure { |c| yielded = c }

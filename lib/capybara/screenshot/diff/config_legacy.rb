@@ -13,9 +13,10 @@
 # Diff.compare) keeps working unchanged: one storage, two views.
 #
 # Load order: requiring snap_diff/config first also eagerly evaluates the
-# require-time defaults (ENV["CI"] for fail_if_new, Rails.root/pwd for
-# root) at this same load moment, exactly when the old mattr_accessor
-# default blocks used to run. Neither file requires back here, so the graph
-# stays acyclic.
+# require-time defaults (Rails.root/pwd for root) at this same load moment,
+# exactly when the old mattr_accessor default blocks used to run.
+# fail_if_new is the exception -- its ENV["CI"] fallback is read live, so an
+# explicit setting outranks the environment whenever the variable appears.
+# Neither file requires back here, so the graph stays acyclic.
 require "snap_diff/config"
 require "snap_diff/legacy_shims"
