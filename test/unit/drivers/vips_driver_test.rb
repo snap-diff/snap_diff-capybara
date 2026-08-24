@@ -24,11 +24,36 @@ module SnapDiff
           @new_screenshot_result.close
           @new_screenshot_result.unlink
         end
+      end
 
-        if defined?(Vips)
-          Vips.cache_set_max(0)
-          Vips.cache_set_max(1000)
-        end
+      # REGRESSION. libvips caches loaders on filename + mtime, and mtime has
+      # one-second resolution, so rewriting a path and re-reading it within the
+      # same second used to hand back the PREVIOUS image. #from_file passes
+      # `revalidate: true` to defeat that.
+      #
+      # The gem does exactly this: the screenshoter writes `<name>.png`,
+      # `checkout_base_screenshot` writes `<name>.base.png` from VCS, and the
+      # comparison then reads both -- a stale read compares against an image
+      # that is no longer on disk.
+      #
+      # The teardown above used to flush the whole vips cache
+      # (`Vips.cache_set_max(0); Vips.cache_set_max(1000)`) to paper over this;
+      # with the driver fixed, that workaround is gone.
+      test "#from_file re-reads a path that was overwritten within the same second" do
+        driver = VipsDriver.new
+        path = Rails.root / "revalidate_probe.png"
+
+        FileUtils.cp(TEST_IMAGES_DIR / "b.png", path)
+        first_avg = driver.from_file(path).avg # force evaluation BEFORE the overwrite
+
+        FileUtils.cp(TEST_IMAGES_DIR / "a.png", path)
+        second_avg = driver.from_file(path).avg
+
+        assert_not_equal first_avg, second_avg,
+          "vips served the cached b.png after the path was overwritten with a.png"
+        assert_equal driver.from_file(TEST_IMAGES_DIR / "a.png").avg, second_avg
+      ensure
+        FileUtils.rm_f(path)
       end
 
       test "#different? returns false when comparing identical images" do

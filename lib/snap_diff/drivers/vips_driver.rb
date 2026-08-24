@@ -18,6 +18,17 @@ module SnapDiff
     class VipsDriver
       include SnapDiff::Driver
 
+      # libvips caches loader operations keyed on filename + mtime, and mtime
+      # has ONE-SECOND resolution -- so overwriting a path and re-reading it
+      # within the same second hands back the PREVIOUS image. This gem does
+      # exactly that: the screenshoter writes `<name>.png`,
+      # `checkout_base_screenshot` writes `<name>.base.png` from VCS, and the
+      # comparison then reads both.
+      #
+      # `revalidate: true` tells the loader to skip the cached result (libvips
+      # 8.15+).
+      REVALIDATE = Vips.at_least_libvips?(8, 15) ? {revalidate: true}.freeze : {}.freeze
+
       def find_difference_region(comparison)
         new_image, base_image, options = comparison.new_image, comparison.base_image, comparison.options
 
@@ -86,7 +97,7 @@ module SnapDiff
       end
 
       def from_file(filename)
-        result = ::Vips::Image.new_from_file(filename.to_s)
+        result = ::Vips::Image.new_from_file(filename.to_s, **REVALIDATE)
 
         result = result.colourspace(:srgb) if result.bands < 3
         result = result.bandjoin(255) if result.bands == 3
