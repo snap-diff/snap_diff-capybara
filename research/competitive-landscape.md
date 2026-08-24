@@ -5,22 +5,41 @@ drawn for this project live in the ADRs.
 
 Kept out of `docs/` because `docs/` is packaged into the gem.
 
-**Observed 2026-08-24.** Versions: Playwright 1.62.1 · Jest 30 (30.4.2 for §3
-and §4) · jest-image-snapshot 6.5.2 · insta 1.48.0 + cargo-insta 1.48.0 ·
-syrupy 6.0.0 · BackstopJS 6.3.25 · Lost Pixel 3.22.0 ·
-`@percy/playwright` 1.1.2 + `@percy/core` types as published with it ·
-`@argos-ci/playwright` 7.4.6 · VCR 6.4.0 · WebMock 3.26.2 · SimpleCov 1.1.1 ·
-RuboCop 1.89.0 · RSpec 3.13 (3.13.2 for §3 and §4) · rspec-snapshot 2.2.0 ·
-approvals 0.1.7 · activesupport 8.1.3.1.
+**Observed 2026-08-24.**
+
+## How to read this
+
+- **`(measured)`** — verbatim stdout, stderr or live DOM text from a command run
+  on this machine on the date above. **`(source)`** — read from the tool's own
+  code, `--help`, documentation or issue tracker. Every claim carries one marker
+  or the other.
+- **Links sit inline, at the claim they support.** The only trailing list is the
+  provenance of code read out of installed packages, which has no URL.
+- **Tools are ordered alphabetically** in every table and section. The ordering
+  carries no other meaning.
+- **Coverage:** §1 missing-baseline behaviour and the defaults that changed after
+  release · §2 per-tool detail on first-run behaviour · §3 the code written at
+  the call site, plus naming and tolerance · §4 the report read after a failure
+  and the action that resolves it · §5 cross-cutting mechanisms · §6 what is not
+  covered. That selection is a choice of the author, not a claim about what
+  matters most in the field.
+
+## Versions
+
+Playwright 1.62.1 · Jest 30 (30.4.2 for §3 and §4) · jest-image-snapshot 6.5.2 ·
+insta 1.48.0 + cargo-insta 1.48.0 · syrupy 6.0.0 · BackstopJS 6.3.25 ·
+Lost Pixel 3.22.0 · `@percy/playwright` 1.1.2 + `@percy/core` types as published
+with it · `@argos-ci/playwright` 7.4.6 · VCR 6.4.0 · WebMock 3.26.2 ·
+SimpleCov 1.1.1 · RuboCop 1.89.0 · RSpec 3.13 (3.13.2 for §3 and §4) ·
+rspec-snapshot 2.2.0 · approvals 0.1.7 · activesupport 8.1.3.1.
+
 Runtimes for the §3/§4 measurements: Ruby 4.0.6, Node v26.7.0 with npm 12.0.2,
 Python 3.14.7 with pytest 9.1.1, cargo 1.97.1.
 
-### How the measurements were taken
+## Method and caveats
 
-Every `(measured)` row is verbatim stdout/stderr from a command run on **one
-machine**: macOS on Apple silicon, retina display, versions as listed above. Each
-ran once unless the row says otherwise. `(source)` rows were read from the tool's
-own code, `--help`, docs, or issue tracker at the URL in Sources.
+**One machine, one run.** macOS on Apple silicon, retina display, versions as
+above. Each command ran once unless the row says otherwise.
 
 **What one run proves.** Exit codes and message text are deterministic given a
 fixed version and fixture, so a single run is adequate evidence for those.
@@ -29,10 +48,14 @@ because output is quoted verbatim — specifically `2 passed (541ms)`,
 `--seed 22661` (Minitest re-randomises per run), `0.00914 seconds` in the RSpec
 table, and the `2026-08-24 06:52:30 UTC` stamp in the RuboCop header.
 
-**The `-darwin` suffix is this machine, not a constant.** `alpha-darwin.png` and
-`example-1-chromium-darwin.png` carry the platform token of the host that ran
+**Machine- and config-specific tokens in the transcripts.** `alpha-darwin.png`
+and `example-1-chromium-darwin.png` carry the platform token of the host that ran
 them; on Linux the same baselines are `-linux`. That is Playwright's naming
-scheme working, not an artifact of the transcript.
+scheme working, not an artifact of the transcript. Two more of the same class:
+the BackstopJS bitmap names quoted in §2 and §4 carry viewport labels chosen in
+the config for this run (`phone`, `desktop`), not defaults; and the Playwright
+snapshot paths in §3 lack the `-chromium-darwin` token because that section's
+project sets a custom `snapshotPathTemplate`, as noted there.
 
 **Retina did not distort the figures**, because none of the quoted numbers are
 pixel dimensions, and because Playwright's `toHaveScreenshot` defaults to
@@ -40,54 +63,44 @@ pixel dimensions, and because Playwright's `toHaveScreenshot` defaults to
 double baseline dimensions. Any future measurement reporting image dimensions,
 file sizes or diff-pixel counts must state the device pixel ratio.
 
-**Fixture-dependent numbers are not tool properties.**
-`1 file inspected, 19 offenses detected` and `Line coverage: 6 / 12 (50.00%)`
-describe throwaway fixtures, not RuboCop or SimpleCov. They illustrate output
-*shape*; the counts carry no information.
-
-**Not recorded at the time, therefore unknown:** which runner the Ruby
-measurements used (`activesupport 8.1.3.1` appears in the version list but
-nowhere in the body), whether anything beyond the tools' own stubbing was in
-place for the VCR and WebMock runs, and whether the Playwright project drove a
-real browser. A re-measurement should capture these.
-
-Note that **SimpleCov 1.1.1 was released 2026-08-12**, twelve days before these
-observations — that row describes a then-new release.
-
-### Additional caveats for §3 and §4
+**Fixture-dependent numbers are not tool properties.** `1 file inspected, 19
+offenses detected` and `Line coverage: 6 / 12 (50.00%)` describe throwaway
+fixtures. Where a report needed a failure to render, one was manufactured by
+editing a fixture page (a header colour, a heading string and one element
+width), and the resulting `11.474392361111112%`, `content: 99.17%` and
+`4241 pixels` are properties of that fixture. All of these illustrate output
+*shape*; the counts themselves carry no information, and are quoted only because
+output is quoted verbatim.
 
 **Reports were read by driving them, not by eye.** Each local HTML report
 (Playwright, BackstopJS, SimpleCov, RSpec's HTML formatter) was opened in
 headless Chromium; the quoted labels are `innerText` of the live DOM, and the
 layout descriptions come from full-page screenshots of the same render. Nothing
-in §4 marked `(measured)` was inferred from a minified bundle.
+marked `(measured)` in §4 was inferred from a minified bundle.
 
 **BackstopJS ran on a substituted engine, which is machine-specific.** Its
 default `"engine": "puppeteer"` would not start here: the bundled Chrome
 resolved but `spawn` failed with `Unknown system error -88`. Switching to
 `"engine": "playwright"` — a supported value shipping in the same package —
-produced the run quoted in §3 and §4. The report format, the scenario schema
+produced the runs quoted in §3 and §4. The report format, the scenario schema
 and `backstop approve` are not engine-dependent, but **no claim here rests on
 BackstopJS's default capture path having been exercised.**
 
-**Where a report needed a failure to render, one was manufactured** by editing
-a fixture page (a header colour, a heading string and one element width). The
-resulting diff percentages — `11.474392361111112%`, `content: 99.17%`,
-`4241 pixels` — are properties of that fixture, not of the tools, and are
-quoted only because output is quoted verbatim.
+**Three hosted products were not exercised.** Percy, Chromatic and Argos appear
+throughout from their published packages, type declarations and documentation
+only. No account was used, no build was created, and no claim about their
+interfaces was checked against a running instance.
 
-**Three hosted products were not exercised.** Percy, Chromatic and Argos
-appear in §3 and §4 from their published packages, type declarations and
-documentation only. No account was used, no build was created, and no claim
-about their interfaces was checked against a running instance.
+**Not recorded at the time, therefore unknown:** which runner the Ruby
+measurements used (`activesupport 8.1.3.1` appears in the version list but
+nowhere in the body), whether anything beyond the tools' own stubbing was in
+place for the VCR and WebMock runs, and whether the Playwright project drove a
+real browser. A re-measurement would need to capture these.
 
-**Two more `-darwin`-class caveats.** The BackstopJS bitmap names quoted in §3
-carry viewport labels chosen in the config for this run (`phone`, `desktop`),
-not defaults; and the Playwright snapshot paths in §3 lack the
-`-chromium-darwin` token because that section's project sets a custom
-`snapshotPathTemplate`, as noted there.
+Note that **SimpleCov 1.1.1 was released 2026-08-12**, twelve days before these
+observations — that row describes a then-new release.
 
-### Scope and selection
+## Scope and selection
 
 Three overlapping groups, chosen deliberately and **not sampled**: (a) image-based
 visual-regression tools (Playwright, jest-image-snapshot, BackstopJS, Lost Pixel,
@@ -111,66 +124,180 @@ Counts from it are lower bounds on public usage, not estimates of usage overall.
 
 ---
 
-## Scope of this reference
-
-This document covers four things: **first-run and missing-baseline behaviour**
-(§1–§2), **the code a developer writes at the call site** (§3), **the report
-they read after a failure and the action that resolves it** (§4), and
-cross-cutting mechanisms and history (§5–§6). That selection is a choice of the
-author, not a claim about what matters most in the field. Areas deliberately
-not covered are listed at the end.
-
 ## 1. Behaviour on a missing baseline
 
-Sorted by ecosystem, then alphabetically.
+Each tool name links to the source consulted for its row.
 
-| Tool | Local | CI | Writes the artifact? | Default changed over time? |
+| Tool | Local | CI | Writes the artifact? | Default changed after release? |
 |---|---|---|---|---|
-| Playwright `toHaveScreenshot` | fail | fail | yes | no |
-| Jest `toMatchSnapshot` | pass | fail | not on CI | yes (jest#3456) |
-| jest-image-snapshot | pass | fail | not on CI | inherits Jest |
-| Vitest | pass | fail | not on CI | yes (vitest#3227) |
-| AVA | pass | fail | not on CI | yes (2.0.0) |
-| testthat (R) | pass + warning | fail | writes, then fails | yes (3.3.0) |
-| insta (Rust) | fail | fail | `.snap.new` only, not on CI | no |
-| syrupy (Python) | fail | fail | no | no |
-| pytest-regressions | fail | fail | yes | no |
-| ApprovalTests / `approvals` (Ruby) | fail | fail | `.received` only | no |
-| cupaloy (Go) | fail | fail | no | no |
-| rspec-snapshot (Ruby) | pass | pass | yes | no |
-| VCR `:once` (Ruby) | pass | pass | yes | no |
-| VCR `:none` (Ruby) | raise | raise | no | no |
-| Applitools Eyes | varies by SDK | varies | server-side | `saveNewTests` defaults true in Cypress/Protractor SDKs, false in the Playwright SDK |
-| Percy | n/a | first build auto-approved on default branch | server-side | — |
-| Chromatic | n/a | new story = change requiring approval | server-side | — |
+| [Applitools Eyes](https://applitools.com/docs/eyes/playwright/api/advanced-configuration) | varies by SDK | varies by SDK | server-side | see note below |
+| [ApprovalTests / `approvals`](https://github.com/approvals/ApprovalTests.Ruby) (Ruby) | fail | fail | `.received` only | no |
+| [AVA](https://github.com/avajs/ava/releases/tag/v2.0.0) | pass | fail | not on CI | yes |
+| [Chromatic](https://www.chromatic.com/docs/branching-and-baselines/) | n/a | new story = change requiring approval | server-side | — |
+| [cupaloy](https://github.com/bradleyjkemp/cupaloy) (Go) | fail | fail | no | no |
+| [insta](https://github.com/mitsuhiko/insta/blob/master/CHANGELOG.md) (Rust) | fail | fail | `.snap.new` only, not on CI | no |
+| [Jest](https://jestjs.io/docs/snapshot-testing) `toMatchSnapshot` | pass | fail | not on CI | yes |
+| [jest-image-snapshot](https://github.com/americanexpress/jest-image-snapshot/blob/v6.5.2/src/index.js#L130-L136) | pass | fail | not on CI | inherits Jest |
+| [Percy](https://www.browserstack.com/docs/percy/build-results/approval) | n/a | first build auto-approved on default branch | server-side | — |
+| [Playwright](https://playwright.dev/docs/test-snapshots) `toHaveScreenshot` | fail | fail | yes | no |
+| [pytest-regressions](https://pytest-regressions.readthedocs.io/en/latest/overview.html) | fail | fail | yes | no |
+| [rspec-snapshot](https://github.com/levinmr/rspec-snapshot/issues/32) (Ruby) | pass | pass | yes | no |
+| [syrupy](https://github.com/syrupy-project/syrupy/blob/main/README.md) (Python) | fail | fail | no | no |
+| [testthat](https://github.com/r-lib/testthat/blob/main/NEWS.md) (R) | pass + warning | fail | writes, then fails | yes |
+| [VCR](https://rspec.help/vcr/record-modes/) `:once` (Ruby) | pass | pass | yes | no |
+| [VCR](https://andrewmcodes.gitbook.io/vcr/cassettes/no_cassette) `:none` (Ruby) | raise | raise | no | no |
+| [Vitest](https://vitest.dev/guide/snapshot) | pass | fail | not on CI | yes |
+
+**Applitools note (source):** its variation is per-SDK rather than a change over
+time — `saveNewTests` defaults true in the Cypress and Protractor SDKs, false in
+the Playwright SDK.
+
+**jest-image-snapshot (source):** the gate is
+`snapshotState._updateSnapshot === 'none' && !fs.existsSync(baselineSnapshotPath)`
+returning `pass: false` (`src/index.js:130-136` at v6.5.2) — Jest's own
+`--ci`-driven update mode, not a CI check of its own.
 
 CI detection is by environment variable in Jest, AVA, Vitest, insta and testthat.
 Playwright and syrupy do not vary by environment.
 
-No tool was found that adopted fail-on-missing and later reverted it. Search
+**No tool was found that adopted fail-on-missing and later reverted it.** Search
 scope: changelogs and issue trackers for Playwright, Jest, Vitest, AVA, testthat,
 insta, syrupy and jest-image-snapshot, as of 2026-08-24. **The observation window
 is short for the only recent adopter** — testthat 3.3.0 shipped roughly nine
 months before this was written, so its absence of a reversal carries little
-weight.
+weight. Subsequent activity on those changes (testthat#2293, testthat#2320,
+insta#924) is recorded per tool in §2, described without adjudicating whether any
+of it constitutes a reversal.
 
-Subsequent activity on that change, described without adjudicating whether it
-constitutes a reversal: testthat#2293 added a `fail_on_new == FALSE` code path
-after a downstream package (`shinytest2`) broke; testthat#2320 (open) requests
-that the default be configurable; insta#924 narrowed its CI override so explicit
-flags take precedence over the `CI` environment variable.
+### 1a. Defaults that changed after release
+
+| Tool | Release | Change | Cited |
+|---|---|---|---|
+| AVA | 2.0.0 (2019) | fails on CI when no snapshot found; listed under "Breaking changes" | [#1585](https://github.com/avajs/ava/issues/1585) "Fail when new snapshots are created in CI" (closed) |
+| Jest | 20 (2017) | stopped writing snapshots on CI | [#3456](https://github.com/jestjs/jest/pull/3456) |
+| testthat | 3.3.0 | fails when creating a new snapshot on CI | [#1461](https://github.com/r-lib/testthat/issues/1461), implemented by [#2149](https://github.com/r-lib/testthat/pull/2149) "Make new snapshots fail on CI", merged 2025-08-01 (checked 2026-08-24) |
+| Vitest | — | fails on CI rather than writing | [#3227](https://github.com/vitest-dev/vitest/issues/3227) |
+
+In all four the change applied to CI only; local behaviour was unchanged. None
+used a deprecation cycle or a legacy mode. Each exposes a named user-settable
+option (`--ci` / `updateSnapshot`, `fail_on_new`) alongside environment detection.
 
 ---
 
 ## 2. Per tool
+
+### Argos
+
+**(source)** Until a build has run on the default branch, PR builds are labelled
+**orphan** — a status distinct from both pass and fail.
+
+### Chromatic
+
+**(source, `--help`)**
+```
+--auto-accept-changes [branch]     If there are any changes to the build, automatically accept them. Only for [branch], if specified.
+--exit-zero-on-changes [branch]    If all snapshots render but there are visual changes, exit with code 0 rather than the usual exit code 1.
+--skip [branch]                    Skip Chromatic tests, but mark the commit as passing.
+--ignore-last-build-on-branch <branch>   Do not use the last build on this branch as a baseline if it is no longer in history (i.e. branch was rebased).
+```
+Each is separately named and branch-scopable. TurboSnap (dependency-traced
+test selection) is configured via `--trace-changed`, `--untraced`, `--externals`,
+`--storybook-base-dir`.
+
+### insta (Rust)
+
+**(measured)** Plain `cargo test`, no snapshots: writes
+`…__alpha_renders.snap.new`, test FAILED, exit 101. Failure body ends
+`To update snapshots run 'cargo insta review'`.
+
+**(measured)** `cargo insta pending-snapshots` lists awaiting files with
+per-snapshot `review` / `accept` / `reject` commands. `cargo insta accept`
+resolves them; `cargo insta test --accept` is a single-command path.
+
+**(measured)** Under `CI=true`: no `.snap.new` written, and the review hint line
+is omitted. Everything else identical.
+
+**(measured)** `--unreferenced=warn|reject|delete` detects baselines no test
+references: `warn` exits 0 with a list, `reject` exits 1, `delete` removes them.
+
+**(source, [insta#924](https://github.com/mitsuhiko/insta/pull/924), 1.48.0)**
+`CI=true` normally implies `--check`; explicit options such as `--accept` now
+take precedence. Reported from Ruff, on the principle that CLI flags outrank
+environment variables.
+
+### Jest — `toMatchSnapshot`
+
+**(measured)** Local, fresh project: `› 2 snapshots written`, `Tests: 2 passed`,
+exit 0. New test added to a passing suite:
+`Snapshots: 1 written, 2 passed, 3 total`, exit 0.
+
+**(measured)** With `--ci`, or with `CI=true` and no flag:
+```
+New snapshot was not written. The update flag must be explicitly passed to write a new snapshot.
+
+This is likely because this test is run in a continuous integration (CI) environment in which snapshots are not written by default.
+```
+`Tests: 3 failed`, exit 1. Summary line: `Inspect your code changes or re-run
+jest with '-u' to update them.`
+
+**(source)** `--help`: "`--ci` … This option is on by default in most popular CI
+environments. It will prevent snapshots from being written unless explicitly
+requested." [Docs](https://jestjs.io/docs/snapshot-testing) state the rationale:
+"since new snapshots automatically pass, they should not pass a test run on a CI
+system."
+
+**Status line:** `Snapshots: N written, N passed, N total` — three states on one
+line, in passing runs.
+
+**(source, [jest#12288](https://github.com/jestjs/jest/issues/12288))**
+Throughout Jest 27, `CI=1 npx jest` wrote snapshots and passed while
+`npx jest --ci` failed: the config consulted `argv.ci` rather than detected CI
+state. Fixed in Jest 28.
+
+### jest-image-snapshot
+
+Missing-baseline gate: §1.
+
+**(source)** `OutdatedSnapshotReporter` appends every touched baseline path to
+`.jest-image-snapshot-touched-files` during a run and set-differences at the end.
+Gated on `JEST_IMAGE_SNAPSHOT_TRACK_OBSOLETE`. README states: "Do not run a
+*partial* test suite with this flag as it may consider snapshots of tests that
+weren't run to be obsolete." Also supports inline diff images in iTerm2/WezTerm
+via terminal escape codes, gated on a terminal allow-list plus an env var.
+
+**(source)** Issue
+[#281](https://github.com/americanexpress/jest-image-snapshot/issues/281),
+"Tests should fail when snapshots are added in CI environment", requests the
+behaviour the §1 code path implements, and was open when checked (2026-08-24).
+Not adjudicated here.
+
+### Minitest
+
+**(measured)** Prints `Run options: --seed 22661` at the start of every run,
+passing or failing.
+
+### Percy
+
+**(measured)** With no token:
+```
+$ npx @percy/cli exec -- echo hi
+[percy] Skipping visual tests
+[percy] Error: Missing Percy token
+[percy] Command "echo hi" exited with status: 0
+$ echo $?
+0
+```
+**(source)** Approval is server-side and build-scoped: `build:approve <build-id>`,
+`build:unapprove`, `build:reject`. Percy's "Visual Git" maintains per-branch
+baselines and, per their docs, "does not rely on Git commit information".
 
 ### Playwright — `toHaveScreenshot`
 
 **Update modes** (source, `--help`): `-u, --update-snapshots [mode]`, choices
 `all`, `changed`, `missing`, `none`. No flag defaults to `missing`; a bare `-u`
 means `changed`. These modes are **not listed on the visual-comparison guide
-page** (playwright.dev/docs/test-snapshots, checked 2026-08-24); CLI `--help` was
-the only observed source.
+page** ([playwright.dev/docs/test-snapshots](https://playwright.dev/docs/test-snapshots),
+checked 2026-08-24); CLI `--help` was the only observed source.
 
 **(measured)** Exit codes, one missing baseline among two passing:
 
@@ -199,66 +326,93 @@ exists.
 
 **Baseline naming (source):** `{testName}-{browser}-{platform}.png`, e.g.
 `example-1-chromium-darwin.png`, in `{testFile}-snapshots/`. Rationale given in
-docs and issue #22337: rendering differs across operating systems.
+docs and issue [#22337](https://github.com/microsoft/playwright/issues/22337):
+rendering differs across operating systems.
 
 **Status model (measured):** the JSON reporter reports a newly recorded baseline
 as `status=failed`, `unexpected: 1` — identical to a real difference. No separate
-state.
+state. A related closed bug,
+[#23090](https://github.com/microsoft/playwright/issues/23090) "Missing
+snapshot/screenshot is not included in TestResult.attachments", reported that a
+first-run screenshot was written to disk but absent from `TestResult.attachments`
+(fixed by #23528).
 
-**Retries (source, playwright#38046):** a maintainer states that missing-baseline
-failures are deliberately not retried, because a retry would pass and the run
-would be reported as flaky.
+**Retries (source, [playwright#38046](https://github.com/microsoft/playwright/issues/38046)):**
+a maintainer states that missing-baseline failures are deliberately not retried,
+because a retry would pass and the run would be reported as flaky.
 
 **Other:** `--only-changed [ref]` runs only test files changed vs a git ref
-("Only supports Git"). The HTML report's image view is described in §4; it
-offers five modes, not the four recorded in an earlier draft of this file.
+("Only supports Git"). The HTML report's image view is described in §4.
 
-### Jest — `toMatchSnapshot`
+### RSpec
 
-**(measured)** Local, fresh project: `› 2 snapshots written`, `Tests: 2 passed`,
-exit 0. New test added to a passing suite:
-`Snapshots: 1 written, 2 passed, 3 total`, exit 0.
-
-**(measured)** With `--ci`, or with `CI=true` and no flag:
+**(measured)** `example_status_persistence_file_path` writes a human-readable table:
 ```
-New snapshot was not written. The update flag must be explicitly passed to write a new snapshot.
-
-This is likely because this test is run in a continuous integration (CI) environment in which snapshots are not written by default.
+example_id                | status | run_time        |
+------------------------- | ------ | --------------- |
+./spec2/demo_spec.rb[1:1] | failed | 0.00914 seconds |
 ```
-`Tests: 3 failed`, exit 1. Summary line: `Inspect your code changes or re-run
-jest with '-u' to update them.`
+Consumed by `--only-failures` and `--next-failure`. `--bisect` narrows
+order-dependent failures.
 
-**(source)** `--help`: "`--ci` … This option is on by default in most popular CI
-environments. It will prevent snapshots from being written unless explicitly
-requested." Docs state the rationale: "since new snapshots automatically pass,
-they should not pass a test run on a CI system."
+### rspec-snapshot (Ruby)
 
-**Status line:** `Snapshots: N written, N passed, N total` — three states on one
-line, in passing runs.
+**(source)** Creates the snapshot file and passes, in CI as well as locally.
+Issue [#32](https://github.com/levinmr/rspec-snapshot/issues/32), "Tests pass in
+CI if no snapshot is found", opened 2022-10-18, still open when checked 2026-08-24 (last activity 2026-04-07).
 
-**(source, jest#12288)** Throughout Jest 27, `CI=1 npx jest` wrote snapshots and
-passed while `npx jest --ci` failed: the config consulted `argv.ci` rather than
-detected CI state. Fixed in Jest 28.
+### RuboCop / Standard
 
-### insta (Rust)
+**(measured)** `rubocop --auto-gen-config` writes `.rubocop_todo.yml` and adds
+`inherit_from:` to `.rubocop.yml`. Generated file header:
+```
+# This configuration was generated by `rubocop --auto-gen-config`
+# on 2026-08-24 06:52:30 UTC using RuboCop version 1.89.0.
+# The point is for the user to remove these configuration records
+# one by one as the offenses are removed from the code base.
 
-**(measured)** Plain `cargo test`, no snapshots: writes
-`…__alpha_renders.snap.new`, test FAILED, exit 101. Failure body ends
-`To update snapshots run 'cargo insta review'`.
+# Offense count: 1
+# This cop supports safe autocorrection (--autocorrect).
+Layout/EmptyLineBetweenDefs:
+  Exclude:
+    - 'bad.rb'
+```
+Plain output marks correctable offences inline (`[Correctable]`) and totals them:
+`1 file inspected, 19 offenses detected, 16 offenses autocorrectable`.
 
-**(measured)** `cargo insta pending-snapshots` lists awaiting files with
-per-snapshot `review` / `accept` / `reject` commands. `cargo insta accept`
-resolves them; `cargo insta test --accept` is a single-command path.
+### SimpleCov (Ruby)
 
-**(measured)** Under `CI=true`: no `.snap.new` written, and the review hint line
-is omitted. Everything else identical.
+**(measured)** With `minimum_coverage line: 90` and 50% actual:
+```
+Coverage report generated for RSpec to coverage/index.html
+Line coverage: 6 / 12 (50.00%)
+Line coverage (50.00%) is below the expected minimum coverage (90.00%).
+  Lowest-coverage files (line):
+     50.00%  lib/thing.rb
+SimpleCov failed with exit 2 due to a coverage related error
+```
+Exit code **2**, distinct from 1. Source: `exit_codes/minimum_overall_coverage_check.rb:25,:37`.
 
-**(measured)** `--unreferenced=warn|reject|delete` detects baselines no test
-references: `warn` exits 0 with a list, `reject` exits 1, `delete` removes them.
+### testthat (R)
 
-**(source, insta#924, 1.48.0)** `CI=true` normally implies `--check`; explicit
-options such as `--accept` now take precedence. Reported from Ruff, on the
-principle that CLI flags outrank environment variables.
+**(source)** 3.3.0 [NEWS](https://github.com/r-lib/testthat/blob/main/NEWS.md):
+"`expect_snapshot()` and friends will now fail when creating a new snapshot on
+CI. This is usually a signal that you've forgotten to run it locally before
+committing (#1461)." Issue
+[#1461](https://github.com/r-lib/testthat/issues/1461) was open 2021-09-28 →
+2025-08-01. Implementation: `fail_on_new <- self$fail_on_new %||% on_ci()`; the
+file variant copies the snapshot and *then* fails.
+
+The same release added `snapshot_download_gh()` for retrieving snapshots written
+by CI. 3.3.1 narrowed the hint to jobs named "R-CMD-check" (#2300).
+
+Subsequent reports: [#2293](https://github.com/r-lib/testthat/issues/2293) — a
+downstream (`shinytest2`) relied on screenshot snapshots never failing, resolved
+by adding a `fail_on_new == FALSE` path.
+[#2320](https://github.com/r-lib/testthat/issues/2320) (open) requests
+configurability, arguing that a package with no committed snapshots is
+bootstrapping rather than regressing, and proposing the default be derived from
+whether a snapshot directory already exists.
 
 ### VCR (Ruby)
 
@@ -305,8 +459,8 @@ re-run your tests to allow the cassette to be recorded with this request."
 
 ### WebMock (Ruby)
 
-**(measured)** On an unregistered request, prints a ready-to-paste stub built
-from the observed request:
+**(measured)** On an unregistered request, prints a stub built from the observed
+request:
 ```
 You can stub this request with the following snippet:
 
@@ -317,140 +471,12 @@ stub_request(:post, "http://example.com/api/users").
   to_return(status: 200, body: "", headers: {})
 ```
 
-### SimpleCov (Ruby)
-
-**(measured)** With `minimum_coverage line: 90` and 50% actual:
-```
-Coverage report generated for RSpec to coverage/index.html
-Line coverage: 6 / 12 (50.00%)
-Line coverage (50.00%) is below the expected minimum coverage (90.00%).
-  Lowest-coverage files (line):
-     50.00%  lib/thing.rb
-SimpleCov failed with exit 2 due to a coverage related error
-```
-Exit code **2**, distinct from 1. Source: `exit_codes/minimum_overall_coverage_check.rb:25,:37`.
-
-### RuboCop / Standard
-
-**(measured)** `rubocop --auto-gen-config` writes `.rubocop_todo.yml` and adds
-`inherit_from:` to `.rubocop.yml`. Generated file header:
-```
-# This configuration was generated by `rubocop --auto-gen-config`
-# on 2026-08-24 06:52:30 UTC using RuboCop version 1.89.0.
-# The point is for the user to remove these configuration records
-# one by one as the offenses are removed from the code base.
-
-# Offense count: 1
-# This cop supports safe autocorrection (--autocorrect).
-Layout/EmptyLineBetweenDefs:
-  Exclude:
-    - 'bad.rb'
-```
-Plain output marks correctable offences inline (`[Correctable]`) and totals them:
-`1 file inspected, 19 offenses detected, 16 offenses autocorrectable`.
-
-### RSpec
-
-**(measured)** `example_status_persistence_file_path` writes a human-readable table:
-```
-example_id                | status | run_time        |
-------------------------- | ------ | --------------- |
-./spec2/demo_spec.rb[1:1] | failed | 0.00914 seconds |
-```
-Consumed by `--only-failures` and `--next-failure`. `--bisect` narrows
-order-dependent failures.
-
-### Minitest
-
-**(measured)** Prints `Run options: --seed 22661` at the start of every run,
-passing or failing.
-
-### Percy
-
-**(measured)** With no token:
-```
-$ npx @percy/cli exec -- echo hi
-[percy] Skipping visual tests
-[percy] Error: Missing Percy token
-[percy] Command "echo hi" exited with status: 0
-$ echo $?
-0
-```
-**(source)** Approval is server-side and build-scoped: `build:approve <build-id>`,
-`build:unapprove`, `build:reject`. Percy's "Visual Git" maintains per-branch
-baselines and, per their docs, "does not rely on Git commit information".
-
-### Chromatic
-
-**(source, `--help`)**
-```
---auto-accept-changes [branch]     If there are any changes to the build, automatically accept them. Only for [branch], if specified.
---exit-zero-on-changes [branch]    If all snapshots render but there are visual changes, exit with code 0 rather than the usual exit code 1.
---skip [branch]                    Skip Chromatic tests, but mark the commit as passing.
---ignore-last-build-on-branch <branch>   Do not use the last build on this branch as a baseline if it is no longer in history (i.e. branch was rebased).
-```
-Each is separately named and branch-scopable. TurboSnap (dependency-traced
-test selection) is configured via `--trace-changed`, `--untraced`, `--externals`,
-`--storybook-base-dir`.
-
-### jest-image-snapshot
-
-**(source)** `OutdatedSnapshotReporter` appends every touched baseline path to
-`.jest-image-snapshot-touched-files` during a run and set-differences at the end.
-Gated on `JEST_IMAGE_SNAPSHOT_TRACK_OBSOLETE`. README states: "Do not run a
-*partial* test suite with this flag as it may consider snapshots of tests that
-weren't run to be obsolete." Also supports inline diff images in iTerm2/WezTerm
-via terminal escape codes, gated on a terminal allow-list plus an env var.
-
-### Argos
-
-**(source)** Until a build has run on the default branch, PR builds are labelled
-**orphan** — a status distinct from both pass and fail.
-
-### testthat (R)
-
-**(source)** 3.3.0 NEWS: "`expect_snapshot()` and friends will now fail when
-creating a new snapshot on CI. This is usually a signal that you've forgotten to
-run it locally before committing (#1461)." Issue #1461 was open 2021-09-28 →
-2025-08-01. Implementation: `fail_on_new <- self$fail_on_new %||% on_ci()`; the
-file variant copies the snapshot and *then* fails.
-
-The same release added `snapshot_download_gh()` for retrieving snapshots written
-by CI. 3.3.1 narrowed the hint to jobs named "R-CMD-check" (#2300).
-
-Subsequent reports: #2293 — a downstream (`shinytest2`) relied on screenshot
-snapshots never failing, resolved by adding a `fail_on_new == FALSE` path.
-#2320 (open) requests configurability, arguing that a package with no committed
-snapshots is bootstrapping rather than regressing, and proposing the default be
-derived from whether a snapshot directory already exists.
-
-### rspec-snapshot (Ruby)
-
-**(source)** Creates the snapshot file and passes, in CI as well as locally.
-Issue #32, "Tests pass in CI if no snapshot is found", opened 2022-10-18, open as
-of 2026-04-07.
-
 ---
-
-## 2b. Tolerance and anti-aliasing configuration
-
-| Tool | Knobs | Defaults | Noise handling |
-|---|---|---|---|
-| Playwright `toHaveScreenshot` | `threshold`, `maxDiffPixels`, `maxDiffPixelRatio` | `threshold` 0.2 (YIQ colour space); the other two unset | `animations: "disabled"`, `caret: "hide"`, `scale: "css"` by default; `mask` overlays locators; `stylePath` injects CSS |
-| jest-image-snapshot | `failureThreshold`, `failureThresholdType`, `comparisonMethod`, `customDiffConfig.threshold`, `blur`, `allowSizeMismatch` | `failureThreshold` 0, type `pixel`, method `pixelmatch`, pixelmatch `threshold` 0.01, `blur` 0, `allowSizeMismatch` false | `blur` (Gaussian, px) for cross-resolution scaling noise; `ssim` as an alternative to per-pixel comparison |
-
-Both default to **pixelmatch**. Note that Playwright's `threshold` and
-jest-image-snapshot's `customDiffConfig.threshold` are the *same pixelmatch
-parameter* with defaults a factor of twenty apart — 0.2 against 0.01.
-
-Sources: [PageAssertions](https://playwright.dev/docs/api/class-pageassertions#page-assertions-to-have-screenshot-1) ·
-[jest-image-snapshot](https://github.com/americanexpress/jest-image-snapshot).
 
 ## 3. The assertion DSL — what is written at the call site
 
 Three layers per tool: the assertion itself, options passed at the call site,
-and global configuration. **Ordered alphabetically by tool name**; the ordering
-carries no other meaning.
+and global configuration.
 
 Tools that have **no call-site DSL** are included here rather than omitted,
 because operating as an external CLI over a config file is a design position,
@@ -884,9 +910,10 @@ module.exports = defineConfig({
 });
 ```
 
-**(source)** Global `expect.toHaveScreenshot` keys (`types/test.d.ts:198-247`):
-`threshold`, `maxDiffPixels`, `maxDiffPixelRatio`, `animations`, `caret`,
-`scale`, `stylePath`, `pathTemplate`, `timeout`.
+**(source)** Global `expect.toHaveScreenshot` keys
+([TestConfig](https://playwright.dev/docs/api/class-testconfig),
+`types/test.d.ts:198-247`): `threshold`, `maxDiffPixels`, `maxDiffPixelRatio`,
+`animations`, `caret`, `scale`, `stylePath`, `pathTemplate`, `timeout`.
 
 **(measured)** `snapshotPathTemplate` is what removes the `-chromium-darwin`
 suffix described in §2: the transcripts in that section use the default
@@ -1005,47 +1032,45 @@ end
 
 ### 3a. Naming, multiplicity and assertion shape
 
-Rows alphabetical, as above. A `—` means the tool derives no name.
+A `—` means the tool derives no name.
 
-| Tool | Name derived from | Explicit name | Several per test |
+| Tool | Shape | Name derived from | Explicit name | Several per test |
+|---|---|---|---|---|
+| ApprovalTests (Ruby) | block | example group + description | `name:` / `namer:` option | not disambiguated automatically |
+| Argos | bare function | — | required positional argument | distinct names, required unique |
+| BackstopJS | no call-site DSL | scenario label + selector + viewport | scenario `label` field | one bitmap per selector × viewport |
+| Chromatic | no call-site DSL | story id | — (story id is the name) | `chromatic.modes`, separate baselines |
+| insta | macro (`with_settings!` / `glob!` are blocks) | test fn name | optional first argument | `-2`, `-3` suffix |
+| Jest | matcher | full test name | optional hint argument | ordinal appended to the test name |
+| jest-image-snapshot | matcher | test file basename + test name + counter | `customSnapshotIdentifier`, string or function | Jest's per-test-name counter |
+| Lost Pixel | no call-site DSL | config `name` / story id | `name` field, `shotNameGenerator` | one shot per page × breakpoint |
+| Percy | bare function | — | required positional argument | distinct names |
+| Playwright | matcher | slugified test title + ordinal | optional first argument | `-1`, `-2` ordinal |
+| rspec-snapshot | matcher | — | required first argument (`ArgumentError` if omitted, measured) | distinct names, chosen by the caller |
+| syrupy | fixture compared with `==` | test function name | `snapshot(name=…)`, stored bracketed | `.1`, `.2` suffix |
+| VCR | block | example group + description, via `:vcr` | first argument of `use_cassette` | one cassette per block |
+
+### 3b. Tolerance and anti-aliasing configuration
+
+| Tool | Knobs | Defaults | Noise handling |
 |---|---|---|---|
-| ApprovalTests (Ruby) | example group + description | `name:` / `namer:` option | not disambiguated automatically |
-| Argos | — | required positional argument | distinct names, required unique |
-| BackstopJS | scenario label + selector + viewport | scenario `label` field | one bitmap per selector × viewport |
-| Chromatic | story id | — (story id is the name) | `chromatic.modes`, separate baselines |
-| insta | test fn name | optional first argument | `-2`, `-3` suffix |
-| Jest | full test name | optional hint argument | ordinal appended to the test name |
-| jest-image-snapshot | test file basename + test name + counter | `customSnapshotIdentifier`, string or function | Jest's per-test-name counter |
-| Lost Pixel | config `name` / story id | `name` field, `shotNameGenerator` | one shot per page × breakpoint |
-| Percy | — | required positional argument | distinct names |
-| Playwright | slugified test title + ordinal | optional first argument | `-1`, `-2` ordinal |
-| rspec-snapshot | — | required first argument | distinct names, chosen by the caller |
-| syrupy | test function name | `snapshot(name=…)`, stored bracketed | `.1`, `.2` suffix |
-| VCR | example group + description, via `:vcr` | first argument of `use_cassette` | one cassette per block |
+| jest-image-snapshot | `failureThreshold`, `failureThresholdType`, `comparisonMethod`, `customDiffConfig.threshold`, `blur`, `allowSizeMismatch` | `failureThreshold` 0, type `pixel`, method `pixelmatch`, pixelmatch `threshold` 0.01, `blur` 0, `allowSizeMismatch` false | `blur` (Gaussian, px) for cross-resolution scaling noise; `ssim` as an alternative to per-pixel comparison |
+| Playwright `toHaveScreenshot` | `threshold`, `maxDiffPixels`, `maxDiffPixelRatio` | `threshold` 0.2 (YIQ colour space); the other two unset | `animations: "disabled"`, `caret: "hide"`, `scale: "css"` by default; `mask` overlays locators; `stylePath` injects CSS |
 
-Assertion shape, grouped by form:
+Sources: [jest-image-snapshot](https://github.com/americanexpress/jest-image-snapshot) ·
+[PageAssertions](https://playwright.dev/docs/api/class-pageassertions#page-assertions-to-have-screenshot-1).
 
-- **Matcher** — Jest, jest-image-snapshot, Playwright, rspec-snapshot.
-- **Macro** — insta.
-- **Bare function** — Argos, Percy.
-- **Block** — ApprovalTests (Ruby), VCR, and insta's `with_settings!` / `glob!`.
-- **Fixture compared with `==`** — syrupy.
-- **No call-site DSL** — BackstopJS, Chromatic, Lost Pixel.
-
-Two tools require an explicit name and will not derive one: Argos and Percy by
-signature, rspec-snapshot by raising `ArgumentError` when the argument is
-omitted (measured).
+Both default to **pixelmatch**. Note that Playwright's `threshold` and
+jest-image-snapshot's `customDiffConfig.threshold` are the *same pixelmatch
+parameter* with defaults a factor of twenty apart — 0.2 against 0.01. Other
+tools' tolerance knobs were not gathered; see §6.
 
 ---
 
 ## 4. Reports, viewers and the review action
 
-What is looked at after a failure, and what the reviewer does next. **Ordered
-alphabetically by tool name**, with terminal-only tools grouped at the end.
-
-Where a report was rendered on this machine, it was opened in headless Chromium
-and its text and controls read from the live DOM; the transcripts below quote
-that DOM. Hosted products were not exercised — those rows are `(source)`.
+What is looked at after a failure, and what the reviewer does next.
+Terminal-only tools are grouped in §4a.
 
 ### Argos — hosted (source)
 
@@ -1169,7 +1194,8 @@ screenshot; a side-by-side layout and an overlay layout are both offered
 Documented shortcut keys include `d` to step through diffs and `t` to toggle
 light/dark.
 
-**(source)** The axes the build page exposes are legible in a public build URL,
+**(source)** The axes the build page exposes are legible in a
+[public build URL](https://percy.io/Ember/web/guides-app/builds/45389416/changed/2401284869?group_snapshots_by=similar_diff&subcategories=unreviewed%2Cchanges_requested&viewLayout=side-by-side&viewMode=new&widths=375%2C1280),
 which carries them as query parameters:
 
 ```
@@ -1185,9 +1211,10 @@ percy.io/Ember/web/guides-app/builds/45389416/changed/2401284869
 and width filters, all as URL state.
 
 **(source)** Approval is a click, at three scopes: a single snapshot, a group of
-snapshots sharing a visual change, or the whole build. The CLI equivalents
-recorded in §2 are `build:approve <build-id>`, `build:unapprove`,
-`build:reject`.
+snapshots sharing a visual change, or the whole build
+([build review and approval](https://www.browserstack.com/percy/features/build-review-and-approval)).
+The CLI equivalents recorded in §2 are `build:approve <build-id>`,
+`build:unapprove`, `build:reject`.
 
 ### Playwright — local HTML folder (measured)
 
@@ -1202,7 +1229,7 @@ counts — `All 5`, `Passed 0`, `Failed 5`, `Flaky 0`, `Skipped 0`. Tests are
 grouped under their spec file, each row showing title, duration and
 `file:line`.
 
-**(source)** The search box is a small query language
+**(source)** The search box takes a filter syntax
 (`packages/html-reporter/src/filter.ts:44-66`): `p:<project>`, `s:<status>`,
 `@<label>`, `annot:<annotation>`, bare text, each prefixable with `!` to negate,
 quoted strings supported. **(measured)** Typing `s:failed` produced the header
@@ -1242,12 +1269,87 @@ inside the `Errors` card, and again in the `Image mismatch` card.
 
 These have no viewer. What their text output does instead:
 
+**ApprovalTests / `approvals` (Ruby)** — **(measured)** On a mismatch the
+failure prints the two paths and nothing else, because
+`diff_on_approval_failure` defaults to `false`:
+
+```
+Approvals::ApprovalError:
+  Approval Error: Received file "…/verifies_a_value_with_a_block.received.txt"
+  does not match approved "…/verifies_a_value_with_a_block.approved.txt".
+```
+
+Setting `c.diff_on_approval_failure = true` routes the comparison through
+`RSpec::Expectations.fail_with`, which prints RSpec's own diff
+(`lib/approvals/extensions/rspec/dsl.rb:24-30`).
+
+**(measured)** The review surface is a **dotfile plus an external diff tool**.
+Each failure appends an `approved received` pair to `.approvals` in the working
+directory:
+
+```
+spec/fixtures/approvals/approvals_dsl/verifies_a_value_with_a_block.approved.txt spec/fixtures/approvals/approvals_dsl/verifies_a_value_with_a_block.received.txt
+```
+
+**(source)** `approvals verify` walks that file, shells out to a diff tool
+(`--diff`, default `diff -N`, e.g. `opendiff`, `vimdiff`), prompts
+`Approve? [y/N]` per pair, and on yes runs `mv <received> <approved>`; rejected
+pairs are written back to `.approvals` (`lib/approvals/cli.rb:6-33`). The review
+action is a file move.
+
+**insta 1.48.0** — **(measured)** The failure body is a boxed summary naming
+the snapshot file, the source location and the originating expression, followed
+by a line-numbered diff:
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ Snapshot Summary ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Snapshot file: src/snapshots/dsl_demo__tests__with_redactions.snap
+Snapshot: with_redactions
+Source: src/lib.rs:35
+────────────────────────────────────────────────────────────────────────────────
+Expression: user()
+────────────────────────────────────────────────────────────────────────────────
++new results
+────────────┬───────────────────────────────────────────────────────────────────
+          1 │+{
+          2 │+  "id": "[id]",
+          3 │+  "name": "bob"
+          4 │+}
+────────────┴───────────────────────────────────────────────────────────────────
+To update snapshots run `cargo insta review`
+Stopped on the first failure. Run `cargo insta test` to run all snapshots.
+```
+
+The review action is the interactive `cargo insta review` TUI, or
+`accept` / `reject` — recorded in §2.
+
 **RSpec 3.13** — **(measured)** `example_status_persistence_file_path` writes
 the status table quoted in §2, which `--only-failures` and `--next-failure`
-then consume: the "navigation" is a subsequent command, not a UI. RSpec also
+then consume: navigation is a subsequent command, not a UI. RSpec also
 ships an HTML formatter — `rspec --format html --out rspec-report.html`
 produced a 7,488-byte self-contained file with `Passed` / `Failed` / `Pending`
 toggles and a summary block.
+
+**rspec-snapshot 2.2.0** — **(measured)** The matcher sets `diffable? => true`,
+so RSpec's own differ renders the change inline:
+
+```
+expected: {
+  :name => "bob"
+}
+     got: {
+  :name => "CHANGED"
+}
+
+Diff:
+@@ -1,3 +1,3 @@
+ {
+-  :name => "bob"
++  :name => "CHANGED"
+ }
+```
+
+The review action is a re-run with `UPDATE_SNAPSHOTS` set.
 
 **RuboCop 1.89.0** — **(measured)** `--help` lists 17 named output formatters:
 `autogenconf`, `clang`, `emacs`, `files`, `fuubar`, `github`, `html`, `json`,
@@ -1282,81 +1384,6 @@ toggles, **`🎨 Colorblind`** and **`🌙 Dark`**. Footer:
 There is no approve action; the gate is `minimum_coverage`, and the exit code
 is the one recorded in §2.
 
-**ApprovalTests / `approvals` (Ruby)** — **(measured)** On a mismatch the
-failure prints the two paths and nothing else, because
-`diff_on_approval_failure` defaults to `false`:
-
-```
-Approvals::ApprovalError:
-  Approval Error: Received file "…/verifies_a_value_with_a_block.received.txt"
-  does not match approved "…/verifies_a_value_with_a_block.approved.txt".
-```
-
-Setting `c.diff_on_approval_failure = true` routes the comparison through
-`RSpec::Expectations.fail_with`, which prints RSpec's own diff
-(`lib/approvals/extensions/rspec/dsl.rb:24-30`).
-
-**(measured)** The review surface is a **dotfile plus an external diff tool**.
-Each failure appends an `approved received` pair to `.approvals` in the working
-directory:
-
-```
-spec/fixtures/approvals/approvals_dsl/verifies_a_value_with_a_block.approved.txt spec/fixtures/approvals/approvals_dsl/verifies_a_value_with_a_block.received.txt
-```
-
-**(source)** `approvals verify` walks that file, shells out to a diff tool
-(`--diff`, default `diff -N`, e.g. `opendiff`, `vimdiff`), prompts
-`Approve? [y/N]` per pair, and on yes runs `mv <received> <approved>`; rejected
-pairs are written back to `.approvals` (`lib/approvals/cli.rb:6-33`). The review
-action is literally a file move.
-
-**rspec-snapshot 2.2.0** — **(measured)** The matcher sets `diffable? => true`,
-so RSpec's own differ renders the change inline:
-
-```
-expected: {
-  :name => "bob"
-}
-     got: {
-  :name => "CHANGED"
-}
-
-Diff:
-@@ -1,3 +1,3 @@
- {
--  :name => "bob"
-+  :name => "CHANGED"
- }
-```
-
-The review action is a re-run with `UPDATE_SNAPSHOTS` set.
-
-**insta 1.48.0** — **(measured)** The failure body is a boxed summary naming
-the snapshot file, the source location and the originating expression, followed
-by a line-numbered diff:
-
-```
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ Snapshot Summary ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Snapshot file: src/snapshots/dsl_demo__tests__with_redactions.snap
-Snapshot: with_redactions
-Source: src/lib.rs:35
-────────────────────────────────────────────────────────────────────────────────
-Expression: user()
-────────────────────────────────────────────────────────────────────────────────
-+new results
-────────────┬───────────────────────────────────────────────────────────────────
-          1 │+{
-          2 │+  "id": "[id]",
-          3 │+  "name": "bob"
-          4 │+}
-────────────┴───────────────────────────────────────────────────────────────────
-To update snapshots run `cargo insta review`
-Stopped on the first failure. Run `cargo insta test` to run all snapshots.
-```
-
-The review action is the interactive `cargo insta review` TUI, or
-`accept` / `reject` — recorded in §2.
-
 **syrupy 6.0.0** — **(measured)** pytest prints a per-run
 `snapshot report summary` block below the test results:
 
@@ -1383,14 +1410,14 @@ deleting it, or changing the record mode in source.
 |---|---|---|
 | ApprovalTests (Ruby) | `.received.*` files + a `.approvals` dotfile | external diff tool, then `mv` (`approvals verify`) |
 | Argos | hosted build page | click: Approve / Reject / Comment |
-| BackstopJS | local `html_report/` folder + `bitmaps_test/<timestamp>/` + `report.json` | CLI: `backstop approve` |
+| BackstopJS | local `html_report/` folder + `bitmaps_test/<timestamp>/` + `report.json` | CLI: `backstop approve`, narrowed by `--filter` |
 | Chromatic | hosted build page | click: Approve; or `--auto-accept-changes` |
-| insta | `.snap.new` files | `cargo insta review` / `accept` / `reject` |
+| insta | `.snap.new` files | `cargo insta review` / `accept` / `reject`, or `test --accept` |
 | Jest | `.snap` file, terminal diff | re-run with `-u` |
 | jest-image-snapshot | one composite PNG per failure | re-run with `-u` |
-| Lost Pixel | not observed — see §7 | re-run in `update` mode (`utils.ts:56-58`) |
+| Lost Pixel | not observed — see §6 | re-run in `update` mode (`utils.ts:56-58`) |
 | Percy | hosted build page | click, at snapshot / group / build scope; or `percy build:approve` |
-| Playwright | local `playwright-report/` folder + `test-results/` | re-run with `--update-snapshots` |
+| Playwright | local `playwright-report/` folder + `test-results/` | re-run with `--update-snapshots` (also `--last-failed`) |
 | RSpec | terminal, or `--format html --out` | n/a |
 | RuboCop | terminal, `--format html`, or `--format github` annotations | `--auto-gen-config` or `-a` |
 | rspec-snapshot | terminal diff | re-run with `UPDATE_SNAPSHOTS` |
@@ -1398,11 +1425,10 @@ deleting it, or changing the record mode in source.
 | syrupy | `.ambr` / per-test files, terminal summary | re-run with `--snapshot-update` |
 | VCR | cassette YAML | edit or delete the cassette |
 
-Grouped by mechanism, the review action is: a **click** for the three hosted
-products (Argos, Chromatic, Percy); a **re-run of the test command with a flag**
-for Jest, jest-image-snapshot, Lost Pixel, Playwright, rspec-snapshot and
-syrupy; a **separate CLI command** for BackstopJS and insta; and a **file
-operation** for ApprovalTests and VCR.
+Whether the review action re-runs the tests: yes wherever it is a flag on the
+test command; for insta only `cargo insta test --accept` re-runs, not
+`review` / `accept` / `reject`; `backstop approve` promotes artifacts without
+re-running; the hosted products approve server-side, with no local run.
 
 All three local HTML reports rendered here (BackstopJS, Playwright, SimpleCov)
 opened from `file://` with images intact, without a server. Whether that is how
@@ -1411,19 +1437,6 @@ any project actually transports them was not investigated.
 ---
 
 ## 5. Cross-cutting mechanisms
-
-**Accept / update workflows**
-
-| Tool | Mechanism | Re-runs the test? |
-|---|---|---|
-| Playwright | `--update-snapshots`, `--last-failed` | yes |
-| Jest | `-u` / `--updateSnapshot` | yes |
-| insta | `cargo insta review\|accept\|reject`, `test --accept` | `test --accept` does |
-| BackstopJS | `backstop approve` (source: `approve.js`, copies `failed_diff_*` to reference), `--filter` | no — promotes artifacts |
-| Lost Pixel | `update` mode via arg, `-m`, or `LOST_PIXEL_MODE` env | yes |
-| RuboCop | `--auto-gen-config` (exclusion file), `-a` (fix source) | n/a |
-| VCR | change record mode in source | yes |
-| Percy / Chromatic / Argos | server-side approval UI | no |
 
 **"Recorded but not verified" as a distinct state**
 
@@ -1446,18 +1459,13 @@ any project actually transports them was not investigated.
   warns about for its own flag.
 - Others surveyed: none found.
 
-**Exit codes observed (measured)**
-
-| Situation | Playwright | Jest | insta | VCR | SimpleCov |
-|---|---|---|---|---|---|
-| missing baseline, local | 1 | 0 | 101 | 0 (`:once`) / 1 (`:none`) | n/a |
-| missing baseline, CI | 1 | 1 | 101 | same | n/a |
-| gate failure | 1 | 1 | 101 | 1 | **2** |
-| misconfiguration | 1 | 1 | 101 | 1 | 1 |
-
-insta surfaces failures as `cargo test` panics; **101 is Rust's panic exit code**
-and does not vary by situation, so its column carries no information beyond
-"failed".
+**Exit codes (measured).** Pass/fail per situation is §1's table; the numeric
+values add only this. Playwright, Jest, VCR and RuboCop use 1 for every failure
+observed — missing baseline, gate failure and misconfiguration alike. insta
+surfaces failures as `cargo test` panics, so every situation exits **101**,
+Rust's panic exit code, which carries no information beyond "failed". SimpleCov
+is the only tool observed to distinguish: **2** for a coverage-gate failure
+(`exit_codes/minimum_overall_coverage_check.rb:25,:37`), 1 for misconfiguration.
 
 Percy exits 0 when no token is configured. Per their documentation this is
 deliberate, so that forks and PRs without access to repository secrets do not
@@ -1469,27 +1477,7 @@ rspec-snapshot do not.
 
 ---
 
-## 6. History of default changes
-
-Four tools changed their missing-baseline behaviour after release:
-
-| Tool | Release | Change | Notes |
-|---|---|---|---|
-| Jest | 20 (2017) | stopped writing snapshots on CI | jest#3456 |
-| AVA | 2.0.0 (2019) | fails on CI when no snapshot found | listed under "Breaking changes" |
-| Vitest | — | fails on CI rather than writing | vitest#3227 |
-| testthat | 3.3.0 | fails when creating a new snapshot on CI | `snapshot_download_gh()` added in the same release, for retrieving snapshots written by CI |
-
-In all four the change applied to CI only; local behaviour was unchanged. None
-used a deprecation cycle or a legacy mode. Each exposes a named user-settable
-option (`--ci` / `updateSnapshot`, `fail_on_new`) alongside environment detection.
-
-The testthat 3.3.0 release date is not given in `NEWS.md` and was not confirmed;
-the CRAN package page lists only the current version.
-
----
-
-## 7. Not covered
+## 6. Not covered
 
 - **Applitools** — CLI text and behaviour not obtainable without an account.
 - **percy-capybara specifically** — the CLI it drives was exercised; nothing
@@ -1505,6 +1493,8 @@ the CRAN package page lists only the current version.
   none found.
 - **testthat 3.3.0 / 3.3.1 release dates** — absent from `NEWS.md` and from the
   CRAN package page; obtainable only from the CRAN Archive listing, not fetched.
+  The implementing PR #2149 merged 2025-08-01, which bounds 3.3.0 from below;
+  the release dates themselves were not obtained.
 - **Cost** — not researched. Percy, Chromatic, Argos and Applitools price per
   snapshot or screenshot with tiers that change frequently; no figures captured
   and none should be inferred from this document.
@@ -1512,22 +1502,19 @@ the CRAN package page lists only the current version.
   tool. Whether output, exit code or artifact naming differs on a repeat failure
   is unknown.
 - **Colour-blind accessibility of diff artefacts** — not assessed. No tool's diff
-  rendering was checked against a deuteranopia or protanopia simulation. One
-  correction to the earlier "none surveyed was observed documenting a
-  colour-blind-safe palette": **SimpleCov 1.1.1 ships a `🎨 Colorblind` toggle**
-  in its HTML report header (measured). That is a coverage report, not a diff
-  artefact, and the palette it switches to was not evaluated — but the claim as
-  written was too broad. Argos documents that the overlay colour and opacity are
-  customisable (source); no surveyed tool was observed shipping a named
-  colour-blind mode for an image diff.
+  rendering was checked against a deuteranopia or protanopia simulation.
+  **SimpleCov 1.1.1 ships a `🎨 Colorblind` toggle** in its HTML report header
+  (measured); that is a coverage report rather than a diff artefact, and the
+  palette it switches to was not evaluated. Argos documents that the overlay
+  colour and opacity are customisable (source). No surveyed tool was observed
+  shipping a named colour-blind mode for an image diff — narrower than an
+  earlier draft's claim that none documented a colour-blind-safe palette at all.
 - **Baseline storage growth over time** — not measured for any tool.
 - **Tolerance/anti-aliasing for tools other than Playwright and
   jest-image-snapshot** — not gathered. §3 records the *named knobs* for
-  BackstopJS (`misMatchThreshold`), Lost Pixel (`threshold`), Argos
-  (`threshold`, default 0.5), Chromatic (`diffThreshold`, default `.063`) and
-  Percy (`diffSensitivity`, `imageIgnoreThreshold`, `diffIgnoreThreshold`), but
-  **no two of these were shown to mean the same thing**, and none was measured.
-  §2b's finding about a shared pixelmatch parameter does not generalise to them.
+  BackstopJS, Lost Pixel, Argos, Chromatic and Percy, but **no two of these were
+  shown to mean the same thing**, and none was measured. §3b's finding about a
+  shared pixelmatch parameter does not generalise to them.
 - **Chromatic's UI Tests build page** — the review docs describe the Changeset
   side-by-side view and the neon-green diff toggle, but four fetches of
   `chromatic.com/docs/{review,snapshots,test,config-reference}` produced nothing
@@ -1560,61 +1547,25 @@ the CRAN package page lists only the current version.
 - **`percy-capybara`, and Ruby bindings for any hosted product** — §3 quotes the
   JavaScript SDKs, because those are what the published type declarations
   describe. No Ruby SDK's call-site signature was read.
-- **BackstopJS under its default puppeteer engine** — see the caveat above; the
-  engine would not launch on this machine.
+- **BackstopJS under its default puppeteer engine** — see the caveat in
+  "Method and caveats"; the engine would not launch on this machine.
 
 ---
 
-## Sources
+## Provenance of code read from packages
 
-Playwright: [TestConfig](https://playwright.dev/docs/api/class-testconfig) ·
-[#38046](https://github.com/microsoft/playwright/issues/38046) ·
-[#23090](https://github.com/microsoft/playwright/issues/23090) ·
-[#22337](https://github.com/microsoft/playwright/issues/22337).
-Jest: [#3456](https://github.com/jestjs/jest/pull/3456) ·
-[#12288](https://github.com/jestjs/jest/issues/12288) ·
-[snapshot docs](https://jestjs.io/docs/snapshot-testing).
-jest-image-snapshot: [#281](https://github.com/americanexpress/jest-image-snapshot/issues/281).
-Vitest: [#3227](https://github.com/vitest-dev/vitest/issues/3227) ·
-[snapshot guide](https://vitest.dev/guide/snapshot).
-AVA: [#1585](https://github.com/avajs/ava/issues/1585) ·
-[2.0.0](https://github.com/avajs/ava/releases/tag/v2.0.0).
-testthat: [NEWS](https://github.com/r-lib/testthat/blob/main/NEWS.md) ·
-[#1461](https://github.com/r-lib/testthat/issues/1461) ·
-[#2149](https://github.com/r-lib/testthat/pull/2149) ·
-[#2293](https://github.com/r-lib/testthat/issues/2293) ·
-[#2320](https://github.com/r-lib/testthat/issues/2320).
-insta: [CHANGELOG](https://github.com/mitsuhiko/insta/blob/master/CHANGELOG.md) ·
-[#924](https://github.com/mitsuhiko/insta/pull/924).
-syrupy: [README](https://github.com/syrupy-project/syrupy/blob/main/README.md).
-pytest-regressions: [overview](https://pytest-regressions.readthedocs.io/en/latest/overview.html).
-cupaloy: [repo](https://github.com/bradleyjkemp/cupaloy).
-ApprovalTests.Ruby: [repo](https://github.com/approvals/ApprovalTests.Ruby).
-rspec-snapshot: [#32](https://github.com/levinmr/rspec-snapshot/issues/32).
-VCR: [record modes](https://rspec.help/vcr/record-modes/) ·
-[no_cassette](https://andrewmcodes.gitbook.io/vcr/cassettes/no_cassette).
-Applitools: [advanced configuration](https://applitools.com/docs/eyes/playwright/api/advanced-configuration).
-Percy: [approval workflow](https://www.browserstack.com/docs/percy/build-results/approval) ·
-[visual testing basics](https://www.browserstack.com/docs/percy/overview/visual-testing-basics) ·
-[build review and approval](https://www.browserstack.com/percy/features/build-review-and-approval) ·
-public build URL used for the view/filter parameters in §4:
-[percy.io/Ember/web/guides-app/builds/45389416](https://percy.io/Ember/web/guides-app/builds/45389416/changed/2401284869?group_snapshots_by=similar_diff&subcategories=unreviewed%2Cchanges_requested&viewLayout=side-by-side&viewMode=new&widths=375%2C1280).
-Chromatic: [branching and baselines](https://www.chromatic.com/docs/branching-and-baselines/) ·
-[parameters & globals](https://www.chromatic.com/docs/params/) ·
-[story modes](https://docs.chromatic.com/docs/modes/) ·
-[review](https://www.chromatic.com/docs/review/).
-Argos: [review a build](https://argos-ci.com/docs/learn/review-workflow/review-a-build.md).
-
-Sources read from published packages rather than the web, at the versions in
-the header — paths are relative to the installed package:
+These have no URL; paths are relative to the installed package, at the versions
+listed at the top.
 
 - Playwright: `packages/web/src/shared/imageDiffView.tsx:102-106` and
   `packages/html-reporter/src/filter.ts:44-66`, read at tag `v1.62.1` from
   `raw.githubusercontent.com/microsoft/playwright`; `playwright/types/test.d.ts:198-247`
   from the installed package.
-- insta: `insta-1.48.0/src/runtime.rs:232-244` from the cargo registry checkout.
+- insta: `insta-1.48.0/src/runtime.rs:232-244` and `insta-1.48.0/src/macros.rs`
+  from the cargo registry checkout.
 - Argos: `@argos-ci/playwright/dist/index.d.mts`.
-- Percy: `@percy/playwright/types/index.d.ts`; `@percy/core/types/index.d.ts:51-70,92-110,128-131`.
+- Percy: `@percy/playwright/types/index.d.ts`;
+  `@percy/core/types/index.d.ts:51-70,92-110,128-131`.
 - Lost Pixel: `lost-pixel/dist/config.d.ts`.
 - BackstopJS: the `backstop.json` emitted by `backstop init` 6.3.25;
   `backstopjs/core/command/approve.js`.
@@ -1623,4 +1574,5 @@ the header — paths are relative to the installed package:
   `lib/approvals/namers/directory_namer.rb`.
 - rspec-snapshot: `lib/rspec/snapshot/{matchers,configuration,file_operator}.rb`
   and `lib/rspec/snapshot/matchers/match_snapshot.rb`.
+- SimpleCov: `exit_codes/minimum_overall_coverage_check.rb:25,:37`.
 - syrupy: `pytest --help` with the plugin installed.
