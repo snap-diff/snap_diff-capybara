@@ -278,6 +278,41 @@ class BrowserScreenshotTest < SystemTestCase
     SnapDiff::SnapManager.snapshot("index-with-anim").delete!
   end
 
+  # #271, on a real browser rendering a really unstable page.
+  #
+  # A live ticker in a fixed box is the shape users actually hit -- a clock,
+  # a counter, a spinner -- and it is the shape `skip_area` can fix. The
+  # message has to (a) name the region, and (b) hand over a command that
+  # WORKS, which is the half this project has got wrong before: it shipped
+  # `RECORD_SCREENSHOTS=1` in its own error message for years while nothing
+  # read it. So this test does not check the prose; it follows the advice.
+  test "a page that never settles is told WHERE it kept changing, and the suggested skip_area works" do
+    visit "/index-with-ticker.html"
+
+    error = assert_raises SnapDiff::UnstableImage do
+      assert_matches_screenshot "index-with-ticker", stability_time_limit: 0.1, wait: 1.2, tolerance: nil
+    end
+
+    puts "\n--- #271 stability failure message ---\n#{error.message}\n---\n" if ENV["DEBUG"]
+
+    assert_match(/Could not get stable screenshot for 'index-with-ticker' within 1.2s \(\d+ attempts\)/, error.message)
+    assert_match(/The page kept changing in 1 area/, error.message)
+    assert_match(/left,top,right,bottom edges/, error.message)
+    assert_match(/Always the same area/, error.message)
+
+    suggested = error.message[/skip_area: (\[[\d,]+\])/, 1]
+    assert suggested, "the message must suggest a mask built from the measured region:\n#{error.message}"
+
+    # THE round trip: the coordinates the message printed, pasted back in,
+    # make the same page stable. Nothing here is derived from the fixture's
+    # CSS -- only from what the failing run measured.
+    assert_matches_screenshot "index-with-ticker",
+      stability_time_limit: 0.1, wait: 1.2, tolerance: nil,
+      skip_area: JSON.parse(suggested)
+  ensure
+    SnapDiff::SnapManager.snapshot("index-with-ticker").delete!
+  end
+
   def test_await_all_images_are_loaded
     visit "/index.html"
     assert_raises ::Minitest::Assertion do

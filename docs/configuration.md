@@ -356,6 +356,53 @@ test 'stability_time_limit' do
 end
 ```
 
+### When the page will not settle
+
+The failure names the area that kept changing, and hands you the command that
+fixes it:
+
+```
+Could not get stable screenshot for 'index-with-ticker' within 1.2s (5 attempts).
+  The page kept changing in 1 area, over 4 attempt pairs:
+    [67,50,213,68] (left,top,right,bottom edges) -- 0.55% of the 800x600 image, changed in 4 of 4 pairs
+  Always the same area, in every pair: that is an animation, clock, carousel or live counter.
+  Exclude it and the page is stable without waiting:
+    assert_matches_screenshot "index-with-ticker", skip_area: [67,50,213,68]
+  <one annotated attempt image per line>
+```
+
+The coordinates are measured, not guessed: they come from the comparisons the
+gem just ran between consecutive attempts, so pasting the suggested `skip_area`
+in works.
+
+Read the "changed in N of N pairs" line before acting on it:
+
+- **N of N — one area, every single pair.** Something is animating in one place:
+  a clock, a carousel, a spinner, a live counter. `skip_area` is the fix, and
+  since masking no longer waits it costs nothing.
+- **Fewer than N, or several areas each changing once.** The page is still
+  *rendering*, not animating. Masking those areas would hide real content. The
+  message says so and suggests nothing to mask — settle the page in a
+  [readiness block](#the-readiness-block) instead, or raise `wait:`.
+
+### Knowing what the waiting cost
+
+Every run that waited for stability ends with what it actually paid:
+
+```
+[snap_diff] 34 screenshots waited for the page to settle: 0.19s and 2 attempts at worst. Every screenshot settled on its first retry, so a lower stability_time_limit would cost less per screenshot.
+```
+
+Two attempts is the floor — one capture, plus the retry that matched it. Hitting
+the floor across the whole run means no page was ever still moving when the
+retry was taken, so every `stability_time_limit` sleep was spent on a page that
+had already stopped. That is the evidence for tuning it *down*; without it,
+lowering the setting is guesswork, and guesswork loses to `sleep`.
+
+Run-level and silent when nothing waited, for the same reason as the
+never-matched-selector line: a line printed on every screenshot is a line
+people learn to skip.
+
 ### Maximum wait limit
 
 When the `stability_time_limit` is set, but no stable screenshot can be taken, a timeout occurs.

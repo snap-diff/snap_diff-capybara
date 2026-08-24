@@ -23,6 +23,9 @@ module SnapDiff
     @unmatched_selectors = Set.new
     @verified = 0
     @changed = 0
+    @stable_captures = 0
+    @worst_settle_seconds = 0.0
+    @worst_settle_attempts = 0
 
     class << self
       attr_reader :reporters, :mutex
@@ -74,6 +77,19 @@ module SnapDiff
         end
       end
 
+      # Remembers what a capture that DID settle cost (#271).
+      #
+      # Only the worst case is kept, because that is the number the setting
+      # has to cover: an average would suggest a `stability_time_limit` that
+      # is too low for the slowest page in the suite.
+      def record_stable_capture(seconds, attempts)
+        @mutex.synchronize do
+          @stable_captures += 1
+          @worst_settle_seconds = seconds if seconds > @worst_settle_seconds
+          @worst_settle_attempts = attempts if attempts > @worst_settle_attempts
+        end
+      end
+
       # @api private
       # Per-test isolation for this gem's own suite: everything {finalize!}
       # reports, cleared in one call. One surface rather than one reset per
@@ -86,6 +102,9 @@ module SnapDiff
           @unmatched_selectors.clear
           @verified = 0
           @changed = 0
+          @stable_captures = 0
+          @worst_settle_seconds = 0.0
+          @worst_settle_attempts = 0
         end
       end
 
@@ -222,6 +241,10 @@ module SnapDiff
         if (msg = never_matched_selectors_summary)
           $stdout.puts msg
         end
+
+        if (msg = stable_captures_summary)
+          $stdout.puts msg
+        end
       end
 
       # --- fork-parallel reports (issue #258) ---------------------------
@@ -279,6 +302,9 @@ module SnapDiff
           "unmatched_selectors" => @mutex.synchronize { @unmatched_selectors.to_a },
           "verified" => @verified,
           "changed" => @changed,
+          "stable_captures" => @stable_captures,
+          "worst_settle_seconds" => @worst_settle_seconds,
+          "worst_settle_attempts" => @worst_settle_attempts,
           "reporters" => @mutex.synchronize { @reporters.dup }
             .map { |reporter| reporter.dump_state if reporter.respond_to?(:dump_state) }
         }
@@ -315,6 +341,11 @@ module SnapDiff
             payload.fetch("unmatched_selectors", []).each { |selector| @unmatched_selectors << selector }
             @verified += payload.fetch("verified", 0)
             @changed += payload.fetch("changed", 0)
+            # Counts add up; worst cases do not -- the slowest page in the
+            # run is the slowest page in whichever worker happened to run it.
+            @stable_captures += payload.fetch("stable_captures", 0)
+            @worst_settle_seconds = [@worst_settle_seconds, payload.fetch("worst_settle_seconds", 0.0)].max
+            @worst_settle_attempts = [@worst_settle_attempts, payload.fetch("worst_settle_attempts", 0)].max
           end
 
           reporters_snapshot = @mutex.synchronize { @reporters.dup }
@@ -382,6 +413,45 @@ module SnapDiff
         "[snap_diff] #{label} never matched anything in this run: " \
           "#{names.map(&:inspect).join(", ")}. " \
           "A selector that matches nothing masks nothing -- check for a typo or a stale selector."
+      end
+
+      # What waiting for the page to settle actually cost, on the runs where
+      # it WORKED (#271).
+      #
+      # The failure path names the region that would not settle; this is the
+      # other half. A maintainer who set `stability_time_limit: 2` on the
+      # docs' recommendation has no way to learn their pages settle on the
+      # first retry -- and without evidence, tuning it down is guesswork,
+      # which loses to `sleep`. The measurement is free: the stable
+      # screenshoter already knows both numbers at the moment it succeeds.
+      #
+      # Run-level rather than per-assertion, and silent when nothing waited:
+      # the same reasoning as {never_matched_selectors_summary}. A line
+      # printed on every screenshot of every run is a line users learn to
+      # skip, and per-test noise is exactly what a debugging aid must not
+      # add to a suite already too slow.
+      #
+      # @return [String, nil] nil when no capture waited for stability
+      def stable_captures_summary
+        captures, seconds, attempts = @mutex.synchronize {
+          [@stable_captures, @worst_settle_seconds, @worst_settle_attempts]
+        }
+        return if captures.zero?
+
+        label = (captures == 1) ? "1 screenshot" : "#{captures} screenshots"
+        line = "[snap_diff] #{label} waited for the page to settle: " \
+          "#{format("%.2f", seconds)}s and #{attempts} attempts at worst."
+
+        # Two attempts is the floor -- one capture, then the retry that
+        # matched it. Hitting the floor everywhere means no page in the run
+        # was ever still moving, so every sleep between attempts was spent
+        # on a page that had already stopped.
+        if attempts <= 2
+          line += " Every screenshot settled on its first retry, so a lower " \
+            "stability_time_limit would cost less per screenshot."
+        end
+
+        line
       end
     end
   end

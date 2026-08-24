@@ -1,0 +1,49 @@
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+  body {
+    width: 100%;
+    margin: 0;
+    font-family: 'DejaVu Sans', 'DejaVu Serif', 'Liberation Sans', Ubuntu, Arial, sans-serif;
+  }
+
+  /* The real-world shape of an unstable page: everything holds still except
+     one fixed box -- a clock, a live counter, a spinner. The region never
+     moves, which is exactly what makes `skip_area` the right answer, and
+     what the stability failure message has to be able to say. */
+  #ticker {
+    position: absolute;
+    left: 40px;
+    top: 40px;
+    width: 200px;
+    height: 40px;
+    line-height: 40px;
+    text-align: center;
+    background-color: #000000;
+    color: #ffffff;
+    font-size: 24px;
+  }
+  </style>
+</head>
+<body>
+
+<h1>Ticker</h1>
+
+<div id="ticker">0000000000</div>
+
+<script>
+const retick = () => {
+  // Same box, different pixels, forever. Every character changes, the way a
+  // spinner or a re-rendered clock does -- a counter where only the last
+  // digit moves would make the measured region a single glyph, which is a
+  // property of THAT page, not of unstable pages.
+  document.getElementById("ticker").textContent =
+    Array.from({length: 10}, () => "0123456789ABCDEF"[Math.floor(Math.random() * 16)]).join("")
+}
+retick()
+setInterval(retick, 30)
+</script>
+
+</body>
+</html>
