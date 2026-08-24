@@ -194,9 +194,9 @@ class LegacyDeletionTest < ActiveSupport::TestCase
 
   # A fresh process with ONLY +tree+ on the load path.
   #
-  # `chdir: tree` is the load-bearing half, and NOT a detail. Scrubbing
-  # RUBYOPT/BUNDLE_GEMFILE is not sufficient on its own: with the cwd still
-  # inside the project, RubyGems auto-discovers gems.rb, puts
+  # `chdir: tree` is the load-bearing half, and NOT a detail. PROBE_ENV is not
+  # sufficient on its own: with the cwd still inside the project, RubyGems
+  # auto-discovers gems.rb, puts
   # `-rbundler/setup` BACK into RUBYOPT, and the gemspec unshifts the real
   # lib/ ahead of the -I dir -- measured, this exact scrub with cwd at the
   # project root loads 24 files from the intact tree. Running from the
@@ -208,7 +208,7 @@ class LegacyDeletionTest < ActiveSupport::TestCase
       $LOAD_PATH.unshift(#{tree.inspect})
       #{SupportLoadProbeTest::CUCUMBER_RUNTIME_STUB}
     RUBY
-    env = {"DELETED_TREE" => tree, "RUBYOPT" => nil, "BUNDLE_GEMFILE" => nil, "RUBYLIB" => nil}
+    env = PROBE_ENV.merge("DELETED_TREE" => tree)
     out, status = Open3.capture2e(env, RbConfig.ruby, "-e", preamble + script, chdir: tree)
 
     "#{script.lines.first.strip} -> #{out}" unless status.success?

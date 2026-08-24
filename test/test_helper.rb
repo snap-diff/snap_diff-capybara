@@ -16,6 +16,33 @@ $LOAD_PATH.unshift File.expand_path("../lib", __dir__)
 require "pathname"
 TEST_IMAGES_DIR = Pathname.new(File.expand_path("fixtures/images", __dir__))
 
+# The child environment for a subprocess probe that chdirs OUT of the project
+# to exercise a load path it built itself. Such a probe must not inherit this
+# repo's development bundle, and dropping these four is the whole of it:
+#
+# - BUNDLER_SETUP is the one that bit us. RubyGems ends rubygems.rb with
+#   `require ENV["BUNDLER_SETUP"] if ENV["BUNDLER_SETUP"] && !defined?(Bundler)`,
+#   so ANY child re-enters bundler/setup before it reaches `-e`. That resolves
+#   BUNDLE_GEMFILE -- which .github/workflows/test.yml sets to the RELATIVE
+#   `gemfiles/<gemfile>` -- against the child's cwd, i.e. the tmpdir, and the
+#   child dies with Bundler::GemfileNotFound before running a line of the probe.
+#   Bundler >= 2.6 rewrites BUNDLE_GEMFILE to an absolute path during setup and
+#   the 2.5 that ships with ruby 3.3 does not, so this was green everywhere but
+#   the 3.3 cells -- and invisible under `bundle exec`, which expands it too.
+# - RUBYOPT carries `-r<abs>/bundler/setup`, the same door.
+# - RUBYLIB and BUNDLE_GEMFILE inject the development load path directly.
+#
+# Scrubbing is not sufficient on its own -- the probe must ALSO chdir out of
+# the project, or RubyGems finds gems.rb and puts all of it back. Probes that
+# stay inside the project root (`chdir: PROJECT_ROOT`) genuinely want the
+# bundle and must NOT use this.
+PROBE_ENV = {
+  "BUNDLER_SETUP" => nil,
+  "BUNDLE_GEMFILE" => nil,
+  "RUBYLIB" => nil,
+  "RUBYOPT" => nil
+}.freeze
+
 require "support/setup_rails_app"
 require "minitest/autorun"
 

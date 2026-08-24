@@ -24,6 +24,13 @@ require "tmpdir"
 class GemNameEntryPointTest < ActiveSupport::TestCase
   LIB = File.expand_path("../../lib", __dir__)
 
+  # Opens every probe, ahead of the minitest gate below: the point of this
+  # probe is a CONSUMER's bundle, so inheriting ours proves nothing about
+  # either. See PROBE_ENV in test_helper.rb for what leaks and how.
+  NO_BUNDLE_GATE = <<~RUBY
+    abort("GATE: the probe inherited the development bundle, so it proves nothing") if defined?(Bundler)
+  RUBY
+
   # Opens every probe: a probe that quietly tested the wrong environment
   # would "prove" whatever we hoped it would.
   GATE = {
@@ -54,8 +61,12 @@ class GemNameEntryPointTest < ActiveSupport::TestCase
   # scratch Gemfile reproduces the same thing and was used to confirm this
   # one, but it needs the network and has no place in the unit suite.)
   #
+  # The cwd is half of that; PROBE_ENV is the other half, and the two only
+  # work together -- see its comment in test/test_helper.rb. +env+ is a seam
+  # for the gate test below, which restores a leak on purpose.
+  #
   # @return [Array(String, String, Process::Status)] stdout, stderr, status
-  def self.probe(script, minitest: true)
+  def self.probe(script, minitest: true, env: PROBE_ENV)
     Dir.mktmpdir do |dir|
       load_paths = ["-I#{LIB}"]
 
@@ -68,7 +79,7 @@ class GemNameEntryPointTest < ActiveSupport::TestCase
         load_paths.unshift("-I#{shim}")
       end
 
-      Open3.capture3(RbConfig.ruby, *load_paths, "-e", GATE.fetch(minitest) + script, chdir: dir)
+      Open3.capture3(env, RbConfig.ruby, *load_paths, "-e", NO_BUNDLE_GATE + GATE.fetch(minitest) + script, chdir: dir)
     end
   end
 
@@ -96,6 +107,25 @@ class GemNameEntryPointTest < ActiveSupport::TestCase
     assert_predicate status, :success?, "#{out}\n#{err}"
     assert_match(%r{snap_diff/integrations/rspec}, err)
     assert_match(/require: false/, err, "the message must name the way to silence it")
+  end
+
+  # The gate line has to be able to FAIL, or it is a comment with an `if`
+  # around it. Restore the ONE variable the scrub exists to drop -- RubyGems
+  # turns BUNDLER_SETUP back into a `require "bundler/setup"` in any child --
+  # and the same probe must refuse to run. Restoring it alone (BUNDLE_GEMFILE
+  # still scrubbed) is what makes this deterministic on every ruby: the child
+  # boots far enough to reach the gate instead of dying at Bundler's own
+  # GemfileNotFound, which is what CI saw and which only reproduces on the
+  # bundler that leaves a relative BUNDLE_GEMFILE alone.
+  test "the no-bundle gate rejects a probe that inherited the development bundle" do
+    bundler_setup = ENV["BUNDLER_SETUP"]
+    assert bundler_setup, "this test only means something when the suite itself runs under bundler"
+
+    out, err, status = self.class.probe(%(puts "RAN"), env: PROBE_ENV.merge("BUNDLER_SETUP" => bundler_setup))
+
+    refute_predicate status, :success?, "the gate let an inherited bundle through:\n#{out}\n#{err}"
+    assert_match(/GATE: the probe inherited the development bundle/, err)
+    refute_includes out, "RAN", "the gate must abort BEFORE the probe body runs"
   end
 
   # The other direction: the documented zero-require Rails path.
