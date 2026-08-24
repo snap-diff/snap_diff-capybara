@@ -24,6 +24,29 @@ module SnapDiff
       @manager.cleanup!
     end
 
+    # The suggested mask is pasted straight into a test file, so it must be
+    # integers -- and it must COVER the region that moved. Float edges appear on
+    # some drivers/platforms: CI produced [62.0,50.0,218.0,68.0] where macOS gave
+    # integers, and the message's own regex silently failed to match. Truncating
+    # would shave the right/bottom edge and leave the moving pixels exposed,
+    # which is worse than suggesting nothing at all.
+    test "#mask_coordinates yields integers that round OUTWARD to cover the region" do
+      snap = attempt_snapshot("mask_rounding", %i[a b])
+      reporter = AttemptsReporter.new(snap, {driver: :chunky_png}, {wait: 2, stability_time_limit: 0.1})
+      # Region.new is (left, top, WIDTH, HEIGHT); edges land at
+      # [62.4, 50.2, 279.5, 119.1], all four fractional.
+      region = SnapDiff::Region.new(62.4, 50.2, 217.1, 68.9)
+
+      coords = reporter.send(:mask_coordinates, region)
+
+      assert_equal [62, 50, 280, 120], coords
+      assert(coords.all?(Integer), "a pasted mask must not contain floats: #{coords.inspect}")
+      assert_operator coords[0], :<=, region.left, "left edge must not shave the region"
+      assert_operator coords[1], :<=, region.top, "top edge must not shave the region"
+      assert_operator coords[2], :>=, region.right, "right edge must not shave the region"
+      assert_operator coords[3], :>=, region.bottom, "bottom edge must not shave the region"
+    end
+
     test "#generate returns the timeout message listing every attempt artifact" do
       snap = attempt_snapshot("unstable_message", %i[a b])
 

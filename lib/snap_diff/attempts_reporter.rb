@@ -152,7 +152,7 @@ module SnapDiff
     def animating_lines(animating)
       return [] if animating.empty?
 
-      skip_area = animating.map { |area| area.region.to_edge_coordinates }
+      skip_area = animating.map { |area| mask_coordinates(area.region) }
       skip_area = skip_area.first if skip_area.size == 1
 
       [
@@ -160,6 +160,16 @@ module SnapDiff
         "  Exclude it and the page is stable without waiting:",
         "    assert_matches_screenshot #{@snapshot.full_name.to_s.inspect}, skip_area: #{skip_area.to_json}"
       ]
+    end
+
+    # A mask must COVER the region that moved, and it has to be pasteable.
+    # Edge coordinates arrive as floats on some drivers/platforms, so round
+    # OUTWARD -- floor the near edges, ceil the far ones. Truncating instead
+    # would shave the right/bottom edge and leave the moving pixels exposed,
+    # which is worse than suggesting nothing.
+    def mask_coordinates(region)
+      left, top, right, bottom = region.to_edge_coordinates
+      [left.floor, top.floor, right.ceil, bottom.ceil]
     end
 
     def settling_lines(settling, animating)
