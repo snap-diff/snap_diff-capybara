@@ -20,6 +20,7 @@ Gem::Specification.new do |spec|
   spec.metadata["changelog_uri"] = "#{spec.homepage}/blob/master/CHANGELOG.md"
   spec.metadata["bug_tracker_uri"] = "#{spec.homepage}/issues"
   spec.metadata["documentation_uri"] = "#{spec.homepage}/blob/master/docs/snapdiff.md"
+  spec.metadata["rubygems_mfa_required"] = "true"
   # Allow-list: everything a consumer needs at runtime plus the shipped docs.
   # Build/dev files (gems.rb, Rakefile, the gemspec itself, tests, CI) stay out.
   spec.files = `git ls-files -z`.split("\x0")
