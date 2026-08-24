@@ -419,6 +419,21 @@ class RecordModesTest < ActiveSupport::TestCase
     assert_not_predicate SnapDiff::Comparison.new(path, fixture_image_path_from(fixture)), :quick_equal?, message
   end
 
+  # This class exercises record modes; `:all` deliberately refuses to run under
+  # CI, so the whole class runs as a developer's laptop by default and the
+  # CI-refusal cases opt IN via `with_ci`. Without this, every `:all` example
+  # fails on CI for the very reason it is testing -- and passes locally, where
+  # ENV["CI"] is unset. Local green was half the bar here.
+  def setup
+    super
+    @original_ci = ENV.delete("CI")
+  end
+
+  def teardown
+    ENV["CI"] = @original_ci
+    super
+  end
+
   def with_ci(value)
     original = ENV["CI"]
     ENV["CI"] = value
