@@ -17,7 +17,7 @@ following still works. Most of it warns once per process naming 2.1; the rows ma
 |---|---|
 | the `:chunky_png` driver | add `gem "ruby-vips"` to your Gemfile and drop `driver: :chunky_png` |
 | the `driver:` setting itself — `SnapDiff.config.driver =` and the legacy `Capybara::Screenshot::Diff.driver =` (**silent in 2.0**; on 2.1 they raise `NoMethodError` at config time) | delete the line; one backend needs no selection |
-| the per-screenshot `driver:` override — `screenshot "index", driver: :vips` (**silent in 2.0 *and* 2.1**: per-screenshot options are a free-form hash, so an unknown key is simply inert) | delete the option, and grep for it — nothing will tell you the line is dead |
+| the per-screenshot `driver:` override — `screenshot "index", driver: :vips` (**no deprecation warning in 2.0** -- but the key is validated, not inert: an unknown driver raises `RuntimeError: Wrong adapter ...`. 2.1 rejects the key outright) | delete the option, and grep for it — nothing will tell you the line is dead |
 | `driver: :auto` (and the `:auto` default) — warns **only when `:auto` actually falls back to ChunkyPNG**, i.e. when `ruby-vips` is missing; **silent** otherwise | with one backend there is nothing to choose; install `ruby-vips` and the default just works |
 | `shift_distance_limit` | ChunkyPNG-only. Use `median_filter_window_size`, `tolerance` or `color_distance_limit` — see [Configuration](configuration.md#allowed-shift-distance) |
 | `SnapDiff::Driver` (the custom-driver mixin) | nothing — see below |
@@ -90,7 +90,7 @@ There are several options to setup active driver: `:auto`, `:chunky_png` and `:v
 * `:auto` - will try to load `:vips` if there is gem `ruby-vips`, in other cases will load `:chunky_png`
 * `:chunky_png` and `:vips` will load correspondent driver
 
-> **2.1 keeps only `:vips`.** `:auto` and `:chunky_png` are removed; each warns once per
+> **2.1 keeps only `:vips`.** `:auto` and `:chunky_png` are removed; `:chunky_png` warns once per
 > process in 2.0. If `:auto` is quietly running you on ChunkyPNG today (no `ruby-vips`
 > installed), the warning says so — that is the setup 2.1 breaks.
 
