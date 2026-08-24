@@ -54,4 +54,36 @@ class VcsTest < ActiveSupport::TestCase
 
     assert_equal 1, calls
   end
+
+  # Concurrent callers must share the cached answer, not each spawn their own
+  # git. MRI releases the GVL for the duration of `Open3.capture3`, so without
+  # synchronization every thread misses `key?` before any thread writes --
+  # measured 8 spawns for 8 threads asking about ONE root, i.e. the cache
+  # bought nothing in exactly the mode (`parallelize(with: :threads)`) that is
+  # JRuby's default. On JRuby there is no GVL at all, so the unsynchronized
+  # Hash write is unsafe as well as wasteful.
+  test "#checkout_vcs shares one git lookup across concurrent callers" do
+    root = @tmp_dir / "concurrent_root_#{Time.now.nsec}"
+    FileUtils.mkdir_p(root)
+    screenshot_path = file_fixture("images/a.png")
+    base_screenshot_path = Pathname.new(@base_screenshot.path)
+
+    calls = 0
+    counter_lock = Mutex.new
+    status = Object.new
+    def status.success? = true
+    counting_rev_parse = ->(*) {
+      counter_lock.synchronize { calls += 1 }
+      sleep 0.01 # stand in for the real subprocess, which releases the GVL
+      ["#{PROJECT_ROOT}\n", "", status]
+    }
+
+    Open3.stub(:capture3, counting_rev_parse) do
+      8.times.map {
+        Thread.new { SnapDiff::Vcs.checkout_vcs(root, screenshot_path, base_screenshot_path) }
+      }.each(&:join)
+    end
+
+    assert_equal 1, calls, "concurrent callers must share one git lookup, not spawn one each"
+  end
 end
