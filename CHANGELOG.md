@@ -110,8 +110,11 @@ the line, one backend needs no selection), and the legacy `LOADED_DRIVERS` /
 - **One consolidated config object** — all 27 settings on `SnapDiff.config`, via
   `SnapDiff.configure { |config| … }`. Old and new surfaces share one storage, so a
   write through either is visible through the other
-- **`SnapDiff::Error` is the catch-all** the docs promise: every error the gem
-  raises inherits it, including `WindowSizeMismatchError` and `DualInstallError`
+- **`SnapDiff::Error` is the base class for every error the gem defines** —
+  `ExpectationNotMet`, `UnstableImage`, `WindowSizeMismatchError` and
+  `DualInstallError` all inherit it, so one `rescue SnapDiff::Error` covers them.
+  (Misuse still surfaces as plain Ruby: `ArgumentError` for bad arguments,
+  `RuntimeError` when no image backend is installed.)
 - **Deprecation warnings name your call site**, so migration is warning-driven
   rather than grep-driven
 - **Dual-install guard** — installing both `capybara-screenshot-diff` and
