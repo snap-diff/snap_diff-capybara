@@ -307,4 +307,67 @@ class ScreenshotMatcherTest < ActiveSupport::TestCase
     # release whose headline is SnapDiff.
     assert_includes error.message, "SnapDiff.config.fail_if_new = false"
   end
+
+  # Found by mutation while moving the raise for #260: deleting
+  # `@snapshot.checkout_base_screenshot` outright left the ENTIRE unit suite
+  # green. Every test stubs Vcs.checkout_vcs, so nothing asserted that the
+  # matcher ever asks git for the baseline -- and need_to_compare?, the
+  # warning and the raise all hang off that one call.
+  test "#build_screenshot_assertion asks VCS for the baseline of the screenshot it is about to take" do
+    name = "a_#{Time.now.nsec}"
+    snap = SnapDiff::SnapManager.path_for(name)
+    asked = []
+    checkout = lambda do |_root, path, as_path|
+      asked << [path, as_path]
+      false
+    end
+
+    capture_io do
+      SnapDiff::Vcs.stub(:checkout_vcs, checkout) do
+        SnapDiff::ScreenshotMatcher.new(name).build_screenshot_assertion
+      end
+    end
+
+    assert_equal [[snap.path, snap.base_path]], asked
+  end
+
+  # #260. The message says `git add <path>` and commit. That is only
+  # followable if <path> is actually there, and the raise used to run before
+  # the capture -- so on the exact run that printed the instruction, nothing
+  # had been written. Never print a path or command that is not derived from
+  # live state: capture first, then raise.
+  test "the fail_if_new error names a file that is really on disk" do
+    name = "c_#{Time.now.nsec}"
+    path = SnapDiff::SnapManager.path_for(name).path
+
+    error = SnapDiff::Vcs.stub(:checkout_vcs, false) do
+      SnapDiff.config.stub(:fail_if_new, true) do
+        assert_raises(SnapDiff::ExpectationNotMet) do
+          SnapDiff::ScreenshotMatcher.new(name).build_screenshot_assertion
+        end
+      end
+    end
+
+    assert_includes error.message, path.to_s
+    assert_predicate path, :exist?,
+      "the message says `git add #{path}` -- that file has to exist by then"
+  end
+
+  # The raise pre-empts the warning: one screenshot with no baseline is one
+  # thing to say, and the raise says it with the fix attached.
+  test "#build_screenshot_assertion does not also warn when fail_if_new raises" do
+    name = "c_#{Time.now.nsec}"
+
+    _out, err = capture_io do
+      SnapDiff::Vcs.stub(:checkout_vcs, false) do
+        SnapDiff.config.stub(:fail_if_new, true) do
+          assert_raises(SnapDiff::ExpectationNotMet) do
+            SnapDiff::ScreenshotMatcher.new(name).build_screenshot_assertion
+          end
+        end
+      end
+    end
+
+    assert_no_match(/No committed baseline/, err)
+  end
 end

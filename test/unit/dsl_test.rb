@@ -21,11 +21,15 @@ class DSLTest < ActiveSupport::TestCase
     FileUtils.remove_entry(@new_root) if @new_root
   end
 
+  # "missing" means missing BASELINE (checkout_vcs false), not an unwritable
+  # screenshot: the capture now runs before the raise (#260), so the name has
+  # to be one ScreenshoterStub can actually produce -- it resolves "a_<digits>"
+  # to the a.png fixture.
   test "#screenshot raises error when screenshot is missing and fail_if_new is true" do
     SnapDiff::Vcs.stub(:checkout_vcs, false) do
       SnapDiff.config.stub(:fail_if_new, true) do
         assert_raises SnapDiff::ExpectationNotMet, match: /No existing screenshot found for/ do
-          screenshot "not_existing_screenshot-name"
+          screenshot "a_#{Time.now.nsec}"
         end
       end
     end

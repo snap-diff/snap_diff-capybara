@@ -34,6 +34,10 @@ module SnapDiff
 
       capture_screenshot(capture_options, comparison_options)
 
+      # AFTER the capture, so the path the message tells the user to
+      # `git add` is one that exists by the time they read it (#260).
+      fail_if_new_screenshot
+
       # Pre-computation: No need to compare without base screenshot
       # NOTE: Consider to return PreValid Assertion Value Object with hard coded valid result
       unless need_to_compare?
@@ -69,22 +73,35 @@ module SnapDiff
       driver_options[:driver] = SnapDiff::Drivers.for(driver_options[:driver])
     end
 
+    # The git checkout that drives #need_to_compare?, plus the half of the
+    # no-baseline reporting that MUST run before the capture: it is the only
+    # moment at which `@snapshot.path` still tells us whether the user had a
+    # PNG sitting there already -- the case that confuses people most.
     def check_base_screenshot
       @snapshot.checkout_base_screenshot
       return if @snapshot.base_path.exist?
-
-      # Runs BEFORE the capture below, which is the only moment at which
-      # `@snapshot.path` still tells us whether the user had a PNG sitting
-      # there already -- the case that confuses people most.
-      if SnapDiff.config.fail_if_new
-        raise SnapDiff::ExpectationNotMet.new(<<~ERROR.chomp, caller)
-          No existing screenshot found for #{@snapshot.path}!
-          To record it: run the test, then `git add #{@snapshot.path}` and commit -- baselines are read from git.
-          To allow new screenshots: SnapDiff.config.fail_if_new = false
-        ERROR
-      end
+      # fail_if_new_screenshot raises after the capture and says the same
+      # thing with the fix attached; two messages for one missing baseline
+      # is one too many.
+      return if SnapDiff.config.fail_if_new
 
       warn_no_committed_baseline
+    end
+
+    # Runs AFTER the capture, so `@snapshot.path` names a file that is
+    # really there and `git add` on it is a command the user can run on this
+    # very test run (#260). Before, the raise came first and the screenshot
+    # was never written -- the instruction was unfollowable in CI, the one
+    # place fail_if_new is on by default.
+    def fail_if_new_screenshot
+      return if @snapshot.base_path.exist?
+      return unless SnapDiff.config.fail_if_new
+
+      raise SnapDiff::ExpectationNotMet.new(<<~ERROR.chomp, caller)
+        No existing screenshot found for #{@snapshot.path}!
+        To record it: `git add #{@snapshot.path}` and commit -- baselines are read from git.
+        To allow new screenshots: SnapDiff.config.fail_if_new = false
+      ERROR
     end
 
     # `fail_if_new` defaults to false off CI, deliberately: a new screenshot

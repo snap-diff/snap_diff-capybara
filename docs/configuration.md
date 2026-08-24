@@ -48,7 +48,7 @@ exception: `Capybara::Screenshot.enabled` is `SnapDiff.config.screenshot_enabled
 `SnapDiff.config.enabled` is taken by `Capybara::Screenshot::Diff.enabled`. See
 [SnapDiff — the canonical API](snapdiff.md) for the full SnapDiff-native surface.
 
-**Note:** `fail_if_new` defaults to `true` in CI environments (when `ENV['CI']` is set). New screenshots are allowed locally but rejected in CI — no configuration needed.
+**Note:** `fail_if_new` defaults to `true` in CI environments (when `ENV['CI']` is set to a non-empty value). New screenshots are allowed locally but rejected in CI — no configuration needed. Setting it yourself outranks the environment: `fail_if_new = false` stays `false` under `CI=true`, and `fail_if_new = true` stays `true` off CI. Assign `nil` to hand it back to the environment.
 
 **Note:** Setting `Capybara::Screenshot.enabled = false` is sufficient to disable all screenshots. There is no need to define no-op modules or monkey-patch the gem.
 
