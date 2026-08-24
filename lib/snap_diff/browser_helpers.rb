@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "snap_diff/region"
+require "snap_diff/reporting"
 
 module SnapDiff
   module BrowserHelpers
@@ -29,9 +30,16 @@ module SnapDiff
         session.driver.browser.manage.window.size != ::Selenium::WebDriver::Dimension.new(*expected_window_size)
     end
 
+    # The one seam that knows, per selector, whether it found anything --
+    # `all_visible_regions_for` is called once per selector and the caller
+    # gets back one flattened list. The run-level tally is fed here (#277b)
+    # rather than in AreaCalculator for exactly that reason: by the time
+    # the regions are concatenated the attribution is gone.
     def self.bounds_for_css(*css_selectors)
       css_selectors.reduce([]) do |regions, selector|
-        regions.concat(all_visible_regions_for(selector))
+        found = all_visible_regions_for(selector)
+        SnapDiff::Reporting.record_selector_use(selector, matched: !found.empty?)
+        regions.concat(found)
       end
     end
 

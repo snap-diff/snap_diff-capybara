@@ -117,6 +117,105 @@ class ReportingCountsTest < ActiveSupport::TestCase
     assert_includes SnapDiff::Reporting.counts_summary, "0 verified, 0 changed"
   end
 
+  # --- selectors that never matched (#277b) -------------------------------
+  #
+  # Removing the implicit wait (#272) took 44% off a real suite, but that
+  # wait was also giving late-loading elements time to appear. A `skip_area`
+  # selector matching nothing now yields an EMPTY mask, silently: nothing
+  # excluded, the unstable region compared, the test flakes.
+  #
+  # #275 declined a per-screenshot warning on purpose -- the gem cannot tell
+  # a typo from a legitimately image-less page, and the legitimate case
+  # would fire on every screenshot. A RUN-level tally has no such problem: a
+  # selector that matched SOMEWHERE is doing its job and is never mentioned;
+  # one that matched NOWHERE, all run, is a typo or a stale selector with
+  # high probability.
+
+  test "a selector that matched nothing all run is named once, at the end" do
+    SnapDiff::Reporting.record_selector_use("picture", matched: false)
+    SnapDiff::Reporting.record_selector_use("picture", matched: false)
+
+    assert_equal "[snap_diff] 1 selector never matched anything in this run: \"picture\". " \
+      "A selector that matches nothing masks nothing -- check for a typo or a stale selector.",
+      SnapDiff::Reporting.never_matched_selectors_summary
+  end
+
+  # The whole reason this is a run-level tally and not a per-screenshot
+  # warning. An `img` selector that misses on the one page without images is
+  # working exactly as intended.
+  test "a selector that matched somewhere is never reported, however often it missed" do
+    SnapDiff::Reporting.record_selector_use("img", matched: false)
+    SnapDiff::Reporting.record_selector_use("img", matched: true)
+    SnapDiff::Reporting.record_selector_use("img", matched: false)
+
+    assert_nil SnapDiff::Reporting.never_matched_selectors_summary
+  end
+
+  test "the order the hits and misses arrive in does not matter" do
+    SnapDiff::Reporting.record_selector_use("img", matched: true)
+    SnapDiff::Reporting.record_selector_use("img", matched: false)
+
+    assert_nil SnapDiff::Reporting.never_matched_selectors_summary
+  end
+
+  # It must not become a line users learn to ignore.
+  test "says nothing when no selector was used at all" do
+    assert_nil SnapDiff::Reporting.never_matched_selectors_summary
+  end
+
+  test "says nothing when every selector matched" do
+    SnapDiff::Reporting.record_selector_use(".footer", matched: true)
+
+    assert_nil SnapDiff::Reporting.never_matched_selectors_summary
+  end
+
+  # Never a selector that was not actually used: the tally is fed at the
+  # point of use, so a configured-but-unreached selector cannot appear.
+  test "names only the selectors that were actually used" do
+    SnapDiff::Reporting.record_selector_use("picture", matched: false)
+
+    summary = SnapDiff::Reporting.never_matched_selectors_summary
+
+    assert_includes summary, "picture"
+    refute_includes summary, "video"
+  end
+
+  test "names every never-matched selector, not just the first" do
+    SnapDiff::Reporting.record_selector_use("picture", matched: false)
+    SnapDiff::Reporting.record_selector_use("video", matched: false)
+
+    summary = SnapDiff::Reporting.never_matched_selectors_summary
+
+    assert_includes summary, "2 selectors never matched"
+    assert_includes summary, "\"picture\", \"video\""
+  end
+
+  test "finalize! prints the never-matched selectors" do
+    SnapDiff::Reporting.record_selector_use("picture", matched: false)
+
+    out, _err = capture_io { SnapDiff::Reporting.finalize! }
+
+    assert_includes out, "never matched anything in this run: \"picture\""
+  end
+
+  test "finalize! stays quiet when every selector matched" do
+    SnapDiff::Reporting.record_selector_use("img", matched: true)
+
+    out, _err = capture_io { SnapDiff::Reporting.finalize! }
+
+    refute_includes out, "never matched"
+  end
+
+  # One surface for per-test isolation, so a tally added later cannot be
+  # forgotten at the call site.
+  test "reset_run_totals! clears the selector tally" do
+    SnapDiff::Reporting.record_selector_use("picture", matched: false)
+
+    SnapDiff::Reporting.reset_run_totals!
+
+    assert_nil SnapDiff::Reporting.never_matched_selectors_summary
+  end
+
   private
 
   def build_passing_assertion(name)

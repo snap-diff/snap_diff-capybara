@@ -491,6 +491,18 @@ behind an unresolved fetch — has to be settled *before* the assertion, or its
 mask will be empty and the unstable region will be compared. Settle it in the
 readiness block described below.
 
+If a selector matched nothing in *every* screenshot of a run, the end-of-run
+summary names it:
+
+```
+[snap_diff] 1 selector never matched anything in this run: "artcile img". A selector that matches nothing masks nothing -- check for a typo or a stale selector.
+```
+
+That is a run-level fact on purpose. Per screenshot the gem cannot tell a typo
+from a page that legitimately has no images, so it says nothing; a selector that
+matched *somewhere* is doing its job and is never mentioned. Nothing is printed
+when every selector matched.
+
 ### The readiness block
 
 `assert_matches_screenshot` and `capture_screenshot` (and the `screenshot` /
