@@ -1,100 +1,84 @@
-# Thread Safety Guide for Parallel Testing
+# Parallel and Thread Safety Guide
 
-This document explains how `snap_diff` behaves under Rails parallel tests with the `:thread` strategy.
+How `snap_diff` behaves when your test suite runs tests concurrently — Rails
+`parallelize`, `parallel_tests`, or CI sharding.
 
-## Overview
+## Summary
 
-`snap_diff` is thread safe for parallel test execution as long as global configuration is set before tests run. Per-thread state is isolated, and shared state is protected where it matters.
+| How the suite runs | Assertions and results | HTML report |
+| --- | --- | --- |
+| Serial | Correct | Written, complete |
+| `parallelize(with: :threads)` — also the default on JRuby | **Correct — fully supported** | Written, complete |
+| `parallelize(workers: N)` — Rails' default, forks | Correct | Not written ([why, and how to get it back](reporters.md#parallel-test-runs)) |
+| One process per worker (`parallel_tests`, RSpec, CI sharding) | Correct | Written, but only the last process to finish is in it |
 
-## Architecture Summary
+Two rules make all of these safe:
 
-### Per-thread Assertion Registry
+1. **Set configuration once, before tests run.** There is one `SnapDiff::Config`
+   per process and nothing guards it.
+2. **Give every screenshot a name no other test uses.** See
+   [Screenshot names must be unique](#screenshot-names-must-be-unique-across-tests)
+   — this one is not cosmetic.
 
-Each thread gets its own `AssertionRegistry` stored in thread-local storage:
+## What is shared, and what protects it
+
+| State | Scope | Protection |
+| --- | --- | --- |
+| `SnapDiff.config` — every setting | One instance per process | None. Set it before tests start; do not mutate it during the run |
+| `SnapDiff.session` — the assertion registry, the new-screenshot list, and the `ScreenshotNamer` (section, group, counter) | Per fiber (`Thread.current[]` is fiber-local) | Isolation — threads never share one |
+| `SnapDiff::SnapManager.instance` and its tracked-snapshot set | Per fiber, memoized; rebuilt when the manager class or screenshot root changes | Isolation |
+| `SnapDiff::Reporting.reporters` | One list per process | A mutex: `register` appends under it, `notify`/`finalize!` iterate a snapshot taken under it |
+| `SnapDiff::Reporters::HTML` totals and failures | One reporter per process | Its own mutex around `record` and `finalize` |
+| Deprecation "warn once" memos | Per process | A mutex. Note "once per process" means once *per fork worker* — expect N copies under forking parallelism |
+| `SnapDiff::Vcs` repository-root memo | One hash per process | None. Values are idempotent (same directory, same answer), so a lost write costs one extra `git rev-parse`, but a plain Hash is not a concurrent container on JRuby or TruffleRuby |
+| Screenshot files: `<name>.png`, `<name>.base.png`, `<name>.attempt_NN.png`, `<name>.diff.png`, … | On disk, shared by every thread and every process | **None — the paths derive from the screenshot name alone** |
+
+## Screenshot names must be unique across tests
+
+Every artifact path is built from the screenshot name and nothing else — not the
+test name, not the worker, not the thread. Two tests using the same name share
+every file involved in the comparison.
+
+Serially that is merely wasteful: the tests overwrite each other in order. In
+parallel it is dangerous. When two concurrently running tests share a name, one
+test's post-pass baseline archiving moves the baseline that the other just
+checked out, and the second test then finds no baseline — so it records the
+screenshot as *new* and **returns without comparing anything**. The test passes
+green having verified nothing. A run of 64 concurrent assertions sharing 8 names
+measured between 18 and 34 comparisons silently skipped this way, alongside a
+scatter of loud errors from the same collisions (truncated PNG reads, `mv`
+failures).
+
+Use `screenshot_section` / `screenshot_group`, or name screenshots after the test,
+so no two tests can collide.
+
+## Configuration
+
+Configure once, in `test_helper.rb` / `spec_helper.rb`, before any test runs:
 
 ```ruby
-def registry
-  Thread.current[:capybara_screenshot_diff_registry] ||= AssertionRegistry.new
+SnapDiff.configure do |config|
+  config.window_size = [1280, 1024]
+  config.save_path = "doc/screenshots"
+  config.tolerance = 0.001
 end
 ```
 
-This prevents cross-thread leakage for assertions and screenshot naming.
+Pass anything that varies per screenshot as an argument instead
+(`assert_matches_screenshot("name", tolerance: 0.02)`) rather than reassigning
+config mid-run: one process's config is shared by all of its threads, so a test
+that mutates it changes what every concurrently running test sees.
 
-### Reporters Snapshot on Notify
+## Test lifecycle
 
-Reporters are notified using a snapshot protected by an eagerly initialized mutex:
-
-```ruby
-@reporters_mutex = Mutex.new
-
-def notify_reporters(assertions)
-  reporters_snapshot = reporters_mutex.synchronize { reporters.dup }
-  reporters_snapshot.each { |reporter| reporter.record(assertions) }
-end
-```
-
-This ensures a stable list while notifying without forcing a global lock around reporter work.
-
-### HTML Reporter Internal Lock
-
-The HTML reporter protects `@failures`, `@total`, and `@finalized` with a mutex so `record` and `finalize` can run safely:
-
-```ruby
-@mutex.synchronize do
-  return if @finalized
-  @total += total
-  @failures.concat(failures)
-end
-```
-
-`@finalized` is set only after `write_report` succeeds, so a failed write can be retried.
-
-### Screenshot Naming Isolation
-
-Each thread gets its own `ScreenshotNamer` via the per-thread registry, so counters, sections, and groups do not collide.
-
-### SnapManager Per Call
-
-`SnapManager` returns a new instance for each call, avoiding shared mutable state.
-
-## Global Configuration
-
-Configuration uses `mattr_accessor` and should be set once before tests run. Do not mutate config during parallel execution.
-
-## Parallel Test Lifecycle
-
-- Setup: per-thread registry is created, config is read
-- Execution: assertions are added to the thread-local registry
-- Teardown: `verify` and `reset` operate on the thread-local registry, reporters are notified
-- Exit: reporters finalize once per process (using mutex-protected snapshot)
-
-## Usage Examples
-
-```ruby
-parallelize(workers: :number_of_processors, with: :threads)
-
-Capybara::Screenshot::Diff.configure do |screenshot, diff|
-  screenshot.window_size = [1280, 1024]
-  screenshot.save_path = "doc/screenshots"
-  diff.tolerance = 0.001
-end
-```
-
-## Do and Do Not
-
-Do:
-- Set config once in test helper
-- Pass per-screenshot options in the call
-
-Do not:
-- Change global config inside tests
-- Manually mutate registry internals
-
-## File System Notes
-
-- Paths are unique per screenshot name and counter
-- `FileUtils.mv` is atomic on most file systems
-- Directory creation uses `mkpath`
+- **Setup** — the fiber-local session is created on first use.
+- **Execution** — assertions accumulate in the fiber's own registry.
+- **Teardown** — `verify` and `reset` act on that fiber's registry, then hand its
+  assertions to the process's reporters.
+- **End of suite** — reporters finalize once per process, from the framework's
+  end-of-suite hook (`Minitest.after_run`, RSpec `after(:suite)`, Cucumber
+  `AfterAll`). Forked workers are the exception: see
+  [Parallel test runs](reporters.md#parallel-test-runs).
 
 ## Load-time thread safety
 
