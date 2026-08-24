@@ -36,17 +36,6 @@ module SnapDiff
       # explicit driver defaulted to chunky_png, which always re-read the file.
       REVALIDATE = Vips.at_least_libvips?(8, 15) ? {revalidate: true}.freeze : {}.freeze
 
-      # libvips caches loader operations keyed on filename + mtime, and mtime
-      # has ONE-SECOND resolution -- so overwriting a path and re-reading it
-      # within the same second hands back the PREVIOUS image. This gem does
-      # exactly that: the screenshoter writes `<name>.png`,
-      # `checkout_base_screenshot` writes `<name>.base.png` from VCS, and the
-      # comparison then reads both.
-      #
-      # `revalidate: true` tells the loader to skip the cached result (libvips
-      # 8.15+).
-      REVALIDATE = Vips.at_least_libvips?(8, 15) ? {revalidate: true}.freeze : {}.freeze
-
       def find_difference_region(comparison)
         new_image, base_image, options = comparison.new_image, comparison.base_image, comparison.options
 
