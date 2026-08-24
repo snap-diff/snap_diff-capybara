@@ -8,14 +8,21 @@ require_relative "../dsl"
 require "snap_diff/screenshot_assertion"
 require "snap_diff/reporting"
 
-used_deprecated_entrypoint = caller.any? do |path|
-  path.include?("capybara-screenshot-diff.rb") || path.include?("capybara/screenshot/diff.rb")
-end
-
-if used_deprecated_entrypoint
+# Only the v1 NAMESPACE entry is a deprecated choice: requiring
+# "capybara/screenshot/diff" is a line in the user's own file, and changing
+# it is the fix. The gem-NAME file (lib/capybara-screenshot-diff.rb) is not:
+# `Bundler.require` requires the gem's own name, so it loads for everyone
+# with the gem in their Gemfile whatever they require explicitly -- keying
+# the warning off it shouted at every user on every run, with no action
+# available to silence it. See test/legacy/minitest_activation_warning_test.rb.
+#
+# Silenceable through the documented switch (SnapDiff.silence_deprecations /
+# SNAP_DIFF_SILENCE_DEPRECATIONS): it was a bare Kernel#warn, so the one knob
+# the docs offer did not reach it.
+if !SnapDiff.silence_deprecations? && caller.any? { |path| path.include?("capybara/screenshot/diff.rb") }
   warn <<~MSG
-    [DEPRECATION] The default activation of `capybara_screenshot_diff/minitest` will be removed.
-                  Please `require "capybara_screenshot_diff/minitest"` explicitly.
+    [DEPRECATION] `require "capybara/screenshot/diff"` activates the Minitest assertions for you; that will be removed.
+                  Please `require "snap_diff/integrations/minitest"` explicitly.
   MSG
 end
 

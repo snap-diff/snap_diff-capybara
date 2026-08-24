@@ -2,6 +2,7 @@
 
 require "test_helper"
 require "unit/support_load_probe_test" # single source of truth for the subprocess probe
+require "unit/gem_name_entry_point_test" # single source of truth for the minitest-less probe
 
 # LEGACY SURFACE (test/legacy/, see the Rakefile).
 #
@@ -276,6 +277,33 @@ class LegacyEntryPointProbeTest < ActiveSupport::TestCase
     assert_includes out, "docs/UPGRADING.md"
     refute_includes out, "Reference `SnapDiff::NoSuchThing` directly",
       "must not advise referencing a name we just failed to load"
+  end
+
+  # The v1 gem-name file is the same `Bundler.require` door under the old
+  # name, and it had the same crash: an RSpec-only bundle died at boot on
+  # `cannot load such file -- minitest`, which is not a runtime dependency.
+  # Canonical half (and the probe itself) in
+  # test/unit/gem_name_entry_point_test.rb.
+  test "the v1 gem-name entry point loads in a bundle without minitest" do
+    out, err, status = GemNameEntryPointTest.probe(<<~'RUBY', minitest: false)
+      require "capybara-screenshot-diff"
+      puts "DSL:#{!defined?(CapybaraScreenshotDiff::DSL).nil?}"
+      puts "ASSERTIONS:#{!defined?(CapybaraScreenshotDiff::Minitest::Assertions).nil?}"
+    RUBY
+
+    assert_predicate status, :success?, "boot must not fail without minitest:\n#{out}\n#{err}"
+    assert_includes out, "DSL:true", "the v1 surface must still load"
+    assert_includes out, "ASSERTIONS:false", "the Minitest assertions cannot be live without minitest"
+  end
+
+  test "the v1 gem-name entry point still auto-activates the Minitest assertions when minitest is present" do
+    out, err, status = GemNameEntryPointTest.probe(<<~'RUBY')
+      require "capybara-screenshot-diff"
+      puts "ASSERTIONS:#{!defined?(CapybaraScreenshotDiff::Minitest::Assertions).nil?}"
+    RUBY
+
+    assert_predicate status, :success?, "#{out}\n#{err}"
+    assert_equal "ASSERTIONS:true\n", out
   end
 
   private

@@ -113,6 +113,10 @@ class ActiveSupport::TestCase
     Dir.chdir(@_orig_cwd) if @_orig_cwd && Dir.pwd != @_orig_cwd
     Capybara.app = @_orig_capybara_app if @_orig_capybara_app
     SnapDiff::SnapManager.cleanup! unless persist_comparisons?
+    # Process-global, like the reporter list: without this the whole suite's
+    # baseline-less screenshots pile up and get listed in one enormous line
+    # at the end of `rake test`.
+    SnapDiff::Reporting.reset_missing_baselines!
   end
 
   def persist_comparisons?

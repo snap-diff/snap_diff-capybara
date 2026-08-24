@@ -75,6 +75,33 @@ class ReporterInterplayTest < ActiveSupport::TestCase
     assert_empty @spy.recorded
   end
 
+  # The reporters count what WAS compared, so their summary is silent about
+  # the screenshots that passed without being looked at. The last line of the
+  # run has to name them, or a run full of false greens ends on
+  # "no failures".
+  test "finalize! names the screenshots that had no committed baseline" do
+    # ScreenshoterStub resolves "c_<digits>" to the c.png fixture.
+    name = "c_#{Time.now.nsec}"
+
+    capture_io do
+      SnapDiff::Vcs.stub(:checkout_vcs, false) do
+        SnapDiff::ScreenshotMatcher.new(name).build_screenshot_assertion
+      end
+    end
+
+    out, _err = capture_io { SnapDiff::Reporting.finalize! }
+
+    assert_match(/no committed baseline/i, out)
+    assert_match(/NOT compared/, out)
+    assert_includes out, name
+  end
+
+  test "finalize! says nothing about baselines when every screenshot had one" do
+    out, _err = capture_io { SnapDiff::Reporting.finalize! }
+
+    assert_no_match(/no committed baseline/i, out)
+  end
+
   test "finalize_reporters! finalizes each reporter and prints its summary" do
     assert_output(/spy reporter summary/) do
       SnapDiff::Reporting.finalize!

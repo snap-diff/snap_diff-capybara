@@ -88,7 +88,8 @@ class CanonicalSuiteHasNoLegacyRefsTest < ActiveSupport::TestCase
     # tree -- it cannot do that without spelling the doomed names.
     "unit/legacy_deletion_test.rb" => [
       '["snap_diff.rb", %(require "snap_diff/legacy_shims"), nil],',
-      '%(require "capybara_screenshot_diff/minitest"),',
+      '%(require "capybara_screenshot_diff/minitest" if defined?(::Minitest)),',
+      '%(require "capybara_screenshot_diff"),',
       'gate << "SnapDiff.start is still defined" if SnapDiff.respond_to?(:start)',
       'gate << "CapybaraScreenshotDiff is still defined" if defined?(CapybaraScreenshotDiff)',
       'assert_includes failure, "SnapDiff.start is still defined"'

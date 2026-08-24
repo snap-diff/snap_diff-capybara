@@ -7,6 +7,7 @@ require_relative "browser_helpers"
 require_relative "capture/viewport"
 require_relative "vcs"
 require_relative "area_calculator"
+require_relative "reporting"
 
 module SnapDiff
   class ScreenshotMatcher
@@ -66,14 +67,33 @@ module SnapDiff
 
     def check_base_screenshot
       @snapshot.checkout_base_screenshot
+      return if @snapshot.base_path.exist?
 
-      if SnapDiff.config.fail_if_new && !@snapshot.base_path.exist?
+      # Runs BEFORE the capture below, which is the only moment at which
+      # `@snapshot.path` still tells us whether the user had a PNG sitting
+      # there already -- the case that confuses people most.
+      if SnapDiff.config.fail_if_new
         raise SnapDiff::ExpectationNotMet.new(<<~ERROR.chomp, caller)
-          No existing screenshot found for #{@snapshot.base_path}!
-          To record baselines: RECORD_SCREENSHOTS=1 bundle exec rake test
+          No existing screenshot found for #{@snapshot.path}!
+          To record it: run the test, then `git add #{@snapshot.path}` and commit -- baselines are read from git.
           To allow new screenshots: SnapDiff.config.fail_if_new = false
         ERROR
       end
+
+      warn_no_committed_baseline
+    end
+
+    # `fail_if_new` defaults to false off CI, deliberately: a new screenshot
+    # must not break a local run. The cost is that nothing is compared and
+    # the test passes whatever the page looks like, while the capture
+    # overwrites the file on disk -- a green run that proves nothing. Say so
+    # once per screenshot, and name what to do about it.
+    def warn_no_committed_baseline
+      return unless SnapDiff::Reporting.record_missing_baseline(screenshot_full_name)
+
+      already_there = @snapshot.path.exist? ? " (the file already there is not a baseline until it is committed)" : ""
+      warn "[snap_diff] No committed baseline for #{@snapshot.path}#{already_there} -- nothing was compared. " \
+        "Commit it to enable comparison."
     end
 
     def capture_screenshot(capture_options, comparison_options)
