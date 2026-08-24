@@ -27,6 +27,7 @@ jobs:
           cache-apt-packages: true
 
       - name: Verify version
+        id: verify
         run: |
           GEM_VERSION="${{ github.event.inputs.version }}"
           CODE_VERSION=$(ruby -I lib -r capybara/screenshot/diff/version -e "puts Capybara::Screenshot::Diff::VERSION")
@@ -34,6 +35,15 @@ jobs:
             echo "Version mismatch: input=$GEM_VERSION code=$CODE_VERSION"
             exit 1
           fi
+          # Decide Pre-release here rather than letting the release action infer
+          # it: v2.0.0.beta4 was published as a FULL release and took the Latest
+          # badge off 1.15.1, while beta1-3 came out correctly under the SAME
+          # action version -- so the inference is unreliable, not merely absent.
+          # Gem::Version is the authority that already decides whether `~> 2.0`
+          # resolves this version, so the badge and the resolver cannot disagree.
+          PRERELEASE=$(ruby -rrubygems -e 'print Gem::Version.new(ARGV[0]).prerelease?' "$GEM_VERSION")
+          echo "prerelease=$PRERELEASE" >> "$GITHUB_OUTPUT"
+          echo "Releasing $GEM_VERSION (prerelease=$PRERELEASE)"
 
       - name: Test
         run: bundle exec rake test:unit
@@ -87,6 +97,8 @@ jobs:
         with:
           tag_name: "v${{ github.event.inputs.version }}"
           name: "v${{ github.event.inputs.version }}"
+          prerelease: ${{ steps.verify.outputs.prerelease }}
+          make_latest: ${{ steps.verify.outputs.prerelease == 'false' }}
           body: |
             ## What's Changed
 
