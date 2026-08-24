@@ -5,6 +5,13 @@ require_relative "os"
 
 module SnapDiff
   module Vcs
+    # `-C <dir>` sets the working directory, but GIT_DIR/GIT_WORK_TREE OVERRIDE
+    # it -- so a suite launched from a git hook (which exports both) reads the
+    # WRONG repository. Every baseline lookup then fails, and because
+    # `fail_if_new` is false locally, screenshots are recorded as new and the
+    # tests PASS. Scrubbing them makes `-C` mean what this code already assumes.
+    GIT_ENV = {"GIT_DIR" => nil, "GIT_WORK_TREE" => nil, "GIT_INDEX_FILE" => nil}.freeze
+
     @git_roots = {}
     @git_roots_lock = Mutex.new
 
@@ -17,13 +24,13 @@ module SnapDiff
 
       if SnapDiff.config.use_lfs
         tmp_path = "#{checkout_path}.tmp"
-        success = system("git", "-C", root_path, "show", "HEAD:#{vcs_file_path}", out: tmp_path, err: File::NULL)
+        success = system(GIT_ENV, "git", "-C", root_path, "show", "HEAD:#{vcs_file_path}", out: tmp_path, err: File::NULL)
         if success
-          system("git", "-C", root_path, "lfs", "smudge", in: tmp_path, out: checkout_path.to_s, err: File::NULL)
+          system(GIT_ENV, "git", "-C", root_path, "lfs", "smudge", in: tmp_path, out: checkout_path.to_s, err: File::NULL)
         end
         File.delete(tmp_path) if File.exist?(tmp_path)
       else
-        success = system("git", "-C", root_path, "show", "HEAD:#{vcs_file_path}", out: checkout_path.to_s, err: File::NULL)
+        success = system(GIT_ENV, "git", "-C", root_path, "show", "HEAD:#{vcs_file_path}", out: checkout_path.to_s, err: File::NULL)
       end
 
       unless success
@@ -53,7 +60,7 @@ module SnapDiff
       @git_roots_lock.synchronize do
         next @git_roots[root_path] if @git_roots.key?(root_path)
 
-        git_root, _, status = Open3.capture3("git", "-C", root_path, "rev-parse", "--show-toplevel")
+        git_root, _, status = Open3.capture3(GIT_ENV, "git", "-C", root_path, "rev-parse", "--show-toplevel")
         @git_roots[root_path] = status.success? && git_root.chomp
       end
     end

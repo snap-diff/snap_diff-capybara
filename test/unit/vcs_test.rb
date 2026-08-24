@@ -55,6 +55,35 @@ class VcsTest < ActiveSupport::TestCase
     assert_equal 1, calls
   end
 
+  # A git hook (pre-push, pre-commit) exports GIT_DIR, and GIT_DIR OVERRIDES
+  # `-C`. So `git -C <root> show HEAD:<path>` silently reads the wrong
+  # repository, the baseline lookup fails, and -- because fail_if_new defaults
+  # to false locally -- the screenshot is recorded as new and the test PASSES.
+  # Verified by hand: `GIT_DIR=<other> git -C <repo> show HEAD:f.txt` =>
+  # "fatal: path 'f.txt' exists on disk, but not in 'HEAD'".
+  test "#checkout_vcs ignores an inherited GIT_DIR and honours its own root" do
+    screenshot_path = file_fixture("images/a.png")
+    base_screenshot_path = Pathname.new(@base_screenshot.path)
+    elsewhere = @tmp_dir / "unrelated_repo_#{Time.now.nsec}"
+    FileUtils.mkdir_p(elsewhere)
+    Open3.capture3("git", "-C", elsewhere.to_s, "init", "--quiet")
+
+    with_env("GIT_DIR" => (elsewhere / ".git").to_s) do
+      SnapDiff::Vcs.checkout_vcs(PROJECT_ROOT, screenshot_path, base_screenshot_path)
+    end
+
+    assert base_screenshot_path.exist?, "an inherited GIT_DIR must not redirect the baseline lookup"
+    assert_equal screenshot_path.size, base_screenshot_path.size
+  end
+
+  def with_env(vars)
+    previous = vars.keys.to_h { |k| [k, ENV[k]] }
+    vars.each { |k, v| ENV[k] = v }
+    yield
+  ensure
+    previous.each { |k, v| ENV[k] = v }
+  end
+
   # Concurrent callers must share the cached answer, not each spawn their own
   # git. MRI releases the GVL for the duration of `Open3.capture3`, so without
   # synchronization every thread misses `key?` before any thread writes --
