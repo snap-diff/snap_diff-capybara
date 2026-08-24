@@ -76,9 +76,7 @@ module SnapDiff
     #
     # @note This method will raise ArgumentError if either image file is missing.
     def quick_equal?
-      if base_image_path.size == image_path.size
-        return true if files_identical?(base_image_path, image_path)
-      end
+      return true if identical_files?
 
       result, difference = find_difference(quick_mode: true)
       self.difference = difference
@@ -141,6 +139,13 @@ module SnapDiff
     def find_difference(quick_mode: false)
       # Validate images exist
       return build_null_difference("missing_image") unless images_exist?
+
+      # Step 1 of the layered strategy documented on this class: byte-identical
+      # files cannot have different pixels. quick_equal? has always checked
+      # this; the full path did not, and paid a decode of BOTH PNGs (11ms at
+      # 1440x900, 25ms at 2880x1800) to reach the same "no difference" answer
+      # on every screenshot that matches its baseline byte for byte.
+      return build_null_difference if !quick_mode && identical_files?
 
       # Create comparison with preprocessed images
       comparison = load_comparison(base_image_path, image_path, driver_options)
@@ -221,6 +226,12 @@ module SnapDiff
     # Check if both images exist
     def images_exist?
       base_image_path.exist? && image_path.exist?
+    end
+
+    # Are the two screenshots the same bytes? Sizes first: a stat each rules
+    # out most pairs without reading either file.
+    def identical_files?
+      base_image_path.size == image_path.size && files_identical?(base_image_path, image_path)
     end
 
     # Check if files are identical by content
