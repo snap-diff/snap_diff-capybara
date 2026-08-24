@@ -19,6 +19,8 @@ module SnapDiff
     @mutex = Mutex.new
     @missing_baselines = Set.new
     @rerecorded_baselines = Set.new
+    @matched_selectors = Set.new
+    @unmatched_selectors = Set.new
     @verified = 0
     @changed = 0
 
@@ -57,6 +59,21 @@ module SnapDiff
         @mutex.synchronize { @missing_baselines.size }
       end
 
+      # Remembers whether a CSS selector (`skip_area`, `crop`) found
+      # anything the one time it was resolved. Fed at the point of use, so
+      # a selector that was configured but never reached cannot be named.
+      #
+      # Two sets rather than a counter: the question the summary answers is
+      # "did this selector match ANYWHERE in the run", and under
+      # fork-parallel the hits and the misses arrive from different
+      # processes. Subtracting at read time is the only shape that survives
+      # that merge (#266).
+      def record_selector_use(selector, matched:)
+        @mutex.synchronize do
+          (matched ? @matched_selectors : @unmatched_selectors) << selector
+        end
+      end
+
       # @api private
       # Per-test isolation for this gem's own suite: everything {finalize!}
       # reports, cleared in one call. One surface rather than one reset per
@@ -65,6 +82,8 @@ module SnapDiff
         @mutex.synchronize do
           @missing_baselines.clear
           @rerecorded_baselines.clear
+          @matched_selectors.clear
+          @unmatched_selectors.clear
           @verified = 0
           @changed = 0
         end
@@ -199,6 +218,10 @@ module SnapDiff
         if (msg = rerecorded_baselines_summary)
           $stdout.puts msg
         end
+
+        if (msg = never_matched_selectors_summary)
+          $stdout.puts msg
+        end
       end
 
       # --- fork-parallel reports (issue #258) ---------------------------
@@ -249,6 +272,11 @@ module SnapDiff
         payload = {
           "missing_baselines" => @mutex.synchronize { @missing_baselines.to_a },
           "rerecorded_baselines" => @mutex.synchronize { @rerecorded_baselines.to_a },
+          # Both halves, not the subtraction: `img` may match in this worker
+          # and miss in the next, and only the parent that merged every
+          # fragment can tell whether it matched anywhere in the run.
+          "matched_selectors" => @mutex.synchronize { @matched_selectors.to_a },
+          "unmatched_selectors" => @mutex.synchronize { @unmatched_selectors.to_a },
           "verified" => @verified,
           "changed" => @changed,
           "reporters" => @mutex.synchronize { @reporters.dup }
@@ -283,6 +311,8 @@ module SnapDiff
           @mutex.synchronize do
             payload["missing_baselines"].each { |name| @missing_baselines << name }
             payload.fetch("rerecorded_baselines", []).each { |name| @rerecorded_baselines << name }
+            payload.fetch("matched_selectors", []).each { |selector| @matched_selectors << selector }
+            payload.fetch("unmatched_selectors", []).each { |selector| @unmatched_selectors << selector }
             @verified += payload.fetch("verified", 0)
             @changed += payload.fetch("changed", 0)
           end
@@ -326,6 +356,32 @@ module SnapDiff
         label = (names.size == 1) ? "1 screenshot" : "#{names.size} screenshots"
         "[snap_diff] record: :all re-recorded #{label} WITHOUT comparing: #{names.join(", ")}. " \
           "Review the result before committing -- an unintended change is accepted just as silently."
+      end
+
+      # The selectors that matched nothing in EVERY screenshot of the run.
+      #
+      # Since #272 a `skip_area` selector is resolved without waiting: it
+      # masks what is on the page at assertion time, and one that matches
+      # nothing produces an empty mask -- the unstable region is compared
+      # and the test flakes, silently. #275 declined to warn per screenshot
+      # because the gem cannot tell a typo from a legitimately image-less
+      # page, and the legitimate case would fire on every screenshot.
+      #
+      # A run-level tally has no such problem. A selector that matched
+      # SOMEWHERE is doing its job and is never mentioned; one that matched
+      # NOWHERE, all run, is a typo or a stale selector with high
+      # probability. Silent when the set is empty, on purpose: a line that
+      # prints on every run is a line users learn to skip.
+      #
+      # @return [String, nil] nil when every selector used matched somewhere
+      def never_matched_selectors_summary
+        names = @mutex.synchronize { (@unmatched_selectors - @matched_selectors).to_a }
+        return if names.empty?
+
+        label = (names.size == 1) ? "1 selector" : "#{names.size} selectors"
+        "[snap_diff] #{label} never matched anything in this run: " \
+          "#{names.map(&:inspect).join(", ")}. " \
+          "A selector that matches nothing masks nothing -- check for a typo or a stale selector."
       end
     end
   end

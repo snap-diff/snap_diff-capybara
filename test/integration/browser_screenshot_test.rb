@@ -236,6 +236,23 @@ class BrowserScreenshotTest < SystemTestCase
     assert_equal 1, SnapDiff::BrowserHelpers.bounds_for_css("img").size
   end
 
+  # The other half of the #272 trade, against a REAL browser (#277b). The
+  # implicit wait was accidentally giving late-loading elements time to
+  # appear; without it an unmatched selector yields an empty mask and says
+  # nothing. Per screenshot the gem cannot tell a typo from a legitimately
+  # image-less page -- but across a whole run it can, and this is the seam
+  # where the answer is known per selector.
+  test "resolving selectors feeds the run-level never-matched tally" do
+    visit "/"
+
+    SnapDiff::BrowserHelpers.bounds_for_css("img", "picture")
+
+    summary = SnapDiff::Reporting.never_matched_selectors_summary
+
+    assert_includes summary, "picture"
+    refute_includes summary, "img", "a selector that matched was accused of never matching"
+  end
+
   test "rect_for for multiple elements returns first visible element" do
     visit "/index.html"
 

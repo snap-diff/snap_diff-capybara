@@ -78,6 +78,33 @@ class ParallelReportMergeTest < ActiveSupport::TestCase
     assert_equal "[snap_diff] Report: #{@output_path}", @reporter.summary
   end
 
+  # The selector tally (#277b) is a RUN-level fact, and under fork-parallel
+  # no single worker sees the run. The case that matters is the split
+  # verdict: `img` matched in one worker and missed in another, so it is
+  # doing its job and must NOT be named -- even though the worker that
+  # missed reports it as unmatched. A merge that carried only the misses
+  # would accuse it.
+  test "a selector that matched in ANY worker is not accused after the merge" do
+    fork_worker do
+      SnapDiff::Reporting.record_selector_use("img", matched: true)
+      SnapDiff::Reporting.record_selector_use("picture", matched: false)
+    end
+    fork_worker do
+      SnapDiff::Reporting.record_selector_use("img", matched: false)
+      SnapDiff::Reporting.record_selector_use("picture", matched: false)
+    end
+
+    assert_nil SnapDiff::Reporting.never_matched_selectors_summary
+
+    SnapDiff::Reporting.merge_parallel_fragments!
+
+    summary = SnapDiff::Reporting.never_matched_selectors_summary
+
+    assert_includes summary, "1 selector never matched"
+    assert_includes summary, "picture"
+    refute_includes summary, "img"
+  end
+
   test "the parent removes the fragments it merged" do
     fork_worker { @reporter.record([build_failing_assertion("cleaned")]) }
 

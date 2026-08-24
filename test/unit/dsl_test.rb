@@ -273,6 +273,147 @@ class DSLTest < ActiveSupport::TestCase
     end
   end
 
+  # --- the optional readiness block (#277a) -------------------------------
+  #
+  # Its justification is NOT ergonomics. A block can do nothing a line above
+  # the call cannot -- while screenshots are ON. Its whole value is what
+  # happens when they are OFF: both DSL methods return at the `active?`
+  # guard, so a preceding `preload_all_images` (three browser round-trips in
+  # a real consumer: scroll to bottom, an `assert_text` with its own wait,
+  # scroll back) still runs and still costs, while the block does not run at
+  # all. That is what makes "turn visual tests off" actually free rather
+  # than free-except-for-the-scaffolding.
+  #
+  # The negative guard asserts a real side effect -- a counter the block
+  # increments -- not a stub's call count: a stub that is never called and a
+  # stub that was never wired up look identical.
+
+  test "#assert_matches_screenshot does not run the readiness block when screenshots are disabled" do
+    ran = 0
+    SnapDiff.config.screenshot_enabled = false
+
+    result = assert_matches_screenshot("c") { ran += 1 }
+
+    assert_equal false, result
+    assert_equal 0, ran, "the readiness block ran even though screenshots are disabled"
+  end
+
+  test "#capture_screenshot does not run the readiness block when screenshots are disabled" do
+    ran = 0
+    SnapDiff.config.screenshot_enabled = false
+
+    result = capture_screenshot("c") { ran += 1 }
+
+    assert_equal false, result
+    assert_equal 0, ran, "the readiness block ran even though screenshots are disabled"
+  end
+
+  test "#screenshot does not run the readiness block when screenshots are disabled" do
+    ran = 0
+    SnapDiff.config.screenshot_enabled = false
+
+    assert_not screenshot("c") { ran += 1 }
+    assert_not screenshot("c", compare: false) { ran += 1 }
+
+    assert_equal 0, ran, "the readiness block ran even though screenshots are disabled"
+  end
+
+  # Once, and before the capture. Ordering is asserted on the artifact the
+  # capture produces rather than on a call count: the block looks for the
+  # screenshot file, which cannot be there yet if the block really runs
+  # first.
+  test "#assert_matches_screenshot runs the readiness block exactly once, before the capture" do
+    SnapDiff::Vcs.stub(:checkout_vcs, true) do
+      snap = create_snapshot_for(:a, :c)
+      snap.path.delete
+      runs = 0
+      captured_before_block = nil
+
+      assert_matches_screenshot(snap.full_name) do
+        runs += 1
+        captured_before_block = snap.path.exist?
+      end
+
+      assert_equal 1, runs
+      assert_equal false, captured_before_block, "the readiness block ran AFTER the capture"
+      assert_predicate snap.path, :exist?
+    end
+  end
+
+  test "#capture_screenshot runs the readiness block exactly once, before the capture" do
+    SnapDiff::Vcs.stub(:checkout_vcs, true) do
+      snap = create_snapshot_for(:a, :c)
+      snap.path.delete
+      runs = 0
+      captured_before_block = nil
+
+      capture_screenshot(snap.full_name) do
+        runs += 1
+        captured_before_block = snap.path.exist?
+      end
+
+      assert_equal 1, runs
+      assert_equal false, captured_before_block, "the readiness block ran AFTER the capture"
+      assert_predicate snap.path, :exist?
+    end
+  end
+
+  # Once for the whole assertion, NOT once per stability attempt. If a
+  # per-attempt need ever appears that is a separate decision, not a silent
+  # behaviour change.
+  test "#assert_matches_screenshot runs the readiness block once, not once per stability attempt" do
+    SnapDiff::Vcs.stub(:checkout_vcs, true) do
+      snap = create_snapshot_for(:a)
+      runs = 0
+
+      assert_matches_screenshot(snap.full_name, stability_time_limit: 0.01, wait: 1) { runs += 1 }
+
+      assert_equal 1, runs
+    end
+  end
+
+  # The block is the user's own code. A raise inside it is the user's error
+  # and must arrive unwrapped, at its own class, with its own message.
+  test "#assert_matches_screenshot lets an error from the readiness block through unchanged" do
+    error = assert_raises(ArgumentError) do
+      assert_matches_screenshot("c") { raise ArgumentError, "readiness blew up" }
+    end
+
+    assert_equal "readiness blew up", error.message
+  end
+
+  test "#capture_screenshot lets an error from the readiness block through unchanged" do
+    error = assert_raises(ArgumentError) do
+      capture_screenshot("c") { raise ArgumentError, "readiness blew up" }
+    end
+
+    assert_equal "readiness blew up", error.message
+  end
+
+  # `screenshot` and `assert_no_screenshot_changes` are pure delegators. A
+  # block silently dropped on the way through is exactly the class of no-op
+  # this release has spent its time eliminating.
+  test "#screenshot forwards the readiness block down both of its branches" do
+    SnapDiff::Vcs.stub(:checkout_vcs, true) do
+      runs = 0
+
+      screenshot(create_snapshot_for(:a, :c).full_name) { runs += 1 }
+      screenshot(create_snapshot_for(:a, :c).full_name, compare: false) { runs += 1 }
+
+      assert_equal 2, runs
+    end
+  end
+
+  test "#assert_no_screenshot_changes forwards the readiness block" do
+    SnapDiff::Vcs.stub(:checkout_vcs, true) do
+      runs = 0
+
+      assert_no_screenshot_changes(create_snapshot_for(:a, :c).full_name) { runs += 1 }
+
+      assert_equal 1, runs
+    end
+  end
+
   private
 
   # Every removal subject the channel is asked to announce while the DSL

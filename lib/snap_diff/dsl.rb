@@ -64,12 +64,26 @@ module SnapDiff
     # @option options [Numeric] :shift_distance_limit Maximum allowed shift distance for pixels.
     # @option options [Numeric] :area_size_limit Maximum allowed difference area size in pixels.
     # @option options [Symbol] :driver (:auto) The image processing driver to use (:auto, :chunky_png, :vips).
+    # @yield Optional readiness block: work that must happen before the page
+    #   is captured -- settling lazy-loaded images, `document.fonts.ready`,
+    #   waiting on a widget. Runs AFTER the `active?` guard and before the
+    #   capture, exactly once per assertion (not once per stability
+    #   attempt), and an error raised inside it propagates unchanged.
+    #
+    #   The point is not ergonomics -- while screenshots are on, the block
+    #   does nothing a line above the call could not. The point is what
+    #   happens when they are OFF: this method returns at the guard above,
+    #   so a preceding `preload_all_images` still costs its browser
+    #   round-trips while the block costs nothing. Readiness work belongs
+    #   inside the same switch as the capture it serves.
     # @return [Boolean] True if the screenshot was successfully captured and processed.
     # @raise [SnapDiff::ExpectationNotMet] If comparison fails and immediate validation is enabled.
     # @raise [SnapDiff::UnstableImage] If the image comparison is unstable.
     # @raise [SnapDiff::WindowSizeMismatchError] If the window size doesn't match expectations.
     def assert_matches_screenshot(name, skip_stack_frames: 0, **options)
       return false unless SnapDiff.config.active?
+
+      yield if block_given?
 
       # Get the full name with section and group information
       full_name = SnapDiff.session.screenshot_namer.full_name(name)
@@ -96,22 +110,28 @@ module SnapDiff
 
     # Convenience wrapper around {#assert_matches_screenshot} and {#capture_screenshot}.
     # @param compare [Boolean] When false, only captures the screenshot without comparing it to a baseline.
+    # @yield Forwarded to whichever of the two it delegates to. A delegator
+    #   that swallowed the block would give the user a readiness block that
+    #   silently never runs.
     # @see #assert_matches_screenshot
     # @see #capture_screenshot
-    def screenshot(name, skip_stack_frames: 0, compare: true, **options)
+    def screenshot(name, skip_stack_frames: 0, compare: true, **options, &readiness)
       if compare
-        assert_matches_screenshot(name, skip_stack_frames: skip_stack_frames + 1, **options)
+        assert_matches_screenshot(name, skip_stack_frames: skip_stack_frames + 1, **options, &readiness)
       else
-        capture_screenshot(name, **options)
+        capture_screenshot(name, **options, &readiness)
       end
     end
 
     # Captures a screenshot without comparing it to a baseline.
     # @param name [String] The base name of the screenshot, used to generate the filename.
     # @param options [Hash] Additional options for taking the screenshot. See {#assert_matches_screenshot}.
+    # @yield Optional readiness block. See {#assert_matches_screenshot}.
     # @return [Boolean] True if the screenshot was successfully captured.
     def capture_screenshot(name, **options)
       return false unless SnapDiff.config.active?
+
+      yield if block_given?
 
       full_name = SnapDiff.session.screenshot_namer.full_name(name)
       SnapDiff::ScreenshotMatcher.new(full_name, options).capture
@@ -122,8 +142,8 @@ module SnapDiff
     # Asserts the current page has no visual changes from the baseline.
     # Override in your base test class to add project-specific behavior
     # (e.g., waiting for Turbo, default skip areas).
-    def assert_no_screenshot_changes(name, skip_stack_frames: 0, **opts)
-      assert_matches_screenshot(name, skip_stack_frames: skip_stack_frames + 1, **opts)
+    def assert_no_screenshot_changes(name, skip_stack_frames: 0, **opts, &readiness)
+      assert_matches_screenshot(name, skip_stack_frames: skip_stack_frames + 1, **opts, &readiness)
     end
   end
 end
