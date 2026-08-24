@@ -50,6 +50,11 @@ site:
 (constant); use `SnapDiff::Comparison` instead. (called from test/test_helper.rb:12)
 ```
 
+> **On a 2.0.0 prerelease? Upgrade, do not trust its silence.** In `2.0.0.beta3` the
+> deprecation channel was incomplete: a v1-only suite got **no** warnings at all, and
+> the driver-half removal warnings did not exist yet. Silence on a beta is not evidence
+> that you are migrated.
+
 Requiring the gem, the DSL, settings accessors and the eagerly-defined constants
 (the error classes, `::VERSION`, `Os`, `Region`, `Reporters::Default`,
 `LOADED_DRIVERS`, `AVAILABLE_DRIVERS`) are **silent by design** —
@@ -146,7 +151,18 @@ both; one backend needs no selection. The legacy `LOADED_DRIVERS` /
   comparison previously raised `NameError` there
 - `require "snap_diff/integrations/…"` loads the full `SnapDiff` surface, and
   `gem "snap_diff-capybara"` works with `Bundler.require`
+- **Failure messages no longer dump a libvips pointer struct.** The comparison
+  metadata carried the raw `diff_mask` image into the error text
+  (`"diff_mask":{"ptr":{}…}`); it is excluded now, leaving the metrics
 - Reporter failure warnings use one brand and name the failing reporter class
+
+### Known limitations
+- **Fork-based parallel tests produce no HTML report.** Under Minitest's forked
+  parallel executor (`parallelize(workers: N)`, the Rails default), each worker
+  accumulates its assertions in its own process, while the report is written from
+  `Minitest.after_run` in the parent — which never sees them. Pass/fail is correct
+  and the diff image artifacts are still written; only the HTML report is missing.
+  Fixed in 2.1
 
 ### Unchanged
 - Ruby 3.2+, Capybara `>= 2, < 4`, the `screenshot` / `assert_matches_screenshot`

@@ -15,7 +15,7 @@ Stop shipping UI bugs. Take screenshots in your Capybara tests, commit baselines
 >
 > **2.1 removes what 2.0 warns about**: the legacy namespaces, the ChunkyPNG driver, `shift_distance_limit`, the `driver:` setting and the driver abstraction — libvips becomes the only backend. There is no 3.0. Writing new code? Start from [SnapDiff — the canonical API](docs/snapdiff.md), which uses canonical names only. Migrating an existing suite? See the [upgrade guide](docs/UPGRADING.md).
 >
-> **Two gem names, one gem.** `capybara-screenshot-diff` is the name to install. The same content is also published as [`snap_diff-capybara`](https://rubygems.org/gems/snap_diff-capybara) — identical version, forward-looking name matching this repository — so that name is reserved and resolvable. **Install one, never both**: with both in a Gemfile the gem raises `SnapDiff::DualInstallError` at require time.
+> **Two gem names, one gem — install `capybara-screenshot-diff`.** From 2.0.0 on, the identical content is also published as [`snap_diff-capybara`](https://rubygems.org/gems/snap_diff-capybara), the forward-looking name matching this repository. Do not reach for it yet: that name's only non-prerelease before 2.0.0 is a `0.0.1` placeholder containing a README and no Ruby files, so an unpinned `gem "snap_diff-capybara"` installs an empty gem and fails with `LoadError`. **Always pin the version**, and **install one name, never both** — with both in a Gemfile the gem raises `SnapDiff::DualInstallError` at require time.
 
 ## Quick Start (5 minutes)
 
@@ -23,8 +23,8 @@ Stop shipping UI bugs. Take screenshots in your Capybara tests, commit baselines
 
 ```ruby
 # Gemfile
-gem 'capybara-screenshot-diff'
-gem 'ruby-vips'  # The image backend. Needs libvips — see Installation below
+gem 'capybara-screenshot-diff', '~> 2.0'   # pin: unpinned resolves to the 1.x line
+gem 'ruby-vips'                            # The image backend. Needs libvips — see Installation below
 ```
 
 The gem ships no image backend of its own. Add `ruby-vips` (recommended, and the only
@@ -107,13 +107,45 @@ Screenshot does not match for 'homepage':
 ({"area_size":1250,"region":[0,19,199,83],"max_color_distance":42.5})
 ```
 
-Open `doc/screenshots/homepage.diff.png` to see exactly what changed. If the change is intentional, delete the baseline and re-run to update it.
+Open `doc/screenshots/homepage.diff.png` to see exactly what changed. If the change is intentional, see [Accepting an intentional change](#accepting-an-intentional-change).
 
 | File | Description |
 |------|-------------|
 | `homepage.png` | Committed baseline |
 | `homepage.diff.png` | Visual diff with changes highlighted in red |
 | `homepage.heatmap.diff.png` | Heatmap of pixel differences |
+
+## Accepting an intentional change
+
+**Baselines are read from git, not from your working directory.** Every comparison runs
+`git show HEAD:<path>` for the baseline, so a screenshot that is committed is the one you
+are compared against — no matter what the file on disk says.
+
+That makes the obvious move the wrong one: **deleting the baseline file does nothing.** The
+gem fetches the committed copy from `HEAD` and the test fails exactly as before.
+
+Accepting a change is therefore a **commit**, not a file operation. The run writes its new
+capture to the baseline path, so `git status` shows the baseline as modified — review it and
+commit it:
+
+```bash
+git status                     # doc/screenshots/homepage.png is modified
+git diff --stat doc/screenshots/
+
+# Look at homepage.diff.png. If the change is what you wanted:
+git add doc/screenshots/homepage.png
+git commit -m "chore: update homepage baseline"
+
+bundle exec rake test          # now green — HEAD holds the new baseline
+```
+
+> **Staging is not enough.** `git add` alone does not move `HEAD`, so a staged-but-uncommitted
+> baseline is still compared against the old committed one. You cannot get a green local run
+> until you commit. That is by design: the baseline under review in a pull request is exactly
+> the baseline the suite uses.
+
+Reviewing the change is what the pull request is for — the updated `.png` shows up as an image
+diff next to the code that caused it.
 
 ## Web UI for Reviewing Screenshot Changes
 
@@ -174,7 +206,7 @@ Yes. First run saves baselines and always passes. Run tests again to compare aga
 <details>
 <summary><strong>How do I update baselines after intentional UI changes?</strong></summary>
 
-Delete the baseline file and re-run tests: `rm doc/screenshots/homepage.png && bundle exec rake test`. Or update all: `rm -rf doc/screenshots/ && bundle exec rake test`.
+**Not by deleting the file** — baselines are read from git (`git show HEAD:<path>`), so `rm` has no effect on what you are compared against. Commit the new capture instead: `git add doc/screenshots/homepage.png && git commit`. See [Accepting an intentional change](#accepting-an-intentional-change).
 </details>
 
 <details>

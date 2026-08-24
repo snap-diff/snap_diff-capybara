@@ -25,8 +25,14 @@ with canonical names only, no legacy shapes to unlearn.
 gem "capybara-screenshot-diff", "~> 2.0"
 ```
 
-The same content is also published as `snap_diff-capybara`. Install **one** — with both
-in a Gemfile the gem raises `SnapDiff::DualInstallError` at require time.
+**Pin the version.** An unpinned `gem "capybara-screenshot-diff"` resolves to the 1.x line,
+not to 2.0.
+
+The same content is also published as `snap_diff-capybara` from 2.0.0 on, but that name's
+only earlier non-prerelease is a `0.0.1` placeholder with no Ruby files in it — unpinned, it
+installs an empty gem and raises `LoadError`. Stay on `capybara-screenshot-diff`, and install
+**one** name: with both in a Gemfile the gem raises `SnapDiff::DualInstallError` at require
+time.
 
 ```bash
 bundle install
@@ -48,6 +54,7 @@ The implementation now lives in `lib/snap_diff/` under the `SnapDiff` namespace.
 | `Capybara::Screenshot::Diff::ImageCompare` | `SnapDiff::Comparison` |
 | `Capybara::Screenshot::Diff::Difference` | `SnapDiff::ComparisonResult` |
 | `Capybara::Screenshot::Diff::Drivers::BaseDriver` | `SnapDiff::Driver` (now a mixin — see below) |
+| `Capybara::Screenshot::Os` | `SnapDiff::Os` |
 | `CapybaraScreenshotDiff::SnapManager` / `::Snap` | `SnapDiff::SnapManager` / `SnapDiff::Snap` |
 | `CapybaraScreenshotDiff::RED_RGBA` / `::ORANGE_RGBA` | `SnapDiff::RED_RGBA` / `SnapDiff::ORANGE_RGBA` |
 | `CapybaraScreenshotDiff::Minitest::Assertions` | `SnapDiff::Minitest::Assertions` |

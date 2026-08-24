@@ -36,7 +36,7 @@ end
 **After (capybara-screenshot-diff):**
 ```ruby
 # Gemfile
-gem 'capybara-screenshot-diff'
+gem 'capybara-screenshot-diff', '~> 2.0'
 
 # test helper
 require 'capybara_screenshot_diff/minitest'
