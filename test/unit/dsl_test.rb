@@ -34,12 +34,18 @@ class DSLTest < ActiveSupport::TestCase
   test "#assert_image_not_changed generates correct error message for image mismatch" do
     message = assert_image_not_changed(["my_test.rb:42"], "name", make_comparison(:a, :c, destination: "screenshot.png"))
     value = (RUBY_VERSION >= "2.4") ? 187.4 : 188
+    # Paths are relative to SnapDiff.config.root, and only the artifacts
+    # that exist are listed: chunky_png produces no diff mask, so there is
+    # no heatmap on disk for this comparison.
     assert_equal <<~MSG.chomp, message
-      Screenshot does not match for 'name': ({"area_size":629,"region":[11,3,48,20],"max_color_distance":#{value}})
-      #{SnapDiff.config.root}/doc/screenshots/screenshot.png
-      #{SnapDiff.config.root}/doc/screenshots/screenshot.base.diff.png
-      #{SnapDiff.config.root}/doc/screenshots/screenshot.diff.png
-      #{SnapDiff.config.root}/doc/screenshots/screenshot.heatmap.diff.png
+      Screenshot does not match for 'name': the change spans 629 of 6400 px (9.83% of the 80x80 image)
+        changed region: [11,3,48,20] (left,top,right,bottom edges)
+        max color distance: #{value}
+        judged against: no tolerance thresholds configured (any difference fails)
+        baseline:           doc/screenshots/screenshot.base.png
+        actual:             doc/screenshots/screenshot.png
+        baseline annotated: doc/screenshots/screenshot.base.diff.png
+        actual annotated:   doc/screenshots/screenshot.diff.png
       my_test.rb:42
     MSG
   end
@@ -52,11 +58,15 @@ class DSLTest < ActiveSupport::TestCase
     )
     value = (RUBY_VERSION >= "2.4") ? 5.0 : 5
     assert_equal <<~MSG.chomp, message
-      Screenshot does not match for 'name': ({"area_size":629,"region":[11,3,48,20],"max_color_distance":#{value},"max_shift_distance":15})
-      #{SnapDiff.config.root}/doc/screenshots/screenshot.png
-      #{SnapDiff.config.root}/doc/screenshots/screenshot.base.diff.png
-      #{SnapDiff.config.root}/doc/screenshots/screenshot.diff.png
-      #{SnapDiff.config.root}/doc/screenshots/screenshot.heatmap.diff.png
+      Screenshot does not match for 'name': the change spans 629 of 6400 px (9.83% of the 80x80 image)
+        changed region: [11,3,48,20] (left,top,right,bottom edges)
+        max color distance: #{value}
+        max shift distance: 15 px
+        judged against: shift_distance_limit 1
+        baseline:           doc/screenshots/screenshot.base.png
+        actual:             doc/screenshots/screenshot.png
+        baseline annotated: doc/screenshots/screenshot.base.diff.png
+        actual annotated:   doc/screenshots/screenshot.diff.png
       my_test.rb:42
     MSG
   end
