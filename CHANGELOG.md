@@ -12,6 +12,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 same-object aliases, and warns — once per process — about what **2.1** removes.
 There is no 3.0; 2.1 is the cleanup.
 
+The rename is not the reason to upgrade. **Four separate bugs let a 1.15.1 suite pass
+green while comparing nothing**, and all four are fixed here — that is the reason.
+
 The sections below the divider are the prerelease notes (alpha1 → beta3) and are
 kept as history. This entry is the one to read if you are coming from **1.15.1**.
 
@@ -37,11 +40,133 @@ screenshot that *differs* is written to its baseline path, so a failing run leav
 
 Rolling back is a Gemfile edit: pin `"~> 1.15"` and `bundle update`.
 
+### Why upgrade: 1.15.1 had four ways to pass green while testing nothing
+
+Each of these was found and fixed for 2.0. They share a shape — the suite reports
+success, the screenshots are never compared, and nothing in the output says so.
+
+1. **A screenshot with no *committed* baseline was not compared at all.** Baselines
+   are read from git (`git show HEAD:<path>`), never from disk, and `fail_if_new` is
+   false off CI by design — so a new screenshot registered no assertion, passed
+   whatever the page looked like, and silently overwrote the PNG on disk. Record a
+   page, change it, re-run: `1 runs, 1 assertions, 0 failures`. 2.0 warns once per
+   screenshot, names the file, and counts it in the summary line as `new (not
+   verified)`
+2. **An inherited `GIT_DIR` redirected every baseline lookup.** `git -C <dir>` sets
+   the working directory, but `GIT_DIR` / `GIT_WORK_TREE` override it — and every git
+   hook exports both. Every lookup then missed, every screenshot recorded as new, and
+   the whole suite passed. Measured on the same changed page: 1.15.1 under a foreign
+   `GIT_DIR` reports `1 runs, 1 assertions, 0 failures`; 2.0 reports the failure. 2.0
+   scrubs the three inherited git variables
+3. **libvips served stale pixels when a path was rewritten inside the same second.**
+   The loader cache is keyed on filename + mtime, and mtime has one-second resolution —
+   so a screenshot overwritten and re-read in the same second compared against an image
+   that was no longer on disk. 2.0 passes `revalidate: true` at the single load site.
+   That keyword is libvips 8.15+, so the fix is guarded on it — **on an older libvips
+   the bug is still there**, and upgrading libvips is the only cure
+4. **Under Rails' `parallelize(workers: N)` the HTML report was never written.**
+   Minitest skips `after_run` in a forked child, so the workers that hold every record
+   never finalized and the parent that finalized recorded nothing. Pass/fail was
+   unaffected, which is what made it quiet: a suite lost its report the day someone
+   added the 51st test (`ActiveSupport.test_parallelization_threshold` defaults to 50).
+   2.0 has each worker hand its records to the parent, which merges them into one
+   report at the documented path — no application-side configuration
+
+And one message that could not be followed: in CI — the one place `fail_if_new` is on
+by default — the missing-baseline error named a path that had not been written, because
+the raise happened *before* the capture. 2.0 raises after, so `git add <path>` is a
+command you can run on the run that printed it, and a failing CI job leaves the new
+screenshot behind for an artifact upload.
+
+Relatedly, `fail_if_new` now lets an explicit setting outrank the environment sniff.
+1.x stored `!ENV["CI"].nil?` at require time, so "the user asked for false" and "CI was
+absent when the gem loaded" were the same `false`. The default is unchanged — failing
+only under CI — but `SnapDiff.config.fail_if_new = false` is now honoured under `CI=true`,
+and assigning `nil` hands the setting back to the environment.
+
+### What you get
+
+- **A summary line on every run, passing or failing** — printed the way Minitest prints
+  its seed, because the information is worthless if it only appears once you already
+  know you need it:
+
+  ```text
+  [snap_diff] 14 verified, 0 changed, 1 new (not verified). Report: /abs/path.html
+  ```
+
+  `verified` — a committed baseline existed and was compared. `changed` — of those, the
+  ones that differed. `new` — captured but *not* compared: neither a pass nor a failure.
+  1.x printed `N screenshots compared, no failures`, which was silent about exactly the
+  screenshots it did not compare, and printed nothing at all when it compared nothing.
+  When nothing was verified the line says so in as many words. Observability only: no
+  exit code and no pass/fail behaviour changed. **The line comes from the HTML reporter**,
+  so it appears once you `require "snap_diff/reporters/html"` — the same one-line opt-in
+  that produces the report
+
+- **A failure message you can act on.** 1.15.1 printed a JSON blob and four unlabelled
+  absolute paths — and the one file a reader wants most, the committed baseline, was not
+  among them:
+
+  ```text
+  Screenshot does not match for 'home': ({"area_size":20000.0,"region":[40.0,40.0,240.0,140.0],"diff_mask":"#<Vips::Image:0x…>"})
+  /abs/path/doc/screenshots/home.png
+  /abs/path/doc/screenshots/home.base.diff.png
+  /abs/path/doc/screenshots/home.diff.png
+  /abs/path/doc/screenshots/home.heatmap.diff.png
+  ```
+
+  2.0 prints the same comparison as:
+
+  ```text
+  Screenshot does not match for 'home': the change spans 20000 of 365600 px (5.47% of the 800x457 image)
+    changed region: [40.0,40.0,240.0,140.0] (left,top,right,bottom edges)
+    judged against: no tolerance thresholds configured (any difference fails)
+    baseline:           doc/screenshots/home.base.png
+    actual:             doc/screenshots/home.png
+    baseline annotated: doc/screenshots/home.base.diff.png
+    actual annotated:   doc/screenshots/home.diff.png
+    heatmap:            doc/screenshots/home.heatmap.diff.png
+  ```
+
+  Baseline first, every artifact labelled, paths relative to `SnapDiff.config.root`, a
+  denominator on the pixel count, and a `judged against:` line restating the thresholds
+  actually applied. A label is printed only when that file is on disk
+
+- **Faster, per matching assertion.** `Comparison#different?` skipped step 1 of the
+  layered strategy its own documentation describes: a screenshot byte-identical to its
+  baseline — the normal outcome of a passing test — still had both PNGs decoded and
+  compared pixel by pixel. And `Vcs.checkout_vcs` spawned `git rev-parse --show-toplevel`
+  once per screenshot, 200 processes answering the same question in a 200-screenshot
+  suite. Both measured in #250 against the code as it stood before those two commits —
+  the same code path 1.15.1 runs — with the browser faked out so only the gem's own code
+  is timed:
+
+  | | before | after |
+  |---|---|---|
+  | `Comparison#different?`, byte-identical 1440x900 | 11.56 ms | 0.16 ms |
+  | `Comparison#different?`, byte-identical 2880x1800 | 25.40 ms | 0.31 ms |
+  | `Vcs.checkout_vcs`, per screenshot | 14.27 ms | 9.12 ms |
+  | one 1440x900 `assert_matches_screenshot` against a matching baseline, end to end | 63.5 ms | 44.5 ms |
+
+  The cost is one extra `stat` + `FileUtils.compare_file` (0.16–0.28 ms) on the path
+  where screenshots genuinely differ. The repo-root answer is memoised under a lock, so
+  threaded suites — the default parallel mode on JRuby — share one spawn instead of one
+  per thread (#253)
+
+- **The gem loads in a bundle without Rails, and in a bundle without Minitest.** See
+  *Changed* below; both were load-time crashes in 1.15.1
+
+<!-- PLACEHOLDER: record modes (`record: :once` / `:none` / `:all`) land in a separate
+     PR. Do not describe them here until that PR merges — fill this in from its
+     description, then delete this comment. -->
+
 ### What you will see in your test output
 
-One migration notice, the first time the process goes through a v1 door that *can* be
-hooked — a legacy config accessor, `include Capybara::Screenshot[::Diff]`,
-`Capybara::Screenshot::Diff.default_options`, or a lazily shimmed legacy constant:
+One migration notice, once per process, the first time the process goes through any v1
+door. **Requiring a v1-named file is itself one of those doors** — including the gem name
+`capybara-screenshot-diff`, which `Bundler.require` (the Rails default) requires for you.
+So a suite that is otherwise fully migrated still gets this one line while it stays on the
+v1 gem name:
 
 ```text
 [snap_diff deprecation] This process uses the v1 `Capybara::Screenshot*` /
@@ -49,6 +174,15 @@ hooked — a legacy config accessor, `include Capybara::Screenshot[::Diff]`,
 see docs/UPGRADING.md for the SnapDiff replacements. Silence with
 `SnapDiff.silence_deprecations = true` or SNAP_DIFF_SILENCE_DEPRECATIONS=1.
 (shown once per process)
+```
+
+If you `require "capybara/screenshot/diff"`, one more — the 1.x auto-activation notice,
+reworded to name the canonical require (1.15.1 printed its own version of this):
+
+```text
+[DEPRECATION] `require "capybara/screenshot/diff"` activates the Minitest assertions
+              for you; that will be removed.
+              Please `require "snap_diff/integrations/minitest"` explicitly.
 ```
 
 Plus one line per *lazily shimmed* legacy constant you reference, naming your call
@@ -59,23 +193,32 @@ site:
 (constant); use `SnapDiff::Comparison` instead. (called from test/test_helper.rb:12)
 ```
 
-> **Silence is not evidence that you are migrated — on any 2.0 build.** In `2.0.0.beta3`
-> the deprecation channel was incomplete: a v1-only suite got **no** warnings at all, and
-> the driver-half removal warnings did not exist yet. 2.0.0 fixes the config-accessor,
-> `include`, `default_options` and `const_missing` doors, but **a suite whose only contact
-> with the v1 API is `require "capybara_screenshot_diff/minitest"` +
-> `include CapybaraScreenshotDiff::Minitest::Assertions` still prints nothing** — those
-> names are eager aliases, so there is no `const_missing` to hook. That setup is removed in
-> 2.1 all the same. Do not use warning output as a migration checklist; use
-> [docs/UPGRADING.md](docs/UPGRADING.md#deprecation-warnings), which lists what warns and
-> what cannot.
+Plus one line per subject 2.1 removes: the `driver` setting and the per-screenshot
+`driver:` option (value-blind — `driver: :vips` warns too, because the *knob* is what
+goes), `shift_distance_limit`, `SnapDiff::Drivers.loaded` / `.available`, and
+`include SnapDiff::Driver`. And one per unrecognised per-screenshot option key: the
+options hash was frozen but never validated, so `tolerence:` bought a green suite that
+compared nothing. 2.0 warns, 2.1 raises `ArgumentError`.
 
-Requiring the gem, the DSL, settings accessors and the eagerly-defined constants
-(the error classes, `::VERSION`, `Os`, `Region`, `Reporters::Default`,
-`LOADED_DRIVERS`, `AVAILABLE_DRIVERS`) are **silent by design** —
-[docs/UPGRADING.md](docs/UPGRADING.md#deprecation-warnings) lists exactly which
-names warn and which do not. Silence everything with
-`SnapDiff.silence_deprecations = true` or `SNAP_DIFF_SILENCE_DEPRECATIONS=1`.
+`2.0.0.beta3` shipped this channel incomplete — a v1-only suite produced **zero**
+deprecation output while the docs described three channels — because every existing door
+required the user to *call* something, and a suite that requires the gem and only calls
+`screenshot` calls none of them. That is what the require-door notice above fixes.
+
+The DSL (`screenshot`, `assert_matches_screenshot`, `capture_screenshot`), the settings
+accessors, and the eagerly-defined constants — `Capybara::Screenshot::Os`, the top-level
+`Region`, `Capybara::Screenshot::Diff::VERSION` / `::Comparison` / `::Reporters::Default` /
+`::LOADED_DRIVERS` / `::AVAILABLE_DRIVERS`, the `CapybaraScreenshotDiff` error classes, and
+`CapybaraScreenshotDiff::DSL` / `::Minitest::Assertions` — are **silent by design**: they
+are real constants precisely so `const_defined?` and `rescue` keep working, which leaves
+nothing to hook. They are removed in 2.1 all the same, so **do not use warning output as a
+migration checklist** — use [docs/UPGRADING.md](docs/UPGRADING.md#deprecation-warnings),
+which lists exactly which names warn and which cannot.
+
+Silence everything with `SnapDiff.silence_deprecations = true` or
+`SNAP_DIFF_SILENCE_DEPRECATIONS=1`. One honest limitation: the accessor cannot silence the
+require-time notice, because setting it needs the require to have happened. Under
+`Bundler.require` the environment variable is the only channel.
 
 ### The five things that can actually break
 
@@ -86,9 +229,16 @@ Everything else is source-compatible. These are not:
    catches them — but a CI job that greps the *old* class name out of test output
    needs updating.
 2. **`defined?` / `const_defined?` on lazily shimmed legacy names returns
-   `false`/`nil`.** They resolve through `const_missing`, which those checks never
-   trigger. Move feature detection to the `SnapDiff::` name. Names in the
-   silent-by-design list are real constants and are unaffected.
+   `nil`/`false`** — they resolve through `const_missing`, which those checks never
+   trigger, so `const_get` and a bare reference still work while `defined?` reports
+   nothing. `Capybara::Screenshot::Diff::ImageCompare` and
+   `Capybara::Screenshot::Diff::Drivers` are two you may be probing today. Move
+   feature detection to the `SnapDiff::` name. The names in the silent-by-design list
+   above are real constants and are unaffected — but note the two whose spelling is
+   easy to get wrong: it is `Capybara::Screenshot::Os` (not under `::Diff`) and the
+   **top-level** `Region` (as in 1.x). `defined?(Capybara::Screenshot::Diff::Os)` and
+   `defined?(Capybara::Screenshot::Diff::Region)` are `nil` — those names do not exist,
+   and did not in 1.15.1 either.
 3. **Reopening `module Capybara::Screenshot::Diff::Drivers`** (the historical
    custom-driver monkey-patch) defines a fresh, empty module that shadows the shim.
    Define custom drivers under `SnapDiff::Drivers` instead — and `BaseDriver` is a
@@ -108,18 +258,19 @@ contract one release ahead is the mitigation. 2.0 warns once per process for eac
 
 | You will hear about it when you… | Do this in 2.0 |
 |---|---|
+| write the `driver` setting — `SnapDiff.config.driver = …`, `Capybara::Screenshot::Diff.driver = …` — or pass `screenshot "x", driver: …`. **Value-blind: `driver: :vips` warns too**, because the knob is what goes, not the value | delete it; one backend needs no selection |
 | select `driver: :chunky_png` | add `gem "ruby-vips"` and drop the option |
 | run `driver: :auto` **without ruby-vips** — nothing in your setup says `chunky_png`, so this warning is the only sign 2.1 will break the process | install libvips + `ruby-vips` |
 | set `shift_distance_limit` | use `median_filter_window_size`, `tolerance` or `color_distance_limit` |
 | read `SnapDiff::Drivers.loaded` / `.available` | require `ruby-vips` instead of branching on a detected list |
 | `include SnapDiff::Driver` in your own driver | nothing — custom drivers have no migration path |
 
-Two removals 2.0 cannot warn about, so they are written down instead: **`driver:`
-as a setting goes away entirely** — `SnapDiff.config.driver = :vips` and
-`Capybara::Screenshot::Diff.driver = :vips` raise `NoMethodError` on 2.1, and the
-per-screenshot `screenshot "x", driver: :vips` is silently ignored there. Delete
-both; one backend needs no selection. The legacy `LOADED_DRIVERS` /
-`AVAILABLE_DRIVERS` constants are also plain aliases with nothing to hook.
+On 2.1, `SnapDiff.config.driver = :vips` and `Capybara::Screenshot::Diff.driver = :vips`
+raise `NoMethodError`, and the per-screenshot `driver:` key is silently ignored. Booting
+stays quiet — `Config#initialize` seeds the default directly, so only *your* write warns.
+
+One removal 2.0 cannot warn about, written down instead: the legacy `LOADED_DRIVERS` /
+`AVAILABLE_DRIVERS` constants are plain eager aliases, with nothing to hook.
 
 ### Added
 - **`SnapDiff` is the canonical namespace** — the implementation lives in
@@ -136,8 +287,16 @@ both; one backend needs no selection. The legacy `LOADED_DRIVERS` /
   `DualInstallError` all inherit it, so one `rescue SnapDiff::Error` covers them.
   (Misuse still surfaces as plain Ruby: `ArgumentError` for bad arguments,
   `RuntimeError` when no image backend is installed.)
+- **An end-of-run summary line, on every run** — `[snap_diff] N verified, N changed,
+  N new (not verified).`, plus the report path when there are failures. Registered
+  with the HTML reporter (`require "snap_diff/reporters/html"`)
+- **A named line for every screenshot that had no committed baseline**, once per
+  screenshot as it happens and once more as a roll-up at the end of the run
 - **Deprecation warnings name your call site**, so migration is warning-driven
   rather than grep-driven
+- **Unrecognised per-screenshot options warn instead of doing nothing.** The options
+  hash was frozen but never validated. 2.0 warns once per key; 2.1 raises
+  `ArgumentError`
 - **Dual-install guard** — installing both `capybara-screenshot-diff` and
   `snap_diff-capybara` raises `SnapDiff::DualInstallError` at require time instead of
   silently loading files from whichever gem activated first
@@ -152,9 +311,20 @@ both; one backend needs no selection. The legacy `LOADED_DRIVERS` /
   rollback)
 
 ### Changed
-- **No `activesupport` at runtime.** 1.x required `active_support/core_ext/…`
-  without declaring the dependency, so a non-Rails install could fail to load. 2.0
-  requires nothing beyond `capybara`
+- **No `activesupport` at runtime.** 1.15.1's `snap_manager.rb` required
+  `active_support/core_ext/module/attribute_accessors` while `activesupport` was only a
+  *development* dependency, so a bundle without Rails died at
+  `require "capybara/screenshot/diff"` with `LoadError: cannot load such file --
+  active_support/core_ext/module/attribute_accessors`. 2.0 requires nothing beyond
+  `capybara`
+- **The failure message.** Labelled artifact paths (baseline first), relative to
+  `SnapDiff.config.root`, a denominator on the pixel count, and the thresholds actually
+  applied. If you grep test output for the old wording, update the pattern
+- **The summary line.** `N screenshots compared, no failures` became `N verified,
+  N changed, N new (not verified)`. Same reporter, same report path
+- **`fail_if_new` has no stored default.** `nil` means nobody said, and only then is
+  `ENV["CI"]` consulted — read live, not at require time. The default behaviour (fail
+  only under CI) is unchanged; an explicit setting now wins in both directions
 - The images-holder struct is now `SnapDiff::Comparison::Images`, ending the
   two-classes-one-name collision with the comparator
 - The packaged gem is an explicit allow-list — `lib/`, `docs/`, `README.md`,
@@ -162,22 +332,47 @@ both; one backend needs no selection. The legacy `LOADED_DRIVERS` /
   and omitted the README
 
 ### Fixed
+- **A screenshot with no committed baseline no longer passes silently** — it warns,
+  names the file, and is counted as `new (not verified)` rather than as a pass
+- **An inherited `GIT_DIR` / `GIT_WORK_TREE` / `GIT_INDEX_FILE` no longer redirects
+  baseline lookups.** All three are scrubbed before `git -C` runs, so a suite launched
+  from a git hook reads its own repository
+- **libvips no longer serves a cached image for a path rewritten within the same mtime
+  second** — `revalidate: true` at the single load site, guarded on libvips 8.15+
+- **Rails' `parallelize(workers: N)` produces one merged HTML report** and the merged
+  summary counts, at the documented path, with no application-side configuration.
+  `parallelize(with: :threads)` and serial runs are unchanged
+- **The missing-baseline error in CI names a file that is on disk.** The raise moved
+  after the capture, so `git add <path>` works on the run that printed it — and a
+  failing CI job leaves the new screenshot behind for an artifact upload
+- **A bundle without Minitest loads.** `Bundler.require` requires the gem's own name,
+  and that file hard-required `capybara_screenshot_diff/minitest` → `minitest`, which
+  is not a declared runtime dependency: an RSpec-only bundle died at boot with `cannot
+  load such file -- minitest`, from a gem that ships a first-class RSpec integration.
+  It now feature-detects, and says so in one line naming the integration to require.
+  Explicit requires still hard-require and still fail loudly
+- **The Minitest activation warning no longer fires for everyone.** It keyed off the
+  gem-*name* file, which `Bundler.require` loads whatever you required explicitly, so
+  it shouted at every user with no way to silence it. It is keyed to the v1 namespace
+  entry now, and honours `SnapDiff.silence_deprecations` /
+  `SNAP_DIFF_SILENCE_DEPRECATIONS` (it was a bare `Kernel#warn`)
+- **The new-screenshot error no longer names things that do not exist** — no
+  `RECORD_SCREENSHOTS=1` (nothing in `lib/` has ever read it) and no `<name>.base.png`
+  (a generated temp file nobody commits)
 - Annotation color constants resolve under a bare `require "snap_diff"`; a differing
   comparison previously raised `NameError` there
 - `require "snap_diff/integrations/…"` loads the full `SnapDiff` surface, and
   `gem "snap_diff-capybara"` works with `Bundler.require`
-- **Failure messages no longer dump a libvips pointer struct.** The comparison
-  metadata carried the raw `diff_mask` image into the error text
-  (`"diff_mask":{"ptr":{}…}`); it is excluded now, leaving the metrics
+- **Failure messages no longer dump the raw diff mask.** The comparison metadata
+  carried the `diff_mask` image into the error text (`"diff_mask":"#<Vips::Image:0x…>"`,
+  or a `{"ptr":{}…}` struct depending on the driver); it is excluded now
 - Reporter failure warnings use one brand and name the failing reporter class
 
 ### Known limitations
-- **Fork-based parallel tests produce no HTML report.** Under Minitest's forked
-  parallel executor (`parallelize(workers: N)`, the Rails default), each worker
-  accumulates its assertions in its own process, while the report is written from
-  `Minitest.after_run` in the parent — which never sees them. Pass/fail is correct
-  and the diff image artifacts are still written; only the HTML report is missing.
-  Fixed in 2.1
+- **One process per worker** (`parallel_tests`, RSpec, CI sharding) still writes one
+  report per process to the same path, so only the last to finish survives. Rails'
+  `parallelize(workers: N)` and `parallelize(with: :threads)` are both complete —
+  see [docs/reporters.md](docs/reporters.md#parallel-test-runs)
 
 ### Unchanged
 - Ruby 3.2+, Capybara `>= 2, < 4`, the `screenshot` / `assert_matches_screenshot`

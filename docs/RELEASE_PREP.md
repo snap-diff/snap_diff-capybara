@@ -49,6 +49,9 @@ with a single `version` input (e.g. `2.0.0`, or `2.1.0.beta1`):
       rather than from the previous prerelease.
 - [ ] Docs carry no stale version pins — `README.md`, `docs/UPGRADING.md`,
       `docs/snapdiff.md`. Grep for the previous version string.
+- [ ] No unfilled placeholders in the section: `grep -n 'PLACEHOLDER' CHANGELOG.md`.
+      Each is an HTML comment marking a feature that landed in a parallel lane — fill it
+      from that PR's description, or delete it if the feature did not make this release.
 - [ ] **Releasing 2.0.0: swap every install snippet from the `2.0.0.beta3` pin to
       `"~> 2.0"`,** and delete the "final is not out yet" clauses next to them. Until
       2.0.0 exists on rubygems, `gem "capybara-screenshot-diff", "~> 2.0"` hard-fails
