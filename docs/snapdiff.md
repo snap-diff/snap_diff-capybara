@@ -160,7 +160,7 @@ integration require; a few objects need their own require, noted below.
 | `SnapDiff::Region` | Bounding box value object — `from_edge_coordinates`, `to_edge_coordinates` |
 | `SnapDiff::DSL` | `screenshot`, `assert_matches_screenshot`, `capture_screenshot`, groups/sections |
 | `SnapDiff::Minitest::Assertions` | Minitest wiring (`snap_diff/integrations/minitest`) |
-| `SnapDiff::Error` | Base class for every error this gem raises |
+| `SnapDiff::Error` | Base class for every error this gem *defines* — one `rescue SnapDiff::Error` covers all of the rows below. Misuse still surfaces as plain Ruby: bad arguments raise `ArgumentError`, and a missing image backend raises `RuntimeError` |
 | `SnapDiff::ExpectationNotMet` | A screenshot did not match its baseline |
 | `SnapDiff::UnstableImage` | No stable capture within `stability_time_limit` / `wait` |
 | `SnapDiff::WindowSizeMismatchError` | Browser window is not the configured `window_size` |
