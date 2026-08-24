@@ -5,26 +5,36 @@
 **2.0 was the transitional release: both APIs worked, and everything that was going to die warned
 about it. 2.1 is the cleanup — it removes all of it, in one release. There is no 3.0.**
 
-Nothing here is deprecated. Almost every v1 name is simply gone on 2.1: touching one is a
+Nothing here is deprecated. The v1 *implementation* is gone; touching what it held is a
 `NameError` or a `NoMethodError`, not a warning.
 
-**Two things are kept on purpose, permanently.** We went looking for who actually uses this gem
-before finalising the deletion, and the answer changed the plan:
+**Your entry point and your settings are kept on purpose, permanently.** We went looking for who
+actually uses this gem before finalising the deletion, and the answer changed the plan:
 
 1. **`CapybaraScreenshotDiff` and `Capybara::Screenshot::Diff` still resolve.** They are eager
    aliases of `SnapDiff` — the same module object, so `CapybaraScreenshotDiff::DSL` *is*
-   `SnapDiff::DSL`, `const_defined?` and `defined?` keep answering, and `rescue` by an old error
-   name keeps working. The v1 `require` paths (`capybara_screenshot_diff/minitest`,
-   `.../rspec`, `.../cucumber`, `.../dsl`, `capybara/screenshot/diff`) still load, as one-line
-   entries. Everything *behind* those names is gone; the names themselves are not going away.
-2. **`driver` and `shift_distance_limit` raise instead of vanishing.** A removed setter that
+   `SnapDiff::DSL`, `const_defined?` and `defined?` keep answering, and `rescue
+   CapybaraScreenshotDiff::CapybaraScreenshotDiffError` still catches. The v1 `require` paths
+   (`capybara_screenshot_diff/minitest`, `.../rspec`, `.../cucumber`, `.../dsl`,
+   `capybara/screenshot/diff`) still load, as one-line entries.
+2. **Every setting still answers on the old holders.** `Capybara::Screenshot::Diff.tolerance =`,
+   `Capybara::Screenshot.window_size =`, `include Capybara::Screenshot::Diff`,
+   `Capybara::Screenshot::Diff.configure { |screenshot, diff| … }` — all of it works, delegating
+   to the one storage in `SnapDiff.config`. Aliasing the names you *import* without the names you
+   *call* would be worse than aliasing neither: the constant resolves, you think you are fine,
+   and line 2 of your test helper explodes.
+3. **`driver` and `shift_distance_limit` raise instead of vanishing.** A removed setter that
    simply disappears is the worst kind of removal — code guarded by `respond_to?` keeps running
    with the setting silently doing nothing. Both now raise `ArgumentError` with a message naming
    the replacement (except `driver = :vips`/`:auto`, which are accepted and ignored — see
    [Image processing](#2-image-processing)).
 
-You should still migrate to `SnapDiff::*`: that is the name the docs, the errors and every future
-release use. But nothing about your suite has to move in the same commit as the upgrade.
+What is genuinely gone is the machinery: the driver abstraction, the chunky_png backend, the
+deprecation channel, `SnapDiff.start`, `SnapDiff::Drivers.loaded`/`.available`, and the v1
+implementation trees under `lib/capybara*`. Roughly 3,700 lines.
+
+You should still migrate to `SnapDiff::*` — that is the name the docs, the errors and every
+future release use — but nothing about your suite has to move in the same commit as the upgrade.
 
 **Estimated upgrade time:** 15 minutes. A real consumer (a Jekyll/Rails site with committed
 baselines, running its suite in Docker) was upgraded end to end against this release: **17 lines
@@ -83,12 +93,23 @@ Both v1 holders collapsed into one object. `SnapDiff.configure` is the single en
 
 The setting names are unchanged; only the receiver moves. The one rename:
 `Capybara::Screenshot.enabled` is `SnapDiff.config.screenshot_enabled`, because
-`SnapDiff.config.enabled` is the old `Capybara::Screenshot::Diff.enabled`. All 25 settings are
-listed in the [Configuration Reference](configuration.md).
+`SnapDiff.config.enabled` is the old `Capybara::Screenshot::Diff.enabled`. They are two genuinely
+different settings feeding different branches of `active?`, and 2.1 does not collapse them —
+`Capybara::Screenshot.enabled` and `Capybara::Screenshot::Diff.enabled` keep meaning what they
+always meant. All settings are listed in the [Configuration Reference](configuration.md).
 
-`SnapDiff.start` yielded the two v1 holders, so it could not outlive them — **removed**, not
-renamed. Same for `SnapDiff.silence_deprecations` and `SNAP_DIFF_SILENCE_DEPRECATIONS`: with no
-deprecations left to emit, there is nothing to silence.
+**Every "Before" row above still works.** The old accessors are generated from the setting list
+itself and delegate to `SnapDiff.config`, so there is one storage and two views — a write through
+either is visible through the other structurally, not by synchronisation. That includes the
+instance-level form: `include Capybara::Screenshot::Diff` still brings the settings in as instance
+methods, and `Capybara::Screenshot::Diff.configure { |screenshot, diff| … }` still yields two
+usable holders (both are the one config object now).
+
+`SnapDiff.start` is the one config entry point that could **not** survive: it yielded the two v1
+*modules*, not settings, so there was nothing left for it to hand you. Use
+`Capybara::Screenshot::Diff.configure` (unchanged) or `SnapDiff.configure`. Same for
+`SnapDiff.silence_deprecations` and `SNAP_DIFF_SILENCE_DEPRECATIONS`: with no deprecations left to
+emit, there is nothing to silence.
 
 #### Constants and includes
 
@@ -103,6 +124,7 @@ deprecations left to emit, there is nothing to silence.
 | `CapybaraScreenshotDiff.reporters <<` | `SnapDiff::Reporting.register` |
 | `CapybaraScreenshotDiff.finalize_reporters!` | `SnapDiff::Reporting.finalize!` |
 | `include CapybaraScreenshotDiff::DSL`<br>`include CapybaraScreenshotDiff::Minitest::Assertions` | `include SnapDiff::Minitest::Assertions` — **the two collapse into one**. Both old spellings keep working: they are aliases of the same modules |
+| `rescue CapybaraScreenshotDiff::CapybaraScreenshotDiffError` | `rescue SnapDiff::Error` — the old name is kept as an alias. A `NameError` inside a `rescue` clause fires only when an exception is already in flight, which is the worst possible moment to discover it |
 
 **`Capybara::Screenshot::Os` is the one to grep for.** In the real upgrade it was the only hard
 crash. On 2.0 it raises `NameError` from the shim internals once the require line has been
@@ -218,7 +240,7 @@ Two files, seventeen lines:
 ### Checklist
 
 - [ ] `grep -rn 'capybara_screenshot_diff\|capybara/screenshot/diff' test/ spec/ features/` — the require lines
-- [ ] `grep -rn 'Capybara::Screenshot\|CapybaraScreenshotDiff' test/ spec/ features/ config/` — constants and settings
+- [ ] `grep -rn 'Capybara::Screenshot\|CapybaraScreenshotDiff' test/ spec/ features/ config/` — constants and settings. These keep working, so this one is a rename-at-leisure list, not a blocker. The exception is `Capybara::Screenshot::Os`, which is genuinely gone
 - [ ] `grep -rn 'driver:\|shift_distance_limit\|silence_deprecations\|SnapDiff.start' .` — the driver-era settings. `shift_distance_limit` and `driver: :chunky_png` now raise rather than going quiet, so the suite will find them for you if you skip this step
 - [ ] Remove `gem "ruby-vips"` and any `chunky_png` / `oily_png` lines from your Gemfile
 - [ ] `bundle install`, then run the suite — baselines do not need re-recording

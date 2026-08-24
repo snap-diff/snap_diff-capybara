@@ -101,6 +101,55 @@ module SnapDiff
       self.shift_distance_limit = options[:shift_distance_limit] if options.key?(:shift_distance_limit)
     end
   end
+
+  # The v1 error name, kept for `rescue` clauses. Worth its own line: a
+  # NameError inside a rescue fires only when an exception is already in
+  # flight, so it converts someone's real failure into a confusing one at the
+  # moment they can least afford it. Every other v1 error name
+  # (ExpectationNotMet, UnstableImage, WindowSizeMismatchError) is spelled the
+  # same under SnapDiff and comes along with the module alias.
+  CapybaraScreenshotDiffError = Error
+
+  # @api private
+  #
+  # Regenerates the v1 `mattr_accessor` surface as thin delegators onto the one
+  # storage in {SnapDiff.config}.
+  #
+  # GENERATED FROM Config::SETTINGS, deliberately: a hand-written table of 27
+  # rows is a table that drifts the first time someone adds a setting, and the
+  # failure mode of that drift is a NoMethodError on line 1 of a user's test
+  # helper. compat_surface_test walks SETTINGS and fails if any name is
+  # unreachable.
+  #
+  # Both holders get the full set rather than the historical split. The split
+  # would need exactly the hand-maintained table this avoids, and widening a
+  # holder cannot break anyone: it only accepts a spelling that used to raise.
+  #
+  # No deprecation warning: 2.1 deleted the channel that emitted them
+  # (snap_diff/removal.rb, snap_diff/deprecation.rb) and one warning is not
+  # worth resurrecting a subsystem for. These are plain delegators.
+  module Compat
+    # `enabled` is the one name that is not identity-mapped. The two v1 holders
+    # each carried an independent `enabled` (see Config#active?, which reads
+    # both); a flat Config cannot expose two attributes of that name, so the
+    # capture-side one became `screenshot_enabled`. Collapsing them here would
+    # change `active?`, so each holder says which attribute its `enabled` means.
+    def self.install(namespace, enabled_maps_to:)
+      mapping = Config::SETTINGS.to_h { |attr| [attr, attr] }
+      mapping[:enabled] = enabled_maps_to
+
+      mapping.each do |name, attr|
+        # mattr_accessor defined BOTH singleton and instance accessors -- the
+        # instance ones are what `include Capybara::Screenshot::Diff` picks up,
+        # and an include that silently adds nothing is the same class of bug as
+        # a setter that silently does nothing.
+        [namespace, namespace.singleton_class].each do |target|
+          target.define_method(name) { SnapDiff.config.public_send(attr) }
+          target.define_method(:"#{name}=") { |value| SnapDiff.config.public_send(:"#{attr}=", value) }
+        end
+      end
+    end
+  end
 end
 
 # `CapybaraScreenshotDiff::DSL` and `::Minitest::Assertions` come along for
@@ -112,3 +161,6 @@ module Capybara
     Diff = SnapDiff
   end
 end
+
+SnapDiff::Compat.install(Capybara::Screenshot, enabled_maps_to: :screenshot_enabled)
+SnapDiff::Compat.install(Capybara::Screenshot::Diff, enabled_maps_to: :enabled)

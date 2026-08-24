@@ -67,8 +67,17 @@ module SnapDiff
   #     config.window_size = [1280, 1024]
   #     config.tolerance = 0.0005
   #   end
+  #
+  # Yielded TWICE, and that second argument is not decoration. Since
+  # snap_diff/compat.rb aliases +Capybara::Screenshot::Diff+ to this module,
+  # the v1 two-holder form -- <tt>configure { |screenshot, diff| ... }</tt> --
+  # arrives here. With a one-argument yield it would bind +diff+ to nil and
+  # blow up a few lines later on nil; the two holders collapsed into this one
+  # object, so handing it over twice makes the old shape keep working. A
+  # one-parameter block ignores the extra argument, so the canonical form is
+  # unaffected.
   def self.configure
-    yield config
+    yield config, config
   end
 
   # SnapDiff.config itself is defined in snap_diff/config.rb (the storage

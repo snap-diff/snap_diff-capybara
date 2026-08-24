@@ -217,4 +217,159 @@ class CompatSurfaceTest < ActiveSupport::TestCase
     assert_not Gem.loaded_specs.key?("snap_diff-capybara")
     assert_nil SnapDiff.assert_single_gem!
   end
+
+  # --- ITEM 1b: the settings those imports actually CALL ---------------
+  #
+  # The names users IMPORT and the names they CALL are different surfaces, and
+  # aliasing only the first is worse than aliasing neither: the constant
+  # resolves, the user believes they are fine, and the next line explodes. Four
+  # of six known real configs write `Capybara::Screenshot::Diff.tolerance=` or
+  # a sibling. Since `Capybara::Screenshot::Diff` IS `SnapDiff`, the config
+  # surface either exists on both or on neither -- there is no partial version.
+
+  test "a v1 setting written through the old namespace lands in the one storage" do
+    Capybara::Screenshot::Diff.tolerance = 0.05
+
+    assert_in_delta 0.05, SnapDiff.config.tolerance
+  end
+
+  test "a setting written canonically is visible through the old namespace" do
+    SnapDiff.config.color_distance_limit = 15
+
+    assert_equal 15, Capybara::Screenshot::Diff.color_distance_limit
+  end
+
+  test "the capture-side holder writes the same storage too" do
+    Capybara::Screenshot.window_size = [1400, 1400]
+
+    assert_equal [1400, 1400], SnapDiff.config.window_size
+  end
+
+  # The one name that is NOT identity-mapped. `Capybara::Screenshot.enabled`
+  # and `Capybara::Screenshot::Diff.enabled` were always two independent
+  # settings that happened to share a bare name under their own modules; a flat
+  # Config cannot expose two attributes called `enabled`, so the capture-side
+  # one became `screenshot_enabled`. Collapsing them would change `active?`.
+  test "enabled stays two different settings, one per holder" do
+    Capybara::Screenshot.enabled = false
+    Capybara::Screenshot::Diff.enabled = true
+
+    assert_equal false, SnapDiff.config.screenshot_enabled
+    assert_equal true, SnapDiff.config.enabled
+    assert_equal false, Capybara::Screenshot.enabled
+    assert_equal true, Capybara::Screenshot::Diff.enabled
+  end
+
+  # `mattr_accessor` defined instance methods as well as singleton ones, and
+  # `include Capybara::Screenshot::Diff` (bootstrap_form has that line) is how
+  # they were reached. An include that silently adds nothing is the same class
+  # of failure as a setter that silently does nothing.
+  test "including the old namespace still brings the settings in as instance methods" do
+    SnapDiff.config.tolerance = 0.02
+    host = Class.new { include Capybara::Screenshot::Diff }.new
+
+    assert_in_delta 0.02, host.tolerance
+
+    host.tolerance = 0.04
+    assert_in_delta 0.04, SnapDiff.config.tolerance
+  end
+
+  # THE DRIFT GUARD. The accessors are generated from Config::SETTINGS, so a
+  # new setting cannot be forgotten -- unless the generation itself is removed
+  # or narrowed. This is what notices that.
+  test "every Config setting is reachable through both v1 holders, on the module and on instances" do
+    holders = [Capybara::Screenshot, Capybara::Screenshot::Diff]
+
+    missing = SnapDiff::Config::SETTINGS.flat_map do |attr|
+      holders.flat_map do |holder|
+        [
+          ["#{holder}.#{attr}", holder.respond_to?(attr)],
+          ["#{holder}.#{attr}=", holder.respond_to?(:"#{attr}=")],
+          ["#{holder}##{attr}", holder.method_defined?(attr)],
+          ["#{holder}##{attr}=", holder.method_defined?(:"#{attr}=")]
+        ].reject { |_name, present| present }.map(&:first)
+      end
+    end
+
+    assert_empty missing, <<~MSG
+      A setting exists on SnapDiff::Config but is unreachable through the v1
+      holders. Real configs write these names; a missing one is a NoMethodError
+      on line 1 of someone's test helper:
+
+      #{missing.join("\n")}
+    MSG
+  end
+
+  # The v1 two-block-arg form. Before the aliases this was a `NameError` --
+  # loud. With `Capybara::Screenshot::Diff = SnapDiff` it would otherwise have
+  # become a one-arg yield, handing the user `nil` for `diff` and a
+  # NoMethodError three lines later. Both holders collapsed into one object, so
+  # it yields that object twice and the old shape keeps working.
+  test "the v1 two-holder configure block still works" do
+    Capybara::Screenshot::Diff.configure do |screenshot, diff|
+      screenshot.window_size = [800, 600]
+      diff.tolerance = 0.003
+    end
+
+    assert_equal [800, 600], SnapDiff.config.window_size
+    assert_in_delta 0.003, SnapDiff.config.tolerance
+  end
+
+  test "the canonical one-argument configure block is unaffected" do
+    SnapDiff.configure { |config| config.tolerance = 0.007 }
+
+    assert_in_delta 0.007, SnapDiff.config.tolerance
+  end
+
+  # --- ITEM 2b: the v1 error name in a rescue clause -------------------
+  #
+  # The worst variety of latent NameError: it fires only when an exception is
+  # already in flight, converting someone's real failure into a confusing one
+  # at the moment they can least afford it.
+  test "rescuing by the v1 error name catches what the gem raises" do
+    assert_same SnapDiff::Error, CapybaraScreenshotDiff::CapybaraScreenshotDiffError
+    assert Object.const_defined?("CapybaraScreenshotDiff::CapybaraScreenshotDiffError")
+
+    caught = begin
+      raise SnapDiff::ExpectationNotMet, "boom"
+    rescue CapybaraScreenshotDiff::CapybaraScreenshotDiffError => e
+      e
+    end
+
+    assert_equal "boom", caught.message
+  end
+
+  # Discovered, not listed: a future error class added under SnapDiff is
+  # reachable under the v1 namespace automatically (same module), and this says
+  # so out loud rather than leaving it to be assumed.
+  test "every error class the gem raises is reachable under the v1 namespace" do
+    unreachable = SnapDiff.constants.filter_map { |name|
+      value = SnapDiff.const_get(name)
+      next unless value.is_a?(Class) && value <= SnapDiff::Error
+
+      "CapybaraScreenshotDiff::#{name}" unless CapybaraScreenshotDiff.const_defined?(name)
+    }
+
+    assert_empty unreachable, "error class(es) not reachable under the v1 namespace: #{unreachable.join(", ")}"
+  end
+
+  # --- The six real configs, replayed verbatim -------------------------
+  #
+  # Not a unit test of anything: these are the actual lines from the
+  # discoverable third-party setups, and the only claim is that a 2.1 process
+  # survives running them.
+  test "the discoverable real-world configs load without raising" do
+    # jaynetics/activeadmin_assets, spec/support/capybara_setup.rb
+    Capybara::Screenshot::Diff.driver = :vips
+    Capybara::Screenshot::Diff.tolerance = 0.05
+    Capybara::Screenshot::Diff.fail_if_new = !ENV["CI"].nil?
+
+    # showca-se/showcase, test/support/system/setup_capybara_screenshot_diff.rb
+    Capybara::Screenshot::Diff.driver = :vips
+    Capybara::Screenshot.screenshot_format = :webp
+    Capybara::Screenshot::Diff.color_distance_limit = 15
+
+    assert_equal :webp, SnapDiff.config.screenshot_format
+    assert_equal 15, SnapDiff.config.color_distance_limit
+  end
 end
