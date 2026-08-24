@@ -9,13 +9,15 @@
 ## Removed in 2.1: everything on this page except VIPS
 
 2.1 makes **libvips the only backend**. 2.0 is the transitional release — all of the
-following still works, and warns once per process naming 2.1. Silence the warnings with
+following still works. Most of it warns once per process naming 2.1; the rows marked
+*silent* cannot warn, and this table is their notice. Silence the warnings with
 `SnapDiff.silence_deprecations = true` or `SNAP_DIFF_SILENCE_DEPRECATIONS=1`.
 
 | Removed in 2.1 | What to do in 2.0 |
 |---|---|
 | the `:chunky_png` driver | add `gem "ruby-vips"` to your Gemfile and drop `driver: :chunky_png` |
-| `driver: :auto` (and the `:auto` default) | with one backend there is nothing to choose; install `ruby-vips` and the default just works |
+| the `driver:` setting itself — `SnapDiff.config.driver =`, the legacy `Capybara::Screenshot::Diff.driver =`, and the per-screenshot `driver:` override (**silent**: on 2.1 they raise `NoMethodError`) | delete the line; one backend needs no selection |
+| `driver: :auto` (and the `:auto` default) — warns **only when `:auto` actually falls back to ChunkyPNG**, i.e. when `ruby-vips` is missing; **silent** otherwise | with one backend there is nothing to choose; install `ruby-vips` and the default just works |
 | `shift_distance_limit` | ChunkyPNG-only. Use `median_filter_window_size`, `tolerance` or `color_distance_limit` — see [Configuration](configuration.md#allowed-shift-distance) |
 | `SnapDiff::Driver` (the custom-driver mixin) | nothing — see below |
 | `SnapDiff::Drivers.loaded` (the registry) | nothing — see below |

@@ -104,7 +104,6 @@ All 27 settings live on one flat object, `SnapDiff.config` (a `SnapDiff::Config`
 SnapDiff.configure do |config|
   config.window_size = [1280, 1024]
   config.tolerance = 0.0005
-  config.driver = :vips
   config.save_path = "doc/screenshots"
 end
 
@@ -270,7 +269,7 @@ SnapDiff::Reporting.finalize!
 > by name. In 2.0 all of it still works and warns once per process (silence with
 > `SnapDiff.silence_deprecations = true` or `SNAP_DIFF_SILENCE_DEPRECATIONS=1`). Nothing
 > here migrates to a 2.1 shape — there is no 2.1 shape. If you maintain a driver, say so on
-> [#166](https://github.com/snap-diff/snap_diff-capybara/issues/166) before 2.1 ships.
+> [the issue tracker](https://github.com/snap-diff/snap_diff-capybara/issues) before 2.1 ships.
 
 A driver is a plain object that does the image work. Include `SnapDiff::Driver` for the shared
 defaults, then implement the operations the comparison engine calls:

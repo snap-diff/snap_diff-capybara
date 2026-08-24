@@ -11,9 +11,11 @@ Stop shipping UI bugs. Take screenshots in your Capybara tests, commit baselines
 
 **Why this gem?** Baselines live in git — review UI changes in pull requests like you review code. Runs offline, works in CI, zero vendor lock-in. Unlike Percy/Chromatic (paid SaaS), nothing to sign up for. Unlike BackstopJS, no Node required.
 
-> **2.0 experiment (beta):** the gem is moving to a `SnapDiff` canonical namespace. Opt in with `gem "capybara-screenshot-diff", "2.0.0.beta3"` (or the latest 2.0.0 prerelease; prereleases are never installed by default — normal installs stay on 1.x). Legacy names keep working; the first legacy API a process touches prints one migration notice (lazily shimmed constants also warn once each — see [which names warn](docs/UPGRADING.md#deprecation-warnings)), silenceable via `SnapDiff.silence_deprecations = true` or `SNAP_DIFF_SILENCE_DEPRECATIONS=1`. Writing new code? Start from [SnapDiff — the canonical API](docs/snapdiff.md), which uses canonical names only. Migrating an existing suite? See the [upgrade guide](docs/UPGRADING.md). Share feedback on [#166](https://github.com/snap-diff/snap_diff-capybara/issues/166).
+> **2.0 is the transitional release.** The gem's canonical namespace is now `SnapDiff`. Upgrading from 1.x is a version bump — every legacy `Capybara::Screenshot::Diff` / `CapybaraScreenshotDiff` name still resolves to the same object and keeps working. The first legacy API a process touches prints one migration notice (lazily shimmed constants also warn once each — see [which names warn](docs/UPGRADING.md#deprecation-warnings)), silenceable via `SnapDiff.silence_deprecations = true` or `SNAP_DIFF_SILENCE_DEPRECATIONS=1`.
 >
-> Starting with the 2.0 prereleases the gem is also published as [`snap_diff-capybara`](https://rubygems.org/gems/snap_diff-capybara) — identical content and versions under the forward-looking name, matching this repository. Install either; don't install both.
+> **2.1 removes what 2.0 warns about**: the legacy namespaces, the ChunkyPNG driver, `shift_distance_limit`, the `driver:` setting and the driver abstraction — libvips becomes the only backend. There is no 3.0. Writing new code? Start from [SnapDiff — the canonical API](docs/snapdiff.md), which uses canonical names only. Migrating an existing suite? See the [upgrade guide](docs/UPGRADING.md).
+>
+> **Two gem names, one gem.** `capybara-screenshot-diff` is the name to install. The same content is also published as [`snap_diff-capybara`](https://rubygems.org/gems/snap_diff-capybara) — identical version, forward-looking name matching this repository — so that name is reserved and resolvable. **Install one, never both**: with both in a Gemfile the gem raises `SnapDiff::DualInstallError` at require time.
 
 ## Quick Start (5 minutes)
 
@@ -22,8 +24,12 @@ Stop shipping UI bugs. Take screenshots in your Capybara tests, commit baselines
 ```ruby
 # Gemfile
 gem 'capybara-screenshot-diff'
-gem 'ruby-vips'  # Optional: 10x faster comparisons
+gem 'ruby-vips'  # The image backend. Needs libvips — see Installation below
 ```
+
+The gem ships no image backend of its own. Add `ruby-vips` (recommended, and the only
+backend from 2.1 on) or `chunky_png` (pure Ruby, no system library, removed in 2.1) — with
+neither, comparisons raise `Wrong adapter nil. Available adapters: []`.
 
 ```ruby
 # test/test_helper.rb
@@ -186,7 +192,7 @@ Set `window_size` for consistent dimensions and use `perceptual_threshold: 2.0` 
 <details>
 <summary><strong>Will this slow down my tests?</strong></summary>
 
-Comparisons add ~50ms per image with VIPS. Without `ruby-vips`, ChunkyPNG is used (slower but no system dependency). `stability_time_limit` adds wait time — keep it low (0.1-0.5s) or use `disable_animations` instead.
+Comparisons add ~50ms per image with VIPS. If you add `chunky_png` to your Gemfile instead, it is used as a pure-Ruby fallback (slower, no system dependency, and removed in 2.1). `stability_time_limit` adds wait time — keep it low (0.1-0.5s) or use `disable_animations` instead.
 </details>
 
 <details>
@@ -197,11 +203,12 @@ Comparisons add ~50ms per image with VIPS. Without `ruby-vips`, ChunkyPNG is use
 
 ## Installation
 
-**Requirements:** Ruby 3.2+. Rails 7.1+ for Rails integration; non-Rails projects supported via `CapybaraScreenshotDiff.serve()`. For the `:vips` driver: [libvips 8.9+](https://libvips.github.io/libvips/install.html). On macOS: `brew install vips`. On Ubuntu: `apt-get install libvips-dev`.
+**Requirements:** Ruby 3.2+, Capybara 2–3. Rails 7.1+ for Rails integration; non-Rails projects supported via `CapybaraScreenshotDiff.serve()`. For the `:vips` driver (recommended, and the only backend from 2.1 on): [libvips 8.9+](https://libvips.github.io/libvips/install.html). On macOS: `brew install vips`. On Ubuntu: `apt-get install libvips-dev`.
 
 ## Docs
 
 - [SnapDiff — the canonical API](docs/snapdiff.md) — setup, config, object map, custom drivers & reporters, canonical names only
+- [Upgrading](docs/UPGRADING.md) — 1.x → 2.0, every renamed constant, which names warn, what 2.1 removes, rollback
 - [Framework Setup](docs/framework-setup.md) — Minitest, RSpec, Cucumber
 - [CI & Non-Rails Integration](docs/ci-integration.md) — GitHub Actions, reusable action, static sites, baseline updates
 - [Configuration Reference](docs/configuration.md) — all options explained
@@ -211,11 +218,11 @@ Comparisons add ~50ms per image with VIPS. Without `ruby-vips`, ChunkyPNG is use
 
 ## Development
 
-After checking out the repo, run `bin/setup` then `rake test`. See [Docker Testing](docs/docker-testing.md) for reproducible CI-matching test runs.
+After checking out the repo, run `bin/setup` then `rake test`. See [Docker Testing](https://github.com/snap-diff/snap_diff-capybara/blob/master/docs/docker-testing.md) for reproducible CI-matching test runs.
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md)
+See [CONTRIBUTING.md](https://github.com/snap-diff/snap_diff-capybara/blob/master/CONTRIBUTING.md)
 
 ## License
 
