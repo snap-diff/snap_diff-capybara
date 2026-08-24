@@ -6,6 +6,7 @@ require_relative "os"
 module SnapDiff
   module Vcs
     @git_roots = {}
+    @git_roots_lock = Mutex.new
 
     def self.checkout_vcs(root, screenshot_path, checkout_path)
       root_path = root.to_s
@@ -39,11 +40,22 @@ module SnapDiff
     # while the suite runs, so remember it per directory. `false` (not a repo)
     # is remembered too: that is the every-assertion answer for anyone whose
     # screenshots live outside a git checkout.
+    #
+    # Synchronized because the lookup itself is what must not be duplicated:
+    # MRI releases the GVL for the whole of `Open3.capture3`, so eight threads
+    # asking about one root all miss `key?` before any of them writes -- eight
+    # spawns, the exact cost this cache exists to remove. Threads are the
+    # default parallel mode on JRuby, which has no GVL to make the Hash write
+    # safe either. Holding the lock across the spawn is deliberate: callers
+    # almost always share one root, so the other threads wait once and then
+    # read the cache, which is the outcome we want.
     def self.git_root_for(root_path)
-      return @git_roots[root_path] if @git_roots.key?(root_path)
+      @git_roots_lock.synchronize do
+        next @git_roots[root_path] if @git_roots.key?(root_path)
 
-      git_root, _, status = Open3.capture3("git", "-C", root_path, "rev-parse", "--show-toplevel")
-      @git_roots[root_path] = status.success? && git_root.chomp
+        git_root, _, status = Open3.capture3("git", "-C", root_path, "rev-parse", "--show-toplevel")
+        @git_roots[root_path] = status.success? && git_root.chomp
+      end
     end
   end
 end
