@@ -36,7 +36,8 @@ with a single `version` input (e.g. `2.0.0`, or `2.1.0.beta1`):
 - **Both** gem names must trust this repo + `release.yml` as a trusted publisher on
   rubygems.org — `capybara-screenshot-diff` **and** `snap_diff-capybara`. If only one
   does, step 4 or 5 fails after the tag is already pushed; re-dispatch after fixing.
-- Branch protection on `master` must allow the workflow's tag push.
+- If tag protection rules are ever added to this repo, `v*` must allow
+  `github-actions[bot]` to push — that is how step 3 creates the tag.
 
 ## Before you dispatch
 
