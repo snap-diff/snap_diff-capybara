@@ -59,15 +59,20 @@ Then run these steps in order:
 
 ```bash
 # Step 1: Save baselines (first run always passes)
-bundle exec rake test
+bin/rails test:system
 
 # Step 2: Commit baselines to git
 git add doc/screenshots/
 git commit -m "chore: add screenshot baselines"
 
 # Step 3: Now comparisons work — change your UI and re-run
-bundle exec rake test
+bin/rails test:system
 ```
+
+> **Run the task that actually runs system tests.** In a Rails app, `rake test`
+> and `rails test` skip `test/system/` — you get `0 runs` and no baselines, which
+> looks like a pass. Use `rails test:system` (or `rails test test/system`).
+> Outside Rails, run whatever task loads your Capybara tests.
 
 After Step 1, you'll see:
 ```text
@@ -136,7 +141,7 @@ git diff --stat doc/screenshots/
 git add doc/screenshots/homepage.png
 git commit -m "chore: update homepage baseline"
 
-bundle exec rake test          # now green — HEAD holds the new baseline
+bin/rails test:system          # now green — HEAD holds the new baseline
 ```
 
 > **Staging is not enough.** `git add` alone does not move `HEAD`, so a staged-but-uncommitted
@@ -230,7 +235,7 @@ Comparisons add ~50ms per image with VIPS. If you add `chunky_png` to your Gemfi
 <details>
 <summary><strong>Debug mode</strong></summary>
 
-`DEBUG=1 bundle exec rake test` keeps `.diff.png` files for inspection.
+`DEBUG=1 bin/rails test:system` keeps `.diff.png` files for inspection.
 </details>
 
 ## Installation

@@ -184,10 +184,13 @@ jobs:
 
 ## Update Baselines in CI
 
-When intentional UI changes are made, baselines need to be re-recorded. You can do this locally:
+When intentional UI changes are made, baselines need to be re-recorded. Baselines are
+read from git, so accepting a change is a commit — the failing run has already written
+the new capture to the baseline path:
 
 ```bash
-RECORD_SCREENSHOTS=1 bundle exec rake test
+bin/rails test:system                  # fails, and rewrites the changed baselines
+git status                             # review what moved
 git add test/fixtures/screenshots/
 git commit -m "chore: update screenshot baselines"
 ```
@@ -226,8 +229,8 @@ jobs:
           cache-apt-packages: true
 
       - name: Record new baselines
-        run: RECORD_SCREENSHOTS=1 bundle exec rake test
-        continue-on-error: true
+        run: bin/rails test:system
+        continue-on-error: true    # the run fails by design; it rewrites the baselines
 
       - name: Commit updated baselines
         run: |

@@ -246,9 +246,13 @@ end
 
 ### "My baselines are on Percy/Chromatic servers"
 
-You'll need to take fresh screenshots. Either:
-- Visit each page and capture manually
-- Run tests with `RECORD_SCREENSHOTS=1` to generate all baselines at once
+You'll need to take fresh screenshots. Run your system tests once — every screenshot
+is written to its baseline path, whether or not it matched — then commit them:
+
+```bash
+bin/rails test:system
+git add doc/screenshots/ && git commit -m "chore: record baselines"
+```
 
 ### "I had hundreds of BackstopJS scenarios"
 
