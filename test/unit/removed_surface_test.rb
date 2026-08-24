@@ -29,12 +29,27 @@ require "open3"
 class RemovedSurfaceTest < ActiveSupport::TestCase
   LIB = Pathname.new(File.expand_path("../../lib", __dir__))
 
-  # The 2.1 `git rm`, verbatim. Anything on this list reappearing under lib/
-  # is a shipped regression, not a local mess.
+  # The 2.1 `git rm`, verbatim -- the IMPLEMENTATION files. Anything on this
+  # list reappearing under lib/ is a shipped regression, not a local mess.
+  #
+  # The line moved on 2026-08-24 (ADR-008 amendment) and it moved by exactly
+  # one category: the v1 REQUIRE PATHS are back as one-line alias entries
+  # (lib/capybara/screenshot/diff.rb, lib/capybara_screenshot_diff{,/*}.rb),
+  # because four of six discoverable real users import the gem under them and
+  # a LoadError there fires before any constant alias could help. What those
+  # files must never contain again is what is listed here: the v1 tree that
+  # held logic, the deprecation channel, and the driver abstraction.
+  # compat_surface_test pins the entries; this pins their emptiness.
   REMOVED_PATHS = %w[
-    capybara
-    capybara_screenshot_diff
-    capybara_screenshot_diff.rb
+    capybara/screenshot/diff
+    capybara_screenshot_diff/snap.rb
+    capybara_screenshot_diff/snap_manager.rb
+    capybara_screenshot_diff/screenshot_assertion.rb
+    capybara_screenshot_diff/screenshot_namer.rb
+    capybara_screenshot_diff/attempts_reporter.rb
+    capybara_screenshot_diff/static.rb
+    capybara_screenshot_diff/reporters
+    capybara_screenshot_diff/error_with_filtered_backtrace.rb
     snap_diff/legacy_shims.rb
     snap_diff/deprecation.rb
     snap_diff/removal.rb
@@ -44,19 +59,31 @@ class RemovedSurfaceTest < ActiveSupport::TestCase
     snap_diff/utils.rb
   ].freeze
 
+  # Alias-only by contract: three lines of comment and one `require`. A v1
+  # entry file that grows a `def` or a constant assignment has stopped being
+  # an alias and started being the tree 2.1 deleted.
+  ALIAS_ENTRIES = %w[
+    capybara/screenshot/diff.rb
+    capybara_screenshot_diff.rb
+    capybara_screenshot_diff/dsl.rb
+    capybara_screenshot_diff/minitest.rb
+    capybara_screenshot_diff/rspec.rb
+    capybara_screenshot_diff/cucumber.rb
+  ].freeze
+
   # NOT removed, and deliberately absent from the list above:
   # lib/capybara-screenshot-diff.rb. It looks like part of the v1 tree and is
   # not -- it is the Bundler entry point for the `capybara-screenshot-diff`
   # GEM NAME, which is still published (both names ship identical content).
-  # Bundler.require requires the gem's own name, and the dash->slash fallback
-  # it would otherwise use ("capybara/screenshot/diff") IS gone, so deleting
-  # this file makes `gem "capybara-screenshot-diff"` a silent no-op followed by
-  # a confusing NameError. support_load_probe_test pins both gem-name entries.
+  # support_load_probe_test pins both gem-name entries.
 
   # Removed CONSTANTS, by fully qualified name.
+  #
+  # Capybara::Screenshot and CapybaraScreenshotDiff are NOT here since the
+  # ADR-008 amendment: they survive as permanent eager same-object aliases of
+  # SnapDiff (snap_diff/compat.rb), pinned by compat_surface_test. What is
+  # listed here is the machinery those names used to carry.
   REMOVED_CONSTANTS = %w[
-    Capybara::Screenshot
-    CapybaraScreenshotDiff
     SnapDiff::Deprecation
     SnapDiff::Removal
     SnapDiff::Driver
@@ -75,11 +102,11 @@ class RemovedSurfaceTest < ActiveSupport::TestCase
   # -- so "the module is gone" would be the wrong assertion.
   REMOVED_DRIVERS_METHODS = %w[loaded available for registry detect_available].freeze
 
-  # Removed CONFIG settings. Absence here means NoMethodError at boot, which is
-  # the point: `driver:` cannot select anything with one backend, and an
-  # accept-and-ignore knob would let a config claim a backend choice that does
-  # not exist.
-  REMOVED_SETTINGS = %w[driver driver= shift_distance_limit shift_distance_limit=].freeze
+  # `driver` / `shift_distance_limit` used to be listed here as removed
+  # settings whose absence was asserted. The ADR-008 amendment reversed that:
+  # deleting a setting a real config writes is a SILENT failure (one known
+  # user guards the writer with `respond_to?`), so they are raising stubs now
+  # rather than gone. compat_surface_test owns them.
 
   # Runs FIRST, before any absence assertion. Proves the process really loaded
   # THIS repo's lib/ -- otherwise every "constant is gone" below is vacuous.
@@ -133,10 +160,6 @@ class RemovedSurfaceTest < ActiveSupport::TestCase
       #{REMOVED_DRIVERS_METHODS.inspect}.each do |m|
         back << "SnapDiff::Drivers.\#{m}" if SnapDiff::Drivers.respond_to?(m)
       end
-      #{REMOVED_SETTINGS.inspect}.each do |s|
-        back << "SnapDiff.config.\#{s}" if SnapDiff.config.respond_to?(s)
-      end
-
       abort("still defined: \#{back.join(", ")}") unless back.empty?
     RUBY
 
@@ -166,7 +189,118 @@ class RemovedSurfaceTest < ActiveSupport::TestCase
     assert_includes out, "no snap_diff files loaded at all"
   end
 
+  test "the v1 require paths are alias entries, not the tree that was deleted" do
+    logic = ALIAS_ENTRIES.filter_map do |entry|
+      file = LIB.join(entry)
+      next "#{entry}: missing -- a real user's `require` line now LoadErrors" unless file.exist?
+
+      code = file.read.lines.map(&:strip).reject { |line| line.empty? || line.start_with?("#") }
+      offending = code.grep_v(/\Arequire /)
+      "#{entry}: #{offending.join(" / ")}" unless offending.empty?
+    end
+
+    assert_empty logic, <<~MSG
+      A v1 entry file is missing, or has grown something other than a
+      `require`. These are alias entries: they exist so a real user's require
+      line resolves, not to hold the surface 2.1 deleted.
+
+      #{logic.join("\n")}
+    MSG
+  end
+
+  # --- The release pipeline is a consumer of this deletion too ---------
+  #
+  # release.yml verified the version by executing
+  # `ruby -I lib -r capybara/screenshot/diff/version -e "puts
+  # Capybara::Screenshot::Diff::VERSION"`. 2.1 deleted that file, so the FIRST
+  # 2.1 release would have failed at "Verify version" -- a release workflow
+  # broken by the release it is releasing, discovered at the worst moment.
+  #
+  # Generic on purpose: it extracts every inline `ruby -I lib -r ... -e ...`
+  # from .github and RUNS it, so the next one is covered without an edit here.
+  WORKFLOW_RUBY = /ruby -I lib -r (\S+) -e "([^"]*)"/
+
+  test "every inline ruby the CI workflows run still loads and prints what it claims" do
+    invocations = github_files.flat_map do |rel, file|
+      file.read.scan(WORKFLOW_RUBY).map { |path, script| [rel, path, script] }
+    end
+
+    assert_not_empty invocations, "no inline ruby found in .github -- this gate would pass vacuously"
+
+    failures = invocations.filter_map do |rel, path, script|
+      out, status = Open3.capture2e(
+        {"RUBYOPT" => nil, "BUNDLE_GEMFILE" => nil},
+        RbConfig.ruby, "-I", "lib", "-r", path, "-e", script, chdir: PROJECT_ROOT.to_s
+      )
+      "#{rel}: `ruby -I lib -r #{path} -e \"#{script}\"` -> #{out.strip}" unless status.success?
+    end
+
+    assert_empty failures, <<~MSG
+      A workflow executes ruby against something this release removed. It
+      fails on the release it is releasing:
+
+      #{failures.join("\n")}
+    MSG
+  end
+
+  test "the release workflow verifies the version against the namespace the gem still ships" do
+    workflow = PROJECT_ROOT.join(".github/workflows/release.yml").read
+    command = workflow[/CODE_VERSION=\$\(([^)]+)\)/, 1]
+
+    assert command, "release.yml no longer computes CODE_VERSION the way this gate reads it"
+
+    out, status = Open3.capture2e(
+      {"RUBYOPT" => nil, "BUNDLE_GEMFILE" => nil},
+      "/bin/sh", "-c", command, chdir: PROJECT_ROOT.to_s
+    )
+
+    assert status.success?, "release.yml's version check does not run: #{out}"
+    # Last line only: the shell resolves `ruby` through whatever shim the
+    # developer's version manager installed, and some of them chatter first.
+    assert_equal SnapDiff::VERSION, out.lines.last.to_s.strip
+  end
+
+  # The non-executable half: a workflow, action or issue template that merely
+  # NAMES something removed is not caught above and quietly misinforms.
+  # `capybara_screenshot_diff/` is excluded from the alternation -- those four
+  # require paths survive as alias entries (see ALIAS_ENTRIES).
+  GITHUB_REMOVED_MENTIONS = %r{
+    capybara/screenshot/diff/
+    |chunky_?png
+    |SCREENSHOT_DRIVER
+    |shift_distance_limit
+  }xi
+
+  test "nothing under .github names a file or setting this release removed" do
+    files = github_files
+    assert_not_empty files, "the .github scan matched nothing -- it would pass vacuously"
+
+    offenders = files.flat_map do |rel, file|
+      file.read.lines.each_with_index.filter_map do |line, index|
+        next if line.lstrip.start_with?("#")
+
+        "#{rel}:#{index + 1}: #{line.strip}" if GITHUB_REMOVED_MENTIONS.match?(line)
+      end
+    end
+
+    assert_empty offenders, <<~MSG
+      CI configuration names something 2.1 removed. Nothing executes these
+      lines, so nothing else will ever say they are wrong:
+
+      #{offenders.join("\n")}
+    MSG
+  end
+
   private
+
+  PROJECT_ROOT = Pathname.new(File.expand_path("../..", __dir__))
+
+  # [relative path, Pathname] for every file under .github/.
+  def github_files
+    Dir[".github/**/*", base: PROJECT_ROOT.to_s]
+      .map { |rel| [rel, PROJECT_ROOT.join(rel)] }
+      .select { |_rel, file| file.file? }
+  end
 
   # A fresh process with ONLY the repo's lib/ on the load path.
   #

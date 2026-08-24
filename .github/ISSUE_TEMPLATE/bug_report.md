@@ -37,7 +37,7 @@ If applicable, add the `.diff.png` or `.heatmap.diff.png` files to help explain 
 - **Ruby version:** (e.g., 3.4.1)
 - **Rails version:** (e.g., 8.0) or N/A (non-Rails project)
 - **`capybara-screenshot-diff` version:** (e.g., 1.12.0)
-- **Image processing driver:** (`:vips` or `:chunky_png`)
+- **libvips version:** (`vips --version`; the only image backend since 2.1)
 - **Capybara driver:** (e.g., `selenium_chrome_headless`, `cuprite`)
 - **Operating system:** (e.g., macOS 14, Ubuntu 24.04)
 - **CI environment:** (e.g., GitHub Actions, local only)
@@ -60,5 +60,5 @@ DEBUG=1 bundle exec rake test
 
 Add any other context about the problem here. For example:
 - Is it specific to CI vs local?
-- Does it reproduce with both VIPS and ChunkyPNG drivers?
+- Does it reproduce with a different libvips version?
 - Is this a regression from a previous version?

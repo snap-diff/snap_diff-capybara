@@ -40,9 +40,15 @@ require "snap_diff/version"
 # extra require), so the entry point owns them rather than leaving them to
 # whichever integration happens to be loaded.
 require "snap_diff/screenshot_assertion"
+# The permanent compatibility surface: the v1 name aliases and the raising
+# stubs for the settings 2.1 removed. Required HERE, from the one file every
+# entry point routes through, because an alias that only some entry points
+# define is worse than none -- see snap_diff/compat.rb for the evidence that
+# put it there.
+require "snap_diff/compat"
 
-# The namespace for the gem. 2.1 deleted the v1 +Capybara::Screenshot+ /
-# +CapybaraScreenshotDiff+ trees, so this is the only one.
+# The namespace for the gem. 2.1 deleted the v1 implementation trees; what
+# survives of those names is alias-only (snap_diff/compat.rb).
 module SnapDiff
   # Compare two images on disk with the configured defaults.
   #

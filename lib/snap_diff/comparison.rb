@@ -4,6 +4,9 @@ require "pathname"
 require "fileutils"
 
 require "snap_diff/comparison_result"
+# SnapDiff.reject_removed_options! lives there; required directly so this
+# unit keeps working when it is loaded ahead of the entry point.
+require "snap_diff/compat"
 require "snap_diff/drivers/vips_driver"
 require "snap_diff/image_preprocessor"
 require "snap_diff/reporters/default"
@@ -52,6 +55,11 @@ module SnapDiff
 
       ensure_files_exist!
 
+      # THE funnel every per-screenshot options hash passes through, which is
+      # why the removed-option guard lives here rather than in each DSL entry:
+      # an unvalidated hash turned `screenshot "home", shift_distance_limit: 5`
+      # into a silent no-op.
+      SnapDiff.reject_removed_options!(options)
       @driver_options = options.freeze
       # One backend since 2.1, constructed rather than looked up: the driver
       # is stateless, so nothing is gained by threading one instance through

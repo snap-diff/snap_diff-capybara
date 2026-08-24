@@ -30,11 +30,20 @@ class CanonicalSuiteHasNoLegacyRefsTest < ActiveSupport::TestCase
   # allowlist, whose text is again an offence -- no fixed point exists.
   SELF = Pathname.new(File.expand_path(__FILE__))
 
+  # The compat surface's own test, excluded whole for the same reason as SELF.
+  # Since the ADR-008 amendment (2026-08-24) the v1 NAMES are a kept, permanent
+  # alias surface -- so one test has to exercise them, written as the affected
+  # user's own code. A line allowlist for a file whose every line is the
+  # subject buys nothing; the gate still holds for every other test file.
+  COMPAT_SURFACE_TESTS = ["unit/compat_surface_test.rb"].freeze
+
+  EXCLUDED = ([SELF] + COMPAT_SURFACE_TESTS.map { |rel| TEST_ROOT.join(rel) }).freeze
+
   ALL_FILES = (
     Dir[TEST_ROOT.join("unit/**/*_test.rb")] + Dir[TEST_ROOT.join("integration/**/*_test.rb")]
   ).map { |path| Pathname.new(path) }.sort.freeze
 
-  CANONICAL_FILES = ALL_FILES.reject { |file| file == SELF }.freeze
+  CANONICAL_FILES = ALL_FILES.reject { |file| EXCLUDED.include?(file) }.freeze
 
   # A require of a doomed path: the v1 trees (`capybara/screenshot/...`,
   # `capybara_screenshot_diff...`, the `capybara-screenshot-diff` gem-name
@@ -102,8 +111,6 @@ class CanonicalSuiteHasNoLegacyRefsTest < ActiveSupport::TestCase
     # without spelling it -- and every line here is data in a table, never an
     # assertion about legacy behaviour.
     "unit/removed_surface_test.rb" => [
-      "Capybara::Screenshot",
-      "CapybaraScreenshotDiff",
       "SnapDiff::Deprecation",
       "SnapDiff::Removal",
       "SnapDiff::Driver",
@@ -114,8 +121,9 @@ class CanonicalSuiteHasNoLegacyRefsTest < ActiveSupport::TestCase
 
   test "no canonical test references the legacy namespaces or entry points" do
     refute_empty CANONICAL_FILES, "canonical glob matched nothing -- the gate would pass vacuously"
-    assert_equal ALL_FILES.size - 1, CANONICAL_FILES.size,
-      "SELF no longer names a scanned file, so this gate is scanning itself or nothing"
+    assert_equal ALL_FILES.size - EXCLUDED.size, CANONICAL_FILES.size,
+      "an exclusion no longer names a scanned file, so this gate is scanning itself or nothing"
+    EXCLUDED.each { |file| assert file.exist?, "#{file} is excluded from this gate but does not exist" }
 
     offenders = CANONICAL_FILES.flat_map { |file| offences(file) }
 

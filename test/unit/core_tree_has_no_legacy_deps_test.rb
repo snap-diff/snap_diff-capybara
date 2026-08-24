@@ -13,9 +13,10 @@ require "test_helper"
 # `Capybara::Screenshot.*`, `SnapDiff::Drivers.available` or
 # `shift_distance_limit` still parses fine and simply lies.
 #
-# Scope: every file under lib/. The exclusion list this gate used to carry
-# (legacy_shims.rb, deprecation.rb -- files that existed to BUILD the v1
-# surface) is empty: they were deleted, not excluded.
+# Scope: every file under lib/ except snap_diff/compat.rb, which IS the
+# compatibility surface (see COMPAT_SURFACE below). The two files that used to
+# BUILD the v1 surface -- legacy_shims.rb, deprecation.rb -- are not excluded;
+# they were deleted.
 #
 # WHOLE-LINE comments are ignored: "ex +SnapDiff.config.active?+" on its
 # own line is history, not a dependency. Everything else on a code line
@@ -27,14 +28,19 @@ require "test_helper"
 class CoreTreeHasNoLegacyDepsTest < ActiveSupport::TestCase
   LIB = Pathname.new(__dir__).join("../../lib").expand_path
 
-  # EMPTY, and it must stay that way. It named the two files that built the v1
-  # surface (legacy_shims.rb, deprecation.rb); 2.1 deleted them rather than
-  # exempting them, so there is nothing left under lib/ this gate skips.
-  DELETED_WITH_LEGACY_TREES = [].freeze
+  # EXACTLY ONE ENTRY, and adding a second needs an ADR update rather than a
+  # green build. snap_diff/compat.rb IS the compatibility surface (ADR-008
+  # amendment, 2026-08-24): the permanent v1 name aliases and the raising
+  # stubs for `driver` / `shift_distance_limit`. Naming the old names is its
+  # whole job, so scanning it would only ever produce noise -- but it is one
+  # file, alias-and-message only, and compat_surface_test pins its behaviour.
+  # Every other file under lib/ is still scanned, which is where this gate
+  # earns its keep.
+  COMPAT_SURFACE = ["snap_diff/compat.rb"].freeze
 
   CORE_FILES = (
     [LIB.join("snap_diff.rb")] + Dir[LIB.join("snap_diff/**/*.rb")].map { |p| Pathname.new(p) }
-  ).sort.reject { |file| DELETED_WITH_LEGACY_TREES.include?(file.relative_path_from(LIB).to_s) }.freeze
+  ).sort.reject { |file| COMPAT_SURFACE.include?(file.relative_path_from(LIB).to_s) }.freeze
 
   # A require of anything in the v1 trees: `capybara/screenshot/...`,
   # `capybara_screenshot_diff...`, `capybara-screenshot-diff`. Plain
@@ -91,6 +97,18 @@ class CoreTreeHasNoLegacyDepsTest < ActiveSupport::TestCase
 
       #{offenders.join("\n")}
     MSG
+  end
+
+  # An exclusion that names a file which is not there protects nothing and
+  # hides the fact that the gate's scope quietly widened back.
+  test "the compat-surface exclusion names a file that exists and is actually skipped" do
+    COMPAT_SURFACE.each do |path|
+      assert LIB.join(path).exist?, "#{path} is excluded from this gate but does not exist"
+    end
+
+    scanned = CORE_FILES.map { |file| file.relative_path_from(LIB).to_s }
+    assert_empty scanned & COMPAT_SURFACE, "the exclusion did not take effect"
+    assert_operator scanned.size, :>=, 25, "the core glob collapsed -- the gate would barely scan anything"
   end
 
   test "the allowlist names only lines that still exist" do

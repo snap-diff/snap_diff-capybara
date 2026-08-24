@@ -29,7 +29,7 @@ jobs:
       - name: Verify version
         run: |
           GEM_VERSION="${{ github.event.inputs.version }}"
-          CODE_VERSION=$(ruby -I lib -r capybara/screenshot/diff/version -e "puts Capybara::Screenshot::Diff::VERSION")
+          CODE_VERSION=$(ruby -I lib -r snap_diff/version -e "puts SnapDiff::VERSION")
           if [ "$GEM_VERSION" != "$CODE_VERSION" ]; then
             echo "Version mismatch: input=$GEM_VERSION code=$CODE_VERSION"
             exit 1
