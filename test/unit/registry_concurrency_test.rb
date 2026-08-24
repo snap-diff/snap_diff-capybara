@@ -13,6 +13,10 @@ class RegistryConcurrencyTest < ActiveSupport::TestCase
   PassingCompare = Struct.new(:name) do
     def different? = false
 
+    # A processed comparison that matched: SnapDiff::Reporting.count reads
+    # this to tally the run.
+    def difference = TestDoubles::TestDifference.new(false)
+
     def base_image_path = Pathname.new("/nonexistent/#{name}.base.png")
   end
 

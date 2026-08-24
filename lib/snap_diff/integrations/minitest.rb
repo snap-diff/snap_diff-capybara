@@ -31,8 +31,20 @@ module SnapDiff
     module Assertions
       include ::SnapDiff::DSL
 
+      # The `if` is the whole point (issue #270). `super` returns false
+      # immediately when screenshots are disabled -- nothing captured,
+      # nothing compared -- so counting unconditionally reported
+      # `1 runs, 1 assertions, 0 failures` over a test that asserted
+      # nothing at all.
+      #
+      # Getting the count right hands the alarm to Rails for free: it
+      # prepends ActiveSupport::Testing::TestsWithoutAssertions into every
+      # ActiveSupport::TestCase (test_case.rb:205), which warns
+      # "Test is missing assertions: `test_x`" on exactly the tests whose
+      # sole assertion was a disabled screenshot -- and stays quiet for
+      # tests that assert something else.
       def assert_matches_screenshot(*args, skip_stack_frames: 0, **opts)
-        self.assertions += 1
+        self.assertions += 1 if SnapDiff.config.active?
 
         super(*args, skip_stack_frames: skip_stack_frames + 1, **opts)
       rescue ::SnapDiff::ExpectationNotMet => e

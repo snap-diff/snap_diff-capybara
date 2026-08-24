@@ -98,8 +98,19 @@ module SnapDiff
       ]
     JS
 
+    # `minimum: 0` is load-bearing (issue #272). Capybara's `all` defaults to
+    # `minimum: 1` and blocks in `synchronize` until the count is satisfied,
+    # so every `skip_area`/`crop` selector matching nothing burned a full
+    # `Capybara.default_max_wait_time` -- 5s by default, per selector, per
+    # screenshot. One project measured `%w[picture img]` on an image-less
+    # page at 10s per screenshot, 44% of their suite.
+    #
+    # Waiting is the wrong semantic here regardless of the cost: these
+    # selectors describe a MASK over whatever is currently on the page. A
+    # selector that matches nothing has nothing to mask, and that answer is
+    # available immediately.
     def self.all_visible_regions_for(selector)
-      BrowserHelpers.session.all(selector, visible: true).map { |el| region_for(el) }
+      BrowserHelpers.session.all(selector, visible: true, minimum: 0).map { |el| region_for(el) }
     end
 
     def self.region_for(element)

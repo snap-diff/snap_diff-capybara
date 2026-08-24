@@ -38,7 +38,7 @@ class RecordModesTest < ActiveSupport::TestCase
     super
     SnapDiff.config.root = @original_root
     FileUtils.remove_entry(@new_root) if @new_root
-    SnapDiff::Reporting.reset_rerecorded_baselines!
+    SnapDiff::Reporting.reset_run_totals!
   end
 
   # --- the default is not touched --------------------------------------

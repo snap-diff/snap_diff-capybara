@@ -13,7 +13,10 @@
 #   SNAP_CASES  -- comma-separated subset of verified,changed,new (may be empty)
 require "minitest/autorun"
 require "snap_diff/integrations/minitest"
-require "snap_diff/reporters/html"
+# The HTML report is a FEATURE and stays opt-in; the summary line is core
+# honesty and must print either way. SNAP_NO_REPORTER runs the documented
+# Rails setup, which registers no reporter at all.
+require "snap_diff/reporters/html" unless ENV["SNAP_NO_REPORTER"]
 require "fileutils"
 require "pathname"
 
@@ -31,7 +34,8 @@ class FileCopyScreenshoter < SnapDiff::Screenshoter
   CAPTURES = {
     "verified" => "a.png",
     "changed" => "b.png",
-    "new" => "a.png"
+    "new" => "a.png",
+    "rerecorded" => "b.png"
   }.freeze
 
   def take_screenshot(screenshot_path)
@@ -49,7 +53,18 @@ SnapDiff.config.fail_if_new = false
 class SummaryLineCase < Minitest::Test
   include SnapDiff::Minitest::Assertions
 
+  # `record: :all` accepts whatever rendered as the new baseline. This one
+  # has a COMMITTED baseline that differs, and the mode ignores it -- the
+  # interaction worth asserting on a finished process.
+  RECORD_ALL = %w[rerecorded].freeze
+
   CASES.each do |name|
-    define_method(:"test_#{name}") { assert_matches_screenshot(name) }
+    define_method(:"test_#{name}") do
+      if RECORD_ALL.include?(name)
+        assert_matches_screenshot(name, record: :all)
+      else
+        assert_matches_screenshot(name)
+      end
+    end
   end
 end

@@ -170,59 +170,23 @@ class HTMLReporterTest < ActiveSupport::TestCase
     assert_nil result
   end
 
-  test "#summary counts what was verified, what changed, and what was never compared" do
-    SnapDiff::Reporting.record_missing_baseline("never_compared")
-
+  # The COUNTS moved to SnapDiff::Reporting (issue #269) -- see
+  # test/unit/reporting_counts_test.rb. What is left here is the one thing
+  # only this reporter can say: where the file it wrote went.
+  test "#summary names the report it wrote" do
     reporter = SnapDiff::Reporters::HTML.new(output_path: @output_path)
-    reporter.record([build_passing_assertion("ok"), build_failing_assertion("fail")])
+    reporter.record([build_failing_assertion("fail")])
     reporter.finalize
 
-    assert_equal "[snap_diff] 2 verified, 1 changed, 1 new (not verified). Report: #{@output_path}",
-      reporter.summary
+    assert_equal "[snap_diff] Report: #{@output_path}", reporter.summary
   end
 
-  test "#summary counts every changed screenshot, not just the first" do
-    reporter = SnapDiff::Reporters::HTML.new(output_path: @output_path)
-    reporter.record([
-      build_failing_assertion("first failure"),
-      build_failing_assertion("second failure")
-    ])
-    reporter.finalize
-
-    summary = reporter.summary
-    assert_includes summary, "2 verified, 2 changed"
-    assert_includes summary, @output_path.to_s
-  end
-
-  test "#summary when all pass reports zero changed and omits the report path" do
+  test "#summary is nil when no report was written" do
     reporter = SnapDiff::Reporters::HTML.new(output_path: @output_path)
     reporter.record([build_passing_assertion("ok")])
     reporter.finalize
 
-    summary = reporter.summary
-    assert_equal "[snap_diff] 1 verified, 0 changed, 0 new (not verified).", summary
-    refute_includes summary, @output_path.to_s
-  end
-
-  # Zero verified is the whole tell for the failure modes no assertion can
-  # report: a suite that ran no system tests at all, or one whose baseline
-  # lookup was redirected to another repository. The line must be printed
-  # (never nil) and must not read like a pass.
-  test "#summary shouts when nothing was verified" do
-    reporter = SnapDiff::Reporters::HTML.new(output_path: @output_path)
-
-    assert_equal "[snap_diff] 0 verified, 0 changed, 0 new (not verified). " \
-      "NOTHING WAS VERIFIED -- no screenshot was compared to a committed baseline.",
-      reporter.summary
-  end
-
-  test "#summary counts screenshots captured with no committed baseline even when nothing was verified" do
-    SnapDiff::Reporting.record_missing_baseline("a")
-    SnapDiff::Reporting.record_missing_baseline("b")
-
-    reporter = SnapDiff::Reporters::HTML.new(output_path: @output_path)
-
-    assert_includes reporter.summary, "0 verified, 0 changed, 2 new (not verified)."
+    assert_nil reporter.summary, "nothing was written, so there is no path to name"
   end
 
   test "#finalize can retry after write_report failure" do

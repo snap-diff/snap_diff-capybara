@@ -38,24 +38,34 @@ class ParallelReportMergeTest < ActiveSupport::TestCase
     FileUtils.rm_rf(SnapDiff::Reporting.parallel_fragments_dir)
   end
 
-  test "records from forked workers reach the parent's report and summary" do
-    fork_worker { @reporter.record([build_failing_assertion("worker_a")]) }
+  # Through `Reporting.notify`, the real path: a worker has to hand back BOTH
+  # halves -- the reporter's records and the counts Reporting keeps itself
+  # (issue #269) -- or the merged run is wrong in exactly the case this whole
+  # file is about.
+  test "records and counts from forked workers reach the parent" do
+    fork_worker { SnapDiff::Reporting.notify([build_failing_assertion("worker_a")]) }
     fork_worker do
-      @reporter.record([build_failing_assertion("worker_b"), build_passing_assertion("worker_b_ok")])
+      SnapDiff::Reporting.notify([build_failing_assertion("worker_b"), build_passing_assertion("worker_b_ok")])
       SnapDiff::Reporting.record_missing_baseline("worker_b_new")
+      # Rides the same fragment as the counts above (#274 + #269). Both
+      # tallies are written by the same worker and merged by the same
+      # parent, and neither may cost the other.
+      SnapDiff::Reporting.record_rerecorded_baseline("worker_b_accepted")
     end
 
     # The bug, restated as an assertion: the parent holds nothing of its own.
     assert_equal 0, @reporter.total
+    assert_equal 0, SnapDiff::Reporting.verified
 
     SnapDiff::Reporting.merge_parallel_fragments!
 
     assert_equal 3, @reporter.total
     assert_equal 2, @reporter.failed
-    # The summary line must count the MERGED totals -- one worker's numbers
-    # would be wrong in exactly the case this whole file is about.
-    assert_equal "[snap_diff] 3 verified, 2 changed, 1 new (not verified). Report: #{@output_path}",
-      @reporter.summary
+    # The counts line must total the MERGED runs -- one worker's numbers
+    # would be wrong here.
+    assert_equal "[snap_diff] 3 verified, 2 changed, 1 new (not verified). 1 re-recorded (not verified).",
+      SnapDiff::Reporting.counts_summary
+    assert_includes SnapDiff::Reporting.rerecorded_baselines_summary, "worker_b_accepted"
 
     # Symbol keys, like an entry recorded in this process: `failures` is
     # public, and an array whose shape depends on which process filled it
@@ -65,6 +75,7 @@ class ParallelReportMergeTest < ActiveSupport::TestCase
     @reporter.finalize
 
     assert_predicate @output_path, :exist?
+    assert_equal "[snap_diff] Report: #{@output_path}", @reporter.summary
   end
 
   test "the parent removes the fragments it merged" do
@@ -90,6 +101,23 @@ class ParallelReportMergeTest < ActiveSupport::TestCase
 
     assert_equal 1, @reporter.total
     assert_equal 0, SnapDiff::Reporting.missing_baselines_count
+  end
+
+  # The fragments directory is keyed by pid under the system temp dir, so a
+  # recycled pid can hand this merge a fragment written by an older version
+  # of the gem -- one with none of the keys added since. Every key but
+  # "missing_baselines" is read with a default for exactly this.
+  test "a fragment written before the newer tallies existed still merges" do
+    fork_worker { SnapDiff::Reporting.notify([build_failing_assertion("current")]) }
+
+    dir = SnapDiff::Reporting.parallel_fragments_dir
+    File.write(File.join(dir, "99998.json"), JSON.generate({"missing_baselines" => ["ancient"], "reporters" => []}))
+
+    SnapDiff::Reporting.merge_parallel_fragments!
+
+    assert_equal 1, SnapDiff::Reporting.verified, "the current worker's counts survived the old fragment"
+    assert_equal 1, SnapDiff::Reporting.missing_baselines_count
+    assert_includes SnapDiff::Reporting.missing_baselines_summary, "ancient"
   end
 
   # Serial and `parallelize(with: :threads)` both record in the process that
