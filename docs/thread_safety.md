@@ -9,7 +9,7 @@ How `snap_diff` behaves when your test suite runs tests concurrently — Rails
 | --- | --- | --- |
 | Serial | Correct | Written, complete |
 | `parallelize(with: :threads)` — also the default on JRuby | **Correct — fully supported** | Written, complete |
-| `parallelize(workers: N)` — Rails' default, forks | Correct | Not written ([why, and how to get it back](reporters.md#parallel-test-runs)) |
+| `parallelize(workers: N)` — Rails' default, forks | Correct | Written, complete — merged from every worker ([how](reporters.md#parallel-test-runs)) |
 | One process per worker (`parallel_tests`, RSpec, CI sharding) | Correct | Written, but only the last process to finish is in it |
 
 Two rules make all of these safe:
