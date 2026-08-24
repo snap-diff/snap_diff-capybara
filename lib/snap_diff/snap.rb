@@ -20,8 +20,13 @@ module SnapDiff
       cleanup_attempts!
     end
 
+    # Records the successful checkout on the session, so that a LATER
+    # "there is no baseline" reading can be told apart from "there never
+    # was one". Only the second is a legitimate state (#217).
     def checkout_base_screenshot
-      @manager.checkout_file(path, base_path)
+      @manager.checkout_file(path, base_path).tap do |checked_out|
+        SnapDiff.session.record_baseline_checkout(full_name) if checked_out
+      end
     end
 
     def path_for(version = :actual)

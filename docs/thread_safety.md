@@ -42,12 +42,19 @@ every file involved in the comparison.
 Serially that is merely wasteful: the tests overwrite each other in order. In
 parallel it is dangerous. When two concurrently running tests share a name, one
 test's post-pass baseline archiving moves the baseline that the other just
-checked out, and the second test then finds no baseline — so it records the
-screenshot as *new* and **returns without comparing anything**. The test passes
-green having verified nothing. A run of 64 concurrent assertions sharing 8 names
-measured between 18 and 34 comparisons silently skipped this way, alongside a
-scatter of loud errors from the same collisions (truncated PNG reads, `mv`
-failures).
+checked out, and the second test then finds no baseline. A run of 64 concurrent
+assertions sharing 8 names measured between 18 and 34 comparisons lost this way,
+alongside a scatter of loud errors from the same collisions (truncated PNG reads,
+`mv` failures).
+
+Losing the baseline used to be **silent**: the screenshot was recorded as *new*
+and the test passed green having compared nothing. It is now an error — "no
+baseline was ever committed" (legitimate, warned about) is told apart from "the
+baseline I just checked out has disappeared" (impossible in a correct run):
+
+```
+The baseline for 'dashboard' was checked out and then disappeared before it could be compared -- nothing was verified.
+```
 
 Use `screenshot_section` / `screenshot_group`, or name screenshots after the test,
 so no two tests can collide.

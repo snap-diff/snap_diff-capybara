@@ -52,7 +52,7 @@ that hook fires in the process holding the results depends on how your runner pa
 | How the suite runs | Report |
 | --- | --- |
 | Serial | Written, complete. |
-| `parallelize(with: :threads)` (also the default on JRuby) | Written, complete — same failures and counts as a serial run; only the order of the entries differs. |
+| `parallelize(with: :threads)` (also the default on JRuby) | Written, complete — same failures and counts as a serial run; only the order of the entries differs. Verified over repeated runs, provided [screenshot names are unique across tests](thread_safety.md#screenshot-names-must-be-unique-across-tests). |
 | `parallelize(workers: N)` (Rails' default, forks) | Written, complete — one report at the usual path, merged from every worker. No configuration needed. |
 | One process per worker (`parallel_tests`, RSpec, CI sharding) | Written, but only the **last** process to finish is in it; the others are overwritten. |
 
