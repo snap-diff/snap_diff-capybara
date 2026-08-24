@@ -5,6 +5,186 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v2.0.0] - unreleased
+
+**The transitional release.** Everything you run today keeps working. 2.0 makes
+`SnapDiff` the canonical namespace, keeps the entire v1 API alongside it as
+same-object aliases, and warns — once per process — about what **2.1** removes.
+There is no 3.0; 2.1 is the cleanup.
+
+The sections below the divider are the prerelease notes (alpha1 → beta3) and are
+kept as history. This entry is the one to read if you are coming from **1.15.1**.
+
+### Upgrading from 1.15.1: change the version, run your suite
+
+```ruby
+gem "capybara-screenshot-diff", "2.0.0.beta3"   # current 2.0 prerelease; 2.0.0 final is not out yet
+```
+
+Pin the exact prerelease until 2.0.0 ships: Bundler never resolves a prerelease from a plain
+requirement, so `"~> 2.0"` fails with `Could not find gem 'capybara-screenshot-diff (~> 2.0)'`.
+From 2.0.0 on, `"~> 2.0"` is the pin.
+
+That is the whole migration. `screenshot`, `assert_matches_screenshot` and
+`capture_screenshot` are unchanged. Your `Capybara::Screenshot::Diff.configure`
+block, every `Capybara::Screenshot.*` / `Capybara::Screenshot::Diff.*` setting, and
+every legacy constant still resolve — to the *same objects* the new names resolve
+to. Baselines are unchanged: capture, encoding, file naming and the `png` default are
+the same code as 1.15.1, moved — upgrading does not re-encode or invalidate a baseline you
+already committed, and a matching screenshot stays byte-identical. (Unchanged from 1.x: a
+screenshot that *differs* is written to its baseline path, so a failing run leaves
+`doc/screenshots/` dirty. That is how you accept a change — review the diff and commit.)
+
+Rolling back is a Gemfile edit: pin `"~> 1.15"` and `bundle update`.
+
+### What you will see in your test output
+
+One migration notice, the first time the process goes through a v1 door that *can* be
+hooked — a legacy config accessor, `include Capybara::Screenshot[::Diff]`,
+`Capybara::Screenshot::Diff.default_options`, or a lazily shimmed legacy constant:
+
+```text
+[snap_diff deprecation] This process uses the v1 `Capybara::Screenshot*` /
+`CapybaraScreenshotDiff*` API. It still works in 2.0 and is REMOVED in 2.1 --
+see docs/UPGRADING.md for the SnapDiff replacements. Silence with
+`SnapDiff.silence_deprecations = true` or SNAP_DIFF_SILENCE_DEPRECATIONS=1.
+(shown once per process)
+```
+
+Plus one line per *lazily shimmed* legacy constant you reference, naming your call
+site:
+
+```text
+[snap_diff deprecation] `Capybara::Screenshot::Diff::ImageCompare` is deprecated
+(constant); use `SnapDiff::Comparison` instead. (called from test/test_helper.rb:12)
+```
+
+> **Silence is not evidence that you are migrated — on any 2.0 build.** In `2.0.0.beta3`
+> the deprecation channel was incomplete: a v1-only suite got **no** warnings at all, and
+> the driver-half removal warnings did not exist yet. 2.0.0 fixes the config-accessor,
+> `include`, `default_options` and `const_missing` doors, but **a suite whose only contact
+> with the v1 API is `require "capybara_screenshot_diff/minitest"` +
+> `include CapybaraScreenshotDiff::Minitest::Assertions` still prints nothing** — those
+> names are eager aliases, so there is no `const_missing` to hook. That setup is removed in
+> 2.1 all the same. Do not use warning output as a migration checklist; use
+> [docs/UPGRADING.md](docs/UPGRADING.md#deprecation-warnings), which lists what warns and
+> what cannot.
+
+Requiring the gem, the DSL, settings accessors and the eagerly-defined constants
+(the error classes, `::VERSION`, `Os`, `Region`, `Reporters::Default`,
+`LOADED_DRIVERS`, `AVAILABLE_DRIVERS`) are **silent by design** —
+[docs/UPGRADING.md](docs/UPGRADING.md#deprecation-warnings) lists exactly which
+names warn and which do not. Silence everything with
+`SnapDiff.silence_deprecations = true` or `SNAP_DIFF_SILENCE_DEPRECATIONS=1`.
+
+### The five things that can actually break
+
+Everything else is source-compatible. These are not:
+
+1. **Error class names printed in output are now `SnapDiff::…`.** The class objects
+   are identical, so `rescue CapybaraScreenshotDiff::ExpectationNotMet` still
+   catches them — but a CI job that greps the *old* class name out of test output
+   needs updating.
+2. **`defined?` / `const_defined?` on lazily shimmed legacy names returns
+   `false`/`nil`.** They resolve through `const_missing`, which those checks never
+   trigger. Move feature detection to the `SnapDiff::` name. Names in the
+   silent-by-design list are real constants and are unaffected.
+3. **Reopening `module Capybara::Screenshot::Diff::Drivers`** (the historical
+   custom-driver monkey-patch) defines a fresh, empty module that shadows the shim.
+   Define custom drivers under `SnapDiff::Drivers` instead — and `BaseDriver` is a
+   mixin now: `class MyDriver < BaseDriver` becomes `include SnapDiff::Driver`.
+4. **Stubbing `Capybara::Screenshot::Diff::AVAILABLE_DRIVERS` no longer works.** It
+   is an eager alias; the gem reads `SnapDiff::Drivers::AVAILABLE_DRIVERS`. Stubbing
+   the legacy name rebinds the alias only, so the test passes for the wrong reason.
+5. **`SnapDiff::Config::MAPPING` is gone**, split into `SnapDiff::Config::SETTINGS`
+   (setting names) and the `@api private` `SnapDiff::LegacyShims::CONFIG_MAPPING`.
+
+### Act now: what 2.1 removes
+
+2.1 deletes the v1 namespace trees, the ChunkyPNG driver, `shift_distance_limit`,
+and the whole driver abstraction — **libvips becomes the only backend**. Removing
+public API in a minor is a deliberate departure from strict semver; publishing the
+contract one release ahead is the mitigation. 2.0 warns once per process for each of:
+
+| You will hear about it when you… | Do this in 2.0 |
+|---|---|
+| select `driver: :chunky_png` | add `gem "ruby-vips"` and drop the option |
+| run `driver: :auto` **without ruby-vips** — nothing in your setup says `chunky_png`, so this warning is the only sign 2.1 will break the process | install libvips + `ruby-vips` |
+| set `shift_distance_limit` | use `median_filter_window_size`, `tolerance` or `color_distance_limit` |
+| read `SnapDiff::Drivers.loaded` / `.available` | require `ruby-vips` instead of branching on a detected list |
+| `include SnapDiff::Driver` in your own driver | nothing — custom drivers have no migration path |
+
+Two removals 2.0 cannot warn about, so they are written down instead: **`driver:`
+as a setting goes away entirely** — `SnapDiff.config.driver = :vips` and
+`Capybara::Screenshot::Diff.driver = :vips` raise `NoMethodError` on 2.1, and the
+per-screenshot `screenshot "x", driver: :vips` is silently ignored there. Delete
+both; one backend needs no selection. The legacy `LOADED_DRIVERS` /
+`AVAILABLE_DRIVERS` constants are also plain aliases with nothing to hook.
+
+### Added
+- **`SnapDiff` is the canonical namespace** — the implementation lives in
+  `lib/snap_diff/`. Configuration (`SnapDiff::Config`, one storage behind every
+  settings surface), errors (`SnapDiff::Error` and friends), `SnapDiff::Region`,
+  `SnapDiff::Reporters::Default`, `SnapDiff.session`, `SnapDiff::Reporting.register`,
+  and integration requires under `snap_diff/integrations/…`. Start here for new
+  code: [docs/snapdiff.md](docs/snapdiff.md)
+- **One consolidated config object** — all 27 settings on `SnapDiff.config`, via
+  `SnapDiff.configure { |config| … }`. Old and new surfaces share one storage, so a
+  write through either is visible through the other
+- **`SnapDiff::Error` is the base class for every error the gem defines** —
+  `ExpectationNotMet`, `UnstableImage`, `WindowSizeMismatchError` and
+  `DualInstallError` all inherit it, so one `rescue SnapDiff::Error` covers them.
+  (Misuse still surfaces as plain Ruby: `ArgumentError` for bad arguments,
+  `RuntimeError` when no image backend is installed.)
+- **Deprecation warnings name your call site**, so migration is warning-driven
+  rather than grep-driven
+- **Dual-install guard** — installing both `capybara-screenshot-diff` and
+  `snap_diff-capybara` raises `SnapDiff::DualInstallError` at require time instead of
+  silently loading files from whichever gem activated first
+- **The gem is also published as
+  [`snap_diff-capybara`](https://rubygems.org/gems/snap_diff-capybara)** — identical
+  content and version, matching this repository. `capybara-screenshot-diff` remains
+  the name to install; the mirror reserves the forward-looking one. **Install one,
+  never both.**
+- New documentation shipped inside the gem:
+  [docs/snapdiff.md](docs/snapdiff.md) (canonical API) and
+  [docs/UPGRADING.md](docs/UPGRADING.md) (every renamed constant, which names warn,
+  rollback)
+
+### Changed
+- **No `activesupport` at runtime.** 1.x required `active_support/core_ext/…`
+  without declaring the dependency, so a non-Rails install could fail to load. 2.0
+  requires nothing beyond `capybara`
+- The images-holder struct is now `SnapDiff::Comparison::Images`, ending the
+  two-classes-one-name collision with the comparator
+- The packaged gem is an explicit allow-list — `lib/`, `docs/`, `README.md`,
+  `LICENSE.txt`, `CHANGELOG.md`. 1.x shipped `Rakefile`, `gems.rb` and the gemspec,
+  and omitted the README
+
+### Fixed
+- Annotation color constants resolve under a bare `require "snap_diff"`; a differing
+  comparison previously raised `NameError` there
+- `require "snap_diff/integrations/…"` loads the full `SnapDiff` surface, and
+  `gem "snap_diff-capybara"` works with `Bundler.require`
+- **Failure messages no longer dump a libvips pointer struct.** The comparison
+  metadata carried the raw `diff_mask` image into the error text
+  (`"diff_mask":{"ptr":{}…}`); it is excluded now, leaving the metrics
+- Reporter failure warnings use one brand and name the failing reporter class
+
+### Known limitations
+- **Fork-based parallel tests produce no HTML report.** Under Minitest's forked
+  parallel executor (`parallelize(workers: N)`, the Rails default), each worker
+  accumulates its assertions in its own process, while the report is written from
+  `Minitest.after_run` in the parent — which never sees them. Pass/fail is correct
+  and the diff image artifacts are still written; only the HTML report is missing.
+  Fixed in 2.1
+
+### Unchanged
+- Ruby 3.2+, Capybara `>= 2, < 4`, the `screenshot` / `assert_matches_screenshot`
+  DSL, every capture and comparison option, baseline file names and formats
+
+---
+
 ## [v2.0.0.beta3] - 2026-08-23
 
 Fixes the canonical `SnapDiff` entry points, which were incomplete in beta2.

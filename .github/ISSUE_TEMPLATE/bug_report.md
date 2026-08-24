@@ -53,7 +53,7 @@ If applicable, add the `.diff.png` or `.heatmap.diff.png` files to help explain 
 If applicable, run with `DEBUG=1` and paste the output:
 
 ```
-DEBUG=1 bundle exec rake test
+bin/rails test:system   # or whatever task runs your Capybara tests
 ```
 
 ## Additional context

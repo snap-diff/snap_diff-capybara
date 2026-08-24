@@ -10,6 +10,7 @@
 /gemfiles/*.lock
 /gems.locked
 /pkg/
+*.gem
 /spec/reports/
 /tmp/
 /vendor/sigs/

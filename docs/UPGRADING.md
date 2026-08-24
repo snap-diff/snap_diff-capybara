@@ -1,12 +1,12 @@
 # Upgrading
 
-## Upgrading to v2.0 (alpha)
+## Upgrading to v2.0
 
 ### Overview
 
 Version 2.0 introduces a new canonical namespace (`SnapDiff`) for cleaner, more discoverable code. The public DSL remains unchanged — your existing `screenshot` and `assert_matches_screenshot` calls work without modification. This guide covers the optional migration path for settings and the new namespace.
 
-**Status:** `2.0.0.beta3` is an opt-in prerelease. RubyGems never installs prereleases by default resolution — normal `bundle update` keeps you on the 1.x line. The final 2.0.0 ships only after adopter feedback; please report anything surprising on [#166](https://github.com/snap-diff/snap_diff-capybara/issues/166).
+**Status:** 2.0 is the **transitional** release — the v1 API and the canonical `SnapDiff` API both work. **2.1 removes** everything 2.0 warns about (the legacy namespaces, the ChunkyPNG driver, `shift_distance_limit`, the `driver:` setting and the driver abstraction). There is no 3.0. Migrating on 2.0 is optional; doing it before 2.1 is not.
 
 **Estimated upgrade time:** 5–15 minutes (most users need only the Gemfile pin)
 
@@ -14,21 +14,36 @@ Version 2.0 introduces a new canonical namespace (`SnapDiff`) for cleaner, more 
 [SnapDiff — the canonical API](snapdiff.md): the same setup, configuration, and extension points
 with canonical names only, no legacy shapes to unlearn.
 
-**Breaking changes:** None for the DSL; one migration notice per process plus a deprecation warning per legacy constant you reference (both suppressible), plus two known alpha caveats (see below)
+**Breaking changes:** None for the DSL; one migration notice per process plus a deprecation warning per legacy constant you reference (both suppressible), plus the [known caveats](#known-caveats) below
 
 ---
 
 ### The Short Version (Most Users)
 
 ```ruby
-# In your Gemfile — the exact prerelease version is required to opt in
-gem "capybara-screenshot-diff", "2.0.0.beta3" # or the latest 2.0.0 prerelease
+# In your Gemfile
+gem "capybara-screenshot-diff", "2.0.0.beta3"   # current 2.0 prerelease; 2.0.0 final is not out yet
 ```
+
+**Pin the exact prerelease.** An unpinned `gem "capybara-screenshot-diff"` resolves to the 1.x
+line, and `"~> 2.0"` does not resolve at all — Bundler never picks a prerelease from a plain
+requirement, so it fails with `Could not find gem 'capybara-screenshot-diff (~> 2.0)'`. Once
+2.0.0 ships, `"~> 2.0"` is the pin to use.
+
+The same content is also published as `snap_diff-capybara` from 2.0.0 on, but that name's
+only earlier non-prerelease is a `0.0.1` placeholder with no Ruby files in it — unpinned, it
+installs an empty gem and raises `LoadError`. Stay on `capybara-screenshot-diff`, and install
+**one** name: with both in a Gemfile the gem raises `SnapDiff::DualInstallError` at require
+time.
 
 ```bash
 bundle install
-bundle exec rake test
+bin/rails test:system     # the task that actually runs your screenshot tests
 ```
+
+> **Not `rake test` / `rails test`.** In a Rails app those skip `test/system/`, so you get
+> `0 runs, 0 assertions, 0 failures` — a clean-looking pass that compared nothing. Outside
+> Rails, run whatever task loads your Capybara tests.
 
 **That's it.** Your existing code works unchanged. The old namespaces (`Capybara::Screenshot::Diff`, `CapybaraScreenshotDiff`) are shimmed with deprecation warnings; the new one (`SnapDiff`) is available if you want to modernize.
 
@@ -45,6 +60,7 @@ The implementation now lives in `lib/snap_diff/` under the `SnapDiff` namespace.
 | `Capybara::Screenshot::Diff::ImageCompare` | `SnapDiff::Comparison` |
 | `Capybara::Screenshot::Diff::Difference` | `SnapDiff::ComparisonResult` |
 | `Capybara::Screenshot::Diff::Drivers::BaseDriver` | `SnapDiff::Driver` (now a mixin — see below) |
+| `Capybara::Screenshot::Os` | `SnapDiff::Os` |
 | `CapybaraScreenshotDiff::SnapManager` / `::Snap` | `SnapDiff::SnapManager` / `SnapDiff::Snap` |
 | `CapybaraScreenshotDiff::RED_RGBA` / `::ORANGE_RGBA` | `SnapDiff::RED_RGBA` / `SnapDiff::ORANGE_RGBA` |
 | `CapybaraScreenshotDiff::Minitest::Assertions` | `SnapDiff::Minitest::Assertions` |
@@ -114,7 +130,6 @@ Capybara::Screenshot::Diff.configure do |screenshot, diff|
   screenshot.window_size = [1280, 1024]
   screenshot.blur_active_element = false
   diff.tolerance = 0.0005
-  diff.driver = :vips
 end
 ```
 
@@ -125,7 +140,6 @@ SnapDiff.start do |screenshot, diff|
   screenshot.window_size = [1280, 1024]
   screenshot.blur_active_element = false
   diff.tolerance = 0.0005
-  diff.driver = :vips
 end
 ```
 
@@ -136,7 +150,6 @@ SnapDiff.configure do |config|
   config.window_size = [1280, 1024]
   config.blur_active_element = false
   config.tolerance = 0.0005
-  config.driver = :vips
 end
 ```
 
@@ -215,6 +228,19 @@ warns once per process per subject, through the same channel and the same silenc
 | read `SnapDiff::Drivers.available` | driver detection | require `ruby-vips` instead of branching on a detected list |
 | `include SnapDiff::Driver` in your own driver class | the driver mixin | nothing — see below |
 
+> **The one removal on this list that 2.0 cannot warn you about: the `driver:` setting
+> itself.** `SnapDiff.config.driver = :vips` and the legacy
+> `Capybara::Screenshot::Diff.driver = :vips` are **silent** in 2.0 and raise
+> `NoMethodError: undefined method 'driver='` in 2.1, at config time before any test runs.
+> The per-screenshot form — `screenshot "index", driver: :vips` — is silent in 2.0 **and**
+> in 2.1: per-screenshot options are a free-form hash, so an unknown key is simply inert.
+> Warning on any of this would fire on the recommended configuration, so this note is the
+> warning: **delete the line, and grep for the per-screenshot one.** With libvips the only
+> backend there is nothing to select, and the default just works. The same goes for
+> `driver: :auto` on a machine that *has* `ruby-vips` — the `:auto` warning above only
+> fires when `:auto` actually falls back to ChunkyPNG, because that is the case where 2.1
+> stops the process comparing at all.
+
 ```
 [snap_diff deprecation] `driver: :auto` selected chunky_png because libvips is not available in this process. The chunky_png driver is REMOVED in 2.1, when libvips (the `ruby-vips` gem) becomes required -- install it now, or this setup stops comparing on 2.1. See docs/drivers.md. Silence with `SnapDiff.silence_deprecations = true` or SNAP_DIFF_SILENCE_DEPRECATIONS=1. (shown once per process) (called from /app/test/test_helper.rb:12)
 ```
@@ -223,7 +249,7 @@ warns once per process per subject, through the same channel and the same silenc
 mixin, the `SnapDiff::Drivers.loaded` registry, `SnapDiff::Drivers.available` /
 `SnapDiff::Utils.detect_available_drivers`, and selecting a driver by name. Nothing replaces
 them, and this guide is not going to pretend otherwise — if you maintain a third-party driver,
-say so on [#166](https://github.com/snap-diff/snap_diff-capybara/issues/166) before 2.1 ships.
+say so on [the issue tracker](https://github.com/snap-diff/snap_diff-capybara/issues) before 2.1 ships.
 
 Three spots on the same chopping block stay silent: the legacy
 `Capybara::Screenshot::Diff::LOADED_DRIVERS` / `::AVAILABLE_DRIVERS` aliases are plain constants
@@ -276,9 +302,10 @@ export SNAP_DIFF_SILENCE_DEPRECATIONS=1
 
 ---
 
-### Known Alpha Caveats
+### Known Caveats
 
-Two deliberate consequences of the lazy shim design — both flagged for feedback on [#166](https://github.com/snap-diff/snap_diff-capybara/issues/166):
+Two deliberate consequences of the lazy shim design. Both go away at 2.1, when the shimmed
+names go away with them:
 
 1. **`defined?` / `const_defined?` on lazily-shimmed legacy names returns `false`/`nil`.** The shims resolve via `const_missing`, which those checks never trigger. Feature detection like `defined?(Capybara::Screenshot::Diff::ImageCompare)` must move to the `SnapDiff::` name. Everything in [Silent by design](#silent-by-design) is unaffected — those names are real constants, so `defined?`, `const_defined?` and `rescue` all behave as they always did.
 
@@ -331,12 +358,15 @@ All settings and baselines are compatible with v1.x. Simply pin your Gemfile bac
 
 ### Summary Checklist
 
-- [ ] Pin `gem "capybara-screenshot-diff", "2.0.0.beta3"` (or the latest 2.0.0 prerelease) in your Gemfile
+- [ ] Pin `gem "capybara-screenshot-diff", "2.0.0.beta3"` in your Gemfile (`"~> 2.0"` once 2.0.0 ships)
 - [ ] Run `bundle install`
-- [ ] Run your test suite to verify no regressions
-- [ ] (Optional) Migrate config to the `SnapDiff` namespace
+- [ ] Run your system tests (`bin/rails test:system`, not `rake test`) to verify no regressions
+- [ ] Read the warnings it prints — each one names something 2.1 removes
+- [ ] Add `gem "ruby-vips"` if you are not already on it (2.1 makes libvips the only backend)
+- [ ] Drop `driver:` from your config — it is silent in 2.0 and gone in 2.1
+- [ ] (Optional, but do it before 2.1) Migrate config and constants to the `SnapDiff` namespace
 - [ ] (Optional) Silence deprecation warnings if not ready to migrate
-- [ ] Report anything surprising on [#166](https://github.com/snap-diff/snap_diff-capybara/issues/166)
+- [ ] Report anything surprising on [the issue tracker](https://github.com/snap-diff/snap_diff-capybara/issues)
 
 ---
 
@@ -359,7 +389,7 @@ gem 'capybara-screenshot-diff', '~> 1.13.0'
 
 ```bash
 bundle update capybara-screenshot-diff
-bundle exec rake test
+bin/rails test:system   # `rake test` skips test/system/ — 0 runs, no comparison
 ```
 
 **That's it!** Existing `screenshot` calls work unchanged. New methods available if needed.
@@ -444,7 +474,7 @@ gem 'capybara-screenshot-diff', '~> 1.12.0'
 
 ```bash
 bundle update capybara-screenshot-diff
-bundle exec rake test  # Verify tests still pass
+bin/rails test:system  # Verify tests still pass (`rake test` skips test/system/)
 ```
 
 **That's it!** The zero-config setup still works out of the box. Your existing screenshot comparisons will continue to work with v1.12.0.
@@ -649,7 +679,6 @@ Use the new `Diff.configure` block:
 Capybara::Screenshot::Diff.configure do |screenshot, diff|
   screenshot.window_size = [1280, 1024]
   screenshot.stability_time_limit = 1
-  diff.driver = :vips
   diff.tolerance = 0.0005
 end
 ```
@@ -700,7 +729,7 @@ bundle update capybara-screenshot-diff
 ### Step 3: Run Tests
 
 ```bash
-bundle exec rake test
+bin/rails test:system   # `rake test` skips test/system/ — 0 runs, no comparison
 ```
 
 ### Step 4: Check for New Screenshot Failures
@@ -754,13 +783,14 @@ Capybara::Screenshot.hide_caret = false
 Then re-record baselines with the new defaults (recommended):
 
 ```bash
-# Delete old baselines
-rm doc/screenshots/*.png
+# Do NOT delete the baselines — they are read from git (`git show HEAD:<path>`), so
+# removing the files changes nothing. Re-recording is a commit.
 
-# Run tests to generate new baselines
-bundle exec rake test
+# The run fails and rewrites every changed baseline in place
+bin/rails test:system
 
-# Commit new baselines
+# Review the diffs, then commit the new baselines
+git status
 git add doc/screenshots/
 git commit -m "Re-record baselines with v1.12.0 defaults"
 ```

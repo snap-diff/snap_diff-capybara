@@ -13,6 +13,12 @@ This builds a Docker image with Chrome and runs the test suite against three Cap
 
 ## Recording baseline screenshots
 
+> **This page is for contributors to this gem, not for users of it.** `bin/dtest` and
+> `RECORD_SCREENSHOTS` are this repository's own test harness. `RECORD_SCREENSHOTS` is
+> read by `test/test_helper.rb` — it is **not** a feature of the library and does
+> nothing in your application. To accept a change in your own app, see
+> [Accepting an intentional change](../README.md#accepting-an-intentional-change).
+
 Screenshot baselines are committed to the repo and compared against during tests. When you set up the project for the first time, or after upgrading the browser/driver, you need to re-record them:
 
 ```bash

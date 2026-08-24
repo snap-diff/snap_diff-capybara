@@ -58,7 +58,7 @@ jobs:
           bundler-cache: true
 
       - name: Run tests
-        run: bundle exec rake test
+        run: bin/rails test:system   # not `rake test` — it skips test/system/
 
       - name: Upload screenshot reports
         if: failure()
@@ -67,6 +67,10 @@ jobs:
           name: screenshots
           pr-comment: 'true'
 ```
+
+The three workflows on this page all run `bin/rails test:system`, because `rake test` and
+`rails test` skip `test/system/` and report `0 runs` — a green CI job that compared nothing.
+Not on Rails? Substitute whatever task loads your Capybara tests.
 
 That's it. On failure, this will:
 - Upload diff images + HTML report as artifacts
@@ -129,7 +133,7 @@ jobs:
           ruby-version: '4.0'
           cache-apt-packages: true
 
-      - run: bundle exec rake test
+      - run: bin/rails test:system   # not `rake test` — it skips test/system/
 
       - uses: snap-diff/snap_diff-capybara/.github/actions/upload-screenshots@master
         if: failure()
@@ -160,7 +164,7 @@ jobs:
         run: sudo apt-get install -y libvips-dev
 
       - name: Run tests
-        run: bundle exec rake test
+        run: bin/rails test:system   # not `rake test` — it skips test/system/
 
       - name: Upload screenshot report
         if: failure()
@@ -184,13 +188,20 @@ jobs:
 
 ## Update Baselines in CI
 
-When intentional UI changes are made, baselines need to be re-recorded. You can do this locally:
+When intentional UI changes are made, baselines need to be re-recorded. Baselines are
+read from git, so accepting a change is a commit — the failing run has already written
+the new capture to the baseline path:
 
 ```bash
-RECORD_SCREENSHOTS=1 bundle exec rake test
-git add test/fixtures/screenshots/
+bin/rails test:system                  # fails, and rewrites the changed baselines
+git status                             # review what moved
+git add doc/screenshots/               # the default save_path; adjust if you changed it
 git commit -m "chore: update screenshot baselines"
 ```
+
+With the [recommended `.gitignore`](../README.md#quick-start-5-minutes) in place, `git add
+doc/screenshots/` stages only the baselines — the `.diff.png` / `.base.png` artifacts are
+ignored.
 
 Or add a workflow that maintainers can trigger manually:
 
@@ -225,24 +236,36 @@ jobs:
           ruby-version: '4.0'
           cache-apt-packages: true
 
-      - name: Record new baselines
-        run: RECORD_SCREENSHOTS=1 bundle exec rake test
-        continue-on-error: true
+      - name: Record baselines
+        run: bin/rails test:system
+        continue-on-error: true    # the run fails by design; it rewrites the baselines
+        env:
+          CI: ""                   # see below — without this, a NEW screenshot is never written
 
       - name: Commit updated baselines
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add test/fixtures/ doc/screenshots/
+          git add doc/screenshots/
           git diff --staged --quiet || git commit -m "chore: update screenshot baselines"
           git push
 ```
 
 </details>
 
+> **`CI: ""` is what makes this job able to record a *new* baseline.** `fail_if_new`
+> defaults to `true` whenever `ENV["CI"]` is set and non-empty, and the check runs
+> **before** the capture ([`screenshot_matcher.rb`](https://github.com/snap-diff/snap_diff-capybara/blob/master/lib/snap_diff/screenshot_matcher.rb)
+> — `check_base_screenshot` precedes `capture_screenshot`). So on a stock GitHub Actions
+> runner a screenshot with no committed baseline raises `No existing screenshot found for
+> …` and **nothing is written to disk** — the commit step then finds nothing to commit,
+> whatever the error message suggests. Clearing `CI` for this one step (or setting
+> `SnapDiff.config.fail_if_new = false`) lets both new and changed baselines land.
+> *Changed* baselines are rewritten either way; only new ones need this.
+
 **How it works:**
 1. Go to Actions → "Update Screenshot Baselines" → "Run workflow"
 2. Enter the branch name (e.g. your PR branch)
-3. The workflow records new baselines, commits, and pushes
+3. The workflow records new and changed baselines, commits, and pushes
 
 [← Back to README](../README.md)

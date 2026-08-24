@@ -5,10 +5,12 @@ reference: setup, configuration, the object map, and the extension points — al
 names only.
 
 The legacy `Capybara::Screenshot::Diff` / `CapybaraScreenshotDiff` names still work — they resolve
-to the same objects — and the rest of the docs still teach them. The first legacy API a process
-touches prints one migration notice; on top of that, *lazily shimmed* constants warn once each.
-Some legacy names are silent by design. [UPGRADING.md](UPGRADING.md#deprecation-warnings) lists
-exactly which is which. Nothing here replaces a working setup — it is what you write for **new** code.
+to the same objects — and the rest of the docs still teach them. A legacy config accessor,
+`include`, `default_options` call, or lazily shimmed constant prints one migration notice per
+process; *lazily shimmed* constants warn once each on top of that. Other legacy names — the
+integration requires and `CapybaraScreenshotDiff::Minitest::Assertions` among them — are silent
+by design, so a quiet suite is not a migrated one.
+[UPGRADING.md](UPGRADING.md#deprecation-warnings) lists exactly which is which. Nothing here replaces a working setup — it is what you write for **new** code.
 For migrating an existing suite, see [UPGRADING.md](UPGRADING.md).
 
 ## Quick start
@@ -22,12 +24,20 @@ require "snap_diff/integrations/minitest"
 
 ```ruby
 # test/application_system_test_case.rb
+require "test_helper"
+
 class ApplicationSystemTestCase < ActionDispatch::SystemTestCase
+  # Window size and pixel ratio are inputs to every comparison — pin them.
+  driven_by :selenium, using: :headless_chrome, screen_size: [1400, 1400]
+
   include SnapDiff::Minitest::Assertions   # brings in SnapDiff::DSL too
 end
 ```
 
 ```ruby
+# test/system/homepage_test.rb
+require "application_system_test_case"
+
 class HomepageTest < ApplicationSystemTestCase
   test "homepage" do
     visit "/"
@@ -35,6 +45,9 @@ class HomepageTest < ApplicationSystemTestCase
   end
 end
 ```
+
+Run it with `bin/rails test:system`. `rake test` and `rails test` skip `test/system/`
+entirely — `0 runs` and no baselines, which reads exactly like a pass.
 
 `SnapDiff::Minitest::Assertions` already includes `SnapDiff::DSL`, so a separate
 `include SnapDiff::DSL` is not needed (it is harmless if you have it).
@@ -104,7 +117,6 @@ All 27 settings live on one flat object, `SnapDiff.config` (a `SnapDiff::Config`
 SnapDiff.configure do |config|
   config.window_size = [1280, 1024]
   config.tolerance = 0.0005
-  config.driver = :vips
   config.save_path = "doc/screenshots"
 end
 
@@ -161,7 +173,7 @@ integration require; a few objects need their own require, noted below.
 | `SnapDiff::Region` | Bounding box value object — `from_edge_coordinates`, `to_edge_coordinates` |
 | `SnapDiff::DSL` | `screenshot`, `assert_matches_screenshot`, `capture_screenshot`, groups/sections |
 | `SnapDiff::Minitest::Assertions` | Minitest wiring (`snap_diff/integrations/minitest`) |
-| `SnapDiff::Error` | Base class for every error this gem raises |
+| `SnapDiff::Error` | Base class for every error this gem *defines* — see the caveat below. Misuse still surfaces as plain Ruby: bad arguments raise `ArgumentError`, and a missing image backend raises `RuntimeError` |
 | `SnapDiff::ExpectationNotMet` | A screenshot did not match its baseline |
 | `SnapDiff::UnstableImage` | No stable capture within `stability_time_limit` / `wait` |
 | `SnapDiff::WindowSizeMismatchError` | Browser window is not the configured `window_size` |
@@ -175,6 +187,17 @@ integration require; a few objects need their own require, noted below.
 | `SnapDiff.pending_screenshots_message` | Skip message when a new screenshot has no baseline |
 | `SnapDiff::Capture::Viewport` | Per-capture viewport check seam (`require "snap_diff/capture/viewport"`) |
 | `SnapDiff.serve` | Point Capybara at a static site directory (`require "snap_diff/static"`) |
+
+> **`rescue SnapDiff::Error` does not catch a failed assertion under the framework
+> integrations.** `SnapDiff::ExpectationNotMet` — the row you most want to rescue — is
+> converted before it reaches your code: the Minitest integration re-raises it as
+> `Minitest::Assertion` ([`integrations/minitest.rb`](../lib/snap_diff/integrations/minitest.rb)),
+> and the RSpec integration as `RSpec::Expectations::ExpectationNotMetError`
+> ([`integrations/rspec.rb`](../lib/snap_diff/integrations/rspec.rb)). That conversion is the
+> point — it is what makes a mismatch a test failure rather than an error. You see a raw
+> `SnapDiff::ExpectationNotMet` only when you drive `SnapDiff::DSL` yourself, with a bare
+> `include SnapDiff::DSL` and no integration. `UnstableImage` and `WindowSizeMismatchError`
+> are not converted and do arrive as `SnapDiff::Error`.
 
 ## Compare two images without a browser
 
@@ -270,7 +293,7 @@ SnapDiff::Reporting.finalize!
 > by name. In 2.0 all of it still works and warns once per process (silence with
 > `SnapDiff.silence_deprecations = true` or `SNAP_DIFF_SILENCE_DEPRECATIONS=1`). Nothing
 > here migrates to a 2.1 shape — there is no 2.1 shape. If you maintain a driver, say so on
-> [#166](https://github.com/snap-diff/snap_diff-capybara/issues/166) before 2.1 ships.
+> [the issue tracker](https://github.com/snap-diff/snap_diff-capybara/issues) before 2.1 ships.
 
 A driver is a plain object that does the image work. Include `SnapDiff::Driver` for the shared
 defaults, then implement the operations the comparison engine calls:

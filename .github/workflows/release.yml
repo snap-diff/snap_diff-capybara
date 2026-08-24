@@ -90,8 +90,8 @@ jobs:
           body: |
             ## What's Changed
 
-            See [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md#v${{ github.event.inputs.version }}) for full details.
+            See [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/v${{ github.event.inputs.version }}/CHANGELOG.md) for full details.
 
-            **Upgrade Guide:** [docs/UPGRADING.md](https://github.com/${{ github.repository }}/blob/main/docs/UPGRADING.md)
+            **Upgrade Guide:** [docs/UPGRADING.md](https://github.com/${{ github.repository }}/blob/v${{ github.event.inputs.version }}/docs/UPGRADING.md)
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
