@@ -1,6 +1,10 @@
 # frozen_string_literal: true
 
+require "json"
+
 require "snap_diff/annotation_service"
+# For SnapDiff.config.root, the base for the relative artifact paths below.
+require "snap_diff/config"
 
 module SnapDiff
   module Reporters
@@ -57,19 +61,94 @@ module SnapDiff
 
       NEW_LINE = "\n"
 
+      # The thresholds a comparison is judged against, in the order they read
+      # best. Only the ones actually set are printed -- see #thresholds.
+      THRESHOLDS = [
+        :tolerance,
+        :area_size_limit,
+        :color_distance_limit,
+        :shift_distance_limit,
+        :perceptual_threshold
+      ].freeze
+
+      # The five artifacts a comparison can leave on disk, in the order a
+      # reader wants them: the two inputs first, then what we drew on them.
+      ARTIFACT_LABELS = {
+        "baseline" => :base_image_path,
+        "actual" => :image_path,
+        "baseline annotated" => :annotated_base_image_path,
+        "actual annotated" => :annotated_image_path,
+        "heatmap" => :heatmap_diff_path
+      }.freeze
+
       def build_error_message
-        [
-          "(#{difference.to_h.to_json})",
-          image_path.to_path,
-          annotated_base_image_path.to_path,
-          annotated_image_path.to_path,
-          heatmap_diff_path.to_path
-        ].join(NEW_LINE)
+        [headline, *metric_lines, *artifact_lines].join(NEW_LINE)
       end
 
       private
 
       attr_reader :annotation_service
+
+      # Reads as the tail of "Screenshot does not match for 'name': ".
+      def headline
+        width, height = driver.dimension(comparison.base_image)
+        total_pixels = width * height
+        area = difference.region_area_size
+
+        "the change spans #{area.round} of #{total_pixels} px " \
+          "(#{percent(area.to_f / total_pixels)} of the #{width}x#{height} image)"
+      end
+
+      def metric_lines
+        lines = ["  changed region: #{difference.coordinates.to_json} (left,top,right,bottom edges)"]
+        # difference_level is the changed share of the image area -- the
+        # number `tolerance` is compared against. Only computed when a
+        # tolerance is set, so only printed then.
+        if difference.ratio
+          lines << "  difference level: #{difference.ratio} (#{percent(difference.ratio)} of the image area)"
+        end
+        max_color_distance = difference.meta[:max_color_distance]
+        lines << "  max color distance: #{max_color_distance}" if max_color_distance&.positive?
+        max_shift_distance = difference.meta[:max_shift_distance]
+        lines << "  max shift distance: #{max_shift_distance} px" if max_shift_distance&.positive?
+        lines << "  judged against: #{thresholds}"
+      end
+
+      def thresholds
+        applied = THRESHOLDS.filter_map do |name|
+          value = difference.options[name]
+          "#{name} #{value}" if value
+        end
+
+        applied.empty? ? "no tolerance thresholds configured (any difference fails)" : applied.join(", ")
+      end
+
+      # Only what is on disk gets a line: the heatmap exists solely for
+      # drivers that produce a diff mask, and a comparison can be reported
+      # before either input has been written out.
+      def artifact_lines
+        present = ARTIFACT_LABELS.filter_map do |label, path_method|
+          path = send(path_method)
+          [label, path] if path.exist?
+        end
+        width = present.map { |label, _path| label.length }.max.to_i
+
+        present.map { |label, path| "  #{"#{label}:".ljust(width + 1)} #{display_path(path)}" }
+      end
+
+      # Relative to the configured root: shorter to read, and still
+      # click-through-able in terminals that resolve paths against the
+      # working directory. Anything outside the root stays absolute, because
+      # a "../../.." path is neither.
+      def display_path(path)
+        relative = path.expand_path.relative_path_from(SnapDiff.config.root).to_path
+        relative.start_with?("..") ? path.to_path : relative
+      end
+
+      def percent(fraction)
+        value = fraction * 100
+        (value.positive? && value < 0.01) ? "<0.01%" : format("%.2f%%", value)
+      end
 
       def base_image_path
         comparison.base_image_path
