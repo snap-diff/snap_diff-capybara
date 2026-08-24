@@ -210,6 +210,32 @@ class BrowserScreenshotTest < SystemTestCase
     assert_equal 2, label_bounds.size
   end
 
+  # A REAL browser session on purpose (issue #272). Every other test of this
+  # code path stubs the browser, and a stub answers instantly whether or not
+  # the selector matches -- which is exactly why a 5-second wait per
+  # unmatched `skip_area` selector went unnoticed for years. `skip_area` is a
+  # mask: a selector that matches nothing has nothing to mask, and that
+  # answer is available immediately.
+  test "bounds_for_css does not wait for selectors that match nothing" do
+    visit "/"
+
+    # Budget: TWO unmatched selectors, so an implicit wait costs 2x this and
+    # the real work costs milliseconds. Derived from the live setting rather
+    # than hardcoded, so lowering the suite's wait cannot quietly turn the
+    # assertion into one that passes while broken.
+    budget = page.config.default_max_wait_time
+
+    started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+    SnapDiff::BrowserHelpers.bounds_for_css("picture", "video")
+    elapsed = Process.clock_gettime(Process::CLOCK_MONOTONIC) - started
+
+    assert_operator elapsed, :<, budget,
+      "two unmatched skip_area selectors took #{elapsed.round(2)}s -- Capybara's implicit wait is back"
+
+    # ... and a selector that DOES match still resolves.
+    assert_equal 1, SnapDiff::BrowserHelpers.bounds_for_css("img").size
+  end
+
   test "rect_for for multiple elements returns first visible element" do
     visit "/index.html"
 
