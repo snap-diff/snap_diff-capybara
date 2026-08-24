@@ -12,7 +12,7 @@ require_relative "reporting"
 
 module SnapDiff
   class ScreenshotMatcher
-    attr_reader :screenshot_full_name, :driver_options, :screenshot_format
+    attr_reader :screenshot_full_name, :driver_options, :screenshot_format, :record_mode
 
     def initialize(screenshot_full_name, options = {})
       @screenshot_full_name = screenshot_full_name
@@ -21,11 +21,24 @@ module SnapDiff
       Removal.warn_once(:driver_setting, Removal::DRIVER_REMOVED) if options.key?(:driver)
       @driver_options = SnapDiff.config.default_options.merge(options)
 
+      # `record:` is a workflow mode, not a capture or comparison option, so
+      # it is carved out here rather than added to Comparison::KNOWN_OPTIONS
+      # -- a key that hash accepts and nothing downstream reads is the
+      # silent no-op ADR-010 forbids. Deleted before anything else touches
+      # the hash, so no later split has to know about it.
+      @record_mode = resolve_record_mode(@driver_options.delete(:record))
+
       @screenshot_format = @driver_options[:screenshot_format]
       @snapshot = SnapDiff::SnapManager.snapshot(screenshot_full_name, @screenshot_format)
     end
 
     def build_screenshot_assertion(skip_stack_frames: 0)
+      # Here rather than in #initialize, so it covers exactly the path where
+      # `:all` means anything. #capture never compares against a baseline, so
+      # the mode has nothing to say about it and refusing there would be a
+      # failure invented out of a setting that changes nothing.
+      refuse_bulk_record_under_ci! if record_mode == :all
+
       Capture::Viewport.prepare!(SnapDiff.config.window_size)
       prepare_screenshot_options
       check_base_screenshot
@@ -41,7 +54,7 @@ module SnapDiff
       # Pre-computation: No need to compare without base screenshot
       # NOTE: Consider to return PreValid Assertion Value Object with hard coded valid result
       unless need_to_compare?
-        SnapDiff.session.record_new_screenshot(screenshot_full_name)
+        record_uncompared_screenshot
         return
       end
 
@@ -61,8 +74,51 @@ module SnapDiff
 
     private
 
+    # The per-screenshot option outranks the configured mode, which in turn
+    # outranks `fail_if_new` (SnapDiff::Config#record). One resolution, so
+    # both routes to a mode agree about everything downstream.
+    def resolve_record_mode(per_screenshot)
+      SnapDiff::Config.validate_record_mode!(per_screenshot) || SnapDiff.config.record
+    end
+
+    # `:all` accepts every rendering as correct -- that is the feature. On
+    # CI there is nobody to review the result and the re-recorded files go
+    # away with the box, so a mode left in a committed config file buys a
+    # build that compares nothing and passes, forever. That is precisely how
+    # Percy goes green on a job that lost its token; refuse it rather than
+    # shipping our own version.
+    #
+    # A CI job that must record NEW baselines does not need `:all` at all:
+    # `record: :once` records them and still compares everything that has a
+    # baseline (docs/ci-integration.md).
+    def refuse_bulk_record_under_ci!
+      return if ENV["CI"].to_s.empty?
+
+      raise SnapDiff::ExpectationNotMet.new(<<~ERROR.chomp, caller)
+        `record: :all` re-records every baseline WITHOUT comparing, so it refuses to run under CI (ENV["CI"] is set).
+        Nothing would be verified and the recorded screenshots would be discarded with the runner.
+        Re-record locally, review the result, and commit the screenshots.
+        To let a CI job record screenshots that have no baseline yet: SnapDiff.config.record = :once
+      ERROR
+    end
+
+    # No `record_mode != :all` clause here on purpose: mutation testing
+    # showed one guards nothing. #check_base_screenshot already leaves `:all`
+    # with no base file at all, so this reads false for it either way, and a
+    # second condition that cannot fire is a second thing to keep true.
     def need_to_compare?
       @snapshot.base_path.exist?
+    end
+
+    # `:all` re-records, so nothing was compared and nothing is "new" in the
+    # missing-baseline sense. Reported through its own channel, which counts
+    # only the screenshots that really went down this path.
+    def record_uncompared_screenshot
+      if record_mode == :all
+        SnapDiff::Reporting.record_rerecorded_baseline(screenshot_full_name)
+      else
+        SnapDiff.session.record_new_screenshot(screenshot_full_name)
+      end
     end
 
     def prepare_screenshot_options
@@ -78,14 +134,24 @@ module SnapDiff
     # moment at which `@snapshot.path` still tells us whether the user had a
     # PNG sitting there already -- the case that confuses people most.
     def check_base_screenshot
+      # `:all` does not ask git for a baseline -- there is nothing to
+      # compare against. A `.base.<fmt>` left by an earlier failing run
+      # would otherwise sit beside the re-recorded screenshot and land in
+      # the user's `git add`.
+      return discard_base_screenshot if record_mode == :all
+
       @snapshot.checkout_base_screenshot
       return if @snapshot.base_path.exist?
       # fail_if_new_screenshot raises after the capture and says the same
       # thing with the fix attached; two messages for one missing baseline
       # is one too many.
-      return if SnapDiff.config.fail_if_new
+      return if record_mode == :none
 
       warn_no_committed_baseline
+    end
+
+    def discard_base_screenshot
+      @snapshot.base_path.delete if @snapshot.base_path.exist?
     end
 
     # Runs AFTER the capture, so `@snapshot.path` names a file that is
@@ -95,12 +161,12 @@ module SnapDiff
     # place fail_if_new is on by default.
     def fail_if_new_screenshot
       return if @snapshot.base_path.exist?
-      return unless SnapDiff.config.fail_if_new
+      return unless record_mode == :none
 
       raise SnapDiff::ExpectationNotMet.new(<<~ERROR.chomp, caller)
         No existing screenshot found for #{@snapshot.path}!
         To record it: `git add #{@snapshot.path}` and commit -- baselines are read from git.
-        To allow new screenshots: SnapDiff.config.fail_if_new = false
+        To allow new screenshots: SnapDiff.config.record = :once (was: SnapDiff.config.fail_if_new = false)
       ERROR
     end
 

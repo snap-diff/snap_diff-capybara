@@ -110,7 +110,7 @@ loads the Minitest integration. See
 
 ## Configuration
 
-All 27 settings live on one flat object, `SnapDiff.config` (a `SnapDiff::Config`).
+All 28 settings live on one flat object, `SnapDiff.config` (a `SnapDiff::Config`).
 
 ```ruby
 # test_helper.rb / rails_helper.rb

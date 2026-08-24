@@ -50,6 +50,31 @@ module SnapDiff
       "becomes the only backend, so there is nothing left to select. Drop the option and depend " \
       "on the `ruby-vips` gem instead. See docs/drivers.md."
 
+    # --- the new-screenshot booleans, superseded by `record:` (#259) -----
+    #
+    # Three separate settings, each answering some part of "what happens
+    # when there is no baseline / when there is a difference", none of them
+    # naming the action the user actually wants. 2.0 adds the verb --
+    # `SnapDiff.config.record` -- and 2.1 removes the booleans. Each message
+    # names the mode that replaces THAT setting, and nothing more: `record:`
+    # supersedes the missing-baseline half squarely and the other two only
+    # obliquely, and a message that overclaims is a message that misroutes.
+
+    FAIL_IF_NEW_REMOVED =
+      "`fail_if_new` is REMOVED in 2.1: the record modes replace it. `SnapDiff.config.record = :none` " \
+      "is `fail_if_new = true`, `= :once` is `fail_if_new = false` -- and unlike the boolean, a mode " \
+      "means the same thing on CI and off it. See docs/configuration.md."
+
+    PENDING_IF_NEW_REMOVED =
+      "`pending_if_new` is REMOVED in 2.1: it skips the test instead of saying what to do about the " \
+      "missing baseline. `SnapDiff.config.record = :none` fails with the `git add` command attached; " \
+      "`= :once` records it and reports it in the end-of-run summary. See docs/configuration.md."
+
+    FAIL_ON_DIFFERENCE_REMOVED =
+      "`fail_on_difference` is REMOVED in 2.1: a screenshot that differs from its baseline fails, " \
+      "which is what the gem is for. To ACCEPT a difference, re-record it -- " \
+      "`SnapDiff.config.record = :all` -- and commit the result. See docs/configuration.md."
+
     # Not a removal: 2.0 announces it and 2.1 turns it into an ArgumentError.
     # The whole reason unrecognised keys need announcing is that the options
     # hash was frozen but never validated, so a typo -- or a v1 option that

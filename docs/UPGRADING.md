@@ -6,7 +6,7 @@
 
 Version 2.0 introduces a new canonical namespace (`SnapDiff`) for cleaner, more discoverable code. The public DSL remains unchanged — your existing `screenshot` and `assert_matches_screenshot` calls work without modification. This guide covers the optional migration path for settings and the new namespace.
 
-**Status:** 2.0 is the **transitional** release — the v1 API and the canonical `SnapDiff` API both work. **2.1 removes** everything 2.0 warns about (the legacy namespaces, the ChunkyPNG driver, `shift_distance_limit`, the `driver:` setting and the driver abstraction). There is no 3.0. Migrating on 2.0 is optional; doing it before 2.1 is not.
+**Status:** 2.0 is the **transitional** release — the v1 API and the canonical `SnapDiff` API both work. **2.1 removes** everything 2.0 warns about (the legacy namespaces, the ChunkyPNG driver, `shift_distance_limit`, the `driver:` setting and the driver abstraction, and the `fail_if_new` / `pending_if_new` / `fail_on_difference` booleans that `record` replaces). There is no 3.0. Migrating on 2.0 is optional; doing it before 2.1 is not.
 
 **Estimated upgrade time:** 5–15 minutes (most users need only the Gemfile pin)
 
@@ -114,7 +114,7 @@ The most commonly-used settings and how to update them:
 | `save_path` | `Capybara::Screenshot.save_path = "doc/screenshots"` | `SnapDiff.config.save_path = "doc/screenshots"` | Where baseline screenshots are stored |
 | `window_size` | `Capybara::Screenshot.window_size = [1280, 1024]` | `SnapDiff.config.window_size = [1280, 1024]` | Browser viewport size for consistent screenshots |
 
-**All 27 settings** from both legacy namespaces are available via `SnapDiff.config.<attr_name>` — see the [Configuration Reference](configuration.md) for the full list. One rename to note: `Capybara::Screenshot.enabled` becomes `SnapDiff.config.screenshot_enabled` (it would otherwise collide with `Capybara::Screenshot::Diff.enabled`, which keeps the bare `enabled` name).
+**All 28 settings** from both legacy namespaces are available via `SnapDiff.config.<attr_name>` — see the [Configuration Reference](configuration.md) for the full list. One rename to note: `Capybara::Screenshot.enabled` becomes `SnapDiff.config.screenshot_enabled` (it would otherwise collide with `Capybara::Screenshot::Diff.enabled`, which keeps the bare `enabled` name).
 
 ---
 
@@ -172,9 +172,10 @@ This means you can migrate your codebase incrementally **now**, before opting in
 
 ### Deprecation Warnings
 
-v2.0 emits four different things, and it is worth knowing which is which. The first two are
+v2.0 emits five different things, and it is worth knowing which is which. The first two are
 about the old namespaces; the third is about the driver features 2.1 removes; the fourth is
-about options that never did anything.
+about options that never did anything; the fifth is about the new-screenshot booleans that
+`record` replaces.
 
 Everything 2.1 removes warns in 2.0, and every warning names 2.1. Nothing you can still write
 in 2.0 does nothing quietly — if a setting is on its way out, or was never read at all, you
@@ -292,6 +293,42 @@ It applies to every route into a comparison — `screenshot`, `assert_matches_sc
 `capybara_screenshot_options`, `color_distance_limit`, `crop`, `delayed`, `driver`,
 `median_filter_window_size`, `perceptual_threshold`, `screenshot_format`,
 `shift_distance_limit`, `skip_area`, `stability_time_limit`, `tolerance` and `wait`.
+
+#### 5. The new-screenshot booleans — superseded by `record`, removed in 2.1
+
+`fail_if_new`, `pending_if_new` and `fail_on_difference` each answered part of "what happens when
+there is no baseline, or when there is a difference" — and none of them named the action people
+actually want, which is *accept this change*. 2.0 adds the verb:
+
+```ruby
+SnapDiff.config.record = :once   # default. Record a screenshot that has no baseline.
+SnapDiff.config.record = :none   # strict. A missing baseline always fails.
+SnapDiff.config.record = :all    # re-record everything. THE BULK-ACCEPT MODE.
+```
+
+| Old | New | Note |
+|-----|-----|------|
+| `fail_if_new = true` | `record = :none` | the mode means the same thing on CI and off it |
+| `fail_if_new = false` | `record = :once` | |
+| `pending_if_new = true` | `record = :none`, or `:once` | `:none` fails with the `git add` command attached; `:once` records and lists it in the end-of-run summary |
+| `fail_on_difference = false` | `record = :all` | to *accept* the new rendering rather than ignore the difference |
+
+All three keep working for the whole 2.x line (2.0 deletes nothing) and each warns once per
+process, from the point you set it:
+
+```
+[snap_diff deprecation] `fail_if_new` is REMOVED in 2.1: the record modes replace it. `SnapDiff.config.record = :none` is `fail_if_new = true`, `= :once` is `fail_if_new = false` -- and unlike the boolean, a mode means the same thing on CI and off it. See docs/configuration.md. Silence with `SnapDiff.silence_deprecations = true` or SNAP_DIFF_SILENCE_DEPRECATIONS=1. (shown once per process) (called from /app/test/test_helper.rb:9)
+```
+
+**Nothing changes if you set none of them.** With no `record` line, `record` reads back as `:none`
+under CI and `:once` off it — exactly what `fail_if_new` already did, sniff and all. The
+missing-baseline default is deliberately unchanged; `:none` is how you opt into strictness
+explicitly. **Precedence:** an explicitly set mode outranks `fail_if_new`, and `fail_if_new`
+decides only when no mode was set — the same rule `fail_if_new` itself has over the `CI` sniff.
+
+`record = :all` **refuses to run under CI**: it accepts every rendering by design, so left in a
+committed config file it would be a build that compares nothing and passes forever. See
+[Record modes](configuration.md#record-modes--accepting-changes).
 
 #### Silent by design
 

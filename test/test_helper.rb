@@ -117,6 +117,7 @@ class ActiveSupport::TestCase
     # baseline-less screenshots pile up and get listed in one enormous line
     # at the end of `rake test`.
     SnapDiff::Reporting.reset_missing_baselines!
+    SnapDiff::Reporting.reset_rerecorded_baselines!
   end
 
   def persist_comparisons?

@@ -186,6 +186,90 @@ class RemovedIn21DeprecationTest < ActiveSupport::TestCase
     assert_empty out.lines.grep(/`driver`/), "config's own default must not warn at the user"
   end
 
+  # --- the new-screenshot booleans, superseded by `record:` (#259) ------
+  #
+  # These are the settings the accept workflow replaces. They keep working
+  # for the whole 2.x line (ADR-010: 2.0 deletes nothing) and each says so
+  # once, naming the mode that takes over.
+
+  test "setting fail_if_new warns once and names the record mode that replaces it" do
+    lines = probe(<<~RUBY)
+      require "snap_diff"
+      3.times { SnapDiff.config.fail_if_new = true }
+    RUBY
+
+    assert_equal 1, lines.size, lines.join
+    assert_match(/`fail_if_new`/, lines.first)
+    assert_match(/REMOVED in 2\.1/, lines.first)
+    assert_match(/record = :none/, lines.first)
+  end
+
+  test "setting pending_if_new warns once, naming 2.1" do
+    lines = probe(<<~RUBY)
+      require "snap_diff"
+      3.times { SnapDiff.config.pending_if_new = true }
+    RUBY
+
+    assert_equal 1, lines.size, lines.join
+    assert_match(/`pending_if_new`/, lines.first)
+    assert_match(/REMOVED in 2\.1/, lines.first)
+    assert_match(/record/, lines.first)
+  end
+
+  test "setting fail_on_difference warns once, naming 2.1" do
+    lines = probe(<<~RUBY)
+      require "snap_diff"
+      3.times { SnapDiff.config.fail_on_difference = false }
+    RUBY
+
+    assert_equal 1, lines.size, lines.join
+    assert_match(/`fail_on_difference`/, lines.first)
+    assert_match(/REMOVED in 2\.1/, lines.first)
+    assert_match(/record = :all/, lines.first)
+  end
+
+  # ADR-010: 2.0 deletes NOTHING. Warned is not removed -- the boolean has
+  # to keep deciding what it always decided, or the warning is a lie and the
+  # upgrade is a break.
+  test "the warned booleans still work exactly as they did" do
+    out = probe_stderr(<<~RUBY, "CI" => "")
+      require "snap_diff"
+      SnapDiff.silence_deprecations = true
+      SnapDiff.config.fail_if_new = true
+      raise "fail_if_new lost its effect" unless SnapDiff.config.fail_if_new
+      raise "fail_if_new must still drive the mode" unless SnapDiff.config.record == :none
+      SnapDiff.config.pending_if_new = true
+      raise "pending_if_new lost its effect" unless SnapDiff.config.pending_if_new
+      SnapDiff.config.fail_on_difference = false
+      raise "fail_on_difference lost its effect" if SnapDiff.config.fail_on_difference
+    RUBY
+
+    assert_equal "", out
+  end
+
+  # THE UPGRADE GUARD: a setup with no `record` line and no boolean must be
+  # byte-for-byte silent AND behave exactly as it did -- CI sniff included.
+  test "a setup that sets none of them stays silent and keeps the CI-only default" do
+    out = probe_stderr(<<~RUBY, "CI" => "1")
+      require "snap_diff"
+      raise "the CI default moved" unless SnapDiff.config.fail_if_new
+      raise "the CI default moved" unless SnapDiff.config.record == :none
+    RUBY
+
+    assert_equal "", out, "reading the settings must not warn -- only setting them does"
+  end
+
+  test "record itself is not deprecated" do
+    out = probe_stderr(<<~RUBY)
+      require "snap_diff"
+      SnapDiff.config.record = :none
+      SnapDiff.config.record = :all
+      SnapDiff.config.record = :once
+    RUBY
+
+    assert_equal "", out
+  end
+
   # --- what must stay silent -------------------------------------------
 
   # The mutation that matters for everyone who is NOT affected: a plain vips

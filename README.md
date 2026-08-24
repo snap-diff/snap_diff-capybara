@@ -185,6 +185,31 @@ bin/rails test:system          # now green — HEAD holds the new baseline
 Reviewing the change is what the pull request is for — the updated `.png` shows up as an image
 diff next to the code that caused it.
 
+### Accepting many at once
+
+One failure at a time is fine for one screenshot. After a redesign that changed forty, set the
+**record mode** to `:all` and re-record them in a single run:
+
+```ruby
+# test_helper.rb
+SnapDiff.config.record = ENV["ACCEPT_SCREENSHOTS"] ? :all : :once
+```
+
+```bash
+ACCEPT_SCREENSHOTS=1 bin/rails test:system
+# [snap_diff] record: :all re-recorded 40 screenshots WITHOUT comparing: ...
+
+git status                     # forty modified baselines, and nothing else
+git add doc/screenshots/
+git commit -m "chore: re-record baselines after the checkout redesign"
+```
+
+`:all` writes every capture straight to its baseline path and compares nothing, so `git status`
+is the review surface — look at the images before you commit. It **refuses to run under CI**,
+where there would be nobody to look. The other modes are `:once` (the default) and `:none`
+(strict — a missing baseline always fails); see
+[Record modes](docs/configuration.md#record-modes--accepting-changes).
+
 ## Web UI for Reviewing Screenshot Changes
 
 Add one line to get an interactive dashboard for reviewing all screenshot differences:

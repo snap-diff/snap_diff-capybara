@@ -161,6 +161,12 @@ module SnapDiff
       # Capybara::Screenshot::Diff
       delayed: [Capybara::Screenshot::Diff, :delayed],
       area_size_limit: [Capybara::Screenshot::Diff, :area_size_limit],
+      # New in 2.0 and it has no v1 history, but it is storage on the one
+      # Config like everything else, and the two-views invariant is
+      # all-or-nothing: an unmapped setting is storage the v1 surface cannot
+      # see. Mapping it also means a user still on the old namespace reaches
+      # the accept workflow without migrating first.
+      record: [Capybara::Screenshot::Diff, :record],
       fail_if_new: [Capybara::Screenshot::Diff, :fail_if_new],
       pending_if_new: [Capybara::Screenshot::Diff, :pending_if_new],
       fail_on_difference: [Capybara::Screenshot::Diff, :fail_on_difference],
