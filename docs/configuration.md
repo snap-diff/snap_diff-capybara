@@ -11,7 +11,6 @@ SnapDiff.configure do |config|
   config.stability_time_limit = 1
   config.blur_active_element = true
   config.hide_caret = true
-  config.driver = :vips
   config.tolerance = 0.0005
   config.color_distance_limit = 15
 end
@@ -26,11 +25,14 @@ Capybara::Screenshot::Diff.configure do |screenshot, diff|
   screenshot.stability_time_limit = 1
   screenshot.blur_active_element = true
   screenshot.hide_caret = true
-  diff.driver = :vips
   diff.tolerance = 0.0005
   diff.color_distance_limit = 15
 end
 ```
+
+> **`driver:` is deliberately absent from both examples.** The setting is removed in 2.1
+> (`NoMethodError` at config time) and 2.0 cannot warn about it. Add `gem "ruby-vips"` and
+> leave the selection alone — see [Drivers](drivers.md#removed-in-21-everything-on-this-page-except-vips).
 
 `SnapDiff::Config` **is** the storage; the legacy accessors are thin delegators onto it. There is
 one source of truth, so a write through either surface is visible through the other — mixing them

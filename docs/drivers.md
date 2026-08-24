@@ -97,12 +97,13 @@ There are several options to setup active driver: `:auto`, `:chunky_png` and `:v
 ## Enable VIPS image processing
 
 [Vips](https://www.rubydoc.info/gems/ruby-vips/Vips/Image) driver provides a faster comparison,
-and could be enabled by adding `ruby-vips` to `Gemfile`.
+and is enabled by adding `ruby-vips` to your `Gemfile` (plus the libvips system package).
+That is the whole setup — with `ruby-vips` installed the default `:auto` already picks it.
 
-If need to setup explicitly Vips driver, there are several ways to do this:
-
-* Globally: `Capybara::Screenshot::Diff.driver = :vips`
-* Per screenshot option: `screenshot 'index', driver: :vips`
+**Do not select it explicitly.** Both forms are on the 2.1 removal list at the top of this page:
+`Capybara::Screenshot::Diff.driver = :vips` / `SnapDiff.config.driver = :vips` raises
+`NoMethodError` at config time on 2.1, and the per-screenshot `screenshot 'index', driver: :vips`
+becomes inert. Neither warns in 2.0 — delete the line and grep for the per-screenshot form.
 
 With enabled VIPS there are new alternatives to process differences, which are easier to find and support.
 For example, `shift_distance_limit` is a very heavy operation. Instead, use `median_filter_window_size`.

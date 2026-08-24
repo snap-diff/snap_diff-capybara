@@ -11,7 +11,7 @@ Stop shipping UI bugs. Take screenshots in your Capybara tests, commit baselines
 
 **Why this gem?** Baselines live in git — review UI changes in pull requests like you review code. Runs offline, works in CI, zero vendor lock-in. Unlike Percy/Chromatic (paid SaaS), nothing to sign up for. Unlike BackstopJS, no Node required.
 
-> **2.0 is the transitional release.** The gem's canonical namespace is now `SnapDiff`. Upgrading from 1.x is a version bump — every legacy `Capybara::Screenshot::Diff` / `CapybaraScreenshotDiff` name still resolves to the same object and keeps working. The first legacy API a process touches prints one migration notice (lazily shimmed constants also warn once each — see [which names warn](docs/UPGRADING.md#deprecation-warnings)), silenceable via `SnapDiff.silence_deprecations = true` or `SNAP_DIFF_SILENCE_DEPRECATIONS=1`.
+> **2.0 is the transitional release.** The gem's canonical namespace is now `SnapDiff`. Upgrading from 1.x is a version bump — every legacy `Capybara::Screenshot::Diff` / `CapybaraScreenshotDiff` name still resolves to the same object and keeps working. A legacy **config accessor**, an `include Capybara::Screenshot[::Diff]`, `Diff.default_options`, or a lazily shimmed legacy constant prints one migration notice per process (shimmed constants also warn once each). **The legacy integration require is not one of those doors** — `require "capybara_screenshot_diff/minitest"` plus `include CapybaraScreenshotDiff::Minitest::Assertions` is silent by design, because those names are eager aliases with no `const_missing` to hook. See [which names warn](docs/UPGRADING.md#deprecation-warnings). Silence the ones that do via `SnapDiff.silence_deprecations = true` or `SNAP_DIFF_SILENCE_DEPRECATIONS=1`.
 >
 > **2.1 removes what 2.0 warns about**: the legacy namespaces, the ChunkyPNG driver, `shift_distance_limit`, the `driver:` setting and the driver abstraction — libvips becomes the only backend. There is no 3.0. Writing new code? Start from [SnapDiff — the canonical API](docs/snapdiff.md), which uses canonical names only. Migrating an existing suite? See the [upgrade guide](docs/UPGRADING.md).
 >
@@ -23,9 +23,13 @@ Stop shipping UI bugs. Take screenshots in your Capybara tests, commit baselines
 
 ```ruby
 # Gemfile
-gem 'capybara-screenshot-diff', '~> 2.0'   # pin: unpinned resolves to the 1.x line
-gem 'ruby-vips'                            # The image backend. Needs libvips — see Installation below
+gem 'capybara-screenshot-diff', '2.0.0.beta3'   # current 2.0 prerelease; 2.0.0 final is not out yet
+gem 'ruby-vips'                                 # The image backend. Needs libvips — see Installation below
 ```
+
+Pin the exact prerelease. Bundler never resolves a prerelease from a plain requirement, so
+`'~> 2.0'` fails with `Could not find gem 'capybara-screenshot-diff (~> 2.0)'` until 2.0.0
+ships. Once it does, `'~> 2.0'` is the pin to use.
 
 The gem ships no image backend of its own. Add `ruby-vips` (recommended, and the only
 backend from 2.1 on) or `chunky_png` (pure Ruby, no system library, removed in 2.1) — with
@@ -33,18 +37,24 @@ neither, comparisons raise `Wrong adapter nil. Available adapters: []`.
 
 ```ruby
 # test/test_helper.rb
-require 'capybara_screenshot_diff/minitest'
+require "snap_diff/integrations/minitest"
 ```
 
 ```ruby
 # test/application_system_test_case.rb
+require "test_helper"
+
 class ApplicationSystemTestCase < ActionDispatch::SystemTestCase
-  include CapybaraScreenshotDiff::Minitest::Assertions
+  driven_by :selenium, using: :headless_chrome, screen_size: [1400, 1400]
+
+  include SnapDiff::Minitest::Assertions
 end
 ```
 
 ```ruby
 # test/system/homepage_test.rb
+require "application_system_test_case"
+
 class HomepageTest < ApplicationSystemTestCase
   test "homepage" do
     visit "/"
@@ -52,6 +62,19 @@ class HomepageTest < ApplicationSystemTestCase
   end
 end
 ```
+
+> **Pin the browser.** `driven_by` is not optional decoration in a pixel-diffing suite.
+> Rails falls back to a *visible* browser at whatever size and pixel ratio the machine
+> gives it: the same page that captures as **1400x1257** with the line above captures as
+> **2800x1610** without it, and every comparison then fails with `Dimensions have changed`.
+> Both `require` lines matter too — Rails does not autoload `test/`, so dropping either
+> one raises `NameError: uninitialized constant`.
+
+`SnapDiff::Minitest::Assertions` already includes `SnapDiff::DSL`, so no separate include is
+needed. The legacy `require "capybara_screenshot_diff/minitest"` +
+`include CapybaraScreenshotDiff::Minitest::Assertions` still work and resolve to these same
+objects — 2.1 removes them, so new suites should start here. See
+[SnapDiff — the canonical API](docs/snapdiff.md).
 
 (`screenshot` still works as a shorthand, and is safe to override in your own helpers — the gem no longer calls it internally.)
 
@@ -92,13 +115,14 @@ snap_diff_report.html
 
 If you skip Step 2 and push to CI, the build will fail — `fail_if_new` is `true` by default in CI.
 
-For RSpec, Cucumber, or non-Rails setup, see [Framework Setup](docs/framework-setup.md).
+For RSpec, Cucumber, or non-Rails setup, see [SnapDiff — the canonical API](docs/snapdiff.md#quick-start)
+(or [Framework Setup](docs/framework-setup.md) for the same wiring in legacy names).
 
 ### For Non-Rails Projects (Hugo, Jekyll, Static Sites)
 
 ```ruby
-require 'capybara_screenshot_diff/static'
-CapybaraScreenshotDiff.serve("_site")  # or "public", "build", "dist"
+require "snap_diff/static"
+SnapDiff.serve("_site")  # or "public", "build", "dist"
 ```
 
 Then commit baselines to git just like Rails. [Full setup](docs/ci-integration.md#non-rails-projects-hugo-jekyll-static-sites).
@@ -108,17 +132,26 @@ Then commit baselines to git just like Rails. [Full setup](docs/ci-integration.m
 The test fails with a clear message and generates diff files:
 
 ```text
-Screenshot does not match for 'homepage':
-({"area_size":1250,"region":[0,19,199,83],"max_color_distance":42.5})
+Screenshot does not match for 'homepage': ({"area_size":41520.0,"region":[8.0,8.0,1392.0,38.0]})
+doc/screenshots/homepage.png
+doc/screenshots/homepage.base.diff.png
+doc/screenshots/homepage.diff.png
+doc/screenshots/homepage.heatmap.diff.png
 ```
 
 Open `doc/screenshots/homepage.diff.png` to see exactly what changed. If the change is intentional, see [Accepting an intentional change](#accepting-an-intentional-change).
 
+A failing run leaves five files behind — the rewritten baseline plus four artifacts:
+
 | File | Description |
 |------|-------------|
-| `homepage.png` | Committed baseline |
-| `homepage.diff.png` | Visual diff with changes highlighted in red |
+| `homepage.png` | Baseline path — **rewritten** with the new capture (`git status` shows it modified) |
+| `homepage.base.png` | The committed baseline, checked out of `HEAD` for the comparison |
+| `homepage.diff.png` | The new capture, with changed regions highlighted |
+| `homepage.base.diff.png` | The old baseline, with the same regions highlighted |
 | `homepage.heatmap.diff.png` | Heatmap of pixel differences |
+
+Only `homepage.png` is committed; the `.gitignore` above keeps the other four out.
 
 ## Accepting an intentional change
 
@@ -235,12 +268,18 @@ Comparisons add ~50ms per image with VIPS. If you add `chunky_png` to your Gemfi
 <details>
 <summary><strong>Debug mode</strong></summary>
 
-`DEBUG=1 bin/rails test:system` keeps `.diff.png` files for inspection.
+You do not need a flag to keep the diff images — a failing run leaves `.diff.png`,
+`.base.diff.png`, `.heatmap.diff.png` and `.base.png` on disk and nothing in the gem
+deletes them (`SnapManager#cleanup!` is this repository's own test-harness call, not
+something your suite runs).
+
+`DEBUG=1` does one thing: it makes the HTML reporter print why it skipped an assertion
+instead of failing quietly — useful when `snap_diff_report.html` is missing entries.
 </details>
 
 ## Installation
 
-**Requirements:** Ruby 3.2+, Capybara 2–3. Rails 7.1+ for Rails integration; non-Rails projects supported via `CapybaraScreenshotDiff.serve()`. For the `:vips` driver (recommended, and the only backend from 2.1 on): [libvips 8.9+](https://libvips.github.io/libvips/install.html). On macOS: `brew install vips`. On Ubuntu: `apt-get install libvips-dev`.
+**Requirements:** Ruby 3.2+, Capybara 2–3. Rails 7.1+ for Rails integration; non-Rails projects supported via `SnapDiff.serve()`. For the `:vips` driver (recommended, and the only backend from 2.1 on): [libvips 8.9+](https://libvips.github.io/libvips/install.html). On macOS: `brew install vips`. On Ubuntu: `apt-get install libvips-dev`.
 
 ## Docs
 

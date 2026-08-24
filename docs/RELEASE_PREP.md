@@ -49,6 +49,14 @@ with a single `version` input (e.g. `2.0.0`, or `2.1.0.beta1`):
       rather than from the previous prerelease.
 - [ ] Docs carry no stale version pins — `README.md`, `docs/UPGRADING.md`,
       `docs/snapdiff.md`. Grep for the previous version string.
+- [ ] **Releasing 2.0.0: swap every install snippet from the `2.0.0.beta3` pin to
+      `"~> 2.0"`,** and delete the "final is not out yet" clauses next to them. Until
+      2.0.0 exists on rubygems, `gem "capybara-screenshot-diff", "~> 2.0"` hard-fails
+      `bundle install` (Bundler never resolves a prerelease from a plain requirement), so
+      the good pin has to land *with* the release, not before it. The snippets live in
+      `README.md`, `CHANGELOG.md`, `docs/UPGRADING.md` (×2) and `docs/migration-guide.md` —
+      re-grep rather than trusting that list:
+      `grep -rn 'capybara-screenshot-diff.\{0,4\}2\.0' README.md CHANGELOG.md docs/`
 - [ ] `mise x ruby@4.0.6 -- bundle exec rake test` (full suite, both gates) and
       `mise x ruby@4.0.6 -- bundle exec standardrb` are green.
 - [ ] CI is green on `master` at the commit you are releasing — the workflow only

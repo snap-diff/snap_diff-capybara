@@ -26,12 +26,16 @@ For Minitest, need to require `capybara_screenshot_diff/minitest`.
 In your test class, include the `CapybaraScreenshotDiff::Minitest::Assertions` module:
 
 ```ruby
+# test/application_system_test_case.rb
+require 'test_helper'
 require 'capybara_screenshot_diff/minitest'
 
 class ApplicationSystemTestCase < ActionDispatch::SystemTestCase
-  # Make the Capybara & Capybara Screenshot Diff DSLs available in tests
-  include CapybaraScreenshotDiff::DSL
-  # Make `assert_*` methods behave like Minitest assertions
+  # Pin the browser: window size and pixel ratio are inputs to every comparison
+  driven_by :selenium, using: :headless_chrome, screen_size: [1400, 1400]
+
+  # Make `assert_*` methods behave like Minitest assertions.
+  # This already includes CapybaraScreenshotDiff::DSL — a separate include is not needed.
   include CapybaraScreenshotDiff::Minitest::Assertions
 
   def test_my_feature
@@ -40,6 +44,9 @@ class ApplicationSystemTestCase < ActionDispatch::SystemTestCase
   end
 end
 ```
+
+Run it with `bin/rails test:system` — `rake test` / `rails test` skip `test/system/` and
+report `0 runs`.
 
 ## RSpec
 

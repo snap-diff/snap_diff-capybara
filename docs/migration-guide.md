@@ -35,15 +35,19 @@ end
 
 **After (capybara-screenshot-diff):**
 ```ruby
-# Gemfile
-gem 'capybara-screenshot-diff', '~> 2.0'
+# Gemfile — pin the exact prerelease; '~> 2.0' does not resolve until 2.0.0 ships
+gem 'capybara-screenshot-diff', '2.0.0.beta3'
 
 # test helper
-require 'capybara_screenshot_diff/minitest'
+require "snap_diff/integrations/minitest"
 
-# test class
+# test class — test/application_system_test_case.rb
+require "test_helper"
+
 class ApplicationSystemTestCase < ActionDispatch::SystemTestCase
-  include CapybaraScreenshotDiff::Minitest::Assertions
+  driven_by :selenium, using: :headless_chrome, screen_size: [1400, 1400]
+
+  include SnapDiff::Minitest::Assertions
 
   test "homepage" do
     visit '/'
@@ -60,7 +64,7 @@ end
 | First run | Uploads to Percy | Saves locally, passes automatically |
 | CI setup | `PERCY_TOKEN` env var | GitHub Action (3 lines) |
 | Diff review | Percy dashboard | `snap_diff_report.html` or PR artifacts |
-| Update baselines | Percy's "Approve" button | Delete file, re-run tests, commit |
+| Update baselines | Percy's "Approve" button | Re-run tests (the run rewrites the baseline), review, commit — **not** delete: baselines are read from git |
 | Snapshot limits | Paid plan dependent | Unlimited |
 | Parallel builds | Built-in | Thread-safe with t-locals + mutex |
 
@@ -77,7 +81,7 @@ end
 - uses: snap-diff/snap_diff-capybara/.github/actions/setup-ruby-and-dependencies@master
   with:
     ruby-version: '4.0'
-- run: bundle exec rake test
+- run: bin/rails test:system   # not `rake test` — it skips test/system/
 - uses: snap-diff/snap_diff-capybara/.github/actions/upload-screenshots@master
   if: failure()
   with:
@@ -209,7 +213,7 @@ end
 **After (capybara-screenshot-diff in CI):**
 ```yaml
 - uses: snap-diff/snap_diff-capybara/.github/actions/setup-ruby-and-dependencies@master
-- run: bundle exec rake test
+- run: bin/rails test:system   # not `rake test` — it skips test/system/
 - uses: snap-diff/snap_diff-capybara/.github/actions/upload-screenshots@master
   if: failure()
   with:
@@ -266,11 +270,14 @@ screenshot 'step2'
 
 ### "My tests are slow now"
 
-Use the VIPS driver for ~50ms comparisons per image:
+Use libvips for ~50ms comparisons per image — installing the gem is the whole setup, and from
+2.1 it is the only backend:
 ```ruby
+# Gemfile
 gem 'ruby-vips'
-Capybara::Screenshot::Diff.driver = :vips
 ```
+Do **not** add `driver = :vips`: that setting is removed in 2.1 and raises `NoMethodError`
+there, silently, with nothing in 2.0 to warn you. See [Drivers](drivers.md).
 
 ### "The diffs look different from what I'm used to"
 

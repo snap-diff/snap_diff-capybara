@@ -18,21 +18,30 @@ kept as history. This entry is the one to read if you are coming from **1.15.1**
 ### Upgrading from 1.15.1: change the version, run your suite
 
 ```ruby
-gem "capybara-screenshot-diff", "~> 2.0"
+gem "capybara-screenshot-diff", "2.0.0.beta3"   # current 2.0 prerelease; 2.0.0 final is not out yet
 ```
+
+Pin the exact prerelease until 2.0.0 ships: Bundler never resolves a prerelease from a plain
+requirement, so `"~> 2.0"` fails with `Could not find gem 'capybara-screenshot-diff (~> 2.0)'`.
+From 2.0.0 on, `"~> 2.0"` is the pin.
 
 That is the whole migration. `screenshot`, `assert_matches_screenshot` and
 `capture_screenshot` are unchanged. Your `Capybara::Screenshot::Diff.configure`
 block, every `Capybara::Screenshot.*` / `Capybara::Screenshot::Diff.*` setting, and
 every legacy constant still resolve — to the *same objects* the new names resolve
 to. Baselines are unchanged: capture, encoding, file naming and the `png` default are
-the same code as 1.15.1, moved — 2.0 will not rewrite a baseline you already committed.
+the same code as 1.15.1, moved — upgrading does not re-encode or invalidate a baseline you
+already committed, and a matching screenshot stays byte-identical. (Unchanged from 1.x: a
+screenshot that *differs* is written to its baseline path, so a failing run leaves
+`doc/screenshots/` dirty. That is how you accept a change — review the diff and commit.)
 
 Rolling back is a Gemfile edit: pin `"~> 1.15"` and `bundle update`.
 
 ### What you will see in your test output
 
-One migration notice, the first time the process touches a v1 API:
+One migration notice, the first time the process goes through a v1 door that *can* be
+hooked — a legacy config accessor, `include Capybara::Screenshot[::Diff]`,
+`Capybara::Screenshot::Diff.default_options`, or a lazily shimmed legacy constant:
 
 ```text
 [snap_diff deprecation] This process uses the v1 `Capybara::Screenshot*` /
@@ -50,10 +59,16 @@ site:
 (constant); use `SnapDiff::Comparison` instead. (called from test/test_helper.rb:12)
 ```
 
-> **On a 2.0.0 prerelease? Upgrade, do not trust its silence.** In `2.0.0.beta3` the
-> deprecation channel was incomplete: a v1-only suite got **no** warnings at all, and
-> the driver-half removal warnings did not exist yet. Silence on a beta is not evidence
-> that you are migrated.
+> **Silence is not evidence that you are migrated — on any 2.0 build.** In `2.0.0.beta3`
+> the deprecation channel was incomplete: a v1-only suite got **no** warnings at all, and
+> the driver-half removal warnings did not exist yet. 2.0.0 fixes the config-accessor,
+> `include`, `default_options` and `const_missing` doors, but **a suite whose only contact
+> with the v1 API is `require "capybara_screenshot_diff/minitest"` +
+> `include CapybaraScreenshotDiff::Minitest::Assertions` still prints nothing** — those
+> names are eager aliases, so there is no `const_missing` to hook. That setup is removed in
+> 2.1 all the same. Do not use warning output as a migration checklist; use
+> [docs/UPGRADING.md](docs/UPGRADING.md#deprecation-warnings), which lists what warns and
+> what cannot.
 
 Requiring the gem, the DSL, settings accessors and the eagerly-defined constants
 (the error classes, `::VERSION`, `Os`, `Region`, `Reporters::Default`,

@@ -22,11 +22,13 @@ with canonical names only, no legacy shapes to unlearn.
 
 ```ruby
 # In your Gemfile
-gem "capybara-screenshot-diff", "~> 2.0"
+gem "capybara-screenshot-diff", "2.0.0.beta3"   # current 2.0 prerelease; 2.0.0 final is not out yet
 ```
 
-**Pin the version.** An unpinned `gem "capybara-screenshot-diff"` resolves to the 1.x line,
-not to 2.0.
+**Pin the exact prerelease.** An unpinned `gem "capybara-screenshot-diff"` resolves to the 1.x
+line, and `"~> 2.0"` does not resolve at all — Bundler never picks a prerelease from a plain
+requirement, so it fails with `Could not find gem 'capybara-screenshot-diff (~> 2.0)'`. Once
+2.0.0 ships, `"~> 2.0"` is the pin to use.
 
 The same content is also published as `snap_diff-capybara` from 2.0.0 on, but that name's
 only earlier non-prerelease is a `0.0.1` placeholder with no Ruby files in it — unpinned, it
@@ -36,8 +38,12 @@ time.
 
 ```bash
 bundle install
-bundle exec rake test
+bin/rails test:system     # the task that actually runs your screenshot tests
 ```
+
+> **Not `rake test` / `rails test`.** In a Rails app those skip `test/system/`, so you get
+> `0 runs, 0 assertions, 0 failures` — a clean-looking pass that compared nothing. Outside
+> Rails, run whatever task loads your Capybara tests.
 
 **That's it.** Your existing code works unchanged. The old namespaces (`Capybara::Screenshot::Diff`, `CapybaraScreenshotDiff`) are shimmed with deprecation warnings; the new one (`SnapDiff`) is available if you want to modernize.
 
@@ -352,9 +358,9 @@ All settings and baselines are compatible with v1.x. Simply pin your Gemfile bac
 
 ### Summary Checklist
 
-- [ ] Pin `gem "capybara-screenshot-diff", "~> 2.0"` in your Gemfile
+- [ ] Pin `gem "capybara-screenshot-diff", "2.0.0.beta3"` in your Gemfile (`"~> 2.0"` once 2.0.0 ships)
 - [ ] Run `bundle install`
-- [ ] Run your test suite to verify no regressions
+- [ ] Run your system tests (`bin/rails test:system`, not `rake test`) to verify no regressions
 - [ ] Read the warnings it prints — each one names something 2.1 removes
 - [ ] Add `gem "ruby-vips"` if you are not already on it (2.1 makes libvips the only backend)
 - [ ] Drop `driver:` from your config — it is silent in 2.0 and gone in 2.1
@@ -383,7 +389,7 @@ gem 'capybara-screenshot-diff', '~> 1.13.0'
 
 ```bash
 bundle update capybara-screenshot-diff
-bundle exec rake test
+bin/rails test:system   # `rake test` skips test/system/ — 0 runs, no comparison
 ```
 
 **That's it!** Existing `screenshot` calls work unchanged. New methods available if needed.
@@ -468,7 +474,7 @@ gem 'capybara-screenshot-diff', '~> 1.12.0'
 
 ```bash
 bundle update capybara-screenshot-diff
-bundle exec rake test  # Verify tests still pass
+bin/rails test:system  # Verify tests still pass (`rake test` skips test/system/)
 ```
 
 **That's it!** The zero-config setup still works out of the box. Your existing screenshot comparisons will continue to work with v1.12.0.
@@ -673,7 +679,6 @@ Use the new `Diff.configure` block:
 Capybara::Screenshot::Diff.configure do |screenshot, diff|
   screenshot.window_size = [1280, 1024]
   screenshot.stability_time_limit = 1
-  diff.driver = :vips
   diff.tolerance = 0.0005
 end
 ```
@@ -724,7 +729,7 @@ bundle update capybara-screenshot-diff
 ### Step 3: Run Tests
 
 ```bash
-bundle exec rake test
+bin/rails test:system   # `rake test` skips test/system/ — 0 runs, no comparison
 ```
 
 ### Step 4: Check for New Screenshot Failures
@@ -778,13 +783,14 @@ Capybara::Screenshot.hide_caret = false
 Then re-record baselines with the new defaults (recommended):
 
 ```bash
-# Delete old baselines
-rm doc/screenshots/*.png
+# Do NOT delete the baselines — they are read from git (`git show HEAD:<path>`), so
+# removing the files changes nothing. Re-recording is a commit.
 
-# Run tests to generate new baselines
-bundle exec rake test
+# The run fails and rewrites every changed baseline in place
+bin/rails test:system
 
-# Commit new baselines
+# Review the diffs, then commit the new baselines
+git status
 git add doc/screenshots/
 git commit -m "Re-record baselines with v1.12.0 defaults"
 ```
