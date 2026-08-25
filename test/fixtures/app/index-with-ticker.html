@@ -24,6 +24,14 @@
     background-color: #000000;
     color: #ffffff;
     font-size: 24px;
+    /* MONOSPACE IS LOAD-BEARING. Ten random glyphs in a proportional font
+       render to a different WIDTH each tick, so the measured region is a
+       sample of a moving target and a later frame can fall outside the mask
+       the message just suggested -- which made this fixture's own round-trip
+       test flaky (2 failures, 2 different cells, run 32750597989 and
+       32752142873). The pixels still change completely every tick, which is
+       the property under test; only the extent is pinned, which is not. */
+    font-family: 'DejaVu Sans Mono', 'Liberation Mono', 'Courier New', monospace;
   }
   </style>
 </head>

@@ -375,6 +375,16 @@ The coordinates are measured, not guessed: they come from the comparisons the
 gem just ran between consecutive attempts, so pasting the suggested `skip_area`
 in works.
 
+**One caveat, and it is a real one.** The suggested box is the union of what
+changed across the attempts that ran — a *sample* of the animation, not a proven
+bound on it. If the moving thing also changes SIZE between frames (proportional
+text of varying width in a centred box is the common case), a later frame can
+render a pixel or two outside the box that was measured, and the masked run fails
+again with a much smaller region. Paste the new suggestion, or widen the box by a
+few pixels; it converges. For the usual case — a clock, spinner or counter
+repainting inside a fixed element — the extent does not move and the first
+suggestion is the whole fix.
+
 Read the "changed in N of N pairs" line before acting on it:
 
 - **N of N — one area, every single pair.** Something is animating in one place:
