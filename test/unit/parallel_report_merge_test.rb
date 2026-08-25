@@ -105,6 +105,29 @@ class ParallelReportMergeTest < ActiveSupport::TestCase
     refute_includes summary, "img"
   end
 
+  # The stabilisation evidence (#271) is a run-level fact too, and Rails'
+  # default `parallelize` is where a run-level line goes missing (#269).
+  # Counts add up across workers; the WORST case does not -- the slowest
+  # page in the run is the slowest page in whichever worker ran it.
+  test "the worst stabilisation across workers survives the merge" do
+    fork_worker { SnapDiff::Reporting.record_stable_capture(0.10, 2) }
+    fork_worker { SnapDiff::Reporting.record_stable_capture(0.20, 2) }
+    # The worst case is held by the PARENT here, not by a worker, and the
+    # fragments are merged in filename order. Assigning instead of maxing
+    # would clobber it whichever way the pids happened to sort -- an
+    # order-dependent fixture let exactly that mutation through once.
+    SnapDiff::Reporting.record_stable_capture(0.90, 5)
+
+    SnapDiff::Reporting.merge_parallel_fragments!
+
+    summary = SnapDiff::Reporting.stable_captures_summary
+
+    assert_includes summary, "3 screenshots"
+    assert_includes summary, "0.90s"
+    assert_includes summary, "5 attempts"
+    refute_includes summary, "settled on its first retry"
+  end
+
   test "the parent removes the fragments it merged" do
     fork_worker { @reporter.record([build_failing_assertion("cleaned")]) }
 

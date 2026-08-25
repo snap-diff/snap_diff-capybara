@@ -55,7 +55,8 @@ module SnapDiff
 
     def take_stable_screenshot(snapshot)
       # We try to compare first attempt with checkout version, in order to not run next screenshots
-      deadline_at = Process.clock_gettime(Process::CLOCK_MONOTONIC) + wait
+      started_at = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+      deadline_at = started_at + wait
 
       # Cleanup all previous attempts for sure
       snapshot.cleanup_attempts!
@@ -63,7 +64,17 @@ module SnapDiff
       loop do
         attempt_next_screenshot(snapshot)
 
-        return true if attempt_successful?(snapshot)
+        if attempt_successful?(snapshot)
+          # What the wait actually cost, on the path where it worked. The
+          # failure path names the region that would not settle (#271); this
+          # is the evidence for tuning `stability_time_limit` DOWN, and it is
+          # free -- both numbers are already here.
+          Reporting.record_stable_capture(
+            Process.clock_gettime(Process::CLOCK_MONOTONIC) - started_at,
+            snapshot.attempts_count
+          )
+          return true
+        end
         return false if timeout?(deadline_at)
 
         sleep(stability_time_limit)

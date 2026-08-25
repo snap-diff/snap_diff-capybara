@@ -67,6 +67,31 @@ class StableScreenshoterTest < ActiveSupport::TestCase
     assert_not_predicate snap.path.size, :zero?
   end
 
+  # #271: a user who set `stability_time_limit: 2` cannot tune it down
+  # without knowing how long their page actually took. Recorded on the
+  # SUCCESS path, where nothing was reported before.
+  test "#take_comparison_screenshot records how long the page took to settle" do
+    SnapDiff::Reporting.reset_run_totals!
+    image_compare_stub = build_image_compare_stub
+
+    mock = ::Minitest::Mock.new(image_compare_stub)
+    mock.expect(:quick_equal?, false)
+    mock.expect(:quick_equal?, true)
+
+    SnapDiff::Comparison.stub :new, mock do
+      SnapDiff::StableScreenshoter
+        .new({stability_time_limit: 0.05, wait: 1}, image_compare_stub.driver_options)
+        .take_comparison_screenshot(@manager.snapshot("02_a"))
+    end
+
+    summary = SnapDiff::Reporting.stable_captures_summary
+    assert summary, "a successful stable capture must leave evidence for tuning"
+    assert_includes summary, "1 screenshot"
+    assert_includes summary, "3 attempts"
+  ensure
+    SnapDiff::Reporting.reset_run_totals!
+  end
+
   test "#take_comparison_screenshot raises UnstableImage when stability timeout is reached" do
     snap = @manager.snapshot("01_a")
 

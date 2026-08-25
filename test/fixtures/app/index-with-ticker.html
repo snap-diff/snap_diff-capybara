@@ -1,0 +1,78 @@
+<!doctype html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+  body {
+    width: 100%;
+    margin: 0;
+    font-family: 'DejaVu Sans', 'DejaVu Serif', 'Liberation Sans', Ubuntu, Arial, sans-serif;
+  }
+
+  /* The real-world shape of an unstable page: everything holds still except
+     one fixed box -- a clock, a live counter, a spinner. The region never
+     moves, which is exactly what makes `skip_area` the right answer, and
+     what the stability failure message has to be able to say. */
+  #ticker {
+    position: absolute;
+    left: 40px;
+    top: 40px;
+    width: 200px;
+    height: 40px;
+    line-height: 40px;
+    text-align: center;
+    background-color: #000000;
+    color: #ffffff;
+    font-size: 24px;
+    /* MONOSPACE IS LOAD-BEARING. Ten random glyphs in a proportional font
+       render to a different WIDTH each tick, so the measured region is a
+       sample of a moving target and a later frame can fall outside the mask
+       the message just suggested -- which made this fixture's own round-trip
+       test flaky (2 failures, 2 different cells, run 32750597989 and
+       32752142873). The pixels still change completely every tick, which is
+       the property under test; only the extent is pinned, which is not. */
+    font-family: 'DejaVu Sans Mono', 'Liberation Mono', 'Courier New', monospace;
+  }
+  </style>
+</head>
+<body>
+
+<h1>Ticker</h1>
+
+<div id="ticker">0000000000</div>
+
+<script>
+// Same box, different pixels, forever -- but the CHANGE HAS TO BE THE WHOLE
+// BOX, not the glyphs inside it.
+//
+// Glyphs were the first attempt and they are unreliable to measure: a capture
+// on a slow machine can land mid-repaint and see a single column of a single
+// character, so the reported region came out anywhere from 1x17 to 157x17 for
+// the same page (runs 32750597989, 32752142873, and the selenium_headless cell
+// of the third). The diagnosis was right every time; what it was diagnosing
+// would not hold still.
+//
+// Inverting the whole box changes ~8000 px at maximum contrast, so a partial
+// repaint is still an unmistakable diff, and the region is the ELEMENT --
+// which `position: absolute` with a fixed width and height pins exactly. That
+// is also the honest shape of the real thing this stands in for: a clock or
+// spinner repainting inside a box that does not move.
+// A RANDOM colour, not a two-state toggle: alternating black/white depends on
+// parity, and two attempts ~100ms apart are an unpredictable number of 30ms
+// ticks apart, so they can land on the SAME phase -- identical background,
+// only the glyphs differing, and the measured region collapses back to text.
+// Verified locally: with a toggle the region came out [69,50,210,66] (text),
+// with a random colour it is the element.
+const retick = () => {
+  const el = document.getElementById("ticker")
+  const channel = () => Math.floor(Math.random() * 256)
+  el.style.backgroundColor = `rgb(${channel()}, ${channel()}, ${channel()})`
+  el.textContent =
+    Array.from({length: 10}, () => "0123456789ABCDEF"[Math.floor(Math.random() * 16)]).join("")
+}
+retick()
+setInterval(retick, 30)
+</script>
+
+</body>
+</html>

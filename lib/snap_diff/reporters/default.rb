@@ -61,6 +61,14 @@ module SnapDiff
 
       NEW_LINE = "\n"
 
+      # The one place the gem turns a fraction of the image into prose.
+      # Public because AttemptsReporter reports the same kind of number and
+      # must say it the same way (#264 vocabulary).
+      def self.percent(fraction)
+        value = fraction * 100
+        (value.positive? && value < 0.01) ? "<0.01%" : format("%.2f%%", value)
+      end
+
       # The thresholds a comparison is judged against, in the order they read
       # best. Only the ones actually set are printed -- see #thresholds.
       THRESHOLDS = [
@@ -146,8 +154,7 @@ module SnapDiff
       end
 
       def percent(fraction)
-        value = fraction * 100
-        (value.positive? && value < 0.01) ? "<0.01%" : format("%.2f%%", value)
+        self.class.percent(fraction)
       end
 
       def base_image_path

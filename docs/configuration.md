@@ -356,6 +356,63 @@ test 'stability_time_limit' do
 end
 ```
 
+### When the page will not settle
+
+The failure names the area that kept changing, and hands you the command that
+fixes it:
+
+```
+Could not get stable screenshot for 'index-with-ticker' within 1.2s (5 attempts).
+  The page kept changing in 1 area, over 4 attempt pairs:
+    [67,50,213,68] (left,top,right,bottom edges) -- 0.55% of the 800x600 image, changed in 4 of 4 pairs
+  Always the same area, in every pair: that is an animation, clock, carousel or live counter.
+  Exclude it and the page is stable without waiting:
+    assert_matches_screenshot "index-with-ticker", skip_area: [67,50,213,68]
+  <one annotated attempt image per line>
+```
+
+The coordinates are measured, not guessed: they come from the comparisons the
+gem just ran between consecutive attempts, so pasting the suggested `skip_area`
+in works.
+
+**One caveat, and it is a real one.** The suggested box is the union of what
+changed across the attempts that ran — a *sample* of the animation, not a proven
+bound on it. If the moving thing also changes SIZE between frames (proportional
+text of varying width in a centred box is the common case), a later frame can
+render a pixel or two outside the box that was measured, and the masked run fails
+again with a much smaller region. Paste the new suggestion, or widen the box by a
+few pixels; it converges. For the usual case — a clock, spinner or counter
+repainting inside a fixed element — the extent does not move and the first
+suggestion is the whole fix.
+
+Read the "changed in N of N pairs" line before acting on it:
+
+- **N of N — one area, every single pair.** Something is animating in one place:
+  a clock, a carousel, a spinner, a live counter. `skip_area` is the fix, and
+  since masking no longer waits it costs nothing.
+- **Fewer than N, or several areas each changing once.** The page is still
+  *rendering*, not animating. Masking those areas would hide real content. The
+  message says so and suggests nothing to mask — settle the page in a
+  [readiness block](#the-readiness-block) instead, or raise `wait:`.
+
+### Knowing what the waiting cost
+
+Every run that waited for stability ends with what it actually paid:
+
+```
+[snap_diff] 34 screenshots waited for the page to settle: 0.19s and 2 attempts at worst. Every screenshot settled on its first retry, so a lower stability_time_limit would cost less per screenshot.
+```
+
+Two attempts is the floor — one capture, plus the retry that matched it. Hitting
+the floor across the whole run means no page was ever still moving when the
+retry was taken, so every `stability_time_limit` sleep was spent on a page that
+had already stopped. That is the evidence for tuning it *down*; without it,
+lowering the setting is guesswork, and guesswork loses to `sleep`.
+
+Run-level and silent when nothing waited, for the same reason as the
+never-matched-selector line: a line printed on every screenshot is a line
+people learn to skip.
+
 ### Maximum wait limit
 
 When the `stability_time_limit` is set, but no stable screenshot can be taken, a timeout occurs.
@@ -489,7 +546,9 @@ screenshot. That wait is gone.)
 So content that arrives late — lazy-loaded images, JS-injected widgets, anything
 behind an unresolved fetch — has to be settled *before* the assertion, or its
 mask will be empty and the unstable region will be compared. Settle it in the
-readiness block described below.
+[readiness block](#the-readiness-block) described below; the two cases people
+hit most (webfonts and lazy images) are written out in
+[Recipes](#recipes).
 
 If a selector matched nothing in *every* screenshot of a run, the end-of-run
 summary names it:
@@ -537,6 +596,58 @@ In RSpec, call `assert_matches_screenshot` directly rather than through the
 binds the block by Ruby's `{}`/`do...end` precedence rather than by intent, so
 the matcher does not take one. In Cucumber the DSL is in the World, so step
 definitions pass a block the same way a Minitest test does.
+
+#### Recipes
+
+These are the workarounds people hand-roll anyway. The block is where they
+belong, because that is the only place they are skipped when screenshots are
+off.
+
+**Webfonts.** A font swapping in mid-capture reflows every line of text that
+uses it, so the same page renders two different ways depending on when the
+screenshot lands — the classic "it only fails on CI" flake. People usually
+paper over it with a `skip_area`, a loosened `tolerance` and a retry, all three
+of which weaken the comparison everywhere. Wait for the swap instead:
+
+```ruby
+assert_matches_screenshot 'home' do
+  page.evaluate_async_script(
+    'var done = arguments[0]; document.fonts.ready.then(function(){ done(true) })'
+  )
+end
+```
+
+`document.fonts.ready` resolves once every font used by the current layout has
+loaded (or failed) — and on a warm cache that has already happened, so the call
+returns on the first round trip. It is a Font Loading API promise, supported in
+every browser Capybara drives.
+
+There is deliberately no built-in font wait: it would be a browser round trip
+imposed on every screenshot in every suite, and a driver-compatibility surface
+the gem would own forever, in exchange for one line you can write yourself.
+
+**Lazy-loaded images.** Anything behind `loading="lazy"`, an IntersectionObserver
+or an unresolved fetch is simply not there when the screenshot is taken. Force
+it in, then come back:
+
+```ruby
+assert_matches_screenshot 'gallery', skip_area: ['article img'] do
+  scroll_to :bottom
+  assert_text 'End of gallery'
+  scroll_to :top
+end
+```
+
+Note the order: `skip_area: ['article img']` masks what exists **at assertion
+time**, so the images have to be in the DOM before the mask is resolved. A
+selector for content that has not loaded yet produces an empty mask and the
+unstable region is compared anyway — see [Skipping an area](#skipping-an-area).
+
+**What does not belong here.** Waits that every screenshot needs regardless
+(`disable_animations`, `hide_caret`) are configuration, not readiness. And the
+block runs once per assertion, not once per stability retry, so it cannot be
+used to nudge a page that keeps moving — for that, see
+[When the page will not settle](#when-the-page-will-not-settle).
 
 The arguments are `[left, top, right, bottom]` for the area you want to ignore.  You can also set this globally:
 

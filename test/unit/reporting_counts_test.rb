@@ -216,6 +216,55 @@ class ReportingCountsTest < ActiveSupport::TestCase
     assert_nil SnapDiff::Reporting.never_matched_selectors_summary
   end
 
+  # --- #271: the evidence needed to tune stability_time_limit DOWN --------
+  #
+  # A user who set `stability_time_limit: 2` has no way to learn their page
+  # settles on the first retry. Without that, tuning down is guesswork, and
+  # guesswork loses to `sleep`.
+
+  test "the run reports the worst stabilisation it saw" do
+    SnapDiff::Reporting.record_stable_capture(0.12, 2)
+    SnapDiff::Reporting.record_stable_capture(0.66, 4)
+
+    summary = SnapDiff::Reporting.stable_captures_summary
+
+    assert_includes summary, "2 screenshots"
+    assert_includes summary, "0.66s"
+    assert_includes summary, "4 attempts"
+  end
+
+  test "a run where every page settled on the first retry says so" do
+    SnapDiff::Reporting.record_stable_capture(0.5, 2)
+
+    assert_includes SnapDiff::Reporting.stable_captures_summary,
+      "settled on its first retry"
+  end
+
+  test "a run where some page needed more than one retry does not claim otherwise" do
+    SnapDiff::Reporting.record_stable_capture(0.5, 2)
+    SnapDiff::Reporting.record_stable_capture(1.5, 3)
+
+    refute_includes SnapDiff::Reporting.stable_captures_summary, "settled on its first retry"
+  end
+
+  # Silent for the majority who never enable stability waiting: a line that
+  # prints on every run is a line users learn to skip.
+  test "the stabilisation line is silent when nothing waited for stability" do
+    assert_nil SnapDiff::Reporting.stable_captures_summary
+
+    out, _err = capture_io { SnapDiff::Reporting.finalize! }
+
+    refute_includes out, "settle"
+  end
+
+  test "reset_run_totals! clears the stabilisation tally" do
+    SnapDiff::Reporting.record_stable_capture(0.5, 2)
+
+    SnapDiff::Reporting.reset_run_totals!
+
+    assert_nil SnapDiff::Reporting.stable_captures_summary
+  end
+
   private
 
   def build_passing_assertion(name)

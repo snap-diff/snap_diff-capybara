@@ -96,6 +96,10 @@ module TestDoubles
   # Test double for difference results
   class TestDifference
     attr_reader :different_value
+    # AttemptsReporter reads both to name the region that would not settle
+    # (#271). nil on purpose here: a double that reported a region would let
+    # the reporter's own no-region path go untested.
+    attr_reader :region, :comparison
 
     def initialize(different_value)
       @different_value = different_value
