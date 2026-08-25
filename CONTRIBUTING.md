@@ -68,6 +68,38 @@ bundle exec standardrb
 bundle exec standardrb --fix
 ```
 
+## CI: a green PR does not always mean a green master
+
+**The full `Test Ruby & Rails` matrix does not run on every PR.** It is off by
+default to stay inside free-tier Actions minutes, which means the job that breaks
+`master` can be a job that never ran on your PR.
+
+It runs automatically when:
+
+- the PR touches **`test/`, `gemfiles/` or `.github/`** — the three paths every
+  recent master breakage came from;
+- you add the **`full-ci`** label;
+- or the push is to `master`, a manual dispatch, or the weekly drift check.
+
+**Add `full-ci` by hand** if your PR could behave differently across Ruby or
+Rails versions and does not touch those paths — anything version-conditional
+(`defined?`, `respond_to?`, `RUBY_VERSION`), anything touching subprocess or
+environment handling, or anything you would be surprised to see break on JRuby.
+`lib/` is deliberately **not** on the automatic list: it changes on nearly every
+PR, and the functional and minimal-setup jobs already cover it. That trade is a
+cost decision, not a claim that `lib/` is safe.
+
+Two things about reading CI results here:
+
+- **`cancelled` is not a pass.** It means a later push superseded the run, or
+  fail-fast killed the cell before it reported. It occupies the same slot as a
+  verdict while carrying none — a JRuby lane sat broken for 15 consecutive runs
+  looking exactly like this.
+- **After merging, check `master`.** `gh run list --branch master --workflow Test
+  --limit 1`. A red `master` blocks the next merge. Pass `--workflow Test`: without
+  it you get whichever workflow ran last, which has already reported a Dependabot
+  success while `Test` was failing on the same commit.
+
 ## Coding Conventions
 
 ### Style

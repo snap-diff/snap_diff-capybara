@@ -68,7 +68,31 @@ jobs:
       contents: read
       pull-requests: write
 
+    outputs:
+      # Whether this PR touches a path that has historically broken master.
+      high_risk_paths: ${{ steps.risk.outputs.high }}
+
     steps:
+      - name: Detect paths that have historically broken master
+        id: risk
+        if: github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Asked over the API, not `git diff`: checkout is depth-1, so the base
+          # commit is not in the clone to diff against.
+          files=$(gh api \
+            "repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/files" \
+            --paginate --jq '.[].filename')
+          if grep -qE '^(test/|gemfiles/|\.github/)' <<<"$files"; then
+            echo "high=true" >> "$GITHUB_OUTPUT"
+            echo "High-risk paths touched -- the full matrix will run on this PR:"
+            grep -E '^(test/|gemfiles/|\.github/)' <<<"$files" | sed 's/^/  /'
+          else
+            echo "high=false" >> "$GITHUB_OUTPUT"
+            echo "No high-risk paths touched; the full matrix stays off this PR."
+          fi
+
       - name: Checkout code
         uses: actions/checkout@v7
 
@@ -98,14 +122,23 @@ jobs:
 
   matrix:
     name: Test Ruby & Rails
-    # Cost-intentional: full matrix stays off PRs by default (free-tier
-    # Actions minutes). Runs on master pushes, manual dispatch, the weekly
-    # scheduled drift check, and PRs opted in via the 'full-ci' label.
+    # Cost-intentional: the full matrix stays off PRs that cannot plausibly
+    # break it (free-tier Actions minutes). It runs on master pushes, manual
+    # dispatch, the weekly drift check, PRs opted in via the 'full-ci' label,
+    # and -- since #281 -- automatically on any PR touching `test/`,
+    # `gemfiles/` or `.github/`.
+    #
+    # Those three paths are not a guess. Every master breakage traced this week
+    # came from one of them, and each was invisible on a green PR precisely
+    # because the matrix had not run: a Rails 7.1-only constant (#283), JRuby
+    # lacking Kernel#fork (#283), and a zero-width skip_area mask (#280). All
+    # three were found only by adding the label BY HAND after the fact.
     if: >
       github.ref == 'refs/heads/master' ||
       github.event_name == 'workflow_dispatch' ||
       github.event_name == 'schedule' ||
-      contains(github.event.pull_request.labels.*.name, 'full-ci')
+      contains(github.event.pull_request.labels.*.name, 'full-ci') ||
+      needs.functional-test.outputs.high_risk_paths == 'true'
     needs: [ functional-test ]
     runs-on: ubuntu-latest
     # Must fit `max_attempts * timeout_minutes` below, plus ~1 min of setup,
