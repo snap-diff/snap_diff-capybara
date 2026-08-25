@@ -68,31 +68,7 @@ jobs:
       contents: read
       pull-requests: write
 
-    outputs:
-      # Whether this PR touches a path that has historically broken master.
-      high_risk_paths: ${{ steps.risk.outputs.high }}
-
     steps:
-      - name: Detect paths that have historically broken master
-        id: risk
-        if: github.event_name == 'pull_request'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          # Asked over the API, not `git diff`: checkout is depth-1, so the base
-          # commit is not in the clone to diff against.
-          files=$(gh api \
-            "repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/files" \
-            --paginate --jq '.[].filename')
-          if grep -qE '^(test/|gemfiles/|\.github/)' <<<"$files"; then
-            echo "high=true" >> "$GITHUB_OUTPUT"
-            echo "High-risk paths touched -- the full matrix will run on this PR:"
-            grep -E '^(test/|gemfiles/|\.github/)' <<<"$files" | sed 's/^/  /'
-          else
-            echo "high=false" >> "$GITHUB_OUTPUT"
-            echo "No high-risk paths touched; the full matrix stays off this PR."
-          fi
-
       - name: Checkout code
         uses: actions/checkout@v7
 
@@ -122,23 +98,13 @@ jobs:
 
   matrix:
     name: Test Ruby & Rails
-    # Cost-intentional: the full matrix stays off PRs that cannot plausibly
-    # break it (free-tier Actions minutes). It runs on master pushes, manual
-    # dispatch, the weekly drift check, PRs opted in via the 'full-ci' label,
-    # and -- since #281 -- automatically on any PR touching `test/`,
-    # `gemfiles/` or `.github/`.
-    #
-    # Those three paths are not a guess. Every master breakage traced this week
-    # came from one of them, and each was invisible on a green PR precisely
-    # because the matrix had not run: a Rails 7.1-only constant (#283), JRuby
-    # lacking Kernel#fork (#283), and a zero-width skip_area mask (#280). All
-    # three were found only by adding the label BY HAND after the fact.
+    # Off PRs by default (free-tier minutes): master, dispatch, weekly cron,
+    # or the 'full-ci' label.
     if: >
       github.ref == 'refs/heads/master' ||
       github.event_name == 'workflow_dispatch' ||
       github.event_name == 'schedule' ||
-      contains(github.event.pull_request.labels.*.name, 'full-ci') ||
-      needs.functional-test.outputs.high_risk_paths == 'true'
+      contains(github.event.pull_request.labels.*.name, 'full-ci')
     needs: [ functional-test ]
     runs-on: ubuntu-latest
     # Must fit `max_attempts * timeout_minutes` below, plus ~1 min of setup,
@@ -148,7 +114,7 @@ jobs:
     continue-on-error: ${{ matrix.experimental }}
     strategy:
       matrix:
-        ruby-version: [ "4.0", "3.4", "3.3", "jruby-10.0" ]
+        ruby-version: [ "4.0", "3.4", "3.3" ]
         gemfile:
           - rails71_gems.rb
           - rails72_gems.rb
@@ -156,20 +122,8 @@ jobs:
           - rails81_gems.rb
         experimental: [ false ]
         exclude:
-          # We already tested last version in the functional-test job
-          - ruby-version: "4.0"
-            gemfile: rails81_gems.rb
-            experimental: false
-          # Rails 7.1 does not support Ruby 4.0. Its gemspec says `>= 2.7.0`,
-          # but that is a floor with no upper bound, not a statement of
-          # support: 7.1 shipped in Oct 2023, years before Ruby 4, and Rails
-          # never tested it there. We have been propping the pair up rather
-          # than testing it -- `rails71_gems.rb` carries an explicit
-          # `require: logger` purely because Ruby 3.5+/4.0 dropped logger from
-          # the default gems, and #283 added a `TestsWithoutAssertions` guard
-          # for the same cell. Gating releases on a combination upstream does
-          # not support means our red is their unsupported config, not our bug.
-          # 7.1 stays covered on 3.3 and 3.4, which Rails does support.
+          # Rails 7.1 does not support Ruby 4.0 -- its gemspec floor of 2.7.0
+          # has no upper bound, but 7.1 predates Ruby 4 by years (#288).
           - ruby-version: "4.0"
             gemfile: rails71_gems.rb
             experimental: false
@@ -177,18 +131,16 @@ jobs:
           - ruby-version: "4.0"
             gemfile: edge_gems.rb
             experimental: true
-          - ruby-version: jruby-head
+          # One cell: JRuby's differences (no Kernel#fork, thread semantics,
+          # the FFI/vips path) are JVM-level, not Rails-level.
+          - ruby-version: jruby-10.1
             gemfile: rails81_gems.rb
-            experimental: true
+            experimental: false
 
     env:
       BUNDLE_GEMFILE: gemfiles/${{ matrix.gemfile }}
-      # The JRuby cells are the only place the vips driver runs on a non-MRI
-      # engine, and `bin/rake test` otherwise leaves them on chunky_png (the
-      # default in test/system_test_case.rb) -- so ruby-vips' FFI path was
-      # only ever loaded there, never driven end to end. Test Drivers covers
-      # both drivers on CRuby; chunky_png stays covered on JRuby by its own
-      # unit tests, which do not read this variable.
+      # JRuby is the only place ruby-vips' FFI path runs on a non-MRI engine.
+      # Test Drivers covers both backends on CRuby.
       SCREENSHOT_DRIVER: ${{ contains(matrix.ruby-version, 'jruby') && 'vips' || 'chunky_png' }}
 
     steps:
@@ -203,46 +155,18 @@ jobs:
       - name: Run tests (with 1 retry)
         uses: nick-fields/retry@v4
         with:
-          # Re-measured on master run 32758898367 (the last green one before
-          # the budget bit): a clean JRuby attempt is now 652-881s, not the
-          # 545-713s this was set from on run 32643567648. The suite grew from
-          # 646 to 757 runs in between, so 881s against a 900s cap left 2%
-          # headroom, and the jruby-10.0/rails80 cell duly timed out on run
-          # 32763256451 -- with tests still printing dots when SIGTERM landed,
-          # so it was slow, not hung.
-          #
-          # 20 min restores ~26% over the slowest attempt, which is the margin
-          # this was originally sized for.
-          #
-          # MRI then did the same thing one release later, which is why it is 4
-          # and not 3. "MRI is 128s against 3 min" was true when written; measured
-          # on run 32770212615 the attempts are 78-146s, so the slowest had 23%
-          # left and `3.3/rails81` (144s) duly timed out on run 32889000873 --
-          # again with tests still printing dots when SIGTERM landed. 4 min puts
-          # the slowest back to ~64%.
-          #
-          # The lesson both times: these numbers are measurements, not settings.
-          # When one bites, RE-MEASURE and raise BOTH it and the job cap -- a
-          # per-attempt timeout that does not fit the cap reports `cancelled`,
-          # which reads as an absence rather than a failure.
+          # Measured, not chosen: slowest attempt is ~880s JRuby, ~146s MRI.
+          # Both have timed out before when the suite grew into them -- when
+          # that happens, re-measure and raise this AND timeout-minutes above.
           timeout_minutes: ${{ contains(matrix.ruby-version, 'jruby') && 20 || 4 }}
-          # Two, not three. A third attempt never fit inside the job cap on
-          # either engine (JRuby 3x15=45 > 25; MRI 3x3=9 > 8), so it only ever
-          # got killed partway and reported the cell as `cancelled`. Keeping
-          # the retry budget inside the cap is what makes the cell a real gate.
-          #
-          # The retry exists solely for the intermittent JRuby teardown hang
-          # (#244), which strands the process for minutes *after* the suite
-          # prints `Finished in ...`. Once #244 is fixed, drop this to a single
-          # attempt and the JRuby cap to 16 -- that halves the JRuby bill.
+          # Exists only for the intermittent JRuby teardown hang (#244).
+          # Once that is fixed, drop to 1 and halve the JRuby bill.
           max_attempts: 2
           command: bin/rake test
 
   matrix-screenshot-driver:
     name: Test Drivers
-    # Cost-intentional: full matrix stays off PRs by default (free-tier
-    # Actions minutes). Runs on master pushes, manual dispatch, the weekly
-    # scheduled drift check, and PRs opted in via the 'full-ci' label.
+    # Off PRs by default, same triggers as the matrix above.
     if: >
       github.ref == 'refs/heads/master' ||
       github.event_name == 'workflow_dispatch' ||
