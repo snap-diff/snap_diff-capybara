@@ -74,20 +74,21 @@ bundle exec standardrb --fix
 default to stay inside free-tier Actions minutes, which means the job that breaks
 `master` can be a job that never ran on your PR.
 
-It runs automatically when:
+A **pull request runs only the critical jobs** — Lint, Functional Test and the
+minimal-setup check. The version matrix is the **master** gate; it also runs on
+manual dispatch, the weekly cron, and any PR carrying the **`full-ci`** label.
 
-- the PR touches **`test/`, `gemfiles/` or `.github/`** — the three paths every
-  recent master breakage came from;
-- you add the **`full-ci`** label;
-- or the push is to `master`, a manual dispatch, or the weekly drift check.
+**Add `full-ci` by hand** when a change is version-sensitive and you want the
+answer before merging rather than after: anything conditional on `defined?`,
+`respond_to?` or `RUBY_VERSION`, anything touching subprocess or environment
+handling, and anything you would be surprised to see break on JRuby.
 
-**Add `full-ci` by hand** if your PR could behave differently across Ruby or
-Rails versions and does not touch those paths — anything version-conditional
-(`defined?`, `respond_to?`, `RUBY_VERSION`), anything touching subprocess or
-environment handling, or anything you would be surprised to see break on JRuby.
-`lib/` is deliberately **not** on the automatic list: it changes on nearly every
-PR, and the functional and minimal-setup jobs already cover it. That trade is a
-cost decision, not a claim that `lib/` is safe.
+The matrix is a **spanning set**, not a cross product — every Ruby appears at
+least once and every Rails appears at least once. A cross product re-proves the
+same facts: `TestsWithoutAssertions` being Rails 7.2+ shows up on *every* Ruby
+running 7.1, and JRuby lacking `Kernel#fork` shows up on *every* Rails. The
+combinations outside the span are not run anywhere; that is the trade for the
+matrix costing ~46 min instead of ~130.
 
 Two things about reading CI results here:
 
