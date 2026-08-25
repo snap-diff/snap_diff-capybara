@@ -36,7 +36,7 @@ end
 **After (capybara-screenshot-diff):**
 ```ruby
 # Gemfile — pin the exact prerelease; '~> 2.0' does not resolve until 2.0.0 ships
-gem 'capybara-screenshot-diff', '2.0.0.beta4'
+gem 'snap_diff-capybara', '2.0.0.beta4'
 
 # test helper
 require "snap_diff/integrations/minitest"

@@ -1,4 +1,4 @@
-[![Gem Version](https://badge.fury.io/rb/capybara-screenshot-diff.svg)](https://rubygems.org/gems/capybara-screenshot-diff)
+[![Gem Version](https://badge.fury.io/rb/snap_diff-capybara.svg)](https://rubygems.org/gems/snap_diff-capybara)
 [![Gem Downloads](https://img.shields.io/gem/dt/capybara-screenshot-diff.svg)](https://rubygems.org/gems/capybara-screenshot-diff)
 [![Test](https://github.com/snap-diff/snap_diff-capybara/actions/workflows/test.yml/badge.svg)](https://github.com/snap-diff/snap_diff-capybara/actions/workflows/test.yml)
 [![DeepWiki](https://img.shields.io/badge/DeepWiki-snap--diff%2Fsnap__diff--capybara-blue.svg?logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IndoaXRlIiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+PHBhdGggZD0iTTEyIDJhMTAgMTAgMCAxIDAgMCAyMCAxMCAxMCAwIDAgMCAwLTIweiIvPjxwYXRoIGQ9Ik0xMiA2djEyIi8+PHBhdGggZD0iTTYgMTJoMTIiLz48L3N2Zz4=)](https://deepwiki.com/snap-diff/snap_diff-capybara)
@@ -15,7 +15,11 @@ Stop shipping UI bugs. Take screenshots in your Capybara tests, commit baselines
 >
 > **2.1 removes what 2.0 warns about**: the legacy namespaces, the ChunkyPNG driver, `shift_distance_limit`, the `driver:` setting and the driver abstraction — libvips becomes the only backend. There is no 3.0. Writing new code? Start from [SnapDiff — the canonical API](docs/snapdiff.md), which uses canonical names only. Migrating an existing suite? See the [upgrade guide](docs/UPGRADING.md).
 >
-> **Two gem names, one gem — install `capybara-screenshot-diff`.** From 2.0.0 on, the identical content is also published as [`snap_diff-capybara`](https://rubygems.org/gems/snap_diff-capybara), the forward-looking name matching this repository. Do not reach for it yet: that name's only non-prerelease before 2.0.0 is a `0.0.1` placeholder containing a README and no Ruby files, so an unpinned `gem "snap_diff-capybara"` installs an empty gem and fails with `LoadError`. **Always pin the version**, and **install one name, never both** — with both in a Gemfile the gem raises `SnapDiff::DualInstallError` at require time.
+> **Two gem names, one gem — new projects should install [`snap_diff-capybara`](https://rubygems.org/gems/snap_diff-capybara).** It is the forward-looking name, matching this repository, and carries byte-identical content to [`capybara-screenshot-diff`](https://rubygems.org/gems/capybara-screenshot-diff) from 2.0.0 on. The older name is not deprecated and keeps working — if you are already on it, there is nothing you must do.
+>
+> **Pin the version, whichever name you use.** `snap_diff-capybara`'s only non-prerelease before 2.0.0 is a `0.0.1` placeholder containing a README and no Ruby files, so an *unpinned* `gem "snap_diff-capybara"` installs an empty gem and fails with `LoadError`. (Unpinned `capybara-screenshot-diff` has the mirror-image trap: it resolves to the 1.x line.) Once 2.0.0 ships, `"~> 2.0"` is the pin for both.
+>
+> **Install one name, never both** — with both in a Gemfile the gem raises `SnapDiff::DualInstallError` at require time.
 
 ## Quick Start (5 minutes)
 
@@ -23,12 +27,12 @@ Stop shipping UI bugs. Take screenshots in your Capybara tests, commit baselines
 
 ```ruby
 # Gemfile
-gem 'capybara-screenshot-diff', '2.0.0.beta4'   # current 2.0 prerelease; 2.0.0 final is not out yet
+gem 'snap_diff-capybara', '2.0.0.beta4'   # current 2.0 prerelease; 2.0.0 final is not out yet
 gem 'ruby-vips'                                 # The image backend. Needs libvips — see Installation below
 ```
 
 Pin the exact prerelease. Bundler never resolves a prerelease from a plain requirement, so
-`'~> 2.0'` fails with `Could not find gem 'capybara-screenshot-diff (~> 2.0)'` until 2.0.0
+`'~> 2.0'` fails with `Could not find gem 'snap_diff-capybara (~> 2.0)'` until 2.0.0
 ships. Once it does, `'~> 2.0'` is the pin to use.
 
 The gem ships no image backend of its own. Add `ruby-vips` (recommended, and the only
