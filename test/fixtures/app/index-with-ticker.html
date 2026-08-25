@@ -42,12 +42,32 @@
 <div id="ticker">0000000000</div>
 
 <script>
+// Same box, different pixels, forever -- but the CHANGE HAS TO BE THE WHOLE
+// BOX, not the glyphs inside it.
+//
+// Glyphs were the first attempt and they are unreliable to measure: a capture
+// on a slow machine can land mid-repaint and see a single column of a single
+// character, so the reported region came out anywhere from 1x17 to 157x17 for
+// the same page (runs 32750597989, 32752142873, and the selenium_headless cell
+// of the third). The diagnosis was right every time; what it was diagnosing
+// would not hold still.
+//
+// Inverting the whole box changes ~8000 px at maximum contrast, so a partial
+// repaint is still an unmistakable diff, and the region is the ELEMENT --
+// which `position: absolute` with a fixed width and height pins exactly. That
+// is also the honest shape of the real thing this stands in for: a clock or
+// spinner repainting inside a box that does not move.
+// A RANDOM colour, not a two-state toggle: alternating black/white depends on
+// parity, and two attempts ~100ms apart are an unpredictable number of 30ms
+// ticks apart, so they can land on the SAME phase -- identical background,
+// only the glyphs differing, and the measured region collapses back to text.
+// Verified locally: with a toggle the region came out [69,50,210,66] (text),
+// with a random colour it is the element.
 const retick = () => {
-  // Same box, different pixels, forever. Every character changes, the way a
-  // spinner or a re-rendered clock does -- a counter where only the last
-  // digit moves would make the measured region a single glyph, which is a
-  // property of THAT page, not of unstable pages.
-  document.getElementById("ticker").textContent =
+  const el = document.getElementById("ticker")
+  const channel = () => Math.floor(Math.random() * 256)
+  el.style.backgroundColor = `rgb(${channel()}, ${channel()}, ${channel()})`
+  el.textContent =
     Array.from({length: 10}, () => "0123456789ABCDEF"[Math.floor(Math.random() * 16)]).join("")
 }
 retick()
