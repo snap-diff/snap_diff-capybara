@@ -126,7 +126,7 @@ class BrowserScreenshotTest < SystemTestCase
       skip "we record screenshots only in"
     end
 
-    assert_matches_screenshot("index-without-img-cropped", crop: "form")
+    assert_matches_screenshot("index-without-img-crop-by-selector", crop: "form")
 
     assert_no_screenshot_errors
   end
@@ -197,7 +197,7 @@ class BrowserScreenshotTest < SystemTestCase
     visit "/index-without-img.html"
     fill_in "First Field:", with: "Test Input With Hide Caret"
 
-    assert_matches_screenshot("index-without-img-cropped", skip_area: "input", crop: "form")
+    assert_matches_screenshot("index-without-img-crop-with-skip-area", skip_area: "input", crop: "form")
 
     assert_no_screenshot_errors
   end
