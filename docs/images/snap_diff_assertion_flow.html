@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>What one assert_matches_screenshot does</title>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --color-paper:  #0f111a;
+      --color-ink:    #e8eaed;
+      --color-muted:  #9aa0b4;
+      --color-accent: #7c6cf0;
+      --font-sans:    'Geist', system-ui, sans-serif;
+      --font-serif:   'Instrument Serif', serif;
+      --font-mono:    'Geist Mono', ui-monospace, monospace;
+    }
+    body {
+      font-family: var(--font-sans);
+      background: var(--color-paper);
+      color: var(--color-ink);
+      min-height: 100vh;
+      display: flex; align-items: center; justify-content: center;
+      padding: 3rem 2rem;
+    }
+    .frame { max-width: 1200px; width: 100%; }
+    .eyebrow {
+      font-family: var(--font-mono); font-size: 0.66rem; font-weight: 500;
+      letter-spacing: 0.18em; text-transform: uppercase;
+      color: var(--color-muted); margin-bottom: 0.5rem;
+    }
+    h1 {
+      font-family: var(--font-serif);
+      font-size: clamp(1.5rem, 2.4vw + 0.75rem, 2rem);
+      font-weight: 400; letter-spacing: -0.02em; line-height: 1.15;
+      color: var(--color-ink); margin-bottom: 1.5rem;
+    }
+    svg { width: 100%; min-width: 900px; display: block; }
+  </style>
+</head>
+<body>
+  <div class="frame">
+    <p class="eyebrow">Flowchart · snap_diff-capybara</p>
+    <h1>What one <em>assert_matches_screenshot</em> actually does</h1>
+
+    <svg viewBox="0 0 900 740" role="img"
+         aria-labelledby="snap-diff-assertion-flow-title snap-diff-assertion-flow-desc"
+         xmlns="http://www.w3.org/2000/svg">
+      <title id="snap-diff-assertion-flow-title">What one assert_matches_screenshot does</title>
+      <desc id="snap-diff-assertion-flow-desc">Flowchart of a single screenshot assertion: the test captures the page, looks the baseline up in git rather than on disk, and then either records the screenshot without comparing it when no baseline is committed, or compares it pixel by pixel when one is. Both paths end at the HTML report and summary line.</desc>
+
+      <defs>
+        <marker id="arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+          <polygon points="0 0, 8 3, 0 6" fill="#9aa0b4"/>
+        </marker>
+        <marker id="arrow-accent" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+          <polygon points="0 0, 8 3, 0 6" fill="#7c6cf0"/>
+        </marker>
+        <marker id="arrow-link" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+          <polygon points="0 0, 8 3, 0 6" fill="#5b4dc7"/>
+        </marker>
+      </defs>
+
+      <rect width="100%" height="100%" fill="#0f111a"/>
+
+      <!-- ARROWS FIRST (z-order: behind boxes) -->
+      <line x1="240" y1="80"  x2="240" y2="112" stroke="#9aa0b4" stroke-width="1" marker-end="url(#arrow)"/>
+      <line x1="240" y1="192" x2="240" y2="224" stroke="#9aa0b4" stroke-width="1" marker-end="url(#arrow)"/>
+      <line x1="240" y1="304" x2="240" y2="336" stroke="#9aa0b4" stroke-width="1" marker-end="url(#arrow)"/>
+      <!-- decision: YES straight down to Compare -->
+      <line x1="240" y1="448" x2="240" y2="488" stroke="#9aa0b4" stroke-width="1" marker-end="url(#arrow)"/>
+      <!-- decision: NO to the right, into Record -->
+      <line x1="336" y1="396" x2="512" y2="396" stroke="#7c6cf0" stroke-width="1.2" marker-end="url(#arrow-accent)"/>
+      <!-- Compare -> Report (elbow, r=8) -->
+      <path d="M 240 568 V 624 Q 240 632 248 632 H 312"
+            fill="none" stroke="#9aa0b4" stroke-width="1" marker-end="url(#arrow)"/>
+      <!-- Record -> Report (elbow, r=8) -->
+      <path d="M 640 432 V 624 Q 640 632 632 632 H 568"
+            fill="none" stroke="#7c6cf0" stroke-width="1.2" marker-end="url(#arrow-accent)"/>
+
+      <!-- ARROW LABELS (masked, 8px gap above stroke) -->
+      <rect x="388" y="376" width="88" height="12" rx="2" fill="#0f111a"/>
+      <text x="432" y="385" fill="#7c6cf0" font-size="8" font-family="'Geist Mono', monospace"
+            text-anchor="middle" letter-spacing="0.06em">NO BASELINE</text>
+
+      <rect x="250" y="454" width="76" height="12" rx="2" fill="#0f111a"/>
+      <text x="288" y="463" fill="#9aa0b4" font-size="8" font-family="'Geist Mono', monospace"
+            text-anchor="middle" letter-spacing="0.06em">COMMITTED</text>
+
+      <!-- 1. START -->
+      <rect x="120" y="32" width="240" height="48" rx="20" fill="#0f111a"/>
+      <rect x="120" y="32" width="240" height="48" rx="20" fill="rgba(154,160,180,0.10)" stroke="#8b90a8" stroke-width="1"/>
+      <text x="240" y="52" fill="#e8eaed" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Your test calls</text>
+      <text x="240" y="68" fill="#9aa0b4" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">assert_matches_screenshot</text>
+
+      <!-- 2. CAPTURE -->
+      <rect x="120" y="120" width="240" height="72" rx="6" fill="#0f111a"/>
+      <rect x="120" y="120" width="240" height="72" rx="6" fill="#1e2035" stroke="rgba(232,234,237,0.28)" stroke-width="1"/>
+      <rect x="128" y="126" width="36" height="12" rx="2" fill="transparent" stroke="rgba(232,234,237,0.40)" stroke-width="0.8"/>
+      <text x="146" y="135" fill="rgba(232,234,237,0.80)" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">STEP</text>
+      <text x="240" y="162" fill="#e8eaed" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Capture the page</text>
+      <text x="240" y="178" fill="#9aa0b4" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">readiness block, then Capybara</text>
+
+      <!-- 3. BASELINE LOOKUP -->
+      <rect x="120" y="232" width="240" height="72" rx="6" fill="#0f111a"/>
+      <rect x="120" y="232" width="240" height="72" rx="6" fill="rgba(232,234,237,0.05)" stroke="#9aa0b4" stroke-width="1"/>
+      <rect x="128" y="238" width="28" height="12" rx="2" fill="transparent" stroke="rgba(154,160,180,0.50)" stroke-width="0.8"/>
+      <text x="142" y="247" fill="#9aa0b4" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">GIT</text>
+      <text x="240" y="274" fill="#e8eaed" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Look up the baseline</text>
+      <text x="240" y="290" fill="#9aa0b4" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">git show HEAD:&lt;path&gt;</text>
+
+      <!-- 4. DECISION -->
+      <polygon points="240,344 336,396 240,448 144,396" fill="#0f111a"/>
+      <polygon points="240,344 336,396 240,448 144,396" fill="#1e2035" stroke="rgba(232,234,237,0.40)" stroke-width="1"/>
+      <text x="240" y="392" fill="#e8eaed" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">baseline</text>
+      <text x="240" y="408" fill="#e8eaed" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">committed?</text>
+
+      <!-- 5. RECORD (focal) -->
+      <rect x="520" y="360" width="240" height="72" rx="6" fill="#0f111a"/>
+      <rect x="520" y="360" width="240" height="72" rx="6" fill="rgba(124,108,240,0.12)" stroke="#7c6cf0" stroke-width="1"/>
+      <rect x="528" y="366" width="52" height="12" rx="2" fill="transparent" stroke="rgba(124,108,240,0.60)" stroke-width="0.8"/>
+      <text x="554" y="375" fill="#7c6cf0" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">RECORD</text>
+      <text x="640" y="402" fill="#e8eaed" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Written, not compared</text>
+      <text x="640" y="418" fill="#9aa0b4" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">:once warns · :none fails</text>
+
+      <!-- 6. COMPARE -->
+      <rect x="120" y="496" width="240" height="72" rx="6" fill="#0f111a"/>
+      <rect x="120" y="496" width="240" height="72" rx="6" fill="#1e2035" stroke="rgba(232,234,237,0.28)" stroke-width="1"/>
+      <rect x="128" y="502" width="36" height="12" rx="2" fill="transparent" stroke="rgba(232,234,237,0.40)" stroke-width="0.8"/>
+      <text x="146" y="511" fill="rgba(232,234,237,0.80)" font-size="7" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">DIFF</text>
+      <text x="240" y="538" fill="#e8eaed" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Compare</text>
+      <text x="240" y="554" fill="#9aa0b4" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">bytes first, then pixels</text>
+
+      <!-- 7. END -->
+      <rect x="320" y="608" width="240" height="48" rx="20" fill="#0f111a"/>
+      <rect x="320" y="608" width="240" height="48" rx="20" fill="rgba(154,160,180,0.10)" stroke="#8b90a8" stroke-width="1"/>
+      <text x="440" y="628" fill="#e8eaed" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Report</text>
+      <text x="440" y="644" fill="#9aa0b4" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">HTML + summary line</text>
+
+      <!-- EDITORIAL ASIDE (1 of max 2) -->
+      <text x="396" y="502" fill="#9aa0b4" font-size="14" font-style="italic" font-family="'Instrument Serif', serif">record: :all sends every screenshot</text>
+      <text x="396" y="522" fill="#9aa0b4" font-size="14" font-style="italic" font-family="'Instrument Serif', serif">down the right-hand path — baseline or not.</text>
+
+      <!-- LEGEND -->
+      <line x1="30" y1="692" x2="870" y2="692" stroke="rgba(232,234,237,0.10)" stroke-width="0.8"/>
+      <text x="30" y="712" fill="#9aa0b4" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.14em">LEGEND</text>
+
+      <rect x="120" y="704" width="12" height="10" rx="2" fill="#1e2035" stroke="rgba(232,234,237,0.28)" stroke-width="1"/>
+      <text x="140" y="712" fill="#9aa0b4" font-size="8" font-family="'Geist Mono', monospace">STEP</text>
+
+      <rect x="220" y="704" width="12" height="10" rx="2" fill="rgba(232,234,237,0.05)" stroke="#9aa0b4" stroke-width="1"/>
+      <text x="240" y="712" fill="#9aa0b4" font-size="8" font-family="'Geist Mono', monospace">GIT-BACKED LOOKUP</text>
+
+      <rect x="420" y="704" width="12" height="10" rx="2" fill="rgba(124,108,240,0.12)" stroke="#7c6cf0" stroke-width="1"/>
+      <text x="440" y="712" fill="#9aa0b4" font-size="8" font-family="'Geist Mono', monospace">NOTHING IS COMPARED</text>
+
+      <rect x="640" y="704" width="12" height="10" rx="20" fill="rgba(154,160,180,0.10)" stroke="#8b90a8" stroke-width="1"/>
+      <text x="660" y="712" fill="#9aa0b4" font-size="8" font-family="'Geist Mono', monospace">START / END</text>
+    </svg>
+  </div>
+</body>
+</html>
