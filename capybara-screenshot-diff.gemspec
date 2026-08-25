@@ -28,6 +28,10 @@ Gem::Specification.new do |spec|
     # Contributor docs: they describe releasing this gem and running its own suite
     # via bin/dtest, which is not packaged. Nothing a consumer can act on.
     .grep_v(%r{\Adocs/(RELEASE_PREP|docker-testing)\.md\z})
+    # Diagram SOURCES. The rendered .png ships (README embeds it); the .html it
+    # was generated from is a maintainer artifact -- regenerate it with the
+    # diagram-design skill, see .okf/gem/diagram-export.md.
+    .grep_v(%r{\Adocs/images/.*\.html\z})
 
   # No executables: the allow-list above never matches exe/, so bindir and
   # executables would always be empty.

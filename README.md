@@ -131,6 +131,14 @@ SnapDiff.serve("_site")  # or "public", "build", "dist"
 
 Then commit baselines to git just like Rails. [Full setup](docs/ci-integration.md#non-rails-projects-hugo-jekyll-static-sites).
 
+## How a screenshot assertion works
+
+Baselines are read from **git**, not from your working directory. That one fact explains most
+of the behaviour below — including why a screenshot with no *committed* baseline is recorded
+rather than compared.
+
+![How one assert_matches_screenshot works: the test captures the page, the baseline is looked up with git show HEAD, and the screenshot is then either recorded without comparison when no baseline is committed, or compared pixel by pixel when one is. Both paths end at the HTML report and summary line.](docs/images/snap_diff_assertion_flow.png)
+
 ## What Happens When a Screenshot Changes
 
 The test fails with a clear message and generates diff files:
