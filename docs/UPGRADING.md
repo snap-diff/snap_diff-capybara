@@ -21,7 +21,7 @@ with canonical names only, no legacy shapes to unlearn.
 ### The Short Version (Most Users)
 
 ```ruby
-# In your Gemfile
+# In your Gemfile -- changing the version is the whole required migration
 gem "capybara-screenshot-diff", "2.0.0.beta4"   # current 2.0 prerelease; 2.0.0 final is not out yet
 ```
 
@@ -30,11 +30,27 @@ line, and `"~> 2.0"` does not resolve at all — Bundler never picks a prereleas
 requirement, so it fails with `Could not find gem 'capybara-screenshot-diff (~> 2.0)'`. Once
 2.0.0 ships, `"~> 2.0"` is the pin to use.
 
-The same content is also published as `snap_diff-capybara` from 2.0.0 on, but that name's
-only earlier non-prerelease is a `0.0.1` placeholder with no Ruby files in it — unpinned, it
-installs an empty gem and raises `LoadError`. Stay on `capybara-screenshot-diff`, and install
-**one** name: with both in a Gemfile the gem raises `SnapDiff::DualInstallError` at require
-time.
+### Optional, and worth one line of thought: the gem name
+
+The identical content is published as **`snap_diff-capybara`** from 2.0.0 on, and that is the
+name new projects are pointed at. Switching is *not* required — `capybara-screenshot-diff` is
+not deprecated and receives the same releases.
+
+There is one concrete reason to switch, though. In a Rails app `Bundler.require` requires the
+gem *by its name*, and the name `capybara-screenshot-diff` is itself one of the v1 doors — so a
+suite that has otherwise finished migrating still prints the migration notice, purely because
+of the Gemfile line:
+
+```ruby
+gem "snap_diff-capybara", "2.0.0.beta4"   # same gem, and one fewer deprecation notice
+```
+
+Do it whenever it suits you; it is a one-line change and nothing else moves.
+
+**Install one name, never both.** With both in a Gemfile the gem raises
+`SnapDiff::DualInstallError` at require time. And pin whichever you choose: `snap_diff-capybara`'s
+only non-prerelease before 2.0.0 is a `0.0.1` placeholder with no Ruby files, so unpinned it
+installs an empty gem and raises `LoadError`.
 
 ```bash
 bundle install
