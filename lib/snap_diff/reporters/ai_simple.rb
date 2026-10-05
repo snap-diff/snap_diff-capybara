@@ -22,8 +22,9 @@ module SnapDiff
     class AiSimple
       REPORT_FILENAME = "ai_report.json"
 
-      def initialize(backend: nil, flaky: 0.985, intentional: 0.90, output_path: nil)
-        @thresholds = {flaky: flaky, intentional: intentional}
+      # nil thresholds defer to Ai.verdict's defaults -- one source of truth.
+      def initialize(backend: nil, flaky: nil, intentional: nil, output_path: nil)
+        @thresholds = {flaky: flaky, intentional: intentional}.compact
         @output_path = output_path
         @backend = resolve(backend)
       end

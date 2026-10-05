@@ -70,7 +70,7 @@ Default backend: CLIP via [`informers`](https://github.com/ankane/informers)
 
 ```ruby
 # Gemfile
-gem "informers"   # plus onnxruntime
+gem "informers"   # pulls onnxruntime itself
 
 # test/test_helper.rb
 require "snap_diff/reporters/ai_simple"
@@ -98,32 +98,40 @@ SnapDiff::Reporters::AiSimple.new(flaky: 0.99, intentional: 0.85)
 
 ### Typed decisions (TypeSafe Jev)
 
+Jev answers typed questions (Choice / Score / Noul) over a state — text and
+structured data, not images — so we send the diff *metrics*, not the pixels.
+One call returns a verdict CI can branch on. Requires the community
+[`typesafe-sdk`](https://rubygems.org/gems/typesafe-sdk) gem and
+`TYPESAFE_API_KEY`:
+
 ```ruby
 class JevBackend
   def name = "jev"
 
   def initialize
-    require "typesafe"
-    @client = Typesafe::Client.new(api_key: ENV.fetch("TYPESAFE_API_KEY"))
+    require "typesafe_sdk"
+    @client = TypeSafeClient.new # reads TYPESAFE_API_KEY
   end
 
   def call(name:, base:, current:, meta: {})
-    resp = @client.evaluate(
-      state: {screenshot: name, area: meta[:area_size], region: meta[:region]},
+    resp = @client.system_one(
+      state: {screenshot: name, changed_area_px: meta[:area_size], changed_region: meta[:region]},
       questions: {
-        verdict: Typesafe::Choice.new("Classify visual diff", criteria: {
-          flaky: "timestamp/anti-aliasing/avatar noise",
-          intentional: "deliberate redesign or copy change",
-          real_bug: "clipped, overlapping, or missing UI"
-        }),
-        auto_accept: Typesafe::Noul.new("Safe to accept?", criteria: {
-          true => "flaky or intentional", false => "real bug"
-        })
+        verdict: Choice.new(
+          instructions: "Classify this visual diff",
+          criteria: {
+            flaky: "timestamp, anti-aliasing, or avatar noise",
+            intentional: "deliberate redesign or copy change",
+            real_bug: "clipped, overlapping, or missing UI"
+          }
+        ),
+        auto_accept: Noul.new(instructions: "Safe to accept the new rendering as the baseline")
       }
     )
-    {verdict: resp[:verdict].choice,
-     confidence: resp[:verdict].confidence.round(2),
-     auto_accept: resp[:auto_accept].noul.round(3)}
+    answers = resp.answers
+    {verdict: answers["verdict"].choice,
+     confidence: answers["verdict"].confidence.round(2),
+     auto_accept: answers["auto_accept"].noul.round(3)}
   end
 end
 
@@ -150,9 +158,10 @@ class QwenBackend
         'Return JSON {"summary": one sentence, "verdict": "real_bug|intentional|flaky"}.',
       images: [base, current].map { |p| Base64.strict_encode64(File.binread(p)) }
     }])
-    JSON.parse(res, symbolize_names: true).slice(:verdict, :summary)
+    content = res.dig("message", "content").to_s
+    JSON.parse(content, symbolize_names: true).slice(:verdict, :summary)
   rescue JSON::ParserError
-    {summary: res}
+    {summary: content}
   end
 end
 ```
