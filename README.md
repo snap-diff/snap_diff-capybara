@@ -239,10 +239,12 @@ See [Web UI & Custom Reporters](docs/reporters.md) for full feature details and 
 
 ## AI-Assisted Triage (optional)
 
-Pixels decide pass/fail; AI tells you *which* failures to look at first. One
-line enables offline CLIP triage — every failed comparison is classified as
-`flaky` / `intentional` / `real_bug`, logged per diff, written to
-`ai_report.json`, and badged in the HTML report:
+AI tells you *which* failures to look at first. One line enables offline
+CLIP triage — every failed comparison is classified as `flaky` /
+`intentional` / `real_bug`, logged per diff, quoted in the failure message,
+written to `ai_report.json`, and badged in the HTML report. Advisory by
+default; pass `fail_on: %w[real_bug]` to keep the suite green on flaky and
+intentional diffs and fail only on what AI calls a real bug:
 
 ```ruby
 # Gemfile
@@ -250,11 +252,11 @@ gem "informers"   # offline CLIP via ONNX, no API key
 
 # test/test_helper.rb
 require "snap_diff/reporters/ai_simple"
-SnapDiff::Reporting.register(SnapDiff::Reporters::AiSimple.new)
+SnapDiff::Reporting.register(SnapDiff::Reporters::AISimple.new)
 ```
 
 Plug in your own backend (a local VLM, a decision API) with
-`SnapDiff::Ai.register(:name) { ... }` — see [AI triage](docs/ai.md).
+`SnapDiff::AI.register(:name) { ... }` — see [AI triage](docs/ai.md).
 
 ## Compare Any Two Images
 

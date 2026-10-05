@@ -1,10 +1,10 @@
 # frozen_string_literal: true
 
 module SnapDiff
-  module Ai
+  module AI
     # Offline default: CLIP embeddings via the +informers+ gem (ONNX,
     # ~90 MB quantized, ~40 ms/image, no network). Returns only
-    # :similarity; verdicts come from Ai.verdict.
+    # :similarity; verdicts come from AI.verdict.
     class Clip
       def name = "clip"
 

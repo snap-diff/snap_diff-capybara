@@ -20,13 +20,15 @@ kept as history. This entry is the one to read if you are coming from **1.15.1**
 
 ### Added
 
-- **Advisory AI triage (optional, offline-first).** `SnapDiff::Reporters::AiSimple`
+- **AI triage (optional, offline-first, advisory by default).** `SnapDiff::Reporters::AISimple`
   classifies every failed comparison as `flaky` / `intentional` / `real_bug`,
-  logs one line per diff, writes `ai_report.json`, and annotates the HTML report
-  with a verdict badge and summary. The pixel comparison remains the verdict —
-  AI never changes pass/fail. Default backend is offline CLIP via the `informers`
-  gem; custom backends (local VLM, decision APIs) register by name via
-  `SnapDiff::Ai.register`. Zero new hard dependencies. See `docs/ai.md`.
+  logs one line per diff, quotes the verdict in the failure message, writes
+  `ai_report.json`, and annotates the HTML report with a verdict badge and
+  summary. With `fail_on: %w[real_bug]` the verdict gates pass/fail:
+  flaky/intentional diffs stay green, `unknown` always fails. Default backend
+  is offline CLIP via the `informers` gem; custom backends (local VLM,
+  decision APIs) register by name via `SnapDiff::AI.register`. Zero new hard
+  dependencies. See `docs/ai.md`.
 
 ### Upgrading from 1.15.1: change the version, run your suite
 

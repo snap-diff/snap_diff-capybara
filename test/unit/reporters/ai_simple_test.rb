@@ -5,8 +5,9 @@ require "tmpdir"
 
 require "snap_diff/reporters/ai_simple"
 require "snap_diff/reporters/html"
+require "snap_diff/screenshot_assertion"
 
-class AiSimpleReporterTest < Minitest::Test
+class AISimpleReporterTest < Minitest::Test
   # Stub the exact surface the reporter touches; a real comparison would
   # need vips, fixtures and a checked-out baseline for no extra coverage.
   StubDifference = Struct.new(:different, keyword_init: true) do
@@ -18,8 +19,25 @@ class AiSimpleReporterTest < Minitest::Test
   StubCompare = Struct.new(:difference)
   StubAssertion = Struct.new(:name, :compare)
 
+  # Minimal ScreenshotAssertion surface for gate tests.
+  GateCompare = Struct.new(:difference) do
+    def different? = difference.different?
+    def error_message = "diff details"
+  end
+
   def setup
-    SnapDiff::Ai.clear_results!
+    SnapDiff::AI.clear_results!
+  end
+
+  def teardown
+    SnapDiff::AI.gate = nil
+  end
+
+  def gate_assertion(name, different: true)
+    SnapDiff::ScreenshotAssertion.new(name).tap do |a|
+      a.compare = GateCompare.new(StubDifference.new(different: different))
+      a.caller = ["test.rb:1"]
+    end
   end
 
   def build_assertion(name, different: true)
@@ -31,7 +49,7 @@ class AiSimpleReporterTest < Minitest::Test
   end
 
   def build_reporter(backend, dir = Dir.mktmpdir)
-    SnapDiff::Reporters::AiSimple.new(backend: backend, output_path: File.join(dir, "ai_report.json"))
+    SnapDiff::Reporters::AISimple.new(backend: backend, output_path: File.join(dir, "ai_report.json"))
   end
 
   def test_records_only_different_assertions
@@ -41,15 +59,15 @@ class AiSimpleReporterTest < Minitest::Test
       StubAssertion.new("pending", StubCompare.new(nil))
     ])
 
-    assert_equal ["changed"], SnapDiff::Ai.results.map { |r| r[:name] }
-    assert_equal "real_bug", SnapDiff::Ai.results.first[:verdict]
+    assert_equal ["changed"], SnapDiff::AI.results.map { |r| r[:name] }
+    assert_equal "real_bug", SnapDiff::AI.results.first[:verdict]
   end
 
   def test_backend_verdict_wins_over_thresholds
     backend = ->(name:, base:, current:, meta:) { {similarity: 0.99, verdict: "real_bug", confidence: 0.91} }
     build_reporter(backend).record([build_assertion("checkout")])
 
-    result = SnapDiff::Ai["checkout"]
+    result = SnapDiff::AI["checkout"]
     assert_equal "real_bug", result[:verdict]
     assert_in_delta 0.91, result[:confidence]
   end
@@ -57,9 +75,9 @@ class AiSimpleReporterTest < Minitest::Test
   def test_finalize_writes_json_report
     Dir.mktmpdir do |dir|
       path = File.join(dir, "nested", "ai_report.json")
-      SnapDiff::Reporters::AiSimple.new(backend: similarity_backend(0.99), output_path: path)
+      SnapDiff::Reporters::AISimple.new(backend: similarity_backend(0.99), output_path: path)
         .record([build_assertion("homepage")])
-      SnapDiff::Reporters::AiSimple.new(backend: similarity_backend(0.99), output_path: path).finalize
+      SnapDiff::Reporters::AISimple.new(backend: similarity_backend(0.99), output_path: path).finalize
 
       report = JSON.parse(File.read(path), symbolize_names: true)
       assert_equal [{name: "homepage", backend: "custom", similarity: 0.99, verdict: "flaky"}], report
@@ -82,12 +100,12 @@ class AiSimpleReporterTest < Minitest::Test
 
   def test_dump_and_merge_state_round_trip_for_fork_parallel
     build_reporter(similarity_backend(0.99)).record([build_assertion("homepage")])
-    fragment = JSON.parse(JSON.generate(SnapDiff::Ai.dump_state))
-    SnapDiff::Ai.clear_results!
+    fragment = JSON.parse(JSON.generate(SnapDiff::AI.dump_state))
+    SnapDiff::AI.clear_results!
 
     build_reporter(similarity_backend(0.5)).merge_state!(fragment)
 
-    assert_equal "flaky", SnapDiff::Ai["homepage"][:verdict]
+    assert_equal "flaky", SnapDiff::AI["homepage"][:verdict]
   end
 
   def test_backend_failure_skips_the_assertion_instead_of_raising
@@ -96,7 +114,7 @@ class AiSimpleReporterTest < Minitest::Test
     _out, err = capture_io { reporter.record([build_assertion("boom")]) }
 
     assert_includes err, "model exploded"
-    assert_empty SnapDiff::Ai.results
+    assert_empty SnapDiff::AI.results
   end
 
   def test_rejects_a_backend_that_does_not_respond_to_call
@@ -110,12 +128,12 @@ class AiSimpleReporterTest < Minitest::Test
   end
 
   def test_registered_backend_resolves_by_name
-    SnapDiff::Ai.register(:test_stub) { similarity_backend(0.99) }
+    SnapDiff::AI.register(:test_stub) { similarity_backend(0.99) }
     build_reporter(:test_stub).record([build_assertion("homepage")])
 
-    assert_equal "flaky", SnapDiff::Ai["homepage"][:verdict]
+    assert_equal "flaky", SnapDiff::AI["homepage"][:verdict]
   ensure
-    SnapDiff::Ai.instance_variable_get(:@backends).delete(:test_stub)
+    SnapDiff::AI.instance_variable_get(:@backends).delete(:test_stub)
   end
 
   def test_clip_backend_degrades_to_disabled_without_informers
@@ -131,30 +149,75 @@ class AiSimpleReporterTest < Minitest::Test
 
     assert_includes err, "triage disabled"
     reporter.record([build_assertion("homepage")])
-    assert_empty SnapDiff::Ai.results
+    assert_empty SnapDiff::AI.results
   end
 
   def test_custom_thresholds
-    SnapDiff::Reporters::AiSimple.new(
+    SnapDiff::Reporters::AISimple.new(
       backend: similarity_backend(0.95), flaky: 0.90, intentional: 0.80,
       output_path: File.join(Dir.mktmpdir, "ai_report.json")
     ).record([build_assertion("homepage")])
 
-    assert_equal "flaky", SnapDiff::Ai["homepage"][:verdict]
+    assert_equal "flaky", SnapDiff::AI["homepage"][:verdict]
+  end
+
+  def test_gate_suppresses_verdicts_not_in_fail_on
+    SnapDiff::Reporters::AISimple.new(backend: similarity_backend(0.99), fail_on: %w[real_bug])
+
+    assert_nil gate_assertion("homepage").validate
+    assert_equal "flaky", SnapDiff::AI["homepage"][:verdict]
+  end
+
+  def test_gate_still_fails_real_bugs_and_quotes_ai_in_the_message
+    SnapDiff::Reporters::AISimple.new(backend: similarity_backend(0.50), fail_on: %w[real_bug])
+
+    message = gate_assertion("checkout").validate
+
+    assert_includes message, "Screenshot does not match for 'checkout'"
+    assert_includes message, "AI triage: REAL_BUG (custom, similarity=0.5)"
+  end
+
+  def test_gate_always_fails_unknown_verdicts
+    SnapDiff::Reporters::AISimple.new(backend: similarity_backend(nil), fail_on: %w[real_bug])
+
+    message = gate_assertion("checkout").validate
+
+    assert_includes message, "AI triage: UNKNOWN"
+  end
+
+  def test_gate_analysis_is_memoized_for_the_reporter_pass
+    calls = 0
+    counting_backend = ->(name:, base:, current:, meta:) { calls += 1; {similarity: 0.99} }
+    reporter = SnapDiff::Reporters::AISimple.new(backend: counting_backend, fail_on: %w[real_bug])
+
+    assertion = gate_assertion("homepage")
+    assertion.validate
+    reporter.record([assertion])
+
+    assert_equal 1, calls
+  end
+
+  def test_no_gate_means_pure_advisory
+    SnapDiff::Reporters::AISimple.new(backend: similarity_backend(0.99))
+
+    message = gate_assertion("homepage").validate
+
+    assert_includes message, "Screenshot does not match"
+    refute_includes message, "AI triage:"
   end
 end
 
-class AiVerdictTest < Minitest::Test
+class AIVerdictTest < Minitest::Test
   def test_bands
-    assert_equal "flaky", SnapDiff::Ai.verdict(0.985)
-    assert_equal "intentional", SnapDiff::Ai.verdict(0.90)
-    assert_equal "real_bug", SnapDiff::Ai.verdict(0.50)
-    assert_equal "unknown", SnapDiff::Ai.verdict(nil)
+    assert_equal "flaky", SnapDiff::AI.verdict(0.985)
+    assert_equal "intentional", SnapDiff::AI.verdict(0.90)
+    assert_equal "real_bug", SnapDiff::AI.verdict(0.50)
+    assert_equal "unknown", SnapDiff::AI.verdict(nil)
   end
 end
 
-# The mix: AiSimple writes the shared store, HTML annotates from it.
-class AiHtmlReporterMixTest < Minitest::Test
+# The mix: AISimple writes the shared store, HTML annotates from it.
+class AIHtmlReporterMixTest < Minitest::Test
   HtmlDifference = Struct.new(:ratio, keyword_init: true) do
     def different? = true
     def region_area_size = 42
@@ -173,7 +236,7 @@ class AiHtmlReporterMixTest < Minitest::Test
   HtmlAssertion = Struct.new(:name, :compare)
 
   def setup
-    SnapDiff::Ai.clear_results!
+    SnapDiff::AI.clear_results!
   end
 
   def html_reporter(dir)
@@ -185,7 +248,7 @@ class AiHtmlReporterMixTest < Minitest::Test
   end
 
   def test_failures_carry_ai_annotation_after_render
-    SnapDiff::Ai.record_result(
+    SnapDiff::AI.record_result(
       name: "checkout", verdict: "real_bug", backend: "clip",
       similarity: 0.7312, summary: "CTA clipped"
     )
@@ -203,12 +266,12 @@ class AiHtmlReporterMixTest < Minitest::Test
   end
 
   def test_ai_result_recorded_after_html_record_still_renders
-    # HTML auto-registers before AiSimple, so its record runs first; the
+    # HTML auto-registers before AISimple, so its record runs first; the
     # annotation must attach at render regardless of reporter order.
     Dir.mktmpdir do |dir|
       reporter = html_reporter(dir)
       reporter.record([failed_assertion("checkout")])
-      SnapDiff::Ai.record_result(name: "checkout", verdict: "flaky", backend: "clip", similarity: 0.9912)
+      SnapDiff::AI.record_result(name: "checkout", verdict: "flaky", backend: "clip", similarity: 0.9912)
       reporter.finalize
 
       assert_equal "flaky", reporter.failures.first[:ai][:verdict]
@@ -216,7 +279,7 @@ class AiHtmlReporterMixTest < Minitest::Test
   end
 
   def test_rendered_report_includes_ai_bar_markup
-    SnapDiff::Ai.record_result(name: "checkout", verdict: "flaky", backend: "clip", similarity: 0.9912)
+    SnapDiff::AI.record_result(name: "checkout", verdict: "flaky", backend: "clip", similarity: 0.9912)
 
     Dir.mktmpdir do |dir|
       reporter = html_reporter(dir)

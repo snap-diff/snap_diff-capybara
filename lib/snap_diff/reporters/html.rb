@@ -133,11 +133,11 @@ module SnapDiff
       # can see every verdict. HTML never requires the AI module -- the
       # annotation appears iff the user opted into AI triage.
       def attach_ai_annotations
-        return unless defined?(SnapDiff::Ai)
+        return unless defined?(SnapDiff::AI)
 
         failures.each do |entry|
           # || would create a nil :ai key on misses; keep the entry clean.
-          if (annotation = SnapDiff::Ai[entry[:name]])
+          if (annotation = SnapDiff::AI[entry[:name]])
             entry[:ai] ||= annotation
           end
         end

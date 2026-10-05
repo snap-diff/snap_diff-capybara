@@ -1,9 +1,10 @@
 # AI-assisted diff triage
 
-> Optional, offline-first, advisory only. The pixel comparison stays the
-> verdict; AI classifies failures so you know which reds to look at first.
+> Optional and offline-first. Advisory by default — the pixel comparison
+> stays the verdict and AI classifies failures so you know which reds to
+> look at first. Opt into `fail_on:` to let the AI verdict gate failures.
 
-`SnapDiff::Reporters::AiSimple` analyzes every comparison that **already
+`SnapDiff::Reporters::AISimple` analyzes every comparison that **already
 failed** and labels it:
 
 | Verdict | Meaning | Typical cause |
@@ -19,16 +20,16 @@ in `snap_diff_report.html`.
 
 ## How the HTML report gets AI annotations
 
-Both reporters read the same shared store: `AiSimple` writes each result
-into `SnapDiff::Ai` (keyed by screenshot name), and the HTML reporter
-attaches `SnapDiff::Ai[name]` to the failure entry — behind a `defined?`
+Both reporters read the same shared store: `AISimple` writes each result
+into `SnapDiff::AI` (keyed by screenshot name), and the HTML reporter
+attaches `SnapDiff::AI[name]` to the failure entry — behind a `defined?`
 guard, so `html.rb` never requires the AI module and nothing changes
 when AI triage isn't loaded. No wiring between the two reporters:
 
 ```ruby
 require "snap_diff/reporters/html"       # already auto-registers
 require "snap_diff/reporters/ai_simple"
-SnapDiff::Reporting.register(SnapDiff::Reporters::AiSimple.new)
+SnapDiff::Reporting.register(SnapDiff::Reporters::AISimple.new)
 ```
 
 The report then shows, per failure: an `AI: real bug` / `AI: flaky` badge
@@ -37,9 +38,9 @@ when the backend provides them. Under fork-parallel, results merge in the
 parent before the report renders.
 
 ```
-[snap_diff:ai:clip] homepage: FLAKY similarity=0.9912
+[snap_diff:ai] homepage: FLAKY (clip, similarity=0.9912)
   pixels differ but semantics match -- candidate for skip_area or a tolerance bump
-[snap_diff:ai:clip] checkout: REAL_BUG similarity=0.7312
+[snap_diff:ai] checkout: REAL_BUG (clip, similarity=0.7312)
 [snap_diff:ai] 2 diff(s) analyzed: 1 real_bug, 1 flaky (ai_report.json)
 ```
 
@@ -50,13 +51,14 @@ lib/snap_diff/ai.rb                  # backend registry, verdict thresholds, sha
 lib/snap_diff/ai/backends/clip.rb    # built-in offline backend (informers)
 lib/snap_diff/reporters/ai_simple.rb # record/finalize/summary; writes the store
 lib/snap_diff/reporters/html.rb      # annotates failures from the store (defined? guard)
+lib/snap_diff/screenshot_assertion.rb# validate: fail-gate + AI line in the failure message
 ```
 
 A backend is any object with `#call(name:, base:, current:, meta:) -> Hash`.
 Extend without editing existing files:
 
 ```ruby
-SnapDiff::Ai.register(:jev) { JevBackend.new }   # optional requires go in the block
+SnapDiff::AI.register(:jev) { JevBackend.new }   # optional requires go in the block
 ```
 
 The returned hash may carry `:verdict` (used as-is) or `:similarity`
@@ -74,7 +76,7 @@ gem "informers"   # pulls onnxruntime itself
 
 # test/test_helper.rb
 require "snap_diff/reporters/ai_simple"
-SnapDiff::Reporting.register(SnapDiff::Reporters::AiSimple.new)
+SnapDiff::Reporting.register(SnapDiff::Reporters::AISimple.new)
 ```
 
 Without `informers`, one warning at registration, then silence — never a
@@ -85,13 +87,39 @@ diff, so a fully offline run needs a prefilled cache. Warm it at suite
 setup (or as a cached CI step):
 
 ```ruby
-SnapDiff::Ai::Clip.new.prefetch!
+SnapDiff::AI::Clip.new.prefetch!
 ```
 
 Custom thresholds:
 
 ```ruby
-SnapDiff::Reporters::AiSimple.new(flaky: 0.99, intentional: 0.85)
+SnapDiff::Reporters::AISimple.new(flaky: 0.99, intentional: 0.85)
+```
+
+## Gating failures on AI verdicts
+
+Advisory mode never touches pass/fail. Add `fail_on:` and the verdict
+decides: diffs classified as anything not listed are **suppressed** — the
+test stays green, the result is still logged, stored, and shown in the
+HTML report. `unknown` always fails: AI can downgrade a diff, never vouch
+for one it could not classify.
+
+```ruby
+# Fail only on what AI calls a real bug; flaky/intentional stay green.
+SnapDiff::Reporting.register(SnapDiff::Reporters::AISimple.new(fail_on: %w[real_bug]))
+```
+
+Failures that survive the gate quote the verdict inline, no clicks needed:
+
+```
+Screenshot does not match for 'checkout': the change spans ...
+  AI triage: REAL_BUG (clip, similarity=0.7312) -- CTA clipped
+```
+
+Suppressed diffs log one line instead:
+
+```
+[snap_diff:ai] homepage: failure suppressed -- FLAKY (clip, similarity=0.9912)
 ```
 
 ## Backend recipes
@@ -135,8 +163,8 @@ class JevBackend
   end
 end
 
-SnapDiff::Ai.register(:jev) { JevBackend.new }
-SnapDiff::Reporting.register(SnapDiff::Reporters::AiSimple.new(backend: :jev))
+SnapDiff::AI.register(:jev) { JevBackend.new }
+SnapDiff::Reporting.register(SnapDiff::Reporters::AISimple.new(backend: :jev))
 ```
 
 ### Local VLM explanations (Qwen2.5-VL via Ollama)
@@ -173,7 +201,7 @@ class ClipThenQwen
   def name = "clip+qwen"
 
   def initialize
-    @clip = SnapDiff::Ai::Clip.new
+    @clip = SnapDiff::AI::Clip.new
     @qwen = QwenBackend.new
   end
 

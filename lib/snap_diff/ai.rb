@@ -3,18 +3,29 @@
 # Optional AI triage. A backend is any object responding to
 # #call(name:, base:, current:, meta:) -> Hash; register one by name or
 # pass an instance. Builders run lazily, so optional gems load only when
-# their backend is used. Advisory only: pixel diff stays the verdict.
+# their backend is used. Advisory by default: pixel diff stays the verdict
+# unless a reporter is configured with fail_on: (see AISimple).
 #
 # Results live in a process-wide store so ANY consumer can read them --
-# the AiSimple reporter writes, the HTML reporter annotates from it, CI
+# the AISimple reporter writes, the HTML reporter annotates from it, CI
 # scripts read ai_report.json. Keyed by screenshot name; later writes win.
 module SnapDiff
-  module Ai
+  module AI
     @backends = {}
     @results = {}
     @mutex = Mutex.new
 
     class << self
+      # Optional fail-gate, set by AISimple when configured with fail_on:.
+      # ScreenshotAssertion#validate consults it on a pixel diff: verdicts
+      # the gate accepts suppress the failure, the rest still fail.
+      attr_accessor :gate
+
+      def gated_result(name, difference) = gate&.gated_result(name, difference)
+
+      # No gate -> everything fails, exactly as without AI.
+      def fails?(verdict) = gate ? gate.fails?(verdict) : true
+
       def register(name, &build)
         @mutex.synchronize { @backends[name.to_sym] = build }
       end
@@ -38,6 +49,17 @@ module SnapDiff
         builder = @mutex.synchronize { @backends[name.to_sym] } or
           raise ArgumentError, "unknown AI backend #{name.inspect} (registered: #{names.map(&:inspect).join(", ")})"
         builder.call
+      end
+
+      # One-line rendering of a result, shared by the AISimple log and the
+      # assertion failure message: "REAL_BUG (clip, similarity=0.73) -- CTA clipped".
+      def format(result)
+        line = "#{result[:verdict].upcase} (#{result[:backend]}"
+        line += ", similarity=#{result[:similarity]}" if result[:similarity]
+        line += ", confidence=#{result[:confidence]}" if result[:confidence]
+        line += ")"
+        line += " -- #{result[:summary]}" if result[:summary]
+        line
       end
 
       # similarity -> verdict. The one place thresholds live.
