@@ -228,4 +228,18 @@ class AiHtmlReporterMixTest < Minitest::Test
       assert_includes html, '"verdict":"flaky"'
     end
   end
+
+  def test_rendered_report_without_ai_stays_clean
+    # AI not enabled (store empty): entries must not gain an :ai key, and
+    # the serialized DATA must contain no ai annotations at all.
+    Dir.mktmpdir do |dir|
+      reporter = html_reporter(dir)
+      reporter.record([failed_assertion("checkout"), failed_assertion("plain")])
+      reporter.finalize
+
+      reporter.failures.each { |entry| refute entry.key?(:ai) }
+      html = File.read(File.join(dir, "report.html"))
+      refute_includes html, '"ai":'
+    end
+  end
 end
