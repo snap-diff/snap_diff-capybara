@@ -122,8 +122,17 @@ module SnapDiff
           heatmap: resolve_image(compare.reporter.heatmap_diff_path),
           diff_level: difference.ratio && (difference.ratio * 100).round(2),
           area_size: difference.region_area_size,
-          max_color_distance: difference.meta[:max_color_distance]&.round(1)
-        }
+          max_color_distance: difference.meta[:max_color_distance]&.round(1),
+          ai: ai_annotation(name)
+        }.compact
+      end
+
+      # Advisory AI triage for this screenshot, when the optional
+      # SnapDiff::Ai module is loaded (snap_diff/reporters/ai_simple) and
+      # has classified this name. HTML never requires the AI module --
+      # the annotation appears iff the user opted into AI triage.
+      def ai_annotation(name)
+        SnapDiff::Ai[name] if defined?(SnapDiff::Ai)
       end
 
       def resolve_image(path)
