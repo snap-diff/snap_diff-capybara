@@ -136,7 +136,10 @@ module SnapDiff
         return unless defined?(SnapDiff::Ai)
 
         failures.each do |entry|
-          entry[:ai] ||= SnapDiff::Ai[entry[:name]]
+          # || would create a nil :ai key on misses; keep the entry clean.
+          if (annotation = SnapDiff::Ai[entry[:name]])
+            entry[:ai] ||= annotation
+          end
         end
       end
 

@@ -160,7 +160,7 @@ class AiHtmlReporterMixTest < Minitest::Test
     def region_area_size = 42
     def meta = {max_color_distance: 3.21}
   end
-  HtmlReporterStub = Struct.new do
+  class HtmlReporterStub
     def annotated_base_image_path = nil
     def annotated_image_path = nil
     def heatmap_diff_path = nil
