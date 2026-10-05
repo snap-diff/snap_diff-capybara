@@ -11,6 +11,10 @@
 # fail-gate consults it. Keyed by screenshot name; later writes win.
 module SnapDiff
   module AI
+    # The only verdicts a backend may return; anything else maps to
+    # "unknown", which the fail-gate never suppresses.
+    VERDICTS = %w[real_bug intentional flaky unknown].freeze
+
     @backends = {}
     @results = {}
     @mutex = Mutex.new

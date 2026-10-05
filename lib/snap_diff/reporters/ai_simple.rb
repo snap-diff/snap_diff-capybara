@@ -25,6 +25,13 @@ module SnapDiff
         @thresholds = {flaky: flaky, intentional: intentional}.compact
         @backend = resolve(backend)
         @fail_on = Array(fail_on).map(&:to_s) if fail_on
+        # Memoized per COMPARISON (object identity): the gate at
+        # validate-time and the reporter pass at teardown see the same
+        # difference object; a later test asserting the same name compares
+        # anew and must be re-analyzed -- a stale "flaky" must never
+        # suppress a fresh regression.
+        @memo = {}.compare_by_identity
+        @memo_mutex = Mutex.new
         AI.gate = self if @fail_on
       end
 
@@ -58,7 +65,7 @@ module SnapDiff
         return if results.empty?
 
         counts = results.group_by { |r| r[:verdict] }.transform_values(&:size)
-        breakdown = %w[real_bug intentional flaky unknown].filter_map { |v| "#{counts[v]} #{v}" if counts[v] }
+        breakdown = AI::VERDICTS.filter_map { |v| "#{counts[v]} #{v}" if counts[v] }
         "[snap_diff:ai] #{results.size} diff(s) analyzed: #{breakdown.join(", ")}"
       end
 
@@ -84,7 +91,11 @@ module SnapDiff
       end
 
       def analyze_once(name, difference)
-        AI[name] || analyze(name, difference)&.tap { |r| AI.record_result(r) }
+        result = @memo_mutex.synchronize do
+          @memo.fetch(difference) { @memo[difference] = analyze(name, difference) }
+        end
+        AI.record_result(result) if result
+        result
       end
 
       def analyze(name, difference)
@@ -95,8 +106,11 @@ module SnapDiff
           meta: difference.to_h
         ).transform_keys(&:to_sym)
 
-        # A backend's own :verdict outranks the shared thresholds.
-        raw[:verdict] ||= AI.verdict(raw[:similarity], **@thresholds)
+        # A backend's own :verdict outranks the shared thresholds, but
+        # only known verdicts are honored -- anything else becomes
+        # "unknown", which the fail-gate never suppresses.
+        raw[:verdict] = AI.verdict(raw[:similarity], **@thresholds) if raw[:verdict].nil?
+        raw[:verdict] = "unknown" unless AI::VERDICTS.include?(raw[:verdict])
         result = {name: name, backend: backend_name}.merge(raw.except(:name, :backend))
         log(result)
         result

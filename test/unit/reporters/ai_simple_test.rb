@@ -208,6 +208,35 @@ class AISimpleReporterTest < Minitest::Test
     assert_includes message, "Screenshot does not match"
     refute_includes message, "AI triage:"
   end
+
+  def test_gate_reanalyzes_when_the_same_name_is_compared_again
+    similarities = [0.99, 0.50]
+    backend = ->(name:, base:, current:, meta:) { {similarity: similarities.shift} }
+    SnapDiff::Reporters::AISimple.new(backend: backend, fail_on: %w[real_bug])
+
+    # First comparison classifies flaky and is suppressed...
+    assert_nil gate_assertion("homepage").validate
+
+    # ...but a FRESH comparison under the same name must be re-analyzed:
+    # a stale "flaky" may never suppress a new regression.
+    message = gate_assertion("homepage").validate
+    assert_includes message, "AI triage: REAL_BUG"
+    assert_equal "real_bug", SnapDiff::AI["homepage"][:verdict]
+  end
+
+  def test_unrecognized_backend_verdict_becomes_unknown
+    backend = ->(name:, base:, current:, meta:) { {verdict: "uncertain"} }
+    build_reporter(backend).record([build_assertion("checkout")])
+
+    assert_equal "unknown", SnapDiff::AI["checkout"][:verdict]
+  end
+
+  def test_gate_fails_on_unrecognized_verdicts
+    backend = ->(name:, base:, current:, meta:) { {verdict: "uncertain"} }
+    SnapDiff::Reporters::AISimple.new(backend: backend, fail_on: %w[real_bug])
+
+    assert_includes gate_assertion("checkout").validate, "AI triage: UNKNOWN"
+  end
 end
 
 class AIVerdictTest < Minitest::Test
