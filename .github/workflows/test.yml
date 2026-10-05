@@ -50,7 +50,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
+      # Full history: AI integration tests skip themselves unless the AI
+      # surface changed vs origin/master (no merge-base in a shallow clone).
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
 
       - uses: ./.github/actions/setup-ruby-and-dependencies
         with:
@@ -71,6 +75,10 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
+        # Full history: AI integration tests skip themselves unless the AI
+        # surface changed vs origin/master (no merge-base in a shallow clone).
+        with:
+          fetch-depth: 0
 
       - uses: ./.github/actions/setup-ruby-and-dependencies
         with:

@@ -12,6 +12,31 @@ require "tmpdir"
 # late, or a report rendered before the store is filled; the finished
 # process's output and files do.
 class AiTriageTest < ActiveSupport::TestCase
+  # Each case boots a full subprocess (git init, fresh ruby), the priciest
+  # tests in the suite, so they run only when the AI surface itself changed:
+  # the AI lib, its reporter, or these tests/fixtures. Everything else is
+  # already covered by the fast in-process unit tests, which always run.
+  # Force with RUN_AI_TESTS=1. Fails OPEN: when git can't tell (shallow
+  # checkout, no origin/master) or we're on master, the tests run.
+  AI_SURFACE = %r{\A(?:
+    lib/snap_diff/(?:ai\.rb|reporters/ai_simple\.rb)
+    | test/(?:unit/reporters/ai_simple_test\.rb|integration/ai_triage_test\.rb|fixtures/ai_triage_case\.rb)
+  )\z}x
+
+  def self.ai_surface_changed?
+    return true if ENV["RUN_AI_TESTS"] == "1"
+    branch, = Open3.capture2e("git", "rev-parse", "--abbrev-ref", "HEAD")
+    return true if branch.strip == "master"
+    merge_base, = Open3.capture2e("git", "merge-base", "HEAD", "origin/master")
+    return true if merge_base.strip.empty?
+    changed, = Open3.capture2e("git", "diff", "--name-only", merge_base.strip, "HEAD")
+    changed.split("\n").any? { |path| path.match?(AI_SURFACE) }
+  end
+
+  setup do
+    skip "AI surface unchanged (RUN_AI_TESTS=1 to force)" unless AiTriageTest.ai_surface_changed?
+  end
+
   test "advisory mode logs and badges verdicts, and the pixel diff still fails" do
     out, status, report = run_case("verified,flaky,buggy")
 
