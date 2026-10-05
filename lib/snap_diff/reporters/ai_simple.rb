@@ -25,12 +25,13 @@ module SnapDiff
         @thresholds = {flaky: flaky, intentional: intentional}.compact
         @backend = resolve(backend)
         @fail_on = Array(fail_on).map(&:to_s) if fail_on
-        # Memoized per COMPARISON (object identity): the gate at
-        # validate-time and the reporter pass at teardown see the same
-        # difference object; a later test asserting the same name compares
-        # anew and must be re-analyzed -- a stale "flaky" must never
-        # suppress a fresh regression.
-        @memo = {}.compare_by_identity
+        # Memoized per COMPARISON AND INPUTS: the gate at validate-time
+        # and the reporter pass at teardown see the same difference with
+        # the same name and metrics; a reassigned compare, a mutated
+        # result, or a later test asserting the same name all change the
+        # key and re-analyze -- a stale "flaky" must never suppress a
+        # fresh regression.
+        @memo = {}
         @memo_mutex = Mutex.new
         AI.gate = self if @fail_on
       end
@@ -91,8 +92,9 @@ module SnapDiff
       end
 
       def analyze_once(name, difference)
+        key = [difference.object_id, name, difference.to_h]
         result = @memo_mutex.synchronize do
-          @memo.fetch(difference) { @memo[difference] = analyze(name, difference) }
+          @memo.fetch(key) { @memo[key] = analyze(name, difference) }
         end
         AI.record_result(result) if result
         result

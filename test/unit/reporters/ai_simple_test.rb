@@ -237,6 +237,26 @@ class AISimpleReporterTest < Minitest::Test
 
     assert_includes gate_assertion("checkout").validate, "AI triage: UNKNOWN"
   end
+
+  def test_memo_is_scoped_to_inputs_not_just_the_difference_object
+    calls = 0
+    backend = ->(name:, base:, current:, meta:) {
+      calls += 1
+      {similarity: 0.99}
+    }
+    SnapDiff::Reporters::AISimple.new(backend: backend, fail_on: %w[real_bug])
+
+    # Two assertion names SHARING one difference object must both analyze.
+    shared = StubDifference.new(different: true)
+    %w[one two].each do |name|
+      SnapDiff::ScreenshotAssertion.new(name).tap do |a|
+        a.compare = GateCompare.new(shared)
+        a.caller = []
+      end.validate
+    end
+
+    assert_equal 2, calls
+  end
 end
 
 class AIVerdictTest < Minitest::Test
@@ -245,6 +265,12 @@ class AIVerdictTest < Minitest::Test
     assert_equal "intentional", SnapDiff::AI.verdict(0.90)
     assert_equal "real_bug", SnapDiff::AI.verdict(0.50)
     assert_equal "unknown", SnapDiff::AI.verdict(nil)
+  end
+
+  def test_non_finite_and_non_numeric_similarities_are_unknown
+    assert_equal "unknown", SnapDiff::AI.verdict(Float::INFINITY)
+    assert_equal "unknown", SnapDiff::AI.verdict(Float::NAN)
+    assert_equal "unknown", SnapDiff::AI.verdict("high")
   end
 end
 

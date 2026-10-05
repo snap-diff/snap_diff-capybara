@@ -67,8 +67,10 @@ module SnapDiff
       end
 
       # similarity -> verdict. The one place thresholds live.
+      # Anything but a finite number is "unknown" -- NaN/Infinity would
+      # otherwise classify as flaky and let the gate suppress a real diff.
       def verdict(similarity, flaky: 0.985, intentional: 0.90)
-        return "unknown" if similarity.nil?
+        return "unknown" unless similarity.is_a?(Numeric) && similarity.finite?
 
         if similarity >= flaky
           "flaky"
