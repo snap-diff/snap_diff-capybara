@@ -78,7 +78,17 @@ SnapDiff::Reporting.register(SnapDiff::Reporters::AiSimple.new)
 ```
 
 Without `informers`, one warning at registration, then silence — never a
-failed build. Custom thresholds:
+failed build.
+
+**Prefetch the model.** The ~90 MB download happens on the first analyzed
+diff, so a fully offline run needs a prefilled cache. Warm it at suite
+setup (or as a cached CI step):
+
+```ruby
+SnapDiff::Ai::Clip.new.prefetch!
+```
+
+Custom thresholds:
 
 ```ruby
 SnapDiff::Reporters::AiSimple.new(flaky: 0.99, intentional: 0.85)

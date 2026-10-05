@@ -19,6 +19,13 @@ module SnapDiff
         {similarity: cosine(base, current)&.round(4)}
       end
 
+      # Downloads and loads the model NOW. Run at suite setup (or a CI
+      # cache step) so the first diff is analyzed offline: without a
+      # prefetched model, the first diff pulls ~90 MB over the network.
+      def prefetch!
+        pipeline
+      end
+
       private
 
       def pipeline

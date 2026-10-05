@@ -97,6 +97,7 @@ module SnapDiff
       end
 
       def render
+        attach_ai_annotations
         ERB.new(File.read(self.class.template_path)).result(binding)
       end
 
@@ -122,17 +123,21 @@ module SnapDiff
           heatmap: resolve_image(compare.reporter.heatmap_diff_path),
           diff_level: difference.ratio && (difference.ratio * 100).round(2),
           area_size: difference.region_area_size,
-          max_color_distance: difference.meta[:max_color_distance]&.round(1),
-          ai: ai_annotation(name)
+          max_color_distance: difference.meta[:max_color_distance]&.round(1)
         }.compact
       end
 
-      # Advisory AI triage for this screenshot, when the optional
-      # SnapDiff::Ai module is loaded (snap_diff/reporters/ai_simple) and
-      # has classified this name. HTML never requires the AI module --
-      # the annotation appears iff the user opted into AI triage.
-      def ai_annotation(name)
-        SnapDiff::Ai[name] if defined?(SnapDiff::Ai)
+      # Advisory AI triage annotations, attached at RENDER time: HTML
+      # records before the AI reporter (auto-registration runs first) and
+      # fork-parallel merges land after record, so only the final render
+      # can see every verdict. HTML never requires the AI module -- the
+      # annotation appears iff the user opted into AI triage.
+      def attach_ai_annotations
+        return unless defined?(SnapDiff::Ai)
+
+        failures.each do |entry|
+          entry[:ai] ||= SnapDiff::Ai[entry[:name]]
+        end
       end
 
       def resolve_image(path)

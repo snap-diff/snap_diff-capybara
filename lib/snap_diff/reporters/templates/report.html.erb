@@ -251,6 +251,10 @@
 
   /* ── Sidebar ──────────────────────────────────────────────────────── */
   function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+  var AI_VERDICTS = ['real_bug', 'intentional', 'flaky', 'unknown'];
+  /* Class suffix only for known verdicts: a backend's verdict is model
+     output, and model output is not trusted enough for a class attribute. */
+  function aiClass(v) { return AI_VERDICTS.indexOf(v) !== -1 ? ' ai-' + v : ''; }
 
   function buildSidebar() {
     sidebarList.innerHTML = '';
@@ -270,7 +274,7 @@
         '<div class="thumb-img-wrap"><img src="' + esc(thumb) + '" alt="" loading="lazy"/></div>' +
         '<div class="thumb-footer">' +
           '<div class="thumb-name">' + esc(item.name) + '</div>' +
-          (item.ai && item.ai.verdict ? '<span class="ai-badge ai-' + item.ai.verdict + '">' + esc(item.ai.verdict.replace('_', ' ')) + '</span>' : '') +
+          (item.ai && item.ai.verdict ? '<span class="ai-badge' + aiClass(item.ai.verdict) + '">' + esc(item.ai.verdict.replace('_', ' ')) + '</span>' : '') +
           '<span class="thumb-badge ' + (hasDiff ? 'thumb-badge-fail' : 'thumb-badge-pass') + '">' + badgeText + '</span>' +
         '</div>';
       btn.addEventListener('click', function() { selectItem(+this.dataset.idx); });
@@ -312,7 +316,7 @@
     if (item.ai && item.ai.verdict) {
       var aiV = $('ai-verdict');
       aiV.textContent = 'AI: ' + item.ai.verdict.replace('_', ' ');
-      aiV.className = 'ai-badge ai-' + item.ai.verdict;
+      aiV.className = 'ai-badge' + aiClass(item.ai.verdict);
       var bits = [];
       if (item.ai.similarity != null) bits.push('similarity ' + item.ai.similarity);
       if (item.ai.confidence != null) bits.push('confidence ' + item.ai.confidence);

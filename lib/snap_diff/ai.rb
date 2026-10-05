@@ -44,7 +44,13 @@ module SnapDiff
       def verdict(similarity, flaky: 0.985, intentional: 0.90)
         return "unknown" if similarity.nil?
 
-        (similarity >= flaky) ? "flaky" : (similarity >= intentional) ? "intentional" : "real_bug"
+        if similarity >= flaky
+          "flaky"
+        elsif similarity >= intentional
+          "intentional"
+        else
+          "real_bug"
+        end
       end
 
       # --- shared result store ------------------------------------------

@@ -184,7 +184,7 @@ class AiHtmlReporterMixTest < Minitest::Test
     HtmlAssertion.new(name, HtmlCompare.new(HtmlDifference.new(ratio: 0.02)))
   end
 
-  def test_failures_carry_ai_annotation_when_present
+  def test_failures_carry_ai_annotation_after_render
     SnapDiff::Ai.record_result(
       name: "checkout", verdict: "real_bug", backend: "clip",
       similarity: 0.7312, summary: "CTA clipped"
@@ -193,11 +193,25 @@ class AiHtmlReporterMixTest < Minitest::Test
     Dir.mktmpdir do |dir|
       reporter = html_reporter(dir)
       reporter.record([failed_assertion("checkout"), failed_assertion("plain")])
+      reporter.finalize
 
       checkout, plain = reporter.failures
       assert_equal "real_bug", checkout[:ai][:verdict]
       assert_equal "CTA clipped", checkout[:ai][:summary]
       refute plain.key?(:ai)
+    end
+  end
+
+  def test_ai_result_recorded_after_html_record_still_renders
+    # HTML auto-registers before AiSimple, so its record runs first; the
+    # annotation must attach at render regardless of reporter order.
+    Dir.mktmpdir do |dir|
+      reporter = html_reporter(dir)
+      reporter.record([failed_assertion("checkout")])
+      SnapDiff::Ai.record_result(name: "checkout", verdict: "flaky", backend: "clip", similarity: 0.9912)
+      reporter.finalize
+
+      assert_equal "flaky", reporter.failures.first[:ai][:verdict]
     end
   end
 
