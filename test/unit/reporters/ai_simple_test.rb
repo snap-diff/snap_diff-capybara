@@ -48,8 +48,8 @@ class AISimpleReporterTest < Minitest::Test
     ->(name:, base:, current:, meta:) { {similarity: value} }
   end
 
-  def build_reporter(backend, dir = Dir.mktmpdir)
-    SnapDiff::Reporters::AISimple.new(backend: backend, output_path: File.join(dir, "ai_report.json"))
+  def build_reporter(backend)
+    SnapDiff::Reporters::AISimple.new(backend: backend)
   end
 
   def test_records_only_different_assertions
@@ -72,18 +72,6 @@ class AISimpleReporterTest < Minitest::Test
     assert_in_delta 0.91, result[:confidence]
   end
 
-  def test_finalize_writes_json_report
-    Dir.mktmpdir do |dir|
-      path = File.join(dir, "nested", "ai_report.json")
-      SnapDiff::Reporters::AISimple.new(backend: similarity_backend(0.99), output_path: path)
-        .record([build_assertion("homepage")])
-      SnapDiff::Reporters::AISimple.new(backend: similarity_backend(0.99), output_path: path).finalize
-
-      report = JSON.parse(File.read(path), symbolize_names: true)
-      assert_equal [{name: "homepage", backend: "custom", similarity: 0.99, verdict: "flaky"}], report
-    end
-  end
-
   def test_silent_when_nothing_analyzed
     reporter = build_reporter(similarity_backend(0.99))
     reporter.finalize
@@ -95,7 +83,7 @@ class AISimpleReporterTest < Minitest::Test
     reporter = build_reporter(similarity_backend(0.5))
     reporter.record([build_assertion("a"), build_assertion("b")])
 
-    assert_equal "[snap_diff:ai] 2 diff(s) analyzed: 2 real_bug (ai_report.json)", reporter.summary
+    assert_equal "[snap_diff:ai] 2 diff(s) analyzed: 2 real_bug", reporter.summary
   end
 
   def test_dump_and_merge_state_round_trip_for_fork_parallel
@@ -136,6 +124,19 @@ class AISimpleReporterTest < Minitest::Test
     SnapDiff::AI.instance_variable_get(:@backends).delete(:test_stub)
   end
 
+  def test_factory_failure_degrades_to_disabled_but_config_errors_raise
+    SnapDiff::AI.register(:exploding) { raise "cannot reach the model server" }
+
+    reporter = nil
+    _out, err = capture_io { reporter = build_reporter(:exploding) }
+
+    assert_includes err, "triage disabled"
+    reporter.record([build_assertion("homepage")])
+    assert_empty SnapDiff::AI.results
+  ensure
+    SnapDiff::AI.instance_variable_get(:@backends).delete(:exploding)
+  end
+
   def test_clip_backend_degrades_to_disabled_without_informers
     begin
       require "informers"
@@ -154,8 +155,7 @@ class AISimpleReporterTest < Minitest::Test
 
   def test_custom_thresholds
     SnapDiff::Reporters::AISimple.new(
-      backend: similarity_backend(0.95), flaky: 0.90, intentional: 0.80,
-      output_path: File.join(Dir.mktmpdir, "ai_report.json")
+      backend: similarity_backend(0.95), flaky: 0.90, intentional: 0.80
     ).record([build_assertion("homepage")])
 
     assert_equal "flaky", SnapDiff::AI["homepage"][:verdict]
@@ -187,7 +187,10 @@ class AISimpleReporterTest < Minitest::Test
 
   def test_gate_analysis_is_memoized_for_the_reporter_pass
     calls = 0
-    counting_backend = ->(name:, base:, current:, meta:) { calls += 1; {similarity: 0.99} }
+    counting_backend = ->(name:, base:, current:, meta:) {
+      calls += 1
+      {similarity: 0.99}
+    }
     reporter = SnapDiff::Reporters::AISimple.new(backend: counting_backend, fail_on: %w[real_bug])
 
     assertion = gate_assertion("homepage")

@@ -14,9 +14,9 @@ failed** and labels it:
 | `real_bug` | Semantics moved substantially | Clipped text, overlap, missing element |
 | `unknown` | Backend could not score | Missing/unreadable image |
 
-One line per diff in the test output, `ai_report.json` at end of run,
-and — automatically — a verdict badge plus one-line summary per failure
-in `snap_diff_report.html`.
+One line per diff in the test output, and — automatically, via the
+shared store — a verdict badge plus one-line summary per failure in
+`snap_diff_report.html`. No files, no duplicate storage.
 
 ## How the HTML report gets AI annotations
 
@@ -41,7 +41,7 @@ parent before the report renders.
 [snap_diff:ai] homepage: FLAKY (clip, similarity=0.9912)
   pixels differ but semantics match -- candidate for skip_area or a tolerance bump
 [snap_diff:ai] checkout: REAL_BUG (clip, similarity=0.7312)
-[snap_diff:ai] 2 diff(s) analyzed: 1 real_bug, 1 flaky (ai_report.json)
+[snap_diff:ai] 2 diff(s) analyzed: 1 real_bug, 1 flaky
 ```
 
 ## Architecture
@@ -137,15 +137,15 @@ class JevBackend
   def name = "jev"
 
   def initialize
-    require "typesafe_sdk"
-    @client = TypeSafeClient.new # reads TYPESAFE_API_KEY
+    require "typesafe/sdk"
+    @client = Typesafe::SDK::Client.new(api_key: ENV.fetch("TYPESAFE_API_KEY"))
   end
 
   def call(name:, base:, current:, meta: {})
     resp = @client.system_one(
       state: {screenshot: name, changed_area_px: meta[:area_size], changed_region: meta[:region]},
       questions: {
-        verdict: Choice.new(
+        verdict: Typesafe::SDK::Choice.new(
           instructions: "Classify this visual diff",
           criteria: {
             flaky: "timestamp, anti-aliasing, or avatar noise",
@@ -153,7 +153,7 @@ class JevBackend
             real_bug: "clipped, overlapping, or missing UI"
           }
         ),
-        auto_accept: Noul.new(instructions: "Safe to accept the new rendering as the baseline")
+        auto_accept: Typesafe::SDK::Noul.new(instructions: "Safe to accept the new rendering as the baseline")
       }
     )
     answers = resp.answers
@@ -215,17 +215,20 @@ class ClipThenQwen
 end
 ```
 
-## CI gating (auto-accept stays in userland)
+## CI gating
+
+Use the built-in gate — no JSON parsing, no extra script:
 
 ```ruby
-report = JSON.parse(File.read("doc/screenshots/ai_report.json"), symbolize_names: true)
-real = report.select { |r| r[:verdict] == "real_bug" }
-exit(real.empty? ? 0 : 1)
+SnapDiff::Reporting.register(SnapDiff::Reporters::AISimple.new(fail_on: %w[real_bug]))
 ```
+
+The suite then fails only on verdicts you list; see
+[Gating failures on AI verdicts](#gating-failures-on-ai-verdicts).
 
 ## Guarantees
 
-- **Advisory**: never changes pass/fail; auto-accept is your CI script, not core.
+- **Advisory by default**: pass/fail changes only with an explicit `fail_on:` opt-in.
 - **Thread-safe**: results behind one mutex; CLIP inference serialized.
 - **Fork-parallel**: results are plain JSON-able hashes; workers merge via `dump_state`/`merge_state!`.
 - **No hard deps**: `informers`, `typesafe`, `ollama-ai` all optional; gemspec unchanged.

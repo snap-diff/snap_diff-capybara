@@ -242,7 +242,8 @@ See [Web UI & Custom Reporters](docs/reporters.md) for full feature details and 
 AI tells you *which* failures to look at first. One line enables offline
 CLIP triage — every failed comparison is classified as `flaky` /
 `intentional` / `real_bug`, logged per diff, quoted in the failure message,
-written to `ai_report.json`, and badged in the HTML report. Advisory by
+and badged in the HTML report (all via one shared in-memory store — no
+files). Advisory by
 default; pass `fail_on: %w[real_bug]` to keep the suite green on flaky and
 intentional diffs and fail only on what AI calls a real bug:
 

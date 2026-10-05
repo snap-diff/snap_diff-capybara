@@ -7,8 +7,8 @@
 # unless a reporter is configured with fail_on: (see AISimple).
 #
 # Results live in a process-wide store so ANY consumer can read them --
-# the AISimple reporter writes, the HTML reporter annotates from it, CI
-# scripts read ai_report.json. Keyed by screenshot name; later writes win.
+# the AISimple reporter writes, the HTML reporter annotates from it, the
+# fail-gate consults it. Keyed by screenshot name; later writes win.
 module SnapDiff
   module AI
     @backends = {}

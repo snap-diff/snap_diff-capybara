@@ -1,36 +1,28 @@
 # frozen_string_literal: true
 
-require "json"
-require "fileutils"
-
 require "snap_diff/ai"
-require "snap_diff/config"
 
 module SnapDiff
   module Reporters
     # Advisory AI triage: classifies every FAILED comparison as
-    # flaky/intentional/real_bug, logs one line per diff, writes
-    # ai_report.json at finalize. By default never changes pass/fail;
-    # with fail_on: the AI verdict gates the failure instead.
+    # flaky/intentional/real_bug and logs one line per diff. By default
+    # never changes pass/fail; with fail_on: the verdict gates it instead.
     #
     #   SnapDiff::Reporting.register(SnapDiff::Reporters::AISimple.new)           # offline CLIP
     #   SnapDiff::Reporting.register(SnapDiff::Reporters::AISimple.new(backend: :jev))
     #   SnapDiff::Reporting.register(SnapDiff::Reporters::AISimple.new(backend: my_backend))
     #   SnapDiff::Reporting.register(SnapDiff::Reporters::AISimple.new(fail_on: %w[real_bug]))
     #
-    # Results go into the shared SnapDiff::AI store, so the HTML reporter
-    # annotates them automatically -- no wiring between the two.
+    # Results live only in the shared SnapDiff::AI store -- the HTML
+    # reporter annotates from it, gate reads it, no files, no wiring.
     # Extension: SnapDiff::AI.register(:name) { backend } -- no edits here.
     class AISimple
-      REPORT_FILENAME = "ai_report.json"
-
       # fail_on: verdicts that still fail the test; every other verdict
       # suppresses the pixel diff. "unknown" ALWAYS fails -- AI can
       # downgrade a diff, never vouch for one it could not classify.
       # nil thresholds defer to AI.verdict's defaults -- one source of truth.
-      def initialize(backend: nil, flaky: nil, intentional: nil, output_path: nil, fail_on: nil)
+      def initialize(backend: nil, flaky: nil, intentional: nil, fail_on: nil)
         @thresholds = {flaky: flaky, intentional: intentional}.compact
-        @output_path = output_path
         @backend = resolve(backend)
         @fail_on = Array(fail_on).map(&:to_s) if fail_on
         AI.gate = self if @fail_on
@@ -58,13 +50,8 @@ module SnapDiff
 
       def fails?(verdict) = verdict == "unknown" || @fail_on.include?(verdict)
 
-      def finalize
-        results = AI.results
-        return if results.empty?
-
-        FileUtils.mkdir_p(File.dirname(output_path))
-        File.write(output_path, JSON.pretty_generate(results))
-      end
+      # Results are already in the shared store -- nothing to write out.
+      def finalize = nil
 
       def summary
         results = AI.results
@@ -72,7 +59,7 @@ module SnapDiff
 
         counts = results.group_by { |r| r[:verdict] }.transform_values(&:size)
         breakdown = %w[real_bug intentional flaky unknown].filter_map { |v| "#{counts[v]} #{v}" if counts[v] }
-        "[snap_diff:ai] #{results.size} diff(s) analyzed: #{breakdown.join(", ")} (#{REPORT_FILENAME})"
+        "[snap_diff:ai] #{results.size} diff(s) analyzed: #{breakdown.join(", ")}"
       end
 
       # Fork-parallel (Rails parallelize): the shared store round-trips.
@@ -81,10 +68,18 @@ module SnapDiff
 
       private
 
+      # Unknown names and invalid objects are config errors and raise;
+      # a factory that fails to build (missing gem, init error) degrades
+      # to a warning and disabled triage.
       def resolve(backend)
         AI.resolve(backend)
+      rescue ArgumentError
+        raise
       rescue LoadError => e
         warn "[snap_diff:ai] backend unavailable (#{e.message}) -- AI triage disabled."
+        nil
+      rescue => e
+        warn "[snap_diff:ai] backend factory failed (#{e.class}: #{e.message}) -- AI triage disabled."
         nil
       end
 
@@ -117,10 +112,6 @@ module SnapDiff
       def log(r)
         $stdout.puts "[snap_diff:ai] #{r[:name]}: #{AI.format(r)}"
         $stdout.puts "  pixels differ but semantics match -- candidate for skip_area or a tolerance bump" if r[:verdict] == "flaky"
-      end
-
-      def output_path
-        @output_path ||= File.join(SnapDiff.config.screenshot_area_abs.to_s, REPORT_FILENAME)
       end
     end
   end
