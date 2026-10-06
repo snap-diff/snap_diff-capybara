@@ -38,6 +38,8 @@ module SnapDiff
         Contributions.register_suppression(self) if @fail_on
       end
 
+      # Analyze differing assertions and store their results, reusing gate-time analysis.
+      # Do nothing when the backend is unavailable.
       def record(assertions)
         return unless @backend
 
@@ -65,6 +67,8 @@ module SnapDiff
         {source: "ai", text: AI.format(result)} unless fails?(result[:verdict])
       end
 
+      # Return whether a verdict must fail under the configured fail_on policy.
+      # Unknown verdicts always fail; requires a reporter configured with fail_on.
       def fails?(verdict) = verdict == "unknown" || @fail_on.include?(verdict)
 
       # Results are already in the shared store -- nothing to write out.

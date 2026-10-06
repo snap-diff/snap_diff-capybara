@@ -30,6 +30,7 @@ module SnapDiff
         result && {source: "ai", text: format(result), data: result}
       end
 
+      # Register a lazy backend factory under a symbolic name, replacing any prior factory.
       def register(name, &build)
         @mutex.synchronize { @backends[name.to_sym] = build }
       end

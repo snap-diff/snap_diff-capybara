@@ -60,6 +60,8 @@ module SnapDiff
       "#<#{self.class.name} #{name.inspect} #{state} new=#{compare.image_path} base=#{compare.base_image_path}>"
     end
 
+    # Return an annotated failure message for an unsuppressed screenshot mismatch.
+    # Return nil for absent, matching, or suppressed comparisons; archive matching baselines.
     def validate
       return unless compare
 

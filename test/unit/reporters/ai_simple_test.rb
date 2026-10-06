@@ -25,14 +25,17 @@ class AISimpleReporterTest < Minitest::Test
     def error_message = "diff details"
   end
 
+  # Clear stored AI results before each reporter test.
   def setup
     SnapDiff::AI.clear_results!
   end
 
+  # Clear the suppression gate installed by a reporter test.
   def teardown
     SnapDiff::Contributions.register_suppression(nil)
   end
 
+  # Build a screenshot assertion with a controllable comparison and a fixed caller trace.
   def gate_assertion(name, different: true)
     SnapDiff::ScreenshotAssertion.new(name).tap do |a|
       a.compare = GateCompare.new(StubDifference.new(different: different))
@@ -177,6 +180,7 @@ class AISimpleReporterTest < Minitest::Test
     assert_includes message, "AI triage: REAL_BUG (custom, similarity=0.5)"
   end
 
+  # Verify that an unknown verdict preserves the screenshot failure and appears in its message.
   def test_gate_always_fails_unknown_verdicts
     SnapDiff::Reporters::AISimple.new(backend: similarity_backend(nil), fail_on: %w[real_bug])
 
@@ -185,6 +189,7 @@ class AISimpleReporterTest < Minitest::Test
     assert_includes message, "AI triage: UNKNOWN"
   end
 
+  # Verify that a backend exception logs a warning and leaves the screenshot mismatch standing.
   def test_gate_lets_the_failure_stand_when_analysis_fails
     # The backend raising must not turn validation itself into an error:
     # the screenshot mismatch is the failure the developer needs.
@@ -198,6 +203,7 @@ class AISimpleReporterTest < Minitest::Test
     assert_includes err, "Backend failed"
   end
 
+  # Verify that validation and reporting share a single backend analysis for the same diff.
   def test_gate_analysis_is_memoized_for_the_reporter_pass
     calls = 0
     counting_backend = ->(name:, base:, current:, meta:) {
@@ -306,15 +312,18 @@ class AIHtmlReporterMixTest < Minitest::Test
   end
   HtmlAssertion = Struct.new(:name, :compare)
 
+  # Clear AI results and save annotation providers before testing HTML rendering.
   def setup
     SnapDiff::AI.clear_results!
     @saved_providers = SnapDiff::Contributions.instance_variable_get(:@providers).dup
   end
 
+  # Restore annotation providers so custom contributors do not leak into later tests.
   def teardown
     SnapDiff::Contributions.instance_variable_set(:@providers, @saved_providers)
   end
 
+  # Build an HTML reporter that writes report.html into the supplied directory.
   def html_reporter(dir)
     SnapDiff::Reporters::HTML.new(output_path: File.join(dir, "report.html"))
   end
@@ -323,6 +332,7 @@ class AIHtmlReporterMixTest < Minitest::Test
     HtmlAssertion.new(name, HtmlCompare.new(HtmlDifference.new(ratio: 0.02)))
   end
 
+  # Verify that rendering attaches stored AI data and text only to the matching screenshot.
   def test_failures_carry_ai_annotation_after_render
     SnapDiff::AI.record_result(
       name: "checkout", verdict: "real_bug", backend: "clip",
@@ -343,6 +353,7 @@ class AIHtmlReporterMixTest < Minitest::Test
     end
   end
 
+  # Verify that rendering includes AI results recorded after HTML collected the failure.
   def test_ai_result_recorded_after_html_record_still_renders
     # HTML auto-registers before AISimple, so its record runs first; the
     # annotation must attach at render regardless of reporter order.
@@ -356,6 +367,7 @@ class AIHtmlReporterMixTest < Minitest::Test
     end
   end
 
+  # Verify that the generated report contains the AI strip and stored verdict.
   def test_rendered_report_includes_ai_bar_markup
     SnapDiff::AI.record_result(name: "checkout", verdict: "flaky", backend: "clip", similarity: 0.9912)
 
@@ -370,6 +382,7 @@ class AIHtmlReporterMixTest < Minitest::Test
     end
   end
 
+  # Verify that an empty AI store adds no annotation keys to failures or serialized report data.
   def test_rendered_report_without_ai_stays_clean
     # AI not enabled (store empty): entries must not gain an :annotations
     # key, and the serialized DATA must contain no annotations at all.
@@ -384,6 +397,7 @@ class AIHtmlReporterMixTest < Minitest::Test
     end
   end
 
+  # Verify that a contribution without a verdict retains its source and text in the report.
   def test_text_only_contribution_renders_its_text
     # A contributor without a verdict payload (the documented
     # TicketLinker shape) must still show its text, not a bare label.

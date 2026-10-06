@@ -96,6 +96,7 @@ module SnapDiff
         "[snap_diff] Report: #{output_path}" if @finalized
       end
 
+      # Attach available contributions and return the rendered HTML report.
       def render
         attach_annotations
         ERB.new(File.read(self.class.template_path)).result(binding)
@@ -112,6 +113,7 @@ module SnapDiff
 
       private
 
+      # Build a report entry from a comparison, omitting unavailable images and metrics.
       def failure_entry_for(name, compare)
         difference = compare.difference
         {

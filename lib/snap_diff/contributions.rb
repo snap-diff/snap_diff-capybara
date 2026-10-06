@@ -51,6 +51,8 @@ module SnapDiff
         @mutex.synchronize { !@suppression.nil? }
       end
 
+      # Ask the current suppressor to evaluate a screenshot difference.
+      # Return its {source:, text:} waiver, or nil when no gate waives the failure.
       def suppression_for(name, difference)
         @mutex.synchronize { @suppression }&.suppress(name, difference)
       end

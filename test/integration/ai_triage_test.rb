@@ -23,6 +23,8 @@ class AiTriageTest < ActiveSupport::TestCase
     | test/(?:unit/(?:reporters/ai_simple_test|contributions_test)\.rb|integration/ai_triage_test\.rb|fixtures/ai_triage_case\.rb)
   )\z}x
 
+  # Decide whether to run AI integration tests from the files changed against origin/master.
+  # Run unconditionally when forced, on master, or when Git cannot determine the changes.
   def self.ai_surface_changed?
     return true if ENV["RUN_AI_TESTS"] == "1"
     # capture2 (stdout only) + status: with capture2e a missing ref prints
