@@ -30,6 +30,13 @@ kept as history. This entry is the one to read if you are coming from **1.15.1**
   is offline CLIP via the `informers` gem; custom backends (local VLM,
   decision APIs) register by name via `SnapDiff::AI.register`. Zero new hard
   dependencies. See `docs/ai.md`.
+- **Report contributions registry.** Core reporters and the assertion failure
+  message no longer reference the AI module at all: `SnapDiff::Contributions`
+  is the single extension point (Minitest/SimpleCov style — modules
+  self-register, core renders plain `{source:, text:, data:}` payloads).
+  Loading `snap_diff/ai` opts into annotations; `fail_on:` claims the one
+  failure-suppression slot. Any module can contribute annotations the same
+  way. See `docs/ai.md`.
 
 ### Upgrading from 1.15.1: change the version, run your suite
 

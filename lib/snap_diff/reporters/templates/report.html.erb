@@ -274,7 +274,15 @@
         '<div class="thumb-img-wrap"><img src="' + esc(thumb) + '" alt="" loading="lazy"/></div>' +
         '<div class="thumb-footer">' +
           '<div class="thumb-name">' + esc(item.name) + '</div>' +
-          (item.ai && item.ai.verdict ? '<span class="ai-badge' + aiClass(item.ai.verdict) + '">' + esc(item.ai.verdict.replace('_', ' ')) + '</span>' : '') +
+          (item.annotations || []).map(function(note) {
+            var v = note.data && note.data.verdict;
+            /* verdict annotations badge the verdict; text-only ones
+               (TicketLinker, ...) must show their text or they render
+               as a bare source label */
+            var label = note.source.toUpperCase() +
+              (v ? ': ' + v.replace('_', ' ') : (note.text ? ': ' + note.text : ''));
+            return '<span class="ai-badge' + (v ? aiClass(v) : '') + '">' + esc(label) + '</span>';
+          }).join(' ') +
           '<span class="thumb-badge ' + (hasDiff ? 'thumb-badge-fail' : 'thumb-badge-pass') + '">' + badgeText + '</span>' +
         '</div>';
       btn.addEventListener('click', function() { selectItem(+this.dataset.idx); });
@@ -311,20 +319,32 @@
     }
     topBadge.className = 'diff-badge ' + (hasDiff ? 'diff-badge-fail' : 'diff-badge-pass');
 
-    /* AI triage strip: shown only when an advisory verdict exists */
+    /* Contribution strip: the verdict layout when a contributor supplied
+       one (AI triage), source + text for text-only annotations */
     var aiBar = $('ai-bar');
-    if (item.ai && item.ai.verdict) {
+    var note = (item.annotations || []).find(function(a) { return a.data && a.data.verdict; });
+    if (note) {
+      var d = note.data;
       var aiV = $('ai-verdict');
-      aiV.textContent = 'AI: ' + item.ai.verdict.replace('_', ' ');
-      aiV.className = 'ai-badge' + aiClass(item.ai.verdict);
+      aiV.textContent = note.source.toUpperCase() + ': ' + d.verdict.replace('_', ' ');
+      aiV.className = 'ai-badge' + aiClass(d.verdict);
       var bits = [];
-      if (item.ai.similarity != null) bits.push('similarity ' + item.ai.similarity);
-      if (item.ai.confidence != null) bits.push('confidence ' + item.ai.confidence);
-      if (item.ai.summary) bits.push(item.ai.summary);
+      if (d.similarity != null) bits.push('similarity ' + d.similarity);
+      if (d.confidence != null) bits.push('confidence ' + d.confidence);
+      if (d.summary) bits.push(d.summary);
       $('ai-text').textContent = bits.join(' · ');
       aiBar.className = 'visible';
     } else {
-      aiBar.className = '';
+      var plain = (item.annotations || [])[0];
+      if (plain) {
+        var plainV = $('ai-verdict');
+        plainV.textContent = plain.source.toUpperCase();
+        plainV.className = 'ai-badge';
+        $('ai-text').textContent = plain.text || '';
+        aiBar.className = 'visible';
+      } else {
+        aiBar.className = '';
+      }
     }
 
     /* Resolve image sources based on view + annotated toggle */

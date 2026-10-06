@@ -19,17 +19,22 @@ class AiTriageTest < ActiveSupport::TestCase
   # Force with RUN_AI_TESTS=1. Fails OPEN: when git can't tell (shallow
   # checkout, no origin/master) or we're on master, the tests run.
   AI_SURFACE = %r{\A(?:
-    lib/snap_diff/(?:ai\.rb|reporters/ai_simple\.rb)
-    | test/(?:unit/reporters/ai_simple_test\.rb|integration/ai_triage_test\.rb|fixtures/ai_triage_case\.rb)
+    lib/snap_diff/(?:ai\.rb|contributions\.rb|reporters/ai_simple\.rb)
+    | test/(?:unit/(?:reporters/ai_simple_test|contributions_test)\.rb|integration/ai_triage_test\.rb|fixtures/ai_triage_case\.rb)
   )\z}x
 
+  # Decide whether to run AI integration tests from the files changed against origin/master.
+  # Run unconditionally when forced, on master, or when Git cannot determine the changes.
   def self.ai_surface_changed?
     return true if ENV["RUN_AI_TESTS"] == "1"
-    branch, = Open3.capture2e("git", "rev-parse", "--abbrev-ref", "HEAD")
+    # capture2 (stdout only) + status: with capture2e a missing ref prints
+    # "fatal: ..." INTO the string and looks like a valid merge-base.
+    branch, = Open3.capture2("git", "rev-parse", "--abbrev-ref", "HEAD")
     return true if branch.strip == "master"
-    merge_base, = Open3.capture2e("git", "merge-base", "HEAD", "origin/master")
-    return true if merge_base.strip.empty?
-    changed, = Open3.capture2e("git", "diff", "--name-only", merge_base.strip, "HEAD")
+    merge_base, status = Open3.capture2("git", "merge-base", "HEAD", "origin/master")
+    return true unless status.success? && !merge_base.strip.empty?
+    changed, status = Open3.capture2("git", "diff", "--name-only", merge_base.strip, "HEAD")
+    return true unless status.success?
     changed.split("\n").any? { |path| path.match?(AI_SURFACE) }
   end
 

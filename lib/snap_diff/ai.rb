@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require "snap_diff/contributions"
+
 # Optional AI triage. A backend is any object responding to
 # #call(name:, base:, current:, meta:) -> Hash; register one by name or
 # pass an instance. Builders run lazily, so optional gems load only when
@@ -7,8 +9,9 @@
 # unless a reporter is configured with fail_on: (see AISimple).
 #
 # Results live in a process-wide store so ANY consumer can read them --
-# the AISimple reporter writes, the HTML reporter annotates from it, the
-# fail-gate consults it. Keyed by screenshot name; later writes win.
+# the AISimple reporter writes, and reports pick them up through the
+# SnapDiff::Contributions registry (no consumer names this module).
+# Keyed by screenshot name; later writes win.
 module SnapDiff
   module AI
     # The only verdicts a backend may return; anything else maps to
@@ -20,16 +23,14 @@ module SnapDiff
     @mutex = Mutex.new
 
     class << self
-      # Optional fail-gate, set by AISimple when configured with fail_on:.
-      # ScreenshotAssertion#validate consults it on a pixel diff: verdicts
-      # the gate accepts suppress the failure, the rest still fail.
-      attr_accessor :gate
+      # Report contribution (SnapDiff::Contributions): whatever the store
+      # holds for this screenshot, rendered one line plus the raw payload.
+      def annotate(name)
+        result = self[name]
+        result && {source: "ai", text: format(result), data: result}
+      end
 
-      def gated_result(name, difference) = gate&.gated_result(name, difference)
-
-      # No gate -> everything fails, exactly as without AI.
-      def fails?(verdict) = gate ? gate.fails?(verdict) : true
-
+      # Register a lazy backend factory under a symbolic name, replacing any prior factory.
       def register(name, &build)
         @mutex.synchronize { @backends[name.to_sym] = build }
       end
@@ -113,3 +114,8 @@ module SnapDiff
 end
 
 require "snap_diff/ai/backends/clip"
+
+# Minitest-style self-registration: loading this file opts into
+# annotating reports. Core (HTML reporter, assertion message) only ever
+# talks to SnapDiff::Contributions and never references this module.
+SnapDiff::Contributions.register(SnapDiff::AI)

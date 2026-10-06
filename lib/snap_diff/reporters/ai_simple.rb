@@ -33,9 +33,13 @@ module SnapDiff
         # fresh regression.
         @memo = {}
         @memo_mutex = Mutex.new
-        AI.gate = self if @fail_on
+        # The one failure-gate slot in SnapDiff::Contributions -- core
+        # consults it without knowing AI exists.
+        Contributions.register_suppression(self) if @fail_on
       end
 
+      # Analyze differing assertions and store their results, reusing gate-time analysis.
+      # Do nothing when the backend is unavailable.
       def record(assertions)
         return unless @backend
 
@@ -47,15 +51,24 @@ module SnapDiff
         end
       end
 
-      # Fail-gate entry point, called by ScreenshotAssertion#validate on a
-      # pixel diff. Analysis runs there (before the error message is
-      # built) and is memoized, so #record never re-analyzes.
-      def gated_result(name, difference)
-        return unless @fail_on && @backend
+      # Failure-gate contract (SnapDiff::Contributions), consulted by
+      # ScreenshotAssertion#validate on a pixel diff, before the error
+      # message is built. Analysis is memoized, so #record never
+      # re-analyzes. Returns {source:, text:} to waive the failure,
+      # nil to let it stand. "unknown" ALWAYS fails -- AI can downgrade
+      # a diff, never vouch for one it could not classify.
+      def suppress(name, difference)
+        return unless @backend
 
-        analyze_once(name, difference)
+        # nil analysis (the backend raised) -> the pixel failure stands.
+        result = analyze_once(name, difference)
+        return unless result
+
+        {source: "ai", text: AI.format(result)} unless fails?(result[:verdict])
       end
 
+      # Return whether a verdict must fail under the configured fail_on policy.
+      # Unknown verdicts always fail; requires a reporter configured with fail_on.
       def fails?(verdict) = verdict == "unknown" || @fail_on.include?(verdict)
 
       # Results are already in the shared store -- nothing to write out.

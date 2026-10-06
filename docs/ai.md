@@ -18,18 +18,37 @@ One line per diff in the test output, and — automatically, via the
 shared store — a verdict badge plus one-line summary per failure in
 `snap_diff_report.html`. No files, no duplicate storage.
 
-## How the HTML report gets AI annotations
+## How reports get AI annotations
 
-Both reporters read the same shared store: `AISimple` writes each result
-into `SnapDiff::AI` (keyed by screenshot name), and the HTML reporter
-attaches `SnapDiff::AI[name]` to the failure entry — behind a `defined?`
-guard, so `html.rb` never requires the AI module and nothing changes
-when AI triage isn't loaded. No wiring between the two reporters:
+Core never names the AI module. It exposes one registry,
+`SnapDiff::Contributions`, and loading `snap_diff/ai` self-registers
+into it — the same shape as Minitest plugins appending to the
+`CompositeReporter`, or SimpleCov formatters receiving a plain payload:
+
+- `AISimple` writes each result into the shared `SnapDiff::AI` store
+  (keyed by screenshot name).
+- `SnapDiff::AI.annotate(name)` adapts a stored result to the generic
+  `{source:, text:, data:}` contribution shape.
+- The HTML reporter and the assertion failure message ask
+  `Contributions.annotations_for(name)` and render whatever comes back —
+  empty when AI was never loaded, so the no-AI report is byte-clean.
 
 ```ruby
 require "snap_diff/reporters/html"       # already auto-registers
-require "snap_diff/reporters/ai_simple"
+require "snap_diff/reporters/ai_simple"  # self-registers into Contributions
 SnapDiff::Reporting.register(SnapDiff::Reporters::AISimple.new)
+```
+
+Your own module can contribute the same way — no edits to core:
+
+```ruby
+module TicketLinker
+  def self.annotate(name)
+    ticket = JIRA_FOR[name]
+    ticket && {source: "jira", text: ticket}
+  end
+end
+SnapDiff::Contributions.register(TicketLinker)
 ```
 
 The report then shows, per failure: an `AI: real bug` / `AI: flaky` badge
@@ -47,11 +66,12 @@ parent before the report renders.
 ## Architecture
 
 ```
-lib/snap_diff/ai.rb                  # backend registry, verdict thresholds, shared result store
+lib/snap_diff/contributions.rb       # core registry: annotations + the one failure gate
+lib/snap_diff/ai.rb                  # backend registry, verdict thresholds, shared store; self-registers
 lib/snap_diff/ai/backends/clip.rb    # built-in offline backend (informers)
-lib/snap_diff/reporters/ai_simple.rb # record/finalize/summary; writes the store
-lib/snap_diff/reporters/html.rb      # annotates failures from the store (defined? guard)
-lib/snap_diff/screenshot_assertion.rb# validate: fail-gate + AI line in the failure message
+lib/snap_diff/reporters/ai_simple.rb # record/finalize/summary; suppression via Contributions
+lib/snap_diff/reporters/html.rb      # renders Contributions.annotations_for — no AI reference
+lib/snap_diff/screenshot_assertion.rb# validate: Contributions gate + annotation lines
 ```
 
 A backend is any object with `#call(name:, base:, current:, meta:) -> Hash`.

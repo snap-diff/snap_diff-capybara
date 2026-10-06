@@ -96,8 +96,9 @@ module SnapDiff
         "[snap_diff] Report: #{output_path}" if @finalized
       end
 
+      # Attach available contributions and return the rendered HTML report.
       def render
-        attach_ai_annotations
+        attach_annotations
         ERB.new(File.read(self.class.template_path)).result(binding)
       end
 
@@ -112,6 +113,7 @@ module SnapDiff
 
       private
 
+      # Build a report entry from a comparison, omitting unavailable images and metrics.
       def failure_entry_for(name, compare)
         difference = compare.difference
         {
@@ -127,19 +129,18 @@ module SnapDiff
         }.compact
       end
 
-      # Advisory AI triage annotations, attached at RENDER time: HTML
-      # records before the AI reporter (auto-registration runs first) and
-      # fork-parallel merges land after record, so only the final render
-      # can see every verdict. HTML never requires the AI module -- the
-      # annotation appears iff the user opted into AI triage.
-      def attach_ai_annotations
-        return unless defined?(SnapDiff::AI)
-
+      # Contributed annotations (AI triage, ...), attached at RENDER
+      # time: HTML records before contributing reporters
+      # (auto-registration runs first) and fork-parallel merges land
+      # after record, so only the final render can see everything.
+      # HTML never names a contributor -- it renders whatever
+      # SnapDiff::Contributions returns, empty by default.
+      def attach_annotations
         failures.each do |entry|
-          # || would create a nil :ai key on misses; keep the entry clean.
-          if (annotation = SnapDiff::AI[entry[:name]])
-            entry[:ai] ||= annotation
-          end
+          # ||= would create a nil :annotations key on misses; keep the
+          # entry clean.
+          annotations = SnapDiff::Contributions.annotations_for(entry[:name])
+          entry[:annotations] ||= annotations unless annotations.empty?
         end
       end
 
