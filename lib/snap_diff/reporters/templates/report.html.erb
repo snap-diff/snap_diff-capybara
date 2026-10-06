@@ -276,8 +276,12 @@
           '<div class="thumb-name">' + esc(item.name) + '</div>' +
           (item.annotations || []).map(function(note) {
             var v = note.data && note.data.verdict;
-            return '<span class="ai-badge' + (v ? aiClass(v) : '') + '">' +
-              esc(note.source.toUpperCase() + (v ? ': ' + v.replace('_', ' ') : '')) + '</span>';
+            /* verdict annotations badge the verdict; text-only ones
+               (TicketLinker, ...) must show their text or they render
+               as a bare source label */
+            var label = note.source.toUpperCase() +
+              (v ? ': ' + v.replace('_', ' ') : (note.text ? ': ' + note.text : ''));
+            return '<span class="ai-badge' + (v ? aiClass(v) : '') + '">' + esc(label) + '</span>';
           }).join(' ') +
           '<span class="thumb-badge ' + (hasDiff ? 'thumb-badge-fail' : 'thumb-badge-pass') + '">' + badgeText + '</span>' +
         '</div>';
@@ -315,8 +319,8 @@
     }
     topBadge.className = 'diff-badge ' + (hasDiff ? 'diff-badge-fail' : 'diff-badge-pass');
 
-    /* Contribution strip (AI triage, ...): shown when a contributor
-       supplied a verdict payload */
+    /* Contribution strip: the verdict layout when a contributor supplied
+       one (AI triage), source + text for text-only annotations */
     var aiBar = $('ai-bar');
     var note = (item.annotations || []).find(function(a) { return a.data && a.data.verdict; });
     if (note) {
@@ -331,7 +335,16 @@
       $('ai-text').textContent = bits.join(' · ');
       aiBar.className = 'visible';
     } else {
-      aiBar.className = '';
+      var plain = (item.annotations || [])[0];
+      if (plain) {
+        var plainV = $('ai-verdict');
+        plainV.textContent = plain.source.toUpperCase();
+        plainV.className = 'ai-badge';
+        $('ai-text').textContent = plain.text || '';
+        aiBar.className = 'visible';
+      } else {
+        aiBar.className = '';
+      }
     }
 
     /* Resolve image sources based on view + annotated toggle */

@@ -25,9 +25,11 @@ module SnapDiff
     class << self
       # Register a report contributor. The provider must respond to
       # #annotate(name), returning {source:, text:, data: (optional)}
-      # or nil. Registering the same object twice is a no-op.
+      # or nil. Registering the same object twice is a no-op -- identity,
+      # not ==: two distinct providers that happen to compare equal
+      # (e.g. Structs with equal fields) must BOTH contribute.
       def register(provider)
-        @mutex.synchronize { @providers << provider unless @providers.include?(provider) }
+        @mutex.synchronize { @providers << provider unless @providers.any? { |p| p.equal?(provider) } }
       end
 
       # All contributions for one screenshot, in registration order.

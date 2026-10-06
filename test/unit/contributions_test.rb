@@ -8,19 +8,17 @@ class ContributionsTest < Minitest::Test
   end
 
   def setup
-    # Other tests may have loaded AI and filled its store; annotations
-    # must start from a known-empty state regardless of test order.
+    # Snapshot the shared registry and restore it afterwards -- other
+    # tests (and ai.rb's load-time self-registration) rely on providers
+    # registered before this file runs.
+    @saved_providers = SnapDiff::Contributions.instance_variable_get(:@providers).dup
+    SnapDiff::Contributions.instance_variable_get(:@providers).clear
     SnapDiff::AI.clear_results! if defined?(SnapDiff::AI)
   end
 
   def teardown
     SnapDiff::Contributions.register_suppression(nil)
-    SnapDiff::Contributions.instance_variable_get(:@providers).clear
-    # ai.rb self-registers on load; other tests rely on that, so put it
-    # back if the AI module is around.
-    if defined?(SnapDiff::AI)
-      SnapDiff::Contributions.register(SnapDiff::AI)
-    end
+    SnapDiff::Contributions.instance_variable_set(:@providers, @saved_providers)
   end
 
   def test_annotations_empty_without_providers
@@ -41,6 +39,13 @@ class ContributionsTest < Minitest::Test
     2.times { SnapDiff::Contributions.register(provider) }
 
     assert_equal 1, SnapDiff::Contributions.annotations_for("x").size
+  end
+
+  def test_distinct_providers_that_compare_equal_both_contribute
+    # Structs with equal fields are == but NOT the same provider.
+    2.times { SnapDiff::Contributions.register(Provider.new({source: "ai", text: "t"})) }
+
+    assert_equal 2, SnapDiff::Contributions.annotations_for("x").size
   end
 
   def test_no_suppressor_by_default

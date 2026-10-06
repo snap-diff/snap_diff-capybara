@@ -185,6 +185,19 @@ class AISimpleReporterTest < Minitest::Test
     assert_includes message, "AI triage: UNKNOWN"
   end
 
+  def test_gate_lets_the_failure_stand_when_analysis_fails
+    # The backend raising must not turn validation itself into an error:
+    # the screenshot mismatch is the failure the developer needs.
+    exploding = ->(name:, base:, current:, meta:) { raise "model server unreachable" }
+    SnapDiff::Reporters::AISimple.new(backend: exploding, fail_on: %w[real_bug])
+
+    message = nil
+    _out, err = capture_io { message = gate_assertion("checkout").validate }
+
+    assert_includes message, "Screenshot does not match for 'checkout'"
+    assert_includes err, "Backend failed"
+  end
+
   def test_gate_analysis_is_memoized_for_the_reporter_pass
     calls = 0
     counting_backend = ->(name:, base:, current:, meta:) {
@@ -295,6 +308,11 @@ class AIHtmlReporterMixTest < Minitest::Test
 
   def setup
     SnapDiff::AI.clear_results!
+    @saved_providers = SnapDiff::Contributions.instance_variable_get(:@providers).dup
+  end
+
+  def teardown
+    SnapDiff::Contributions.instance_variable_set(:@providers, @saved_providers)
   end
 
   def html_reporter(dir)
@@ -363,6 +381,26 @@ class AIHtmlReporterMixTest < Minitest::Test
       reporter.failures.each { |entry| refute entry.key?(:annotations) }
       html = File.read(File.join(dir, "report.html"))
       refute_includes html, '"annotations":'
+    end
+  end
+
+  def test_text_only_contribution_renders_its_text
+    # A contributor without a verdict payload (the documented
+    # TicketLinker shape) must still show its text, not a bare label.
+    linker = Object.new
+    linker.define_singleton_method(:annotate) { |name| {source: "jira", text: "PROJ-123"} }
+    SnapDiff::Contributions.instance_variable_get(:@providers) << linker
+
+    Dir.mktmpdir do |dir|
+      reporter = html_reporter(dir)
+      reporter.record([failed_assertion("checkout")])
+      reporter.finalize
+
+      html = File.read(File.join(dir, "report.html"))
+      assert_includes html, '"source":"jira"'
+      assert_includes html, '"text":"PROJ-123"'
+      # and the sidebar badge JS renders the text, not just the source
+      assert_includes html, "note.text"
     end
   end
 end

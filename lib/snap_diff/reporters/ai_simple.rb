@@ -58,7 +58,10 @@ module SnapDiff
       def suppress(name, difference)
         return unless @backend
 
+        # nil analysis (the backend raised) -> the pixel failure stands.
         result = analyze_once(name, difference)
+        return unless result
+
         {source: "ai", text: AI.format(result)} unless fails?(result[:verdict])
       end
 
