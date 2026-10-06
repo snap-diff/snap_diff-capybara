@@ -81,6 +81,16 @@
     .thumb-badge-fail { background: var(--red-dim); color: var(--red); }
     .thumb-badge-pass { background: var(--green-dim); color: var(--green); }
 
+    /* ── AI triage ─────────────────────────────────────────────────── */
+    .ai-badge { font-size: .625rem; font-family: var(--font-mono); font-weight: 600; padding: .1rem .375rem; border-radius: 10px; white-space: nowrap; flex-shrink: 0; }
+    .ai-real_bug { background: var(--red-dim); color: var(--red); }
+    .ai-intentional { background: rgba(251,146,60,.15); color: var(--orange); }
+    .ai-flaky { background: var(--green-dim); color: var(--green); }
+    .ai-unknown { background: var(--bg4); color: var(--text2); }
+    #ai-bar { display: none; align-items: center; gap: .5rem; padding: .3rem .75rem; background: var(--bg3); border-bottom: 1px solid var(--border); font-size: .6875rem; color: var(--text2); flex-shrink: 0; }
+    #ai-bar.visible { display: flex; }
+    #ai-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+
     /* ── Main ────────────────────────────────────────────────────────── */
     #main { flex: 1; overflow: hidden; display: flex; flex-direction: column; background: var(--bg); }
 
@@ -202,6 +212,8 @@
       </button>
     </div>
 
+    <div id="ai-bar"><span id="ai-verdict" class="ai-badge"></span><span id="ai-text"></span></div>
+
     <div id="view-area">
       <div id="view-inner"></div>
     </div>
@@ -239,6 +251,10 @@
 
   /* ── Sidebar ──────────────────────────────────────────────────────── */
   function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+  var AI_VERDICTS = ['real_bug', 'intentional', 'flaky', 'unknown'];
+  /* Class suffix only for known verdicts: a backend's verdict is model
+     output, and model output is not trusted enough for a class attribute. */
+  function aiClass(v) { return AI_VERDICTS.indexOf(v) !== -1 ? ' ai-' + v : ''; }
 
   function buildSidebar() {
     sidebarList.innerHTML = '';
@@ -258,6 +274,7 @@
         '<div class="thumb-img-wrap"><img src="' + esc(thumb) + '" alt="" loading="lazy"/></div>' +
         '<div class="thumb-footer">' +
           '<div class="thumb-name">' + esc(item.name) + '</div>' +
+          (item.ai && item.ai.verdict ? '<span class="ai-badge' + aiClass(item.ai.verdict) + '">' + esc(item.ai.verdict.replace('_', ' ')) + '</span>' : '') +
           '<span class="thumb-badge ' + (hasDiff ? 'thumb-badge-fail' : 'thumb-badge-pass') + '">' + badgeText + '</span>' +
         '</div>';
       btn.addEventListener('click', function() { selectItem(+this.dataset.idx); });
@@ -293,6 +310,22 @@
       topBadge.textContent = hasDiff ? 'changed' : 'pass';
     }
     topBadge.className = 'diff-badge ' + (hasDiff ? 'diff-badge-fail' : 'diff-badge-pass');
+
+    /* AI triage strip: shown only when an advisory verdict exists */
+    var aiBar = $('ai-bar');
+    if (item.ai && item.ai.verdict) {
+      var aiV = $('ai-verdict');
+      aiV.textContent = 'AI: ' + item.ai.verdict.replace('_', ' ');
+      aiV.className = 'ai-badge' + aiClass(item.ai.verdict);
+      var bits = [];
+      if (item.ai.similarity != null) bits.push('similarity ' + item.ai.similarity);
+      if (item.ai.confidence != null) bits.push('confidence ' + item.ai.confidence);
+      if (item.ai.summary) bits.push(item.ai.summary);
+      $('ai-text').textContent = bits.join(' · ');
+      aiBar.className = 'visible';
+    } else {
+      aiBar.className = '';
+    }
 
     /* Resolve image sources based on view + annotated toggle */
     var ann = state.annotated;

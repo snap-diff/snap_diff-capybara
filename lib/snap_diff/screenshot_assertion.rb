@@ -64,7 +64,19 @@ module SnapDiff
       return unless compare
 
       if compare.different?
-        "Screenshot does not match for '#{name}': #{compare.error_message}\n#{caller.join("\n")}"
+        # Optional AI gate (SnapDiff::Reporters::AISimple with fail_on:):
+        # the verdict is computed here, before the message is built, so
+        # the failure text can quote it and accepted verdicts can skip it.
+        ai = SnapDiff::AI.gated_result(name, compare.difference) if defined?(SnapDiff::AI) && SnapDiff::AI.gate
+        if ai && !SnapDiff::AI.fails?(ai[:verdict])
+          $stdout.puts "[snap_diff:ai] #{name}: failure suppressed -- #{SnapDiff::AI.format(ai)}"
+          return nil
+        end
+
+        message = "Screenshot does not match for '#{name}': #{compare.error_message}\n#{caller.join("\n")}"
+        ai ||= SnapDiff::AI[name] if defined?(SnapDiff::AI)
+        message += "\n  AI triage: #{SnapDiff::AI.format(ai)}" if ai
+        message
       else
         archive_baseline!
         nil

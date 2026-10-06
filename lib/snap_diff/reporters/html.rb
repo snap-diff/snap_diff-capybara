@@ -97,6 +97,7 @@ module SnapDiff
       end
 
       def render
+        attach_ai_annotations
         ERB.new(File.read(self.class.template_path)).result(binding)
       end
 
@@ -123,7 +124,23 @@ module SnapDiff
           diff_level: difference.ratio && (difference.ratio * 100).round(2),
           area_size: difference.region_area_size,
           max_color_distance: difference.meta[:max_color_distance]&.round(1)
-        }
+        }.compact
+      end
+
+      # Advisory AI triage annotations, attached at RENDER time: HTML
+      # records before the AI reporter (auto-registration runs first) and
+      # fork-parallel merges land after record, so only the final render
+      # can see every verdict. HTML never requires the AI module -- the
+      # annotation appears iff the user opted into AI triage.
+      def attach_ai_annotations
+        return unless defined?(SnapDiff::AI)
+
+        failures.each do |entry|
+          # || would create a nil :ai key on misses; keep the entry clean.
+          if (annotation = SnapDiff::AI[entry[:name]])
+            entry[:ai] ||= annotation
+          end
+        end
       end
 
       def resolve_image(path)

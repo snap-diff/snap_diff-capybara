@@ -127,4 +127,12 @@ still run.
 
 Full details in [Custom reporters](snapdiff.md#custom-reporters).
 
+## AI triage reporter
+
+`SnapDiff::Reporters::AISimple` is an optional reporter: it classifies each
+failed comparison as `flaky` / `intentional` / `real_bug` (offline CLIP by
+default, pluggable backends) and its verdicts show up in this HTML report as
+badges. Advisory by default — it never changes pass/fail unless you opt in
+with `fail_on: %w[real_bug]`. Setup and recipes: [AI triage](ai.md).
+
 [← Back to README](../README.md)

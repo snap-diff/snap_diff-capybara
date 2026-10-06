@@ -237,6 +237,28 @@ After tests run, open `doc/screenshots/snap_diff_report.html`:
 
 See [Web UI & Custom Reporters](docs/reporters.md) for full feature details and [CI Integration](docs/ci-integration.md) for GitHub Actions setup.
 
+## AI-Assisted Triage (optional)
+
+AI tells you *which* failures to look at first. One line enables offline
+CLIP triage — every failed comparison is classified as `flaky` /
+`intentional` / `real_bug`, logged per diff, quoted in the failure message,
+and badged in the HTML report (all via one shared in-memory store — no
+files). Advisory by
+default; pass `fail_on: %w[real_bug]` to keep the suite green on flaky and
+intentional diffs and fail only on what AI calls a real bug:
+
+```ruby
+# Gemfile
+gem "informers"   # offline CLIP via ONNX, no API key
+
+# test/test_helper.rb
+require "snap_diff/reporters/ai_simple"
+SnapDiff::Reporting.register(SnapDiff::Reporters::AISimple.new)
+```
+
+Plug in your own backend (a local VLM, a decision API) with
+`SnapDiff::AI.register(:name) { ... }` — see [AI triage](docs/ai.md).
+
 ## Compare Any Two Images
 
 Works without a browser — PDFs, generated images, CI artifacts:
@@ -328,6 +350,7 @@ instead of failing quietly — useful when `snap_diff_report.html` is missing en
 - [Image Processing Drivers](docs/drivers.md) — VIPS, ChunkyPNG, perceptual threshold
 - [Screenshot Organization](docs/organization.md) — groups, sections, cropping, multi-browser
 - [Web UI & Custom Reporters](docs/reporters.md) — interactive report, custom reporters
+- [AI-Assisted Triage](docs/ai.md) — optional flaky/intentional/real_bug classification, pluggable backends
 
 ## Development
 

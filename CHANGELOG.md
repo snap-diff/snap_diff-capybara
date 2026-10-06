@@ -18,6 +18,19 @@ green while comparing nothing**, and all four are fixed here — that is the rea
 The sections below the divider are the prerelease notes (alpha1 → beta3) and are
 kept as history. This entry is the one to read if you are coming from **1.15.1**.
 
+### Added
+
+- **AI triage (optional, offline-first, advisory by default).** `SnapDiff::Reporters::AISimple`
+  classifies every failed comparison as `flaky` / `intentional` / `real_bug`,
+  logs one line per diff, quotes the verdict in the failure message, and
+  annotates the HTML report with a verdict badge and summary — all via one
+  shared in-memory store (`SnapDiff::AI`), no files written. With
+  `fail_on: %w[real_bug]` the verdict gates pass/fail:
+  flaky/intentional diffs stay green, `unknown` always fails. Default backend
+  is offline CLIP via the `informers` gem; custom backends (local VLM,
+  decision APIs) register by name via `SnapDiff::AI.register`. Zero new hard
+  dependencies. See `docs/ai.md`.
+
 ### Upgrading from 1.15.1: change the version, run your suite
 
 ```ruby

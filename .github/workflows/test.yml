@@ -50,7 +50,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
+      # Full history: AI integration tests skip themselves unless the AI
+      # surface changed vs origin/master (no merge-base in a shallow clone).
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
 
       - uses: ./.github/actions/setup-ruby-and-dependencies
         with:
@@ -71,6 +75,10 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
+        # Full history: AI integration tests skip themselves unless the AI
+        # surface changed vs origin/master (no merge-base in a shallow clone).
+        with:
+          fetch-depth: 0
 
       - uses: ./.github/actions/setup-ruby-and-dependencies
         with:
@@ -107,10 +115,9 @@ jobs:
       contains(github.event.pull_request.labels.*.name, 'full-ci')
     needs: [ functional-test ]
     runs-on: ubuntu-latest
-    # Must fit `max_attempts * timeout_minutes` below, plus ~1 min of setup,
-    # or the last attempt gets killed mid-run and the cell reports `cancelled`
-    # -- a dead gate. JRuby: 1 + 20 + 20 = 41. MRI: 1 + 4 + 4 = 9.
-    timeout-minutes: ${{ contains(matrix.ruby-version, 'jruby') && 41 || 9 }}
+    # ~1 min of setup plus one 4-min attempt; re-measure if the suite grows
+    # into it -- a killed attempt reports `cancelled`, a dead gate.
+    timeout-minutes: 6
     continue-on-error: ${{ matrix.experimental }}
     strategy:
       matrix:
@@ -131,17 +138,12 @@ jobs:
           - ruby-version: "4.0"
             gemfile: edge_gems.rb
             experimental: true
-          # One cell: JRuby's differences (no Kernel#fork, thread semantics,
-          # the FFI/vips path) are JVM-level, not Rails-level.
-          - ruby-version: jruby-10.1
-            gemfile: rails81_gems.rb
-            experimental: false
 
     env:
       BUNDLE_GEMFILE: gemfiles/${{ matrix.gemfile }}
       # JRuby is the only place ruby-vips' FFI path runs on a non-MRI engine.
       # Test Drivers covers both backends on CRuby.
-      SCREENSHOT_DRIVER: ${{ contains(matrix.ruby-version, 'jruby') && 'vips' || 'chunky_png' }}
+      SCREENSHOT_DRIVER: chunky_png
 
     steps:
       - uses: actions/checkout@v7
@@ -152,15 +154,45 @@ jobs:
           ruby-cache-version: ${{ matrix.ruby-version }}-${{ matrix.gemfile }}-1
           cache-apt-packages: true
 
-      - name: Run tests (with 1 retry)
+      # Measured, not chosen: slowest MRI attempt is ~146s. The suite has
+      # timed out before when it grew into this -- re-measure then.
+      - run: bin/rake test
+        timeout-minutes: 4
+
+  matrix-jruby:
+    name: Test JRuby
+    # The single most expensive cell (~12 min x up to 2 attempts): JRuby's
+    # differences (no Kernel#fork, thread semantics, FFI/vips) are JVM-level,
+    # so the weekly drift check covers them. Not on every master push.
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    needs: [ functional-test ]
+    runs-on: ubuntu-latest
+    # 1 min setup + 20 + 20: the retry below exists only for the
+    # intermittent JRuby teardown hang (#244).
+    timeout-minutes: 41
+    strategy:
+      matrix:
+        ruby-version: [ jruby-10.1 ]
+        gemfile: [ rails81_gems.rb ]
+
+    env:
+      BUNDLE_GEMFILE: gemfiles/${{ matrix.gemfile }}
+      # The one place ruby-vips' FFI path runs on a non-MRI engine.
+      SCREENSHOT_DRIVER: vips
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: ./.github/actions/setup-ruby-and-dependencies
+        with:
+          ruby-version: ${{ matrix.ruby-version }}
+          ruby-cache-version: ${{ matrix.ruby-version }}-${{ matrix.gemfile }}-1
+          cache-apt-packages: true
+
+      - name: Run tests (with 1 retry for the #244 teardown hang)
         uses: nick-fields/retry@v4
         with:
-          # Measured, not chosen: slowest attempt is ~880s JRuby, ~146s MRI.
-          # Both have timed out before when the suite grew into them -- when
-          # that happens, re-measure and raise this AND timeout-minutes above.
-          timeout_minutes: ${{ contains(matrix.ruby-version, 'jruby') && 20 || 4 }}
-          # Exists only for the intermittent JRuby teardown hang (#244).
-          # Once that is fixed, drop to 1 and halve the JRuby bill.
+          timeout_minutes: 20
           max_attempts: 2
           command: bin/rake test
 
@@ -213,8 +245,9 @@ jobs:
     # gemfile, so a rule listing them stops requiring anything the moment the
     # matrix changes shape. `skipped` passes -- the matrix is off on PRs.
     if: always()
-    needs: [ test-minimal-setup, functional-test, matrix, matrix-screenshot-driver ]
+    needs: [ test-minimal-setup, functional-test, matrix, matrix-jruby, matrix-screenshot-driver ]
     runs-on: ubuntu-latest
+    timeout-minutes: 2
     steps:
       - if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
         run: exit 1
