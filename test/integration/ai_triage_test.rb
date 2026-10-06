@@ -19,8 +19,8 @@ class AiTriageTest < ActiveSupport::TestCase
   # Force with RUN_AI_TESTS=1. Fails OPEN: when git can't tell (shallow
   # checkout, no origin/master) or we're on master, the tests run.
   AI_SURFACE = %r{\A(?:
-    lib/snap_diff/(?:ai\.rb|reporters/ai_simple\.rb)
-    | test/(?:unit/reporters/ai_simple_test\.rb|integration/ai_triage_test\.rb|fixtures/ai_triage_case\.rb)
+    lib/snap_diff/(?:ai\.rb|contributions\.rb|reporters/ai_simple\.rb)
+    | test/(?:unit/(?:reporters/ai_simple_test|contributions_test)\.rb|integration/ai_triage_test\.rb|fixtures/ai_triage_case\.rb)
   )\z}x
 
   def self.ai_surface_changed?

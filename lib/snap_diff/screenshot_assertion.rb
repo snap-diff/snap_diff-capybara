@@ -64,18 +64,20 @@ module SnapDiff
       return unless compare
 
       if compare.different?
-        # Optional AI gate (SnapDiff::Reporters::AISimple with fail_on:):
-        # the verdict is computed here, before the message is built, so
-        # the failure text can quote it and accepted verdicts can skip it.
-        ai = SnapDiff::AI.gated_result(name, compare.difference) if defined?(SnapDiff::AI) && SnapDiff::AI.gate
-        if ai && !SnapDiff::AI.fails?(ai[:verdict])
-          $stdout.puts "[snap_diff:ai] #{name}: failure suppressed -- #{SnapDiff::AI.format(ai)}"
+        # Optional contribution gate (e.g. AI triage with fail_on:): a
+        # registered suppressor runs BEFORE the message is built, so a
+        # waived diff never fails and a standing failure can quote what
+        # the contributors know. any_suppressor? keeps the no-gate path
+        # from even touching compare.difference.
+        if Contributions.any_suppressor? && (suppressed = Contributions.suppression_for(name, compare.difference))
+          $stdout.puts "[snap_diff:#{suppressed[:source]}] #{name}: failure suppressed -- #{suppressed[:text]}"
           return nil
         end
 
         message = "Screenshot does not match for '#{name}': #{compare.error_message}\n#{caller.join("\n")}"
-        ai ||= SnapDiff::AI[name] if defined?(SnapDiff::AI)
-        message += "\n  AI triage: #{SnapDiff::AI.format(ai)}" if ai
+        Contributions.annotations_for(name).each do |note|
+          message += "\n  #{note[:source].upcase} triage: #{note[:text]}"
+        end
         message
       else
         archive_baseline!

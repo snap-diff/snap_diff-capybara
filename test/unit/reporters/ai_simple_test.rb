@@ -30,7 +30,7 @@ class AISimpleReporterTest < Minitest::Test
   end
 
   def teardown
-    SnapDiff::AI.gate = nil
+    SnapDiff::Contributions.register_suppression(nil)
   end
 
   def gate_assertion(name, different: true)
@@ -317,9 +317,11 @@ class AIHtmlReporterMixTest < Minitest::Test
       reporter.finalize
 
       checkout, plain = reporter.failures
-      assert_equal "real_bug", checkout[:ai][:verdict]
-      assert_equal "CTA clipped", checkout[:ai][:summary]
-      refute plain.key?(:ai)
+      annotation = checkout[:annotations].find { |a| a[:source] == "ai" }
+      assert_equal "real_bug", annotation[:data][:verdict]
+      assert_equal "CTA clipped", annotation[:data][:summary]
+      assert_equal "REAL_BUG (clip, similarity=0.7312) -- CTA clipped", annotation[:text]
+      refute plain.key?(:annotations)
     end
   end
 
@@ -332,7 +334,7 @@ class AIHtmlReporterMixTest < Minitest::Test
       SnapDiff::AI.record_result(name: "checkout", verdict: "flaky", backend: "clip", similarity: 0.9912)
       reporter.finalize
 
-      assert_equal "flaky", reporter.failures.first[:ai][:verdict]
+      assert_equal "flaky", reporter.failures.first[:annotations].first[:data][:verdict]
     end
   end
 
@@ -351,16 +353,16 @@ class AIHtmlReporterMixTest < Minitest::Test
   end
 
   def test_rendered_report_without_ai_stays_clean
-    # AI not enabled (store empty): entries must not gain an :ai key, and
-    # the serialized DATA must contain no ai annotations at all.
+    # AI not enabled (store empty): entries must not gain an :annotations
+    # key, and the serialized DATA must contain no annotations at all.
     Dir.mktmpdir do |dir|
       reporter = html_reporter(dir)
       reporter.record([failed_assertion("checkout"), failed_assertion("plain")])
       reporter.finalize
 
-      reporter.failures.each { |entry| refute entry.key?(:ai) }
+      reporter.failures.each { |entry| refute entry.key?(:annotations) }
       html = File.read(File.join(dir, "report.html"))
-      refute_includes html, '"ai":'
+      refute_includes html, '"annotations":'
     end
   end
 end

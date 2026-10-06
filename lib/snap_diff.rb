@@ -47,6 +47,7 @@ SnapDiff.assert_single_gem!
 require "capybara/dsl"
 require "snap_diff/config"
 require "snap_diff/comparison"
+require "snap_diff/contributions"
 require "snap_diff/legacy_shims"
 require "snap_diff/version"
 # SnapDiff.session/.reset/.pending_screenshots_message are part of the
