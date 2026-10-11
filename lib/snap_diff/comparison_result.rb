@@ -59,8 +59,9 @@ module SnapDiff
       region.nil? || region_area_size.zero?
     end
 
+    # Not memoized: build_null freezes its result, and Region#size is cheap.
     def region_area_size
-      @region_area_size ||= region&.size || 0
+      region&.size || 0
     end
 
     def ratio

@@ -86,6 +86,44 @@ class HTMLReporterTest < ActiveSupport::TestCase
     assert_includes @output_path.read, "valid"
   end
 
+  # A dimension change fails with a frozen null ComparisonResult (no
+  # region, failed_by: {different_dimensions: true}). Recording it used to
+  # raise FrozenError, which #record swallowed, so the screenshot was
+  # counted but silently left out of the report.
+  test "#record reports a dimension change instead of skipping it" do
+    reporter = SnapDiff::Reporters::HTML.new(output_path: @output_path)
+
+    reporter.record([build_dimension_change_assertion("resized")])
+
+    entry = reporter.failures.sole
+    assert_equal "resized", entry[:name]
+    assert_equal "80x80 => 80x60", entry[:dimensions_changed]
+    assert entry[:original], "the baseline must be shown"
+    assert entry[:new], "the new capture must be shown"
+
+    reporter.finalize
+    assert @output_path.exist?, "a run whose only failure is a dimension change still gets a report"
+    assert_includes @output_path.read, "resized"
+  end
+
+  # Annotated and heatmap images are only drawn for same-size images. Any
+  # on disk for this name are left over from an earlier, same-size failure
+  # and describe a different comparison, so the entry must not link them.
+  test "#record links no annotated images for a dimension change" do
+    reporter = SnapDiff::Reporters::HTML.new(output_path: @output_path)
+    assertion = build_dimension_change_assertion("stale")
+    stale = assertion.compare.reporter
+    [stale.annotated_image_path, stale.annotated_base_image_path, stale.heatmap_diff_path]
+      .each { |path| FileUtils.cp(assertion.compare.image_path, path) }
+
+    reporter.record([assertion])
+
+    entry = reporter.failures.sole
+    assert_nil entry[:diff]
+    assert_nil entry[:base_diff]
+    assert_nil entry[:heatmap]
+  end
+
   test "HTML reporter defaults to screenshot root path" do
     reporter = SnapDiff::Reporters::HTML.new
     expected = SnapDiff.config.root / SnapDiff.config.save_path / "snap_diff_report.html"
@@ -222,6 +260,14 @@ class HTMLReporterTest < ActiveSupport::TestCase
 
   def build_failing_assertion(name)
     compare = make_comparison(:a, :b, destination: "fail_#{name}")
+    compare.processed
+
+    SnapDiff::ScreenshotAssertion.new(name).tap { |a| a.compare = compare }
+  end
+
+  # a.png is 80x80, a_cropped.png is 80x60.
+  def build_dimension_change_assertion(name)
+    compare = make_comparison(:a, :a_cropped, destination: "resized_#{name}")
     compare.processed
 
     SnapDiff::ScreenshotAssertion.new(name).tap { |a| a.compare = compare }
