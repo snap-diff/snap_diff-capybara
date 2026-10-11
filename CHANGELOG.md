@@ -402,6 +402,10 @@ One removal 2.0 cannot warn about, written down instead: the legacy `LOADED_DRIV
   reading its `area_size` raised `FrozenError`, which the reporter swallowed unless
   `DEBUG` was set. The entry shows the baseline, the new capture and both sizes, and
   says why it has no heatmap or annotations
+- **An error while building a report entry no longer hides the screenshot.** The HTML
+  reporter warns on stderr without `DEBUG` (`[snap_diff] HTML report: could not render
+  'name' (Error: message)`) and keeps the screenshot in the report as "could not render",
+  counted as failed, instead of dropping it and counting it as passed
 
 ### Known limitations
 - **One process per worker** (`parallel_tests`, RSpec, CI sharding) still writes one

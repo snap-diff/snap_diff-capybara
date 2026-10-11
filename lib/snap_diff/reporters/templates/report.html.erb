@@ -131,6 +131,7 @@
     .img-box[data-zoom="100"] img { width: 100%; height: 100%; }
     .img-empty { height: 100%; display: flex; align-items: center; justify-content: center; padding: 1rem; font-size: .75rem; line-height: 1.5; color: var(--text2); }
     .img-empty p { max-width: 42em; margin: 0; }
+    .img-empty a { color: var(--accent); }
 
     /* Single image */
     .view-single { width: 100%; height: 100%; display: flex; flex-direction: column; }
@@ -268,12 +269,13 @@
       btn.dataset.idx = idx;
       /* Thumbnail: annotated mode → heatmap; normal → new image (no annotation) */
       var thumb = state.annotated ? (item.heatmap || item.new || item.original || '') : (item.new || item.original || '');
-      var hasDiff = item.diff || item.heatmap || item.dimensions_changed;
-      var badgeText = item.dimensions_changed ? 'resized'
+      var hasDiff = item.diff || item.heatmap || item.dimensions_changed || item.error;
+      var badgeText = item.error ? 'error'
+        : item.dimensions_changed ? 'resized'
         : hasDiff ? (item.diff_level != null ? item.diff_level + '%' : 'changed')
         : 'pass';
       btn.innerHTML =
-        '<div class="thumb-img-wrap"><img src="' + esc(thumb) + '" alt="" loading="lazy"/></div>' +
+        '<div class="thumb-img-wrap">' + (thumb ? '<img src="' + esc(thumb) + '" alt="" loading="lazy"/>' : '') + '</div>' +
         '<div class="thumb-footer">' +
           '<div class="thumb-name">' + esc(item.name) + '</div>' +
           (item.annotations || []).map(function(note) {
@@ -326,8 +328,10 @@
     topTitle.textContent = item.name;
     var pos = filtered.indexOf(state.current);
     navCounter.textContent = (pos + 1) + '/' + filtered.length;
-    var hasDiff = item.diff || item.heatmap || item.dimensions_changed;
-    if (item.dimensions_changed) {
+    var hasDiff = item.diff || item.heatmap || item.dimensions_changed || item.error;
+    if (item.error) {
+      topBadge.textContent = 'could not render';
+    } else if (item.dimensions_changed) {
       topBadge.textContent = 'dimensions changed: ' + item.dimensions_changed;
     } else if (hasDiff && item.diff_level != null) {
       topBadge.textContent = item.diff_level + '% diff';
@@ -375,7 +379,15 @@
     var newLbl  = !ann ? 'Current'  : item.diff      ? 'Annotated New'  : 'Current (not annotated)';
 
     var html = '';
-    switch (state.view) {
+    /* The report failed to build this entry: say so in every view instead of empty images */
+    switch (item.error ? 'error' : state.view) {
+      case 'error':
+        html = '<div class="view-single"><div class="img-box"><div class="img-empty"><p>' +
+          'Could not render this screenshot: ' + esc(item.error) + '. ' +
+          'The test output has its result. Please report this error at ' +
+          '<a href="https://github.com/snap-diff/snap_diff-capybara/issues">github.com/snap-diff/snap_diff-capybara/issues</a>.' +
+          '</p></div></div></div>';
+        break;
       case 'both':
         html = '<div class="view-both">' +
           '<div class="img-panel"><div class="img-label"><span class="dot-base"></span> ' + baseLbl + '</div><div class="img-box"><img src="' + esc(baseImg) + '" alt="Base"/></div></div>' +

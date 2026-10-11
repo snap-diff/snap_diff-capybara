@@ -31,15 +31,22 @@ module SnapDiff
         total = 0
 
         assertions.each do |assertion|
+          counted = false
           compare = assertion.compare
           next unless compare
 
           total += 1
+          counted = true
           next unless compare.difference&.different?
 
           failures << failure_entry_for(assertion.name, compare)
         rescue => e
-          warn "[snap_diff] Reporter skipped '#{assertion.name}': #{e.message}" if ENV["DEBUG"]
+          # A report bug must not hide a screenshot: warn, and keep it listed
+          # (counted as failed: the report can't vouch for it).
+          error = "#{e.class}: #{e.message}"
+          warn "[snap_diff] HTML report: could not render '#{assertion.name}' (#{error})"
+          total += 1 unless counted
+          failures << {name: assertion.name, error: error}
         end
 
         @mutex.synchronize do

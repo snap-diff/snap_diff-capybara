@@ -332,8 +332,9 @@ You do not need a flag to keep the diff images — a failing run leaves `.diff.p
 deletes them (`SnapManager#cleanup!` is this repository's own test-harness call, not
 something your suite runs).
 
-`DEBUG=1` does one thing: it makes the HTML reporter print why it skipped an assertion
-instead of failing quietly — useful when `snap_diff_report.html` is missing entries.
+Nor do you need a flag to see report problems: if the HTML reporter cannot render a
+screenshot, it prints `[snap_diff] HTML report: could not render '<name>' (<error>)` and
+still lists the screenshot in `snap_diff_report.html`, marked "could not render".
 </details>
 
 ## Installation

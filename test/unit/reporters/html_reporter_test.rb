@@ -69,21 +69,31 @@ class HTMLReporterTest < ActiveSupport::TestCase
     assert_includes html, "3 total"
   end
 
-  test "#record tolerates broken assertions without crashing" do
+  # An entry that fails to build must not vanish, nor sink the report: it is
+  # warned about, kept as "could not render", and counted as failed.
+  test "#record keeps an entry it could not build, says so, and renders the rest" do
     reporter = SnapDiff::Reporters::HTML.new(output_path: @output_path)
+    broken = SnapDiff::ScreenshotAssertion.new("broken").tap { |a| a.compare = Object.new }
 
-    broken = SnapDiff::ScreenshotAssertion.new("broken")
-    broken.compare = Object.new # will raise on .difference
+    _out, err = capture_io { reporter.record([broken, build_failing_assertion("valid")]) }
 
-    valid = build_failing_assertion("valid")
-
-    assert_nothing_raised do
-      reporter.record([broken, valid])
-    end
+    assert_match(/\[snap_diff\] HTML report: could not render 'broken' \(NoMethodError: .*difference/, err)
+    entry = reporter.failures.find { |e| e[:name] == "broken" }
+    assert_match(/\ANoMethodError: .*difference/, entry[:error])
+    assert_equal [2, 0], [reporter.failed, reporter.passed], "an entry the report can't vouch for is not a pass"
 
     reporter.finalize
-    assert @output_path.exist?
     assert_includes @output_path.read, "valid"
+  end
+
+  test "#record counts an entry that fails before its comparison is read" do
+    reporter = SnapDiff::Reporters::HTML.new(output_path: @output_path)
+    broken = SnapDiff::ScreenshotAssertion.new("broken")
+    broken.define_singleton_method(:compare) { raise "no compare" }
+
+    capture_io { reporter.record([broken]) }
+
+    assert_equal [1, 1, 0], [reporter.total, reporter.failed, reporter.passed]
   end
 
   # A dimension change fails with a frozen null ComparisonResult (no
