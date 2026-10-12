@@ -22,14 +22,14 @@ done
 docker build . -t csd:test || exit 1
 
 # Run setup
-(docker run $DOCKER_ENV_ARGS -v ${PWD}:/app -v csd-bundle-cache:/bundle --rm csd:test bin/setup) || exit 1
+(docker run --ulimit core=0 $DOCKER_ENV_ARGS -v ${PWD}:/app -v csd-bundle-cache:/bundle --rm csd:test bin/setup) || exit 1
 
 # Run tests with different drivers
 echo "Running tests..."
 DRIVERS=("cuprite" "selenium_chrome_headless" "selenium_headless")
 for driver in "${DRIVERS[@]}"; do
   echo "Running tests with $driver driver..."
-  docker run $DOCKER_ENV_ARGS -e CAPYBARA_DRIVER="$driver" \
+  docker run --ulimit core=0 $DOCKER_ENV_ARGS -e CAPYBARA_DRIVER="$driver" \
     -v ${PWD}:/app -v csd-bundle-cache:/bundle --rm -t csd:test \
     bin/rake test "$@" || exit 1
 done
