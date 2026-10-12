@@ -663,8 +663,9 @@ screenshot 'index', skip_area: [[0, 0, 64, 48], [17, 6, 27, 16], 'css_selector .
 
 ### Skipping stack frames in the error output
 
-If you would like to override the `screenshot` method or for some other reason would like to skip stack
-frames when reporting image differences, you can use the `skip_stack_frames` option:
+A failed screenshot's message ends with the line of your code that took it: the first frame outside
+snap_diff, installed gems and Ruby's own library. A helper in your project that wraps `screenshot` is
+your code too, so its own line is reported unless it skips its frame with the `skip_stack_frames` option:
 
 ```ruby
 test 'test visiting the index' do

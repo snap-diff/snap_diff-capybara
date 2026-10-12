@@ -392,6 +392,11 @@ One removal 2.0 cannot warn about, written down instead: the legacy `LOADED_DRIV
   carried the `diff_mask` image into the error text (`"diff_mask":"#<Vips::Image:0x…>"`,
   or a `{"ptr":{}…}` struct depending on the driver); it is excluded now
 - Reporter failure warnings use one brand and name the failing reporter class
+- **A failed screenshot names the line that took it, instead of the whole call stack.**
+  The message ends with one `path:line`: the first frame outside snap_diff, installed
+  gems and Ruby's own library, so `expect(page).to match_screenshot` names the spec line
+  too. A project helper wrapping `screenshot` is reported itself unless it passes
+  `skip_stack_frames: 1` (see docs/configuration.md)
 
 ### Known limitations
 - **One process per worker** (`parallel_tests`, RSpec, CI sharding) still writes one

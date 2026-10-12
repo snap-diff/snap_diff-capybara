@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 require "fileutils"
+require "rbconfig"
+require_relative "error_with_filtered_backtrace"
 require_relative "screenshot_namer"
 require_relative "reporting"
 
@@ -76,7 +78,7 @@ module SnapDiff
           return nil
         end
 
-        message = "Screenshot does not match for '#{name}': #{compare.error_message}\n#{caller.join("\n")}"
+        message = ["Screenshot does not match for '#{name}': #{compare.error_message}", call_site].compact.join("\n")
         Contributions.annotations_for(name).each do |note|
           message += "\n  #{note[:source].upcase} triage: #{note[:text]}"
         end
@@ -121,6 +123,45 @@ module SnapDiff
       test_screenshot_errors.compact!
 
       test_screenshot_errors.empty? ? nil : test_screenshot_errors
+    end
+
+    private
+
+    FRAME = /\A(.+?):(\d+)(?::in |\z)/
+    private_constant :FRAME
+
+    # The line of the user's code that took the screenshot: the first frame
+    # in a real file outside this gem, installed gems and Ruby's own library.
+    # Matchers and helpers in between (e.g. rspec-expectations under
+    # match_screenshot) are skipped without counting their depth.
+    def call_site
+      frames = Array(caller)
+      frame = frames.find { |candidate| user_code?(candidate) } || frames.first
+      path, line = frame&.match(FRAME)&.captures
+      path ? "#{display_path(path)}:#{line}" : frame
+    end
+
+    def user_code?(frame)
+      path = frame[FRAME, 1] or return false
+      return false unless File.file?(path)
+
+      expanded = File.expand_path(path)
+      library_roots.none? { |root| expanded.start_with?(root) }
+    end
+
+    def library_roots
+      ruby_dirs = RbConfig::CONFIG.values_at("rubylibdir", "sitelibdir", "vendorlibdir")
+      [BacktraceFilter::LIB_DIRECTORY, *Gem.path, Gem.default_dir, *ruby_dirs]
+        .reject { |dir| dir.to_s.empty? }
+        .map { |dir| File.expand_path(dir) + File::SEPARATOR }
+    end
+
+    # Relative to the configured root when the file is inside it, as the
+    # failure message's artifact paths are; otherwise as Ruby recorded it,
+    # which resolves from where the test command ran.
+    def display_path(path)
+      relative = Pathname(path).expand_path.relative_path_from(SnapDiff.config.root).to_path
+      relative.start_with?("..") ? path : relative
     end
   end
 
