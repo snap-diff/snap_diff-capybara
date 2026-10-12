@@ -22,6 +22,28 @@ class ScreenshoterTest < ActiveSupport::TestCase
     assert mock.verify
   end
 
+  # A click would move the pointer onto the input, so it renders hovered in
+  # every later screenshot, and it would fire the page's click handlers.
+  test "#take_screenshot gives focus back to the blurred input without clicking it" do
+    screenshoter = SnapDiff::Screenshoter.new({wait: nil}, {driver: :chunky_png})
+    input = Object.new # no #click: clicking it raises
+
+    session = ::Minitest::Mock.new
+    session.expect(:evaluate_script, input, [SnapDiff::BrowserHelpers::FIND_ACTIVE_ELEMENT_SCRIPT])
+    session.expect(:save_screenshot, true) { |path| path.include?("01_a.png") }
+    session.expect(:execute_script, nil, ["arguments[0].focus()", input])
+
+    SnapDiff.config.stub(:blur_active_element, true) do
+      SnapDiff::BrowserHelpers.stub(:session, session) do
+        screenshoter.stub(:process_screenshot, true) do
+          screenshoter.take_screenshot(Pathname.new("tmp/01_a.png"))
+        end
+      end
+    end
+
+    assert session.verify
+  end
+
   test "#take_screenshot with custom screenshot options" do
     screenshoter = SnapDiff::Screenshoter.new(
       {wait: nil, capybara_screenshot_options: {full: true}},

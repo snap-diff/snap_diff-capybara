@@ -4,7 +4,13 @@ require "snap_diff/os"
 
 ENV["CAPYBARA_DRIVER"] ||= "cuprite"
 
-SCREEN_SIZE = [800, 600]
+VIEWPORT_SIZE = [800, 600].freeze
+# The window size. Selenium sizes the outer window, so this is padded by the
+# browser's toolbars to keep the viewport (what screenshots capture) at
+# VIEWPORT_SIZE. Firefox's padding is filled in (in place) when its driver
+# starts, so code that may run with Firefox must read SCREEN_SIZE only after
+# Capybara.page, or keep a reference to it rather than a copy.
+SCREEN_SIZE = VIEWPORT_SIZE.dup
 if ENV["CAPYBARA_DRIVER"] == "selenium_chrome_headless" && SnapDiff::Os.name == "linux"
   SCREEN_SIZE[1] += 87 # Add extra space for address field etc.
 end
@@ -87,6 +93,23 @@ Capybara.register_driver :selenium_chrome_headless do |app|
   CHROME_ARGS.each { browser_options.add_argument("--#{_1}=#{_2}") }
   Capybara::Selenium::Driver.new(app, :browser => :chrome, options_key => browser_options).tap do |driver|
     driver.browser.manage.window.size = Selenium::WebDriver::Dimension.new(*SCREEN_SIZE)
+  end
+end
+
+# Same as Capybara's built-in :selenium_headless, plus the padding. Linux only:
+# the macos baselines were recorded unpadded. Firefox's toolbar height varies
+# by version and window width, so it is measured at the viewport width.
+if SnapDiff::Os.name == "linux"
+  Capybara.register_driver :selenium_headless do |app|
+    version = Capybara::Selenium::Driver.load_selenium
+    options_key = Capybara::Selenium::Driver::CAPS_VERSION.satisfied_by?(version) ? :capabilities : :options
+    browser_options = Selenium::WebDriver::Firefox::Options.new
+    browser_options.add_argument("-headless")
+    Capybara::Selenium::Driver.new(app, :browser => :firefox, options_key => browser_options).tap do |driver|
+      driver.browser.manage.window.resize_to(*VIEWPORT_SIZE)
+      toolbars = driver.browser.execute_script("return [outerWidth - innerWidth, outerHeight - innerHeight]")
+      SCREEN_SIZE.replace(VIEWPORT_SIZE.zip(toolbars).map(&:sum))
+    end
   end
 end
 
