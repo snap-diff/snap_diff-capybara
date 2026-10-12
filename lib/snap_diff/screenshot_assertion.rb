@@ -78,11 +78,9 @@ module SnapDiff
           return nil
         end
 
-        message = ["Screenshot does not match for '#{name}': #{compare.error_message}", call_site].compact.join("\n")
-        Contributions.annotations_for(name).each do |note|
-          message += "\n  #{note[:source].upcase} triage: #{note[:text]}"
-        end
-        message
+        # The call site goes last, after what contributors say about the diff.
+        notes = Contributions.annotations_for(name).map { |note| "  #{note[:source].upcase} triage: #{note[:text]}" }
+        ["Screenshot does not match for '#{name}': #{compare.error_message}", *notes, call_site].compact.join("\n")
       else
         archive_baseline!
         nil
@@ -158,10 +156,13 @@ module SnapDiff
 
     # Relative to the configured root when the file is inside it, as the
     # failure message's artifact paths are; otherwise as Ruby recorded it,
-    # which resolves from where the test command ran.
+    # which resolves from where the test command ran. That includes a path
+    # Pathname can't relate to the root at all, such as one on another drive.
     def display_path(path)
       relative = Pathname(path).expand_path.relative_path_from(SnapDiff.config.root).to_path
       relative.start_with?("..") ? path : relative
+    rescue ArgumentError
+      path
     end
   end
 
