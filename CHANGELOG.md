@@ -392,6 +392,10 @@ One removal 2.0 cannot warn about, written down instead: the legacy `LOADED_DRIV
   carried the `diff_mask` image into the error text (`"diff_mask":"#<Vips::Image:0x…>"`,
   or a `{"ptr":{}…}` struct depending on the driver); it is excluded now
 - Reporter failure warnings use one brand and name the failing reporter class
+- **Inputs no longer render hovered in screenshots after `blur_active_element`.**
+  After each capture it used to click the input it had blurred. The click moved the
+  pointer onto it, so the input rendered hovered in later screenshots (Firefox 157
+  draws that darker), and it fired the page's click handlers. It now calls `focus()`
 
 ### Known limitations
 - **One process per worker** (`parallel_tests`, RSpec, CI sharding) still writes one

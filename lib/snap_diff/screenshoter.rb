@@ -44,7 +44,7 @@ module SnapDiff
       # Take browser screenshot and save
       save_and_process_screenshot(screenshot_path)
 
-      blurred_input&.click
+      BrowserHelpers.restore_focus(blurred_input) if blurred_input
     end
 
     def process_screenshot(stored_path, screenshot_path)

@@ -97,6 +97,13 @@ module SnapDiff
       session.evaluate_script(FIND_ACTIVE_ELEMENT_SCRIPT)
     end
 
+    # Focus, not click: a click moves the pointer onto the input, so it renders
+    # hovered in later screenshots, fires the page's click handlers, and can
+    # move the caret.
+    def self.restore_focus(element)
+      session.execute_script("arguments[0].focus()", element)
+    end
+
     GET_BOUNDING_CLIENT_RECT_SCRIPT = <<~JS
       [
         this.getBoundingClientRect().left,

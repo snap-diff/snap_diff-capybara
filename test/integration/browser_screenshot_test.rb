@@ -75,8 +75,13 @@ class BrowserScreenshotTest < SystemTestCase
     SnapDiff.config.blur_active_element = true
     visit "/"
     fill_in "First Field:", with: "Test Input With Hide Caret"
+    # After fill_in, which may click on some drivers.
+    execute_script("window.clicks = 0; document.getElementById('first-field').addEventListener('click', () => window.clicks++)")
 
     assert_matches_screenshot "index-blur_active_element-enabled"
+
+    assert_equal "first-field", evaluate_script("document.activeElement.id"), "focus is given back after the screenshot"
+    assert_equal 0, evaluate_script("window.clicks"), "giving focus back must not click the input"
   ensure
     SnapDiff.config.blur_active_element = nil
   end
