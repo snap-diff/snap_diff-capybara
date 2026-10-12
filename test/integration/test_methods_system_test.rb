@@ -15,7 +15,16 @@ class TestMethodsSystemTest < ActionDispatch::SystemTestCase
   include SnapDiff::DSL
   include DSLStub
 
-  driven_by :selenium, using: :headless_chrome
+  # Docker (bin/dtest) has no user namespaces for Chrome's sandbox.
+  driven_by(:selenium, using: :headless_chrome) { |options| options.add_argument("--no-sandbox") }
+
+  # Rails resets the sessions after a system test but leaves this :selenium
+  # driver current, so every later non-system test would open Chrome with it.
+  def after_teardown
+    super
+  ensure
+    Capybara.use_default_driver
+  end
 
   def test_current_capybara_driver_class_do_not_spawn_new_process_when_we_use_system_test_cases
     # NOTE: There is possible that we have several drivers usage in the one suite,
