@@ -3,6 +3,11 @@ set -euo pipefail
 IFS=$'\n\t'
 set -vx
 
+ruby -e 'exit Gem::Version.new(RUBY_VERSION) >= Gem::Version.new("3.2")' || {
+  echo "bin/setup: Ruby 3.2+ required, got $(ruby -e 'print RUBY_VERSION') at $(command -v ruby)" >&2
+  exit 1
+}
+
 bundle update --all
 bundle update --bundler --ruby
 
