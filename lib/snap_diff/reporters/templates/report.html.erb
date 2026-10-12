@@ -129,6 +129,9 @@
     .img-box img { display: block; object-fit: contain; transform-origin: 0 0; }
     /* At 100% zoom, image fills the box */
     .img-box[data-zoom="100"] img { width: 100%; height: 100%; }
+    .img-empty { height: 100%; display: flex; align-items: center; justify-content: center; padding: 1rem; font-size: .75rem; line-height: 1.5; color: var(--text2); }
+    .img-empty p { max-width: 42em; margin: 0; }
+    .img-empty a { color: var(--accent); }
 
     /* Single image */
     .view-single { width: 100%; height: 100%; display: flex; flex-direction: column; }
@@ -266,12 +269,13 @@
       btn.dataset.idx = idx;
       /* Thumbnail: annotated mode → heatmap; normal → new image (no annotation) */
       var thumb = state.annotated ? (item.heatmap || item.new || item.original || '') : (item.new || item.original || '');
-      var hasDiff = item.diff || item.heatmap;
-      var badgeText = hasDiff
-        ? (item.diff_level != null ? item.diff_level + '%' : 'changed')
+      var hasDiff = item.diff || item.heatmap || item.dimensions_changed || item.error;
+      var badgeText = item.error ? 'error'
+        : item.dimensions_changed ? 'resized'
+        : hasDiff ? (item.diff_level != null ? item.diff_level + '%' : 'changed')
         : 'pass';
       btn.innerHTML =
-        '<div class="thumb-img-wrap"><img src="' + esc(thumb) + '" alt="" loading="lazy"/></div>' +
+        '<div class="thumb-img-wrap">' + (thumb ? '<img src="' + esc(thumb) + '" alt="" loading="lazy"/>' : '') + '</div>' +
         '<div class="thumb-footer">' +
           '<div class="thumb-name">' + esc(item.name) + '</div>' +
           (item.annotations || []).map(function(note) {
@@ -303,6 +307,19 @@
   function selectNext() { var p = filtered.indexOf(state.current); if (p < filtered.length - 1) selectItem(filtered[p + 1]); }
   function selectPrev() { var p = filtered.indexOf(state.current); if (p > 0) selectItem(filtered[p - 1]); }
 
+  /* A failure has no heatmap when the images differ in size, or when the
+     image driver produced no difference mask. Say which, and what to do. */
+  function noHeatmapReason(item) {
+    if (item.dimensions_changed) {
+      return 'No heatmap: the screenshot changed size (' + item.dimensions_changed + '). ' +
+        'Heatmaps and annotations compare pixel by pixel, so they need both images at the same size; ' +
+        'compare Baseline and Current instead. If the new size is intended, commit the new screenshot to accept it. ' +
+        'If not, the layout changed, or the browser window size or pixel ratio differs from the run that recorded the baseline.';
+    }
+    return 'No heatmap: the image driver produced no difference mask for this comparison. ' +
+      'The chunky_png driver never produces one; vips does.';
+  }
+
   /* ── Render ───────────────────────────────────────────────────────── */
   function render() {
     var item = DATA[state.current];
@@ -311,8 +328,12 @@
     topTitle.textContent = item.name;
     var pos = filtered.indexOf(state.current);
     navCounter.textContent = (pos + 1) + '/' + filtered.length;
-    var hasDiff = item.diff || item.heatmap;
-    if (hasDiff && item.diff_level != null) {
+    var hasDiff = item.diff || item.heatmap || item.dimensions_changed || item.error;
+    if (item.error) {
+      topBadge.textContent = 'could not render';
+    } else if (item.dimensions_changed) {
+      topBadge.textContent = 'dimensions changed: ' + item.dimensions_changed;
+    } else if (hasDiff && item.diff_level != null) {
       topBadge.textContent = item.diff_level + '% diff';
     } else {
       topBadge.textContent = hasDiff ? 'changed' : 'pass';
@@ -353,11 +374,20 @@
     var newImg  = ann ? (item.diff || item.new || '')          : (item.new || '');
     var heatImg = item.heatmap || '';
 
-    var baseLbl = ann ? 'Annotated Base' : 'Baseline';
-    var newLbl  = ann ? 'Annotated New'  : 'Current';
+    /* Label what is shown: without annotated files the toggle falls back to the plain images */
+    var baseLbl = !ann ? 'Baseline' : item.base_diff ? 'Annotated Base' : 'Baseline (not annotated)';
+    var newLbl  = !ann ? 'Current'  : item.diff      ? 'Annotated New'  : 'Current (not annotated)';
 
     var html = '';
-    switch (state.view) {
+    /* The report failed to build this entry: say so in every view instead of empty images */
+    switch (item.error ? 'error' : state.view) {
+      case 'error':
+        html = '<div class="view-single"><div class="img-box"><div class="img-empty"><p>' +
+          'Could not render this screenshot: ' + esc(item.error) + '. ' +
+          'The test output has its result. Please report this error at ' +
+          '<a href="https://github.com/snap-diff/snap_diff-capybara/issues">github.com/snap-diff/snap_diff-capybara/issues</a>.' +
+          '</p></div></div></div>';
+        break;
       case 'both':
         html = '<div class="view-both">' +
           '<div class="img-panel"><div class="img-label"><span class="dot-base"></span> ' + baseLbl + '</div><div class="img-box"><img src="' + esc(baseImg) + '" alt="Base"/></div></div>' +
@@ -371,7 +401,9 @@
         html = '<div class="view-single"><div class="img-label"><span class="dot-new"></span> ' + newLbl + '</div><div class="img-box"><img src="' + esc(newImg) + '" alt="New"/></div></div>';
         break;
       case 'heatmap':
-        html = '<div class="view-single"><div class="img-label"><span class="dot-heat"></span> Heatmap</div><div class="img-box"><img src="' + esc(heatImg) + '" alt="Heatmap"/></div></div>';
+        html = '<div class="view-single"><div class="img-label"><span class="dot-heat"></span> Heatmap</div><div class="img-box">' +
+          (heatImg ? '<img src="' + esc(heatImg) + '" alt="Heatmap"/>' : '<div class="img-empty"><p>' + esc(noHeatmapReason(item)) + '</p></div>') +
+          '</div></div>';
         break;
     }
     viewInner.innerHTML = html;

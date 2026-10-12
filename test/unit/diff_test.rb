@@ -70,7 +70,7 @@ class DiffTest < ActiveSupport::TestCase
   test "does not fail when fail_on_difference is false and screenshots differ" do
     SnapDiff.config.stub(:fail_on_difference, false) do
       test_case = SampleMiniTestCase.new(:_test_sample_screenshot_error)
-      test_case.run
+      without_reporters { test_case.run }
       assert_equal 0, test_case.failures.size
     end
   end
@@ -123,7 +123,7 @@ class DiffTest < ActiveSupport::TestCase
   test "aggregates failures on teardown for Minitest" do
     test_case = SampleMiniTestCase.new(:_test_sample_screenshot_error)
 
-    test_case.run
+    without_reporters { test_case.run }
 
     assert_equal 1, test_case.failures.size
     assert_includes test_case.failures.first.message, "expected error message"
@@ -135,7 +135,7 @@ class DiffTest < ActiveSupport::TestCase
 
     expected_message =
       "Screenshot does not match for 'sample_screenshot' expected error message for non minitest"
-    assert_raises(SnapDiff::ExpectationNotMet, expected_message) { test_case.teardown }
+    assert_raises(SnapDiff::ExpectationNotMet, expected_message) { without_reporters { test_case.teardown } }
     assert_empty(SnapDiff.session.assertions)
   end
 
@@ -232,6 +232,18 @@ class DiffTest < ActiveSupport::TestCase
         assert_stored_screenshot("a.png")
       end
     end
+  end
+
+  # The sample cases script a Minitest::Mock comparison for exactly what
+  # verification reads. The registered reporters (HTML) read more, run off
+  # the script and warn about it, so keep them out of these cases.
+  def without_reporters
+    original = SnapDiff::Reporting.mutex.synchronize do
+      SnapDiff::Reporting.reporters.dup.tap { SnapDiff::Reporting.reporters.clear }
+    end
+    yield
+  ensure
+    SnapDiff::Reporting.mutex.synchronize { SnapDiff::Reporting.reporters.replace(original) } if original
   end
 
   def screenshot_dir

@@ -396,6 +396,16 @@ One removal 2.0 cannot warn about, written down instead: the legacy `LOADED_DRIV
   After each capture it used to click the input it had blurred. The click moved the
   pointer onto it, so the input rendered hovered in later screenshots (Firefox 157
   draws that darker), and it fired the page's click handlers. It now calls `focus()`
+- **A screenshot that changed size is in the HTML report.** It was counted in the
+  summary line but left out of `snap_diff_report.html` (and a run whose only failures
+  were size changes wrote no report at all): the null comparison result is frozen, and
+  reading its `area_size` raised `FrozenError`, which the reporter swallowed unless
+  `DEBUG` was set. The entry shows the baseline, the new capture and both sizes, and
+  says why it has no heatmap or annotations
+- **An error while building a report entry no longer hides the screenshot.** The HTML
+  reporter warns on stderr without `DEBUG` (`[snap_diff] HTML report: could not render
+  'name' (Error: message)`) and keeps the screenshot in the report as "could not render",
+  counted as failed, instead of dropping it and counting it as passed
 
 ### Known limitations
 - **One process per worker** (`parallel_tests`, RSpec, CI sharding) still writes one

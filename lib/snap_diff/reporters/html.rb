@@ -31,15 +31,22 @@ module SnapDiff
         total = 0
 
         assertions.each do |assertion|
+          counted = false
           compare = assertion.compare
           next unless compare
 
           total += 1
+          counted = true
           next unless compare.difference&.different?
 
           failures << failure_entry_for(assertion.name, compare)
         rescue => e
-          warn "[snap_diff] Reporter skipped '#{assertion.name}': #{e.message}" if ENV["DEBUG"]
+          # A report bug must not hide a screenshot: warn, and keep it listed
+          # (counted as failed: the report can't vouch for it).
+          error = "#{e.class}: #{e.message}"
+          warn "[snap_diff] HTML report: could not render '#{assertion.name}' (#{error})"
+          total += 1 unless counted
+          failures << {name: assertion.name, error: error}
         end
 
         @mutex.synchronize do
@@ -115,18 +122,31 @@ module SnapDiff
 
       # Build a report entry from a comparison, omitting unavailable images and metrics.
       def failure_entry_for(name, compare)
-        difference = compare.difference
+        details = compare.dimensions_changed? ? dimension_change_details(compare) : difference_details(compare)
         {
           name: name,
           original: resolve_image(compare.base_image_path),
-          new: resolve_image(compare.image_path),
+          new: resolve_image(compare.image_path)
+        }.merge(details).compact
+      end
+
+      # Images of different sizes get no annotated or heatmap images, and
+      # no region metrics. Any annotated images on disk for this name are
+      # left over from an earlier same-size failure, so they are not linked.
+      def dimension_change_details(compare)
+        {dimensions_changed: compare.reporter.dimension_change}
+      end
+
+      def difference_details(compare)
+        difference = compare.difference
+        {
           base_diff: resolve_image(compare.reporter.annotated_base_image_path),
           diff: resolve_image(compare.reporter.annotated_image_path),
           heatmap: resolve_image(compare.reporter.heatmap_diff_path),
           diff_level: difference.ratio && (difference.ratio * 100).round(2),
           area_size: difference.region_area_size,
           max_color_distance: difference.meta[:max_color_distance]&.round(1)
-        }.compact
+        }
       end
 
       # Contributed annotations (AI triage, ...), attached at RENDER

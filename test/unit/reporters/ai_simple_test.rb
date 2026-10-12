@@ -308,6 +308,7 @@ class AIHtmlReporterMixTest < Minitest::Test
   HtmlCompare = Struct.new(:difference) do
     def base_image_path = Pathname("/nonexistent/base.png")
     def image_path = Pathname("/nonexistent/current.png")
+    def dimensions_changed? = false
     def reporter = HtmlReporterStub.new
   end
   HtmlAssertion = Struct.new(:name, :compare)

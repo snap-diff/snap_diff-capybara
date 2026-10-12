@@ -69,21 +69,69 @@ class HTMLReporterTest < ActiveSupport::TestCase
     assert_includes html, "3 total"
   end
 
-  test "#record tolerates broken assertions without crashing" do
+  # An entry that fails to build must not vanish, nor sink the report: it is
+  # warned about, kept as "could not render", and counted as failed.
+  test "#record keeps an entry it could not build, says so, and renders the rest" do
     reporter = SnapDiff::Reporters::HTML.new(output_path: @output_path)
+    broken = SnapDiff::ScreenshotAssertion.new("broken").tap { |a| a.compare = Object.new }
 
-    broken = SnapDiff::ScreenshotAssertion.new("broken")
-    broken.compare = Object.new # will raise on .difference
+    _out, err = capture_io { reporter.record([broken, build_failing_assertion("valid")]) }
 
-    valid = build_failing_assertion("valid")
-
-    assert_nothing_raised do
-      reporter.record([broken, valid])
-    end
+    assert_match(/\[snap_diff\] HTML report: could not render 'broken' \(NoMethodError: .*difference/, err)
+    entry = reporter.failures.find { |e| e[:name] == "broken" }
+    assert_match(/\ANoMethodError: .*difference/, entry[:error])
+    assert_equal [2, 0], [reporter.failed, reporter.passed], "an entry the report can't vouch for is not a pass"
 
     reporter.finalize
-    assert @output_path.exist?
     assert_includes @output_path.read, "valid"
+  end
+
+  test "#record counts an entry that fails before its comparison is read" do
+    reporter = SnapDiff::Reporters::HTML.new(output_path: @output_path)
+    broken = SnapDiff::ScreenshotAssertion.new("broken")
+    broken.define_singleton_method(:compare) { raise "no compare" }
+
+    capture_io { reporter.record([broken]) }
+
+    assert_equal [1, 1, 0], [reporter.total, reporter.failed, reporter.passed]
+  end
+
+  # A dimension change fails with a frozen null ComparisonResult (no
+  # region, failed_by: {different_dimensions: true}). Recording it used to
+  # raise FrozenError, which #record swallowed, so the screenshot was
+  # counted but silently left out of the report.
+  test "#record reports a dimension change instead of skipping it" do
+    reporter = SnapDiff::Reporters::HTML.new(output_path: @output_path)
+
+    reporter.record([build_dimension_change_assertion("resized")])
+
+    entry = reporter.failures.sole
+    assert_equal "resized", entry[:name]
+    assert_equal "80x80 => 80x60", entry[:dimensions_changed]
+    assert entry[:original], "the baseline must be shown"
+    assert entry[:new], "the new capture must be shown"
+
+    reporter.finalize
+    assert @output_path.exist?, "a run whose only failure is a dimension change still gets a report"
+    assert_includes @output_path.read, "resized"
+  end
+
+  # Annotated and heatmap images are only drawn for same-size images. Any
+  # on disk for this name are left over from an earlier, same-size failure
+  # and describe a different comparison, so the entry must not link them.
+  test "#record links no annotated images for a dimension change" do
+    reporter = SnapDiff::Reporters::HTML.new(output_path: @output_path)
+    assertion = build_dimension_change_assertion("stale")
+    stale = assertion.compare.reporter
+    [stale.annotated_image_path, stale.annotated_base_image_path, stale.heatmap_diff_path]
+      .each { |path| FileUtils.cp(assertion.compare.image_path, path) }
+
+    reporter.record([assertion])
+
+    entry = reporter.failures.sole
+    assert_nil entry[:diff]
+    assert_nil entry[:base_diff]
+    assert_nil entry[:heatmap]
   end
 
   test "HTML reporter defaults to screenshot root path" do
@@ -222,6 +270,14 @@ class HTMLReporterTest < ActiveSupport::TestCase
 
   def build_failing_assertion(name)
     compare = make_comparison(:a, :b, destination: "fail_#{name}")
+    compare.processed
+
+    SnapDiff::ScreenshotAssertion.new(name).tap { |a| a.compare = compare }
+  end
+
+  # a.png is 80x80, a_cropped.png is 80x60.
+  def build_dimension_change_assertion(name)
+    compare = make_comparison(:a, :a_cropped, destination: "resized_#{name}")
     compare.processed
 
     SnapDiff::ScreenshotAssertion.new(name).tap { |a| a.compare = compare }

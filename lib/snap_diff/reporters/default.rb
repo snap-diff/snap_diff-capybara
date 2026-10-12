@@ -52,11 +52,15 @@ module SnapDiff
       end
 
       def build_error_for_different_dimensions
-        change_msg = [comparison.base_image, comparison.new_image]
+        "Dimensions have changed: #{dimension_change}\n#{base_image_path.to_path}\n#{image_path.to_path}"
+      end
+
+      # "WxH => WxH", baseline first. Public so Reporters::HTML says it the
+      # same way.
+      def dimension_change
+        [comparison.base_image, comparison.new_image]
           .map { |image| driver.dimension(image).join("x") }
           .join(" => ")
-
-        "Dimensions have changed: #{change_msg}\n#{base_image_path.to_path}\n#{image_path.to_path}"
       end
 
       NEW_LINE = "\n"

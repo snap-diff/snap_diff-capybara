@@ -25,4 +25,15 @@ class DifferenceTest < ActiveSupport::TestCase
     assert_includes line, "difference_level="
     assert_not_includes line, "\n"
   end
+
+  # build_null freezes its result, so every reader must work on a frozen
+  # instance.
+  test "a frozen null result answers its readers" do
+    null = SnapDiff::ComparisonResult.build_null(nil, nil, nil, {different_dimensions: true})
+
+    assert_predicate null, :frozen?
+    assert_equal 0, null.region_area_size
+    assert_equal 0, null.to_h[:area_size]
+    assert_includes null.inspect, "area_size=0"
+  end
 end
