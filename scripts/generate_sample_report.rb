@@ -16,7 +16,8 @@ output_path = CapybaraScreenshotDiff::Reporters::HTML.default_output_path
 pairs = [
   {name: "islands-map", base: "a", new: "b"},
   {name: "islands-variant", base: "a", new: "c"},
-  {name: "portrait-layout", base: "portrait", new: "portrait_b"}
+  {name: "portrait-layout", base: "portrait", new: "portrait_b"},
+  {name: "header-resized", base: "a", new: "a_cropped"} # dimensions change: 80x80 => 80x60
 ]
 
 embed = ARGV.include?("--embed") || !!ENV["CI"]

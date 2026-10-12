@@ -392,6 +392,20 @@ One removal 2.0 cannot warn about, written down instead: the legacy `LOADED_DRIV
   carried the `diff_mask` image into the error text (`"diff_mask":"#<Vips::Image:0x…>"`,
   or a `{"ptr":{}…}` struct depending on the driver); it is excluded now
 - Reporter failure warnings use one brand and name the failing reporter class
+- **Inputs no longer render hovered in screenshots after `blur_active_element`.**
+  After each capture it used to click the input it had blurred. The click moved the
+  pointer onto it, so the input rendered hovered in later screenshots (Firefox 157
+  draws that darker), and it fired the page's click handlers. It now calls `focus()`
+- **A screenshot that changed size is in the HTML report.** It was counted in the
+  summary line but left out of `snap_diff_report.html` (and a run whose only failures
+  were size changes wrote no report at all): the null comparison result is frozen, and
+  reading its `area_size` raised `FrozenError`, which the reporter swallowed unless
+  `DEBUG` was set. The entry shows the baseline, the new capture and both sizes, and
+  says why it has no heatmap or annotations
+- **An error while building a report entry no longer hides the screenshot.** The HTML
+  reporter warns on stderr without `DEBUG` (`[snap_diff] HTML report: could not render
+  'name' (Error: message)`) and keeps the screenshot in the report as "could not render",
+  counted as failed, instead of dropping it and counting it as passed
 - **A failed screenshot names the line that took it, instead of the whole call stack.**
   The message ends with one `path:line`: the first frame outside snap_diff, installed
   gems and Ruby's own library, so `expect(page).to match_screenshot` names the spec line
