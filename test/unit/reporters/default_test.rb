@@ -161,6 +161,37 @@ class DefaultReporterTest < ActiveSupport::TestCase
     end
   end
 
+  # A size change draws no annotations, so its message lists only the two
+  # inputs, even when an earlier same-size failure left annotations on disk.
+  test "a size change labels its two inputs like any other failure" do
+    base = @_tmpdir / "header.base.png"
+    new = @_tmpdir / "header.png"
+    FileUtils.cp(TEST_IMAGES_DIR / "a.png", base)
+    FileUtils.cp(TEST_IMAGES_DIR / "a_cropped.png", new)
+    %w[header.diff.png header.base.diff.png header.heatmap.diff.png].each { |stale| FileUtils.touch(@_tmpdir / stale) }
+
+    with_config_root(@_tmpdir) do
+      assert_equal <<~MESSAGE.chomp, SnapDiff::Comparison.new(new, base).processed.error_message
+        Dimensions have changed: 80x80 => 80x60
+          baseline: header.base.png
+          actual:   header.png
+      MESSAGE
+    end
+  end
+
+  # A path that can't be related to the root (another Windows drive; a
+  # relative root gives Ruby's same "different prefix" error anywhere) must
+  # not replace the screenshot failure with an ArgumentError.
+  test "artifact paths that can't be related to the root are printed as given" do
+    driver = SnapDiff::Drivers::VipsDriver.new
+    comparison = build_comparison_for(driver, "a.png", "b.png")
+    reporter = SnapDiff::Reporters::Default.new(driver.find_difference_region(comparison))
+
+    SnapDiff.config.stub(:root, Pathname("spec/dummy")) do
+      assert_includes reporter.generate.squeeze(" "), "heatmap: #{reporter.heatmap_diff_path}"
+    end
+  end
+
   private
 
   def with_config_root(root)

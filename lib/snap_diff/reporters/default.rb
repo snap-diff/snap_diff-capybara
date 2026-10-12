@@ -51,8 +51,10 @@ module SnapDiff
         annotation_service.annotate_and_save_images
       end
 
+      # Images of different sizes are never annotated, so only the two inputs
+      # are listed: annotations on disk are leftovers from an earlier failure.
       def build_error_for_different_dimensions
-        "Dimensions have changed: #{dimension_change}\n#{base_image_path.to_path}\n#{image_path.to_path}"
+        ["Dimensions have changed: #{dimension_change}", *artifact_lines(INPUT_ARTIFACTS)].join(NEW_LINE)
       end
 
       # "WxH => WxH", baseline first. Public so Reporters::HTML says it the
@@ -92,6 +94,8 @@ module SnapDiff
         "actual annotated" => :annotated_image_path,
         "heatmap" => :heatmap_diff_path
       }.freeze
+
+      INPUT_ARTIFACTS = ARTIFACT_LABELS.slice("baseline", "actual").freeze
 
       def build_error_message
         [headline, *metric_lines, *artifact_lines].join(NEW_LINE)
@@ -138,8 +142,8 @@ module SnapDiff
       # Only what is on disk gets a line: the heatmap exists solely for
       # drivers that produce a diff mask, and a comparison can be reported
       # before either input has been written out.
-      def artifact_lines
-        present = ARTIFACT_LABELS.filter_map do |label, path_method|
+      def artifact_lines(labels = ARTIFACT_LABELS)
+        present = labels.filter_map do |label, path_method|
           path = send(path_method)
           [label, path] if path.exist?
         end
@@ -150,11 +154,14 @@ module SnapDiff
 
       # Relative to the configured root: shorter to read, and still
       # click-through-able in terminals that resolve paths against the
-      # working directory. Anything outside the root stays absolute, because
-      # a "../../.." path is neither.
+      # working directory. Anything outside the root stays as given, because
+      # a "../../.." path is neither; so does a path that can't be related to
+      # the root at all (another drive), rather than failing the message.
       def display_path(path)
         relative = path.expand_path.relative_path_from(SnapDiff.config.root).to_path
         relative.start_with?("..") ? path.to_path : relative
+      rescue ArgumentError
+        path.to_path
       end
 
       def percent(fraction)

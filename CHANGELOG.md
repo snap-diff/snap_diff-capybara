@@ -413,6 +413,9 @@ One removal 2.0 cannot warn about, written down instead: the legacy `LOADED_DRIV
   `skip_stack_frames: 1` (see docs/configuration.md)
 - **RSpec prints a failed screenshot once.** The adapter re-raised it inside a `rescue`,
   so RSpec repeated the whole failure under `Caused by:`
+- **A size change labels its images like every other failure.** `Dimensions have
+  changed` now lists `baseline:` and `actual:`, relative to the project root, instead of
+  two bare absolute paths, and never names annotations left over from an earlier run
 
 ### Known limitations
 - **One process per worker** (`parallel_tests`, RSpec, CI sharding) still writes one
