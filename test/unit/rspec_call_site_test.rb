@@ -9,7 +9,7 @@ require "open3"
 class RspecCallSiteTest < ActiveSupport::TestCase
   SPEC_FILE = File.expand_path("../fixtures/rspec_call_site_spec.rb", __dir__)
 
-  test "each failed screenshot names its own line of the spec, and nothing else of the stack" do
+  test "each failed screenshot is printed once, naming its own line of the spec and nothing else of the stack" do
     out = run_fixture
 
     %w[screenshot match_screenshot].each do |entry_point|
@@ -19,6 +19,8 @@ class RspecCallSiteTest < ActiveSupport::TestCase
     end
     refute_match %r{/gems/rspec-}, out, "no rspec frame belongs in the message"
     refute_match %r{lib/snap_diff/}, out, "no snap_diff frame belongs in the message"
+    refute_includes out, "Caused by:", "the translated failure must not carry the original as its cause"
+    assert_equal 1, out.scan("Screenshot does not match for 'b_1'").size, out
   end
 
   private

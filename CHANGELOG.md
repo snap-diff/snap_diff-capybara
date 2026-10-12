@@ -397,6 +397,8 @@ One removal 2.0 cannot warn about, written down instead: the legacy `LOADED_DRIV
   gems and Ruby's own library, so `expect(page).to match_screenshot` names the spec line
   too. A project helper wrapping `screenshot` is reported itself unless it passes
   `skip_stack_frames: 1` (see docs/configuration.md)
+- **RSpec prints a failed screenshot once.** The adapter re-raised it inside a `rescue`,
+  so RSpec repeated the whole failure under `Caused by:`
 
 ### Known limitations
 - **One process per worker** (`parallel_tests`, RSpec, CI sharding) still writes one

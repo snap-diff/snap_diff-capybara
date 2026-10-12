@@ -69,7 +69,9 @@ RSpec.configure do |config|
           skip(msg)
         end
       rescue SnapDiff::ExpectationNotMet => e
-        raise RSpec::Expectations::ExpectationNotMetError.new(e.message).tap { |ex| ex.set_backtrace(e.backtrace) }
+        # Translated, not wrapped: it already carries the message and
+        # backtrace, so a cause would make RSpec print the failure twice.
+        raise RSpec::Expectations::ExpectationNotMetError.new(e.message).tap { |ex| ex.set_backtrace(e.backtrace) }, cause: nil
       ensure
         SnapDiff.reset
       end
