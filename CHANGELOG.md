@@ -406,6 +406,13 @@ One removal 2.0 cannot warn about, written down instead: the legacy `LOADED_DRIV
   reporter warns on stderr without `DEBUG` (`[snap_diff] HTML report: could not render
   'name' (Error: message)`) and keeps the screenshot in the report as "could not render",
   counted as failed, instead of dropping it and counting it as passed
+- **A failed screenshot names the line that took it, instead of the whole call stack.**
+  The message ends with one `path:line`: the first frame outside snap_diff, installed
+  gems and Ruby's own library, so `expect(page).to match_screenshot` names the spec line
+  too. A project helper wrapping `screenshot` is reported itself unless it passes
+  `skip_stack_frames: 1` (see docs/configuration.md)
+- **RSpec prints a failed screenshot once.** The adapter re-raised it inside a `rescue`,
+  so RSpec repeated the whole failure under `Caused by:`
 
 ### Known limitations
 - **One process per worker** (`parallel_tests`, RSpec, CI sharding) still writes one

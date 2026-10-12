@@ -141,7 +141,9 @@ module SnapDiff
 
     # Asserts the current page has no visual changes from the baseline.
     # Override in your base test class to add project-specific behavior
-    # (e.g., waiting for Turbo, default skip areas).
+    # (e.g., waiting for Turbo, default skip areas). Pass
+    # skip_stack_frames: 1 to super so a failure names the test's line,
+    # not the override's.
     def assert_no_screenshot_changes(name, skip_stack_frames: 0, **opts, &readiness)
       assert_matches_screenshot(name, skip_stack_frames: skip_stack_frames + 1, **opts, &readiness)
     end
