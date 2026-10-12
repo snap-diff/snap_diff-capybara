@@ -14,17 +14,17 @@ class BrowserScreenshotTest < SystemTestCase
     SnapDiff.config.tolerance = @original_tolerance
   end
 
+  # Every screenshot is verified by the gem's own teardown check (super), as
+  # in any app using it, so a test needs no explicit assertion to fail on a
+  # difference. Only afterwards are the captures rolled back to the committed
+  # baselines, unless the run keeps them for debugging. A recording run
+  # fails on nothing: it keeps every capture as the new baseline.
   def before_teardown
-    if SnapDiff.session.assertions_present?
-      # NOTE: We rollback new screenshots in order to remain their original state
-      #       and only for debug mode we keep them
-      unless persist_comparisons?
-        SnapDiff.session.assertions.each(&method(:rollback_comparison_runtime_files))
-      end
-      # NOTE: We clear tracked different errors in order to not raise error
-      SnapDiff.reset
-    end
+    assertions = SnapDiff.session.assertions.dup
+    SnapDiff.reset if ENV["RECORD_SCREENSHOTS"]
     super
+  ensure
+    assertions&.each(&method(:rollback_comparison_runtime_files)) unless persist_comparisons?
   end
 
   def test_screenshot_without_changes
@@ -107,16 +107,12 @@ class BrowserScreenshotTest < SystemTestCase
     fill_in "Second Field:", with: "Changed"
 
     assert_matches_screenshot("index", skip_area: [8, 100, 218, 140, 8, 140, 218, 180])
-
-    assert_no_screenshot_errors
   end
 
   test "compare crops only when other part is not working" do
     visit "/index-without-img.html"
 
     assert_matches_screenshot("index-without-img-cropped", crop: "form", color_distance_limit: 40)
-
-    assert_no_screenshot_errors
   end
 
   test "crop accepts css selector" do
@@ -127,8 +123,6 @@ class BrowserScreenshotTest < SystemTestCase
     end
 
     assert_matches_screenshot("index-without-img-crop-by-selector", crop: "form")
-
-    assert_no_screenshot_errors
   end
 
   test "skip_area accepts css selector" do
@@ -149,8 +143,6 @@ class BrowserScreenshotTest < SystemTestCase
     fill_in "Second Field:", with: "Changed"
 
     assert_matches_screenshot("index", skip_area: "form")
-
-    assert_no_screenshot_errors
   end
 
   test "cropped screenshot" do
@@ -170,11 +162,7 @@ class BrowserScreenshotTest < SystemTestCase
 
     assert_matches_screenshot("index-cropped", skip_area: "#first-field", crop: "form", tolerance: 0.001)
 
-    assert_not_predicate(
-      SnapDiff.session.failed_assertions,
-      :empty?,
-      "differences have not been found when they should have been"
-    )
+    assert_screenshot_error_for("index-cropped")
   end
 
   test "skip_area by css selectors" do
@@ -186,7 +174,6 @@ class BrowserScreenshotTest < SystemTestCase
     fill_in "First Field:", with: "Test Input With Hide Caret"
 
     assert_matches_screenshot("index", skip_area: "form")
-    assert_no_screenshot_errors
   end
 
   test "crop and skip_area by css selectors" do
@@ -198,8 +185,6 @@ class BrowserScreenshotTest < SystemTestCase
     fill_in "First Field:", with: "Test Input With Hide Caret"
 
     assert_matches_screenshot("index-without-img-crop-with-skip-area", skip_area: "input", crop: "form")
-
-    assert_no_screenshot_errors
   end
 
   test "bounds_for_css for multiple elements returns all areas" do
@@ -320,7 +305,6 @@ class BrowserScreenshotTest < SystemTestCase
         assert_matches_screenshot :index
       end
     end
-    assert_no_screenshot_errors
   end
 
   private
@@ -337,21 +321,16 @@ class BrowserScreenshotTest < SystemTestCase
     page.driver.browser.manage.window.size.to_a
   end
 
+  # For a difference the test provokes on purpose: asserts it, then rolls it
+  # back and takes it out of the session, so the teardown check doesn't fail
+  # the test for it.
   def assert_screenshot_error_for(screenshot_name)
     assertions = SnapDiff.session.failed_assertions
 
     assert_equal 1, assertions&.length, "expecting to have just one difference"
-    assert_equal screenshot_name, assertions[0].name, "index screenshot should have difference for changed page"
-  end
+    assert_equal screenshot_name, assertions[0].name, "#{screenshot_name} screenshot should have difference for changed page"
 
-  def assert_no_screenshot_errors
-    screenshots = SnapDiff.session.failed_assertions
-
-    error_messages = screenshots.map { |assertion| assertion.compare.error_message }
-
-    assert(
-      screenshots.empty?,
-      "expecting not to have any difference. But got next:\n\n#{error_messages.join(";\n")}"
-    )
+    rollback_comparison_runtime_files(assertions[0]) unless persist_comparisons?
+    SnapDiff.session.assertions.delete(assertions[0])
   end
 end
