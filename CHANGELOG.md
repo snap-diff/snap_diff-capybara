@@ -330,6 +330,12 @@ One removal 2.0 cannot warn about, written down instead: the legacy `LOADED_DRIV
   content and version, matching this repository. `capybara-screenshot-diff` remains
   the name to install; the mirror reserves the forward-looking one. **Install one,
   never both.**
+- **Reporters can list the screenshots that were not compared.**
+  `SnapDiff::Reporting.uncompared` returns the ones behind the summary line's "new" and
+  "re-recorded" counts, complete by the time reporters `finalize` (fork-parallel workers
+  included): each with its `name`, the captured file's `path`, and the `reason` — `:new`
+  (no committed baseline) or `:rerecorded` (`record: :all`). The bundled HTML report lists
+  new screenshots from it
 - New documentation shipped inside the gem:
   [docs/snapdiff.md](docs/snapdiff.md) (canonical API) and
   [docs/UPGRADING.md](docs/UPGRADING.md) (every renamed constant, which names warn,
@@ -416,10 +422,23 @@ One removal 2.0 cannot warn about, written down instead: the legacy `LOADED_DRIV
 - **A size change labels its images like every other failure.** `Dimensions have
   changed` now lists `baseline:` and `actual:`, relative to the project root, instead of
   two bare absolute paths, and never names annotations left over from an earlier run
+- **The HTML report lists new screenshots.** A screenshot captured with no committed
+  baseline appears after the failures, marked `new`, with its capture and the
+  `git add` that makes it the baseline; a run whose only finding is a new screenshot
+  now writes a report. The report's `new` count is the summary line's, including
+  across `parallelize(workers: N)`. Re-recorded screenshots (`record: :all`) are
+  counted in the report but not yet listed
+- **Under `record: :none` a new screenshot is counted.** The run still fails as before;
+  the summary line now says `1 new` instead of `0 new`
+- **A committed baseline taken by a same-name test is reported as disappeared, in every
+  mode.** Before, if it vanished right after the checkout, the run also warned there was
+  no committed baseline and counted it as new; under `record: :none` it failed with
+  "No existing screenshot found … `git add` it" instead of saying it disappeared
 
 ### Known limitations
 - **One process per worker** (`parallel_tests`, RSpec, CI sharding) still writes one
-  report per process to the same path, so only the last to finish survives. Rails'
+  report per process to the same path, so only the last to finish survives,
+  now including a process whose only finding is a new screenshot. Rails'
   `parallelize(workers: N)` and `parallelize(with: :threads)` are both complete —
   see [docs/reporters.md](docs/reporters.md#parallel-test-runs)
 

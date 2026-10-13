@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>SnapDiff Report — <%= failed %> failures</title>
+  <title>SnapDiff Report — <%= failed %> failures<%= ", #{new_count} new" if new_count.positive? %></title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
@@ -47,6 +47,7 @@
     .diff-badge { font-size: .625rem; font-family: var(--font-mono); font-weight: 600; padding: .1rem .375rem; border-radius: 10px; white-space: nowrap; flex-shrink: 0; }
     .diff-badge-fail { background: var(--red-dim); color: var(--red); }
     .diff-badge-pass { background: var(--green-dim); color: var(--green); }
+    .diff-badge-new { background: var(--accent-bg); color: var(--accent); }
     .spacer { flex: 1; }
     .stats { display: flex; gap: .3rem; align-items: center; flex-shrink: 0; }
     .stat-pill { font-size: .625rem; font-family: var(--font-mono); font-weight: 500; padding: .125rem .4rem; border-radius: 10px; display: flex; align-items: center; gap: .2rem; }
@@ -57,6 +58,8 @@
     .stat-pass .dot { background: var(--green); }
     .stat-total { background: var(--bg4); color: var(--text2); }
     .stat-total .dot { background: var(--text3); }
+    .stat-new { background: var(--accent-bg); color: var(--accent); }
+    .stat-new .dot { background: var(--accent); }
 
     /* ── Layout ──────────────────────────────────────────────────────── */
     #layout { display: flex; flex: 1; overflow: hidden; }
@@ -80,6 +83,7 @@
     .thumb-badge { font-size: .5rem; font-family: var(--font-mono); font-weight: 600; padding: .0625rem .25rem; border-radius: 8px; flex-shrink: 0; }
     .thumb-badge-fail { background: var(--red-dim); color: var(--red); }
     .thumb-badge-pass { background: var(--green-dim); color: var(--green); }
+    .thumb-badge-new { background: var(--accent-bg); color: var(--accent); }
 
     /* ── AI triage ─────────────────────────────────────────────────── */
     .ai-badge { font-size: .625rem; font-family: var(--font-mono); font-weight: 600; padding: .1rem .375rem; border-radius: 10px; white-space: nowrap; flex-shrink: 0; }
@@ -132,6 +136,7 @@
     .img-empty { height: 100%; display: flex; align-items: center; justify-content: center; padding: 1rem; font-size: .75rem; line-height: 1.5; color: var(--text2); }
     .img-empty p { max-width: 42em; margin: 0; }
     .img-empty a { color: var(--accent); }
+    .img-empty code { display: inline-block; margin-top: .5rem; padding: .2rem .4rem; font-family: var(--font-mono); font-size: .6875rem; color: var(--text); background: var(--bg4); border-radius: var(--radius-sm); word-break: break-all; user-select: all; }
 
     /* Single image */
     .view-single { width: 100%; height: 100%; display: flex; flex-direction: column; }
@@ -157,6 +162,8 @@
       #sidebar-list { flex-direction: row; overflow-x: auto; overflow-y: hidden; }
       .thumb-btn { width: auto; min-width: 120px; flex-shrink: 0; }
       .view-both { grid-template-columns: 1fr; }
+      .stats { flex-shrink: 1; min-width: 0; overflow-x: auto; }
+      .stat-pill { flex-shrink: 0; white-space: nowrap; }
     }
   </style>
 </head>
@@ -170,7 +177,7 @@
   <div class="sep"></div>
   <div class="nav-group">
     <button class="nav-btn" id="nav-prev" aria-label="Previous"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 18l-6-6 6-6"/></svg></button>
-    <span class="nav-counter" id="nav-counter">1/<%= failed %></span>
+    <span class="nav-counter" id="nav-counter">1/<%= @entries.size %></span>
     <button class="nav-btn" id="nav-next" aria-label="Next"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg></button>
   </div>
   <span id="topbar-title"></span>
@@ -180,6 +187,10 @@
     <span class="stat-pill stat-fail"><span class="dot"></span><%= failed %> failed</span>
     <span class="stat-pill stat-pass"><span class="dot"></span><%= passed %> passed</span>
     <span class="stat-pill stat-total"><span class="dot"></span><%= total %> total</span>
+    <span class="stat-pill stat-new" title="Captured with no committed baseline: not compared"><span class="dot"></span><%= new_count %> new</span>
+<% if rerecorded_count.positive? %>
+    <span class="stat-pill stat-total" title="Re-recorded by record: :all, not compared; listed on the terminal"><span class="dot"></span><%= rerecorded_count %> re-recorded</span>
+<% end %>
   </div>
 </header>
 
@@ -233,7 +244,7 @@
 <script>
 (function() {
   'use strict';
-  var DATA = <%= failures.to_json.gsub("</", "<\\/") %>;
+  var DATA = <%= @entries.to_json.gsub("</", "<\\/") %>;
   var state = { current: 0, view: 'both', annotated: false, zoom: 100, search: '' };
   var $ = function(id) { return document.getElementById(id); };
 
@@ -269,11 +280,10 @@
       btn.dataset.idx = idx;
       /* Thumbnail: annotated mode → heatmap; normal → new image (no annotation) */
       var thumb = state.annotated ? (item.heatmap || item.new || item.original || '') : (item.new || item.original || '');
-      var hasDiff = item.diff || item.heatmap || item.dimensions_changed || item.error;
       var badgeText = item.error ? 'error'
         : item.dimensions_changed ? 'resized'
-        : hasDiff ? (item.diff_level != null ? item.diff_level + '%' : 'changed')
-        : 'pass';
+        : status(item) === 'fail' ? (item.diff_level != null ? item.diff_level + '%' : 'changed')
+        : status(item);
       btn.innerHTML =
         '<div class="thumb-img-wrap">' + (thumb ? '<img src="' + esc(thumb) + '" alt="" loading="lazy"/>' : '') + '</div>' +
         '<div class="thumb-footer">' +
@@ -287,7 +297,7 @@
               (v ? ': ' + v.replace('_', ' ') : (note.text ? ': ' + note.text : ''));
             return '<span class="ai-badge' + (v ? aiClass(v) : '') + '">' + esc(label) + '</span>';
           }).join(' ') +
-          '<span class="thumb-badge ' + (hasDiff ? 'thumb-badge-fail' : 'thumb-badge-pass') + '">' + badgeText + '</span>' +
+          '<span class="thumb-badge thumb-badge-' + status(item) + '">' + badgeText + '</span>' +
         '</div>';
       btn.addEventListener('click', function() { selectItem(+this.dataset.idx); });
       sidebarList.appendChild(btn);
@@ -307,9 +317,26 @@
   function selectNext() { var p = filtered.indexOf(state.current); if (p < filtered.length - 1) selectItem(filtered[p + 1]); }
   function selectPrev() { var p = filtered.indexOf(state.current); if (p > 0) selectItem(filtered[p - 1]); }
 
+  /* fail, pass or new: the badge colour in the sidebar and the top bar.
+     A new screenshot was not compared, so it is neither a pass nor a fail. */
+  function status(item) {
+    if (item.diff || item.heatmap || item.dimensions_changed || item.error) return 'fail';
+    return item.new_screenshot ? 'new' : 'pass';
+  }
+
+  /* A new screenshot has no committed baseline: the Baseline side says so,
+     and how to make this capture the baseline -- only when the report found
+     the capture on disk. */
+  function noBaselineMessage(item) {
+    var msg = 'No committed baseline, so nothing was compared.';
+    if (!item.git_add) return esc(msg);
+    return esc(msg + ' To make this capture the baseline, add it and commit:') + '<br/><code>' + esc(item.git_add) + '</code>';
+  }
+
   /* A failure has no heatmap when the images differ in size, or when the
      image driver produced no difference mask. Say which, and what to do. */
   function noHeatmapReason(item) {
+    if (item.new_screenshot) return 'No heatmap: there is no baseline to compare against.';
     if (item.dimensions_changed) {
       return 'No heatmap: the screenshot changed size (' + item.dimensions_changed + '). ' +
         'Heatmaps and annotations compare pixel by pixel, so they need both images at the same size; ' +
@@ -328,17 +355,19 @@
     topTitle.textContent = item.name;
     var pos = filtered.indexOf(state.current);
     navCounter.textContent = (pos + 1) + '/' + filtered.length;
-    var hasDiff = item.diff || item.heatmap || item.dimensions_changed || item.error;
+    var hasDiff = status(item) === 'fail';
     if (item.error) {
       topBadge.textContent = 'could not render';
     } else if (item.dimensions_changed) {
       topBadge.textContent = 'dimensions changed: ' + item.dimensions_changed;
     } else if (hasDiff && item.diff_level != null) {
       topBadge.textContent = item.diff_level + '% diff';
+    } else if (item.new_screenshot) {
+      topBadge.textContent = 'new \u00b7 not compared';
     } else {
       topBadge.textContent = hasDiff ? 'changed' : 'pass';
     }
-    topBadge.className = 'diff-badge ' + (hasDiff ? 'diff-badge-fail' : 'diff-badge-pass');
+    topBadge.className = 'diff-badge diff-badge-' + status(item);
 
     /* Contribution strip: the verdict layout when a contributor supplied
        one (AI triage), source + text for text-only annotations */
@@ -375,8 +404,14 @@
     var heatImg = item.heatmap || '';
 
     /* Label what is shown: without annotated files the toggle falls back to the plain images */
-    var baseLbl = !ann ? 'Baseline' : item.base_diff ? 'Annotated Base' : 'Baseline (not annotated)';
+    var baseLbl = !ann || item.new_screenshot ? 'Baseline' : item.base_diff ? 'Annotated Base' : 'Baseline (not annotated)';
     var newLbl  = !ann ? 'Current'  : item.diff      ? 'Annotated New'  : 'Current (not annotated)';
+    var baseBox = item.new_screenshot
+      ? '<div class="img-empty"><p>' + noBaselineMessage(item) + '</p></div>'
+      : '<img src="' + esc(baseImg) + '" alt="Base"/>';
+    var newBox = item.new_screenshot && !item.new
+      ? '<div class="img-empty"><p>No capture file was found for this screenshot.</p></div>'
+      : '<img src="' + esc(newImg) + '" alt="New"/>';
 
     var html = '';
     /* The report failed to build this entry: say so in every view instead of empty images */
@@ -390,15 +425,15 @@
         break;
       case 'both':
         html = '<div class="view-both">' +
-          '<div class="img-panel"><div class="img-label"><span class="dot-base"></span> ' + baseLbl + '</div><div class="img-box"><img src="' + esc(baseImg) + '" alt="Base"/></div></div>' +
-          '<div class="img-panel"><div class="img-label"><span class="dot-new"></span> ' + newLbl + '</div><div class="img-box"><img src="' + esc(newImg) + '" alt="New"/></div></div>' +
+          '<div class="img-panel"><div class="img-label"><span class="dot-base"></span> ' + baseLbl + '</div><div class="img-box">' + baseBox + '</div></div>' +
+          '<div class="img-panel"><div class="img-label"><span class="dot-new"></span> ' + newLbl + '</div><div class="img-box">' + newBox + '</div></div>' +
         '</div>';
         break;
       case 'base':
-        html = '<div class="view-single"><div class="img-label"><span class="dot-base"></span> ' + baseLbl + '</div><div class="img-box"><img src="' + esc(baseImg) + '" alt="Base"/></div></div>';
+        html = '<div class="view-single"><div class="img-label"><span class="dot-base"></span> ' + baseLbl + '</div><div class="img-box">' + baseBox + '</div></div>';
         break;
       case 'new':
-        html = '<div class="view-single"><div class="img-label"><span class="dot-new"></span> ' + newLbl + '</div><div class="img-box"><img src="' + esc(newImg) + '" alt="New"/></div></div>';
+        html = '<div class="view-single"><div class="img-label"><span class="dot-new"></span> ' + newLbl + '</div><div class="img-box">' + newBox + '</div></div>';
         break;
       case 'heatmap':
         html = '<div class="view-single"><div class="img-label"><span class="dot-heat"></span> Heatmap</div><div class="img-box">' +
@@ -430,7 +465,8 @@
     var dx = Math.abs(e.clientX - clickStart.x), dy = Math.abs(e.clientY - clickStart.y);
     clickStart = null;
     if (dx > 3 || dy > 3) return; /* was a drag, not a click */
-    if (e.target.closest('.img-box')) toggleAnnotated();
+    /* Not on an explanation: selecting its text (a command to copy) must not flip the view */
+    if (e.target.closest('.img-box') && !e.target.closest('.img-empty')) toggleAnnotated();
   });
 
   /* ── Per-image zoom ────────────────────────────────────────────────── */
@@ -482,7 +518,8 @@
     viewInner.querySelectorAll('.img-box').forEach(function(box) {
       box.addEventListener('scroll', function() { syncScroll(box); });
       box.addEventListener('mousedown', function(e) {
-        if (state.zoom <= 100) return;
+        /* Not on an explanation: its text (a command to copy) must stay selectable */
+        if (state.zoom <= 100 || e.target.closest('.img-empty')) return;
         dragBox = box; box.classList.add('dragging');
         dragStartX = e.clientX; dragStartY = e.clientY;
         dragScrollL = box.scrollLeft; dragScrollT = box.scrollTop;

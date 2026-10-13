@@ -11,6 +11,7 @@
 #   SNAP_ROOT   -- a git repo whose `screenshots/` holds the COMMITTED baselines
 #   SNAP_IMAGES -- directory holding the fixture PNGs a.png / b.png
 #   SNAP_CASES  -- comma-separated subset of verified,changed,new (may be empty)
+#   SNAP_RECORD -- optional record mode for the whole run (once, none, all)
 require "minitest/autorun"
 require "snap_diff/integrations/minitest"
 # The HTML report is a FEATURE and stays opt-in; the summary line is core
@@ -49,6 +50,7 @@ SnapDiff.config.root = ENV.fetch("SNAP_ROOT")
 SnapDiff.config.save_path = "screenshots"
 SnapDiff.config.screenshoter = FileCopyScreenshoter
 SnapDiff.config.fail_if_new = false
+SnapDiff.config.record = ENV["SNAP_RECORD"].to_sym if ENV["SNAP_RECORD"]
 
 class SummaryLineCase < Minitest::Test
   include SnapDiff::Minitest::Assertions

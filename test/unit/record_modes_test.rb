@@ -168,6 +168,86 @@ class RecordModesTest < ActiveSupport::TestCase
     assert_no_match(/No committed baseline/, err)
   end
 
+  # --- what the HTML report is told about a new screenshot --------------
+  #
+  # The report shows the capture and a `git add` for it, so the tally must
+  # carry the file -- and only once that file is this run's capture (#260).
+
+  test ":once tallies a new screenshot with the file it was captured to" do
+    SnapDiff.config.record = :once
+    name = "c_#{Time.now.nsec}"
+
+    capture_io do
+      SnapDiff::Vcs.stub(:checkout_vcs, false) do
+        SnapDiff::ScreenshotMatcher.new(name).build_screenshot_assertion
+      end
+    end
+
+    assert_equal [{name: name, path: SnapDiff::SnapManager.path_for(name).path, reason: :new}], SnapDiff::Reporting.uncompared.map(&:to_h)
+  end
+
+  # A file left by an earlier run sits at the path; the capture then fails.
+  # Reporting it would show that old file as this run's capture, with a
+  # `git add` that commits it. Nothing was captured, so nothing is new: the
+  # test fails with the capture's own error.
+  test ":once reports nothing new for a capture that failed" do
+    SnapDiff.config.record = :once
+    name = "c_#{Time.now.nsec}"
+    path = SnapDiff::SnapManager.path_for(name).path
+    path.dirname.mkpath
+    FileUtils.cp(File.expand_path("a.png", TEST_IMAGES_DIR), path)
+    failing_screenshoter = Class.new do
+      def initialize(*)
+      end
+
+      def take_comparison_screenshot(_snapshot)
+        raise SnapDiff::UnstableImage, "never settled"
+      end
+    end
+
+    _out, err = capture_io do
+      SnapDiff::Vcs.stub(:checkout_vcs, false) do
+        SnapDiff.config.stub(:screenshoter, failing_screenshoter) do
+          assert_raises(SnapDiff::UnstableImage) do
+            SnapDiff::ScreenshotMatcher.new(name).build_screenshot_assertion
+          end
+        end
+      end
+    end
+
+    assert_empty SnapDiff::Reporting.uncompared
+    assert_equal 0, SnapDiff::Reporting.missing_baselines_count
+    refute_match(/No committed baseline/, err)
+  end
+
+  # Before, :none raised before anything was tallied: the run failed, the
+  # capture was on disk, and the summary line said `0 new`.
+  test ":none tallies the new screenshot it fails on, with its file" do
+    SnapDiff.config.record = :none
+    name = "c_#{Time.now.nsec}"
+
+    SnapDiff::Vcs.stub(:checkout_vcs, false) do
+      assert_raises(SnapDiff::ExpectationNotMet) do
+        SnapDiff::ScreenshotMatcher.new(name).build_screenshot_assertion
+      end
+    end
+
+    assert_equal [{name: name, path: SnapDiff::SnapManager.path_for(name).path, reason: :new}], SnapDiff::Reporting.uncompared.map(&:to_h)
+    assert_includes SnapDiff::Reporting.counts_summary, "1 new (not verified)"
+  end
+
+  test ":all reports a re-recorded screenshot, not a new one" do
+    SnapDiff.config.record = :all
+    name = "c_#{Time.now.nsec}"
+
+    SnapDiff::Vcs.stub(:checkout_vcs, false) do
+      SnapDiff::ScreenshotMatcher.new(name).build_screenshot_assertion
+    end
+
+    assert_equal [{name: name, path: SnapDiff::SnapManager.path_for(name).path, reason: :rerecorded}], SnapDiff::Reporting.uncompared.map(&:to_h)
+    assert_equal 0, SnapDiff::Reporting.missing_baselines_count
+  end
+
   # --- :all, the bulk-accept verb ---------------------------------------
 
   # THE ONE THAT MATTERS: a baseline exists AND differs, and :all accepts it.

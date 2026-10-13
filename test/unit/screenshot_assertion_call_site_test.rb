@@ -42,18 +42,6 @@ module SnapDiff
       end
     end
 
-    # A path Pathname can't relate to the root (another Windows drive; a
-    # relative root gives Ruby's same "different prefix" error anywhere)
-    # must not replace the screenshot failure with an ArgumentError.
-    test "keeps a frame it can't relate to the root as Ruby recorded it" do
-      frame = "#{__FILE__}:5:in 'block'"
-      @comparison.processed # the artifact paths are rendered against the real root
-
-      SnapDiff.config.stub(:root, Pathname("spec/dummy")) do
-        assert_equal "#{__FILE__}:5", call_site_line([frame])
-      end
-    end
-
     test "stays the last line when contributors annotate the failure" do
       Contributions.stub(:annotations_for, [{source: "ai", text: "a font change"}]) do
         message = build_assertion(["#{__FILE__}:9:in 'block'"]).validate

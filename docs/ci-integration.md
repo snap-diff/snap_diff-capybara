@@ -77,6 +77,11 @@ That's it. On failure, this will:
 - Post a PR comment with links to the inline report and full artifact download
 - Add a job summary with report links (visible in the Actions UI)
 
+The report also lists *new* screenshots — captured with no committed baseline — each with the
+`git add` that makes it the baseline. On CI a new screenshot fails its test, so `if: failure()`
+uploads it. If you set `SnapDiff.config.record = :once` on CI, a run whose only news is a new
+screenshot passes: upload with `if: always()` to still get the report.
+
 #### Inputs
 
 | Input | Default | Description |
