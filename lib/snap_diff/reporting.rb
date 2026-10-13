@@ -2,6 +2,7 @@
 
 require "fileutils"
 require "json"
+require "pathname"
 require "tmpdir"
 
 module SnapDiff
@@ -15,10 +16,18 @@ module SnapDiff
   # reporters/reporters_mutex/finalize_reporters! methods as thin shims
   # over this module.
   module Reporting
+    # A screenshot that was captured but not compared, as listed by
+    # {uncompared}: its `name`, the captured file's `path` (a Pathname; nil
+    # when a worker of an older version sent only the name), and the
+    # `reason` -- `:new` (no committed baseline) or `:rerecorded`
+    # (`record: :all`). Frozen: every reporter reads the same ones.
+    Uncompared = Struct.new(:name, :path, :reason, keyword_init: true)
+
     @reporters = []
     @mutex = Mutex.new
-    @missing_baselines = Set.new
-    @rerecorded_baselines = Set.new
+    # name => Uncompared, one tally per reason.
+    @missing_baselines = {}
+    @rerecorded_baselines = {}
     @matched_selectors = Set.new
     @unmatched_selectors = Set.new
     @verified = 0
@@ -50,8 +59,11 @@ module SnapDiff
       #   "warn once per screenshot" gate for ScreenshotMatcher, and the
       #   tally behind {finalize!}'s summary line. Kept here rather than in
       #   the matcher because the end-of-run summary is this module's job.
-      def record_missing_baseline(name)
-        @mutex.synchronize { !!@missing_baselines.add?(name) }
+      #
+      # `path` is the file it was captured to, listed by {uncompared}: pass
+      # it once that file exists.
+      def record_missing_baseline(name, path: nil)
+        tally_uncompared(@missing_baselines, name, path, :new)
       end
 
       # How many screenshots were captured but never compared. The "new"
@@ -60,6 +72,17 @@ module SnapDiff
       # this run, not a number derived from what the run should have done.
       def missing_baselines_count
         @mutex.synchronize { @missing_baselines.size }
+      end
+
+      # The screenshots captured but not compared this run -- new ones
+      # first, then re-recorded ones -- the entries behind the summary
+      # line's "new" and "re-recorded" counts. Complete by the time
+      # reporters `finalize`, fork-parallel workers included, so a reporter
+      # that lists them lists what the terminal counts.
+      #
+      # @return [Array<Uncompared>] frozen
+      def uncompared
+        @mutex.synchronize { (@missing_baselines.values + @rerecorded_baselines.values).freeze }
       end
 
       # Remembers whether a CSS selector (`skip_area`, `crop`) found
@@ -114,9 +137,25 @@ module SnapDiff
       # and "there was one and we accepted the new rendering over it" are
       # different facts, and the summary must not claim the first when the
       # second happened.
-      def record_rerecorded_baseline(name)
-        @mutex.synchronize { !!@rerecorded_baselines.add?(name) }
+      def record_rerecorded_baseline(name, path: nil)
+        tally_uncompared(@rerecorded_baselines, name, path, :rerecorded)
       end
+
+      # @return [Boolean] true the first time `name` is seen in `tally`
+      def tally_uncompared(tally, name, path, reason)
+        @mutex.synchronize do
+          next false if tally.key?(name)
+
+          tally[name] = uncompared_entry(name, path, reason)
+          true
+        end
+      end
+      private :tally_uncompared
+
+      def uncompared_entry(name, path, reason)
+        Uncompared.new(name: -name.to_s, path: path && Pathname(path).freeze, reason: reason.to_sym).freeze
+      end
+      private :uncompared_entry
 
       # Registers a reporter for the rest of the process. The canonical way
       # in: the append happens under the mutex, so concurrent registrations
@@ -184,7 +223,8 @@ module SnapDiff
       #   verified -- a committed baseline existed and was compared
       #   changed  -- of those, the ones that differed
       #   new      -- captured but NOT compared, for want of a committed
-      #               baseline: neither a pass nor a failure
+      #               baseline: not a pass (under record: :none it also
+      #               fails its test)
       #
       # Printed on every run, passing or failing, reporter or no reporter,
       # and never nil. "N screenshots compared" counted only what it
@@ -293,8 +333,11 @@ module SnapDiff
       # a worker killed mid-write leaves nothing the merge will read.
       def dump_parallel_fragment
         payload = {
-          "missing_baselines" => @mutex.synchronize { @missing_baselines.to_a },
-          "rerecorded_baselines" => @mutex.synchronize { @rerecorded_baselines.to_a },
+          "missing_baselines" => @mutex.synchronize { @missing_baselines.keys },
+          "rerecorded_baselines" => @mutex.synchronize { @rerecorded_baselines.keys },
+          # The same entries with their paths, for the parent's {uncompared}.
+          # The name lists above stay: an older parent reads only those.
+          "uncompared" => uncompared.map { |entry| {"name" => entry.name, "path" => entry.path&.to_s, "reason" => entry.reason.to_s} },
           # Both halves, not the subtraction: `img` may match in this worker
           # and miss in the next, and only the parent that merged every
           # fragment can tell whether it matched anywhere in the run.
@@ -332,11 +375,17 @@ module SnapDiff
           # key added since is `fetch`ed with one, because the fragments
           # directory is keyed by pid under the system temp dir -- a
           # recycled pid can hand this merge a fragment left behind by an
-          # older version of the gem, and a partial payload must not take
-          # the run down.
+          # older version of the gem. Only such missing keys are tolerated:
+          # an entry no version writes is a bug and raises.
           @mutex.synchronize do
-            payload["missing_baselines"].each { |name| @missing_baselines << name }
-            payload.fetch("rerecorded_baselines", []).each { |name| @rerecorded_baselines << name }
+            # Entries with paths first; a name only an older worker sent is
+            # still listed, with no capture to show.
+            payload.fetch("uncompared", []).each do |entry|
+              tally = {"new" => @missing_baselines, "rerecorded" => @rerecorded_baselines}.fetch(entry["reason"])
+              tally[entry["name"]] ||= uncompared_entry(entry["name"], entry["path"], entry["reason"])
+            end
+            payload["missing_baselines"].each { |name| @missing_baselines[name] ||= uncompared_entry(name, nil, :new) }
+            payload.fetch("rerecorded_baselines", []).each { |name| @rerecorded_baselines[name] ||= uncompared_entry(name, nil, :rerecorded) }
             payload.fetch("matched_selectors", []).each { |selector| @matched_selectors << selector }
             payload.fetch("unmatched_selectors", []).each { |selector| @unmatched_selectors << selector }
             @verified += payload.fetch("verified", 0)
@@ -365,7 +414,7 @@ module SnapDiff
       #
       # @return [String, nil] nil when every screenshot had a baseline
       def missing_baselines_summary
-        names = @mutex.synchronize { @missing_baselines.to_a }
+        names = @mutex.synchronize { @missing_baselines.keys }
         return if names.empty?
 
         label = (names.size == 1) ? "1 screenshot" : "#{names.size} screenshots"
@@ -381,7 +430,7 @@ module SnapDiff
       #
       # @return [String, nil] nil when nothing was re-recorded
       def rerecorded_baselines_summary
-        names = @mutex.synchronize { @rerecorded_baselines.to_a }
+        names = @mutex.synchronize { @rerecorded_baselines.keys }
         return if names.empty?
 
         label = (names.size == 1) ? "1 screenshot" : "#{names.size} screenshots"

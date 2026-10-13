@@ -78,6 +78,47 @@ class ParallelReportMergeTest < ActiveSupport::TestCase
     assert_equal "[snap_diff] Report: #{@output_path}", @reporter.summary
   end
 
+  # A new screenshot is tallied in the worker that captured it; the report
+  # is written by the parent. It crosses the fork with the run's counts,
+  # path included, or the parent lists nothing.
+  test "a new screenshot captured in a worker is in the parent's report" do
+    capture = @output_dir / "screenshots" / "signup.png"
+    fork_worker do
+      capture.dirname.mkpath
+      FileUtils.cp(File.expand_path("a.png", TEST_IMAGES_DIR), capture)
+      SnapDiff::Reporting.record_missing_baseline("signup", path: capture)
+    end
+
+    SnapDiff::Reporting.merge_parallel_fragments!
+
+    assert_includes SnapDiff::Reporting.counts_summary, "1 new (not verified)"
+    assert_equal [{name: "signup", path: capture, reason: :new}], SnapDiff::Reporting.uncompared.map(&:to_h)
+    assert_predicate @reporter.finalize, :present?, "a run with only new screenshots writes a report"
+    assert_includes @output_path.read, %("name":"signup","new_screenshot":true)
+    assert_includes @output_path.read, "git add -- "
+  end
+
+  test "a re-recorded screenshot captured in a worker reaches the parent with its path" do
+    fork_worker { SnapDiff::Reporting.record_rerecorded_baseline("accepted", path: "/app/accepted.png") }
+
+    SnapDiff::Reporting.merge_parallel_fragments!
+
+    assert_equal [{name: "accepted", path: Pathname("/app/accepted.png"), reason: :rerecorded}],
+      SnapDiff::Reporting.uncompared.map(&:to_h)
+  end
+
+  # The summary line counts names, merged across workers; the report must
+  # list the same number.
+  test "a new screenshot two workers both captured is listed once" do
+    2.times { fork_worker { SnapDiff::Reporting.record_missing_baseline("signup", path: "/app/signup.png") } }
+
+    SnapDiff::Reporting.merge_parallel_fragments!
+    @reporter.finalize
+
+    assert_includes SnapDiff::Reporting.counts_summary, "1 new (not verified)"
+    assert_equal 1, @output_path.read.scan(%("name":"signup")).size
+  end
+
   # The selector tally (#277b) is a RUN-level fact, and under fork-parallel
   # no single worker sees the run. The case that matters is the split
   # verdict: `img` matched in one worker and missed in another, so it is
@@ -168,6 +209,24 @@ class ParallelReportMergeTest < ActiveSupport::TestCase
     assert_equal 1, SnapDiff::Reporting.verified, "the current worker's counts survived the old fragment"
     assert_equal 1, SnapDiff::Reporting.missing_baselines_count
     assert_includes SnapDiff::Reporting.missing_baselines_summary, "ancient"
+    assert_equal [{name: "ancient", path: nil, reason: :new}], SnapDiff::Reporting.uncompared.map(&:to_h),
+      "listed, with no capture to show"
+  end
+
+  # Only older versions' missing keys are tolerated; an entry no version
+  # writes is a bug, and it fails loudly instead of being guessed at.
+  test "an uncompared entry with an unknown reason fails the merge loudly" do
+    dir = SnapDiff::Reporting.parallel_fragments_dir
+    fork_worker { SnapDiff::Reporting.notify([build_failing_assertion("current")]) }
+    File.write(File.join(dir, "99997.json"), JSON.generate({
+      "missing_baselines" => [], "reporters" => [],
+      "uncompared" => [{"name" => "signup", "path" => nil, "reason" => "bogus"}]
+    }))
+
+    error = assert_raises(KeyError) { SnapDiff::Reporting.merge_parallel_fragments! }
+    assert_includes error.message, "bogus"
+  ensure
+    FileUtils.rm_rf(dir)
   end
 
   # Serial and `parallelize(with: :threads)` both record in the process that

@@ -100,6 +100,44 @@ class ReportingCountsTest < ActiveSupport::TestCase
     assert_includes SnapDiff::Reporting.counts_summary, "0 verified, 0 changed, 2 new (not verified)."
   end
 
+  # The run's uncompared screenshots, for any reporter to read in
+  # `finalize`. The same entries the summary line counts, so a reporter that
+  # lists them lists what the terminal counts.
+  test "uncompared lists each new screenshot once, with its file" do
+    assert SnapDiff::Reporting.record_missing_baseline("a", path: "/app/a.png"), "first sighting"
+    refute SnapDiff::Reporting.record_missing_baseline("a", path: "/app/a.png"), "seen before"
+
+    assert_equal [{name: "a", path: Pathname("/app/a.png"), reason: :new}], SnapDiff::Reporting.uncompared.map(&:to_h)
+    assert_equal 1, SnapDiff::Reporting.missing_baselines_count
+  end
+
+  test "uncompared marks re-recorded screenshots as such, after the new ones" do
+    SnapDiff::Reporting.record_rerecorded_baseline("b", path: "/app/b.png")
+    SnapDiff::Reporting.record_missing_baseline("a", path: "/app/a.png")
+
+    assert_equal [[:new, "a"], [:rerecorded, "b"]], SnapDiff::Reporting.uncompared.map { |s| [s.reason, s.name] }
+  end
+
+  # Every reporter reads the same entries: none can change what another sees.
+  test "uncompared hands out frozen values" do
+    SnapDiff::Reporting.record_missing_baseline(+"a", path: "/app/a.png")
+    list = SnapDiff::Reporting.uncompared
+
+    assert_predicate list, :frozen?
+    assert_predicate list.first, :frozen?
+    assert_predicate list.first.name, :frozen?
+    assert_raises(FrozenError) { list.first.reason = :rerecorded }
+  end
+
+  test "reset_run_totals! forgets the uncompared screenshots" do
+    SnapDiff::Reporting.record_missing_baseline("a", path: "/app/a.png")
+    SnapDiff::Reporting.record_rerecorded_baseline("b", path: "/app/b.png")
+
+    SnapDiff::Reporting.reset_run_totals!
+
+    assert_empty SnapDiff::Reporting.uncompared
+  end
+
   # The reason this moved: the gem's one and only `register` call site is in
   # reporters/html.rb, so the documented Rails setup registers nothing.
   test "finalize! prints the counts with no reporter registered" do

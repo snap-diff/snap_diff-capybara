@@ -258,6 +258,18 @@ and then warned about (`[snap_diff] Reporter … failed (NoMethodError: undefine
 
 A reporter that raises is warned about and skipped — the other reporters still run.
 
+`record` only receives screenshots that were compared. The ones that were not — the summary
+line's "new" and "re-recorded" — are in `SnapDiff::Reporting.uncompared`, complete by the time
+`finalize` runs (fork-parallel workers included):
+
+```ruby
+  def finalize
+    new_ones = SnapDiff::Reporting.uncompared.select { |s| s.reason == :new }
+    # each has #name, #path (the captured file as a Pathname, or nil when it isn't known)
+    # and #reason (:new or :rerecorded); check s.path&.exist? before reading it
+  end
+```
+
 The bundled HTML report is just a pre-registered reporter of this kind:
 
 ```ruby

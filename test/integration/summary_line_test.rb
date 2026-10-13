@@ -22,7 +22,7 @@ class SummaryLineTest < ActiveSupport::TestCase
   end
 
   test "a run that changed and captured a new screenshot counts all three, and keeps the report path" do
-    out, status = run_case("verified,changed,new")
+    out, status, report = run_case("verified,changed,new")
 
     refute status.success?, out
     assert_includes out, "[snap_diff] 2 verified, 1 changed, 1 new (not verified)."
@@ -33,6 +33,36 @@ class SummaryLineTest < ActiveSupport::TestCase
     # the path; if the reporter ever carries the counts again, the run ends
     # on the same line twice.
     assert_equal 1, out.scan("verified,").size, "the counts line was printed more than once"
+    # The report's numbers are the terminal's: total = verified, failed =
+    # changed, and the new screenshot is counted and listed.
+    assert_includes report, "2 total"
+    assert_includes report, "1 failed"
+    assert_includes report, "1 new"
+    assert_includes report, '"git_add":"git add -- screenshots/new.png"'
+  end
+
+  # Before, a run whose only finding was a new screenshot wrote no report:
+  # the dev reviewing the capture, or reading CI artifacts, had nothing.
+  test "a run that only captured a new screenshot writes a report listing it" do
+    out, status, report = run_case("new")
+
+    assert status.success?, out
+    assert_includes out, "[snap_diff] 0 verified, 0 changed, 1 new (not verified)."
+    assert_match(%r{^\[snap_diff\] Report: /\S+snap_diff_report\.html$}, out)
+    assert_includes report, '"name":"new","new_screenshot":true'
+    assert_includes report, '"git_add":"git add -- screenshots/new.png"'
+  end
+
+  # CI's mode. The missing baseline fails the test as it always did; the
+  # summary used to say `0 new` and no report was written, though the
+  # capture was on disk.
+  test "under record: :none a new screenshot fails, is counted, and is in the report" do
+    out, status, report = run_case("new", record: "none")
+
+    refute status.success?, out
+    assert_includes out, "No existing screenshot found for"
+    assert_includes out, "[snap_diff] 0 verified, 0 changed, 1 new (not verified)."
+    assert_includes report, '"git_add":"git add -- screenshots/new.png"'
   end
 
   # The case this line exists for: `rake test` running zero system tests, or
@@ -73,7 +103,7 @@ class SummaryLineTest < ActiveSupport::TestCase
   # -- there was a baseline, it was just not consulted. Asserted on a
   # finished process because the two features never met before this branch.
   test "a run that only re-recorded says so instead of crying NOTHING WAS VERIFIED" do
-    out, status = run_case("rerecorded")
+    out, status, report = run_case("rerecorded")
 
     assert status.success?, out
     assert_includes out, "[snap_diff] 0 verified, 0 changed, 0 new (not verified). 1 re-recorded (not verified)."
@@ -81,6 +111,7 @@ class SummaryLineTest < ActiveSupport::TestCase
     # a false alarm here is how the real alarm stops being read.
     refute_includes out, "NOTHING WAS VERIFIED"
     assert_includes out, "record: :all re-recorded 1 screenshot WITHOUT comparing: rerecorded"
+    assert_nil report, "re-recorded screenshots are counted, not listed: alone, there is nothing to show"
   end
 
   test "a mixed run counts verified and re-recorded separately" do
@@ -94,7 +125,9 @@ class SummaryLineTest < ActiveSupport::TestCase
 
   # Builds a throwaway git repo with COMMITTED baselines for `verified` and
   # `changed` (none for `new`), then runs the user's test file against it.
-  def run_case(cases, reporter: true)
+  # Returns the run's output, its exit status, and the HTML report it wrote
+  # (nil when none was written).
+  def run_case(cases, reporter: true, record: nil)
     Dir.mktmpdir do |dir|
       # macOS hands out /var/... symlinks; git reports the physical path, and
       # baseline lookup is a relative_path_from between the two.
@@ -108,11 +141,13 @@ class SummaryLineTest < ActiveSupport::TestCase
       Open3.capture2e(*git, "add", "screenshots")
       Open3.capture2e(*git, "commit", "-qm", "baselines")
 
-      Open3.capture2e(
+      out, status = Open3.capture2e(
         {"SNAP_ROOT" => repo, "SNAP_IMAGES" => TEST_IMAGES_DIR.to_s, "SNAP_CASES" => cases, "CI" => nil,
-         "SNAP_NO_REPORTER" => (reporter ? nil : "1")},
+         "SNAP_NO_REPORTER" => (reporter ? nil : "1"), "SNAP_RECORD" => record},
         RbConfig.ruby, "-Ilib", "-Itest", file_fixture("summary_line_case.rb").to_s
       )
+      report = Pathname("#{repo}/screenshots/snap_diff_report.html")
+      [out, status, (report.read if report.exist?)]
     end
   end
 end

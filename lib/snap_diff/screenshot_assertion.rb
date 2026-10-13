@@ -156,13 +156,10 @@ module SnapDiff
 
     # Relative to the configured root when the file is inside it, as the
     # failure message's artifact paths are; otherwise as Ruby recorded it,
-    # which resolves from where the test command ran. That includes a path
-    # Pathname can't relate to the root at all, such as one on another drive.
+    # which resolves from where the test command ran.
     def display_path(path)
       relative = Pathname(path).expand_path.relative_path_from(SnapDiff.config.root).to_path
       relative.start_with?("..") ? path : relative
-    rescue ArgumentError
-      path
     end
   end
 
@@ -182,6 +179,12 @@ module SnapDiff
     # needed or wanted here.
     def record_baseline_checkout(name)
       @checked_out_baselines << name
+    end
+
+    # True when git handed us a baseline for `name` in this test: a missing
+    # baseline file then means it disappeared, not that none was committed.
+    def baseline_checked_out?(name)
+      @checked_out_baselines.include?(name)
     end
 
     def add_assertion(assertion)
@@ -205,7 +208,7 @@ module SnapDiff
     # tests asserting the SAME name, where one's archive_baseline! moves
     # the baseline the other just checked out.
     def record_new_screenshot(name)
-      raise SnapDiff::Error.new(<<~ERROR.chomp, caller) if @checked_out_baselines.include?(name)
+      raise SnapDiff::Error.new(<<~ERROR.chomp, caller) if baseline_checked_out?(name)
         The baseline for '#{name}' was checked out and then disappeared before it could be compared -- nothing was verified.
         Every artifact path derives from the screenshot name alone, so two tests asserting '#{name}' at the same time race on one set of files: the one that finishes first archives the baseline the other is still using.
         Give those screenshots distinct names, or do not run them concurrently.

@@ -10,7 +10,7 @@ require 'snap_diff/reporters/html'            # canonical
 # require 'capybara_screenshot_diff/reporters/html'   # legacy, same thing
 ```
 
-After running tests, open the report (generated only when there are failures):
+After running tests, open the report (written when a screenshot changed or is new):
 
 ```bash
 open doc/screenshots/snap_diff_report.html
@@ -18,7 +18,11 @@ open doc/screenshots/snap_diff_report.html
 
 The report includes a sidebar with thumbnails, side-by-side comparison with diff toggle, search, and summary stats. No configuration needed — just require it.
 
-**Note:** The report is not generated when all screenshots match.
+New screenshots — captured with no committed baseline — are listed after the failures, marked
+`new`: the capture, and the `git add` that makes it the baseline (baselines are read from git, so
+committing it is what accepts it). Their count in the report is the summary line's `new`.
+
+**Note:** The report is not written when every screenshot matched and none is new.
 
 ## The end-of-run summary
 
@@ -30,8 +34,9 @@ Every run ends with what it actually did, whether or not you require a reporter:
 
 - **verified** — a committed baseline existed and was compared
 - **changed** — of those, the ones that differed
-- **new** — captured but *not* compared, for want of a committed baseline: neither a pass nor a
-  failure. Commit the files to turn them into baselines.
+- **new** — captured but *not* compared, for want of a committed baseline: not a pass. Under
+  `record: :none` (the default on CI) it also fails its test. Commit the files to turn them into
+  baselines.
 
 `0 verified` is printed as `NOTHING WAS VERIFIED`, because it is the only signal for the failures
 no per-assertion rule can see: a `rake test` that ran zero system tests, or an inherited `GIT_DIR`
@@ -52,8 +57,8 @@ that hook fires in the process holding the results depends on how your runner pa
 | How the suite runs | Report |
 | --- | --- |
 | Serial | Written, complete. |
-| `parallelize(with: :threads)` (also the default on JRuby) | Written, complete — same failures and counts as a serial run; only the order of the entries differs. Verified over repeated runs, provided [screenshot names are unique across tests](thread_safety.md#screenshot-names-must-be-unique-across-tests). |
-| `parallelize(workers: N)` (Rails' default, forks) | Written, complete — one report at the usual path, merged from every worker. No configuration needed. |
+| `parallelize(with: :threads)` (also the default on JRuby) | Written, complete — same failures, new screenshots and counts as a serial run; only the order of the entries differs. Verified over repeated runs, provided [screenshot names are unique across tests](thread_safety.md#screenshot-names-must-be-unique-across-tests). |
+| `parallelize(workers: N)` (Rails' default, forks) | Written, complete — one report at the usual path, merged from every worker, new screenshots included. No configuration needed. |
 | One process per worker (`parallel_tests`, RSpec, CI sharding) | Written, but only the **last** process to finish is in it; the others are overwritten. |
 
 Under Rails' forking parallelism the workers hold the results but never finalize: Minitest skips its
@@ -124,6 +129,11 @@ the framework's end-of-suite hook (`Minitest.after_run`, RSpec `after(:suite)`, 
 **Do implement `summary`.** `finalize!` calls it unconditionally, so a reporter without it is
 finalized and then warned about. A reporter that raises is warned about and skipped — the others
 still run.
+
+`record` only sees screenshots that were compared. The others — each new (`reason: :new`) or
+re-recorded (`reason: :rerecorded`) screenshot, with its `name` and captured `path` — are in
+`SnapDiff::Reporting.uncompared`, complete by the time `finalize` runs (fork-parallel workers
+included). The HTML report lists new screenshots from it.
 
 Full details in [Custom reporters](snapdiff.md#custom-reporters).
 

@@ -228,7 +228,7 @@ Add one line to get an interactive dashboard for reviewing all screenshot differ
 
 ```ruby
 # test/test_helper.rb
-require 'capybara_screenshot_diff/reporters/html'
+require 'snap_diff/reporters/html'
 ```
 
 After tests run, open `doc/screenshots/snap_diff_report.html`:
