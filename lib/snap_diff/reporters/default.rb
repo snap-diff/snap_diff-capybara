@@ -154,14 +154,11 @@ module SnapDiff
 
       # Relative to the configured root: shorter to read, and still
       # click-through-able in terminals that resolve paths against the
-      # working directory. Anything outside the root stays as given, because
-      # a "../../.." path is neither; so does a path that can't be related to
-      # the root at all (another drive), rather than failing the message.
+      # working directory. Anything outside the root stays absolute, because
+      # a "../../.." path is neither.
       def display_path(path)
         relative = path.expand_path.relative_path_from(SnapDiff.config.root).to_path
         relative.start_with?("..") ? path.to_path : relative
-      rescue ArgumentError
-        path.to_path
       end
 
       def percent(fraction)

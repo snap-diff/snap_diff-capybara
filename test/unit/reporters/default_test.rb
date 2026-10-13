@@ -179,19 +179,6 @@ class DefaultReporterTest < ActiveSupport::TestCase
     end
   end
 
-  # A path that can't be related to the root (another Windows drive; a
-  # relative root gives Ruby's same "different prefix" error anywhere) must
-  # not replace the screenshot failure with an ArgumentError.
-  test "artifact paths that can't be related to the root are printed as given" do
-    driver = SnapDiff::Drivers::VipsDriver.new
-    comparison = build_comparison_for(driver, "a.png", "b.png")
-    reporter = SnapDiff::Reporters::Default.new(driver.find_difference_region(comparison))
-
-    SnapDiff.config.stub(:root, Pathname("spec/dummy")) do
-      assert_includes reporter.generate.squeeze(" "), "heatmap: #{reporter.heatmap_diff_path}"
-    end
-  end
-
   private
 
   def with_config_root(root)
