@@ -9,7 +9,7 @@ bin/dtest                          # Run all tests with all drivers
 bin/dtest test/integration/        # Run specific test directory
 ```
 
-This builds a Docker image with Chrome and runs the test suite against three Capybara drivers: `cuprite`, `selenium_chrome_headless`, and `selenium_headless`.
+This builds a Docker image with Chrome and runs the test suite against three Capybara drivers: `cuprite`, `selenium_chrome_headless`, and `selenium_headless`. On Apple Silicon it skips `selenium_headless`: Firefox 155+ hangs at startup under amd64 emulation, so Firefox is covered by CI only.
 
 ## Recording baseline screenshots
 

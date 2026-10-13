@@ -27,6 +27,12 @@ docker build . -t csd:test || exit 1
 # Run tests with different drivers
 echo "Running tests..."
 DRIVERS=("cuprite" "selenium_chrome_headless" "selenium_headless")
+# Firefox 155+ hangs at startup in the amd64 image under emulation (Rosetta),
+# so Apple Silicon runs skip it; CI covers Firefox on native amd64.
+if [[ "$(uname -m)" == "arm64" ]]; then
+  echo "Skipping selenium_headless (Firefox) on arm64: it hangs under amd64 emulation. CI runs it."
+  DRIVERS=("cuprite" "selenium_chrome_headless")
+fi
 for driver in "${DRIVERS[@]}"; do
   echo "Running tests with $driver driver..."
   docker run --ulimit core=0 $DOCKER_ENV_ARGS -e CAPYBARA_DRIVER="$driver" \
