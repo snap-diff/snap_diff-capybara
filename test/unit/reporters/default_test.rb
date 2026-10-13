@@ -161,6 +161,24 @@ class DefaultReporterTest < ActiveSupport::TestCase
     end
   end
 
+  # A size change draws no annotations, so its message lists only the two
+  # inputs, even when an earlier same-size failure left annotations on disk.
+  test "a size change labels its two inputs like any other failure" do
+    base = @_tmpdir / "header.base.png"
+    new = @_tmpdir / "header.png"
+    FileUtils.cp(TEST_IMAGES_DIR / "a.png", base)
+    FileUtils.cp(TEST_IMAGES_DIR / "a_cropped.png", new)
+    %w[header.diff.png header.base.diff.png header.heatmap.diff.png].each { |stale| FileUtils.touch(@_tmpdir / stale) }
+
+    with_config_root(@_tmpdir) do
+      assert_equal <<~MESSAGE.chomp, SnapDiff::Comparison.new(new, base).processed.error_message
+        Dimensions have changed: 80x80 => 80x60
+          baseline: header.base.png
+          actual:   header.png
+      MESSAGE
+    end
+  end
+
   private
 
   def with_config_root(root)
