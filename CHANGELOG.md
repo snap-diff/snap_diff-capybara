@@ -363,6 +363,10 @@ One removal 2.0 cannot warn about, written down instead: the legacy `LOADED_DRIV
   and omitted the README
 
 ### Fixed
+- **Screenshots asserted with `delayed: false` are now counted and reported.** They
+  validated immediately but never reached the registry, so a suite run that way ended
+  on `0 verified ... NOTHING WAS VERIFIED` and its failures were missing from the
+  report. The failure still raises inside the test, once
 - **A screenshot with no committed baseline no longer passes silently** — it warns,
   names the file, and is counted as `new (not verified)` rather than as a pass
 - **An inherited `GIT_DIR` / `GIT_WORK_TREE` / `GIT_INDEX_FILE` no longer redirects

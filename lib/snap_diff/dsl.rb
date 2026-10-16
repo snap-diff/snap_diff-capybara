@@ -96,14 +96,11 @@ module SnapDiff
 
       return false unless assertion
 
-      # Determine if validation should be delayed or immediate
-      delayed = options.fetch(:delayed, SnapDiff.config.delayed)
-
-      if delayed
-        SnapDiff.session.add_assertion(assertion)
-      else
-        assertion.validate!
-      end
+      # Registered either way: the end-of-run tally and the reporters see
+      # every finished assertion, immediate ones included. An immediate one
+      # validates here and is a no-op when the registry verifies at teardown.
+      SnapDiff.session.add_assertion(assertion)
+      assertion.validate! unless options.fetch(:delayed, SnapDiff.config.delayed)
 
       true
     end

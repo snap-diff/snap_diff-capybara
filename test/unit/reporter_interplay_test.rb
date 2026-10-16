@@ -69,6 +69,37 @@ class ReporterInterplayTest < ActiveSupport::TestCase
     end
   end
 
+  # The same wiring for the immediate path. An assertion validated with
+  # delayed: false is just as finished as a delayed one; a suite that runs
+  # that way used to end on "0 verified" with its failures missing from
+  # the report.
+  test "an immediate assertion reaches reporters and the tally too" do
+    SnapDiff::Reporting.reset_run_totals!
+    SnapDiff::Vcs.stub(:checkout_vcs, true) do
+      snap = create_snapshot_for(:a, :a)
+
+      assert_matches_screenshot(snap.full_name, delayed: false)
+      SnapDiff.reset
+
+      assert_equal [snap.full_name], @spy.recorded.flatten.map(&:name)
+      assert_equal 1, SnapDiff::Reporting.verified
+    end
+  end
+
+  test "an immediate failure is reported once and raised once" do
+    SnapDiff::Reporting.reset_run_totals!
+    SnapDiff::Vcs.stub(:checkout_vcs, true) do
+      snap = create_snapshot_for(:c, :a)
+
+      assert_raises(SnapDiff::ExpectationNotMet) { assert_matches_screenshot(snap.full_name, delayed: false) }
+      assert_nil SnapDiff.session.verify, "teardown must not fail the test a second time"
+      SnapDiff.reset
+
+      assert_equal [snap.full_name], @spy.recorded.flatten.map(&:name)
+      assert_equal 1, SnapDiff::Reporting.changed
+    end
+  end
+
   test "reset without assertions does not notify reporters" do
     SnapDiff.reset
 
