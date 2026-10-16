@@ -136,7 +136,7 @@ baseline) or `:rerecorded` (accepted by `record: :all`). `compare` is nil for a 
 without a baseline; `assertion.path` is the captured file either way. Test `status`, not
 `compare`, to find failures: the tally has already run every comparison by the time `record`
 is called, and reading `status` never forces one. The new and re-recorded screenshots are also in
-`SnapDiff::Reporting.uncompared` (each with `name`, `path` and `reason`), complete by the time
+`SnapDiff::Reporting.uncompared` (each with `name`, `path` and `status`), complete by the time
 `finalize` runs (fork-parallel workers included). The HTML report lists new screenshots from it.
 
 Full details in [Custom reporters](snapdiff.md#custom-reporters).

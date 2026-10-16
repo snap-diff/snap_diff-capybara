@@ -333,7 +333,7 @@ One removal 2.0 cannot warn about, written down instead: the legacy `LOADED_DRIV
 - **Reporters can list the screenshots that were not compared.**
   `SnapDiff::Reporting.uncompared` returns the ones behind the summary line's "new" and
   "re-recorded" counts, complete by the time reporters `finalize` (fork-parallel workers
-  included): each with its `name`, the captured file's `path`, and the `reason` — `:new`
+  included): each with its `name`, the captured file's `path`, and the `status` — `:new`
   (no committed baseline) or `:rerecorded` (`record: :all`). The bundled HTML report lists
   new screenshots from it
 - New documentation shipped inside the gem:

@@ -116,16 +116,17 @@ module SnapDiff
     # really there, and the path the `:none` message tells the user to
     # `git add` exists by the time they read it (#260). A new one is
     # registered through the session's check, which raises when the baseline
-    # was committed but disappeared (#217): that one is not new.
+    # was committed but disappeared (#217): that one is not new. The tally is
+    # not done here: Reporting counts every registered assertion at reset.
     def register_uncompared_screenshot
       if record_mode == :all
-        SnapDiff::Reporting.record_rerecorded_baseline(screenshot_full_name, path: @snapshot.path)
         return register(SnapDiff::ScreenshotAssertion.new(screenshot_full_name, record_mode: record_mode, path: @snapshot.path))
       end
 
+      first_sighting = !SnapDiff.session.new_screenshots.include?(screenshot_full_name)
       assertion = SnapDiff.session.record_new_screenshot(screenshot_full_name, path: @snapshot.path)
       fail_if_new_screenshot
-      warn_no_committed_baseline if SnapDiff::Reporting.record_missing_baseline(screenshot_full_name, path: @snapshot.path)
+      warn_no_committed_baseline if first_sighting
       assertion
     end
 
@@ -161,10 +162,6 @@ module SnapDiff
     def fail_if_new_screenshot
       return unless record_mode == :none
 
-      # Tallied here because it is the last moment it can be: this raise
-      # ends the screenshot, and the run's summary and report still owe the
-      # user the capture it names.
-      SnapDiff::Reporting.record_missing_baseline(screenshot_full_name, path: @snapshot.path)
       raise SnapDiff::ExpectationNotMet.new(<<~ERROR.chomp, caller)
         No existing screenshot found for #{@snapshot.path}!
         To record it: `git add #{@snapshot.path}` and commit -- baselines are read from git.

@@ -269,9 +269,9 @@ included):
 
 ```ruby
   def finalize
-    new_ones = SnapDiff::Reporting.uncompared.select { |s| s.reason == :new }
+    new_ones = SnapDiff::Reporting.uncompared.select { |s| s.status == :new }
     # each has #name, #path (the captured file as a Pathname, or nil when it isn't known)
-    # and #reason (:new or :rerecorded); check s.path&.exist? before reading it
+    # and #status (:new or :rerecorded); check s.path&.exist? before reading it
   end
 ```
 

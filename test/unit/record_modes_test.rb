@@ -197,8 +197,9 @@ class RecordModesTest < ActiveSupport::TestCase
         SnapDiff::ScreenshotMatcher.new(name).build_screenshot_assertion
       end
     end
+    SnapDiff::Reporting.notify(SnapDiff.session.assertions)
 
-    assert_equal [{name: name, path: SnapDiff::SnapManager.path_for(name).path, reason: :new}], SnapDiff::Reporting.uncompared.map(&:to_h)
+    assert_equal [{name: name, path: SnapDiff::SnapManager.path_for(name).path, status: :new}], SnapDiff::Reporting.uncompared.map(&:to_h)
   end
 
   # A file left by an earlier run sits at the path; the capture then fails.
@@ -246,8 +247,9 @@ class RecordModesTest < ActiveSupport::TestCase
         SnapDiff::ScreenshotMatcher.new(name).build_screenshot_assertion
       end
     end
+    SnapDiff::Reporting.notify(SnapDiff.session.assertions)
 
-    assert_equal [{name: name, path: SnapDiff::SnapManager.path_for(name).path, reason: :new}], SnapDiff::Reporting.uncompared.map(&:to_h)
+    assert_equal [{name: name, path: SnapDiff::SnapManager.path_for(name).path, status: :new}], SnapDiff::Reporting.uncompared.map(&:to_h)
     assert_includes SnapDiff::Reporting.counts_summary, "1 new (not verified)"
   end
 
@@ -258,8 +260,9 @@ class RecordModesTest < ActiveSupport::TestCase
     SnapDiff::Vcs.stub(:checkout_vcs, false) do
       SnapDiff::ScreenshotMatcher.new(name).build_screenshot_assertion
     end
+    SnapDiff::Reporting.notify(SnapDiff.session.assertions)
 
-    assert_equal [{name: name, path: SnapDiff::SnapManager.path_for(name).path, reason: :rerecorded}], SnapDiff::Reporting.uncompared.map(&:to_h)
+    assert_equal [{name: name, path: SnapDiff::SnapManager.path_for(name).path, status: :rerecorded}], SnapDiff::Reporting.uncompared.map(&:to_h)
     assert_equal 0, SnapDiff::Reporting.missing_baselines_count
   end
 
@@ -326,6 +329,7 @@ class RecordModesTest < ActiveSupport::TestCase
       names.each { |n| SnapDiff::ScreenshotMatcher.new(n).build_screenshot_assertion }
     end
 
+    SnapDiff::Reporting.notify(SnapDiff.session.assertions)
     summary = SnapDiff::Reporting.rerecorded_baselines_summary
 
     assert_match(/3 screenshots/, summary)

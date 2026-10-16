@@ -92,7 +92,7 @@ module SnapDiff
       def failed = failures.size
       # Screenshots captured but not compared: new ones are listed,
       # re-recorded ones only counted.
-      def new_screenshots = SnapDiff::Reporting.uncompared.select { |screenshot| screenshot.reason == :new }
+      def new_screenshots = SnapDiff::Reporting.uncompared.select { |screenshot| screenshot.status == :new }
       def new_count = new_screenshots.size
       def rerecorded_count = SnapDiff::Reporting.uncompared.size - new_count
 

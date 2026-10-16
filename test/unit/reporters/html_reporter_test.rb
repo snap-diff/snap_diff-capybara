@@ -71,6 +71,17 @@ class HTMLReporterTest < ActiveSupport::TestCase
     assert_includes html, "3 total"
   end
 
+  # The reporter is usable on its own (record + finalize, no Reporting.count
+  # behind it): its totals are what it recorded itself, never negative.
+  test "#total and #passed come from what the reporter recorded, not from Reporting" do
+    reporter = SnapDiff::Reporters::HTML.new(output_path: @output_path)
+
+    reporter.record([build_failing_assertion("page_a"), build_passing_assertion("page_b")])
+
+    assert_equal [2, 1, 1], [reporter.total, reporter.failed, reporter.passed]
+    assert_equal 0, SnapDiff::Reporting.verified
+  end
+
   # An entry that fails to build must not vanish, nor sink the report: it is
   # warned about, kept as "could not render", and counted as failed.
   test "#record keeps an entry it could not build, says so, and renders the rest" do
@@ -319,7 +330,7 @@ class HTMLReporterTest < ActiveSupport::TestCase
   test "no other reporter can change what the report lists" do
     reporter = SnapDiff::Reporters::HTML.new(output_path: @output_path)
     capture_new_screenshot("signup")
-    assert_raises(FrozenError) { SnapDiff::Reporting.uncompared.first.reason = :rerecorded }
+    assert_raises(FrozenError) { SnapDiff::Reporting.uncompared.first.status = :rerecorded }
 
     reporter.finalize
 

@@ -192,6 +192,8 @@ class ReporterInterplayTest < ActiveSupport::TestCase
       end
     end
 
+    SnapDiff.reset # the tally: Reporting counts the registered assertions
+
     out, _err = capture_io { SnapDiff::Reporting.finalize! }
 
     assert_match(/no committed baseline/i, out)
