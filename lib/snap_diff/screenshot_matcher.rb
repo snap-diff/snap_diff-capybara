@@ -92,7 +92,7 @@ module SnapDiff
     # `record: :once` records them and still compares everything that has a
     # baseline (docs/ci-integration.md).
     def refuse_bulk_record_under_ci!
-      return if ENV["CI"].to_s.empty?
+      return unless SnapDiff::Config.ci?
 
       raise SnapDiff::ExpectationNotMet.new(<<~ERROR.chomp, caller)
         `record: :all` re-records every baseline WITHOUT comparing, so it refuses to run under CI (ENV["CI"] is set).

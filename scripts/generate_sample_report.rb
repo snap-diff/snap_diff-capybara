@@ -20,7 +20,7 @@ pairs = [
   {name: "header-resized", base: "a", new: "a_cropped"} # dimensions change: 80x80 => 80x60
 ]
 
-embed = ARGV.include?("--embed") || !!ENV["CI"]
+embed = ARGV.include?("--embed") || SnapDiff::Config.ci?
 reporter = CapybaraScreenshotDiff::Reporters::HTML.new(output_path: output_path, embed_images: embed)
 fixtures = File.expand_path("../test/fixtures/images", __dir__)
 tmp_dir = File.expand_path("../tmp/sample_images", __dir__)

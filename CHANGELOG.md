@@ -363,6 +363,17 @@ One removal 2.0 cannot warn about, written down instead: the legacy `LOADED_DRIV
   and omitted the README
 
 ### Fixed
+- **`CI: ""` means "not CI" for the HTML report too.** The report embedded every image
+  whenever the `CI` variable merely existed, so the documented opt-out (`CI: ""` in the
+  update-baselines job) still produced a report with inlined images while the record mode
+  read the same value as "not CI". One predicate, `SnapDiff::Config.ci?`, now serves every
+  reader: unset or empty is not CI
+- **The documented `ACCEPT_SCREENSHOTS` snippet no longer switches off the CI missing-baseline
+  check.** README and `docs/configuration.md` assigned
+  `record = ENV["ACCEPT_SCREENSHOTS"] ? :all : :once`, which sets an explicit `:once` on every
+  ordinary run. An explicit mode outranks the `:none`-under-CI default, so a CI that copied it
+  stopped failing on a screenshot with no committed baseline. Both now assign `:all` only when
+  the variable is non-empty and leave the default alone otherwise
 - **A screenshot with no committed baseline no longer passes silently** — it warns,
   names the file, and is counted as `new (not verified)` rather than as a pass
 - **An inherited `GIT_DIR` / `GIT_WORK_TREE` / `GIT_INDEX_FILE` no longer redirects
