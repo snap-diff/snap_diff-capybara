@@ -53,7 +53,7 @@ class BaselineDisappearedTest < ActiveSupport::TestCase
       end
     end
 
-    assert_empty SnapDiff.session.new_screenshots,
+    assert_empty SnapDiff.session.assertions,
       "a vanished baseline must not be recorded as a never-committed one"
     assert_equal 0, SnapDiff::Reporting.missing_baselines_count,
       "nor counted as new, nor offered for `git add` in the report"
@@ -92,7 +92,7 @@ class BaselineDisappearedTest < ActiveSupport::TestCase
         assert_match(/disappeared/i, error.message)
         refute_match(/No committed baseline/, err)
         assert_equal 0, SnapDiff::Reporting.missing_baselines_count
-        assert_empty SnapDiff.session.new_screenshots
+        assert_empty SnapDiff.session.assertions
       ensure
         SnapDiff.config.record = nil
       end
@@ -105,7 +105,7 @@ class BaselineDisappearedTest < ActiveSupport::TestCase
     name = "a_#{Time.now.nsec}"
 
     SnapDiff::Vcs.stub(:checkout_vcs, false) do
-      assert_nil SnapDiff::ScreenshotMatcher.new(name).build_screenshot_assertion
+      assert_equal :new, SnapDiff::ScreenshotMatcher.new(name).build_screenshot_assertion.status
     end
 
     assert_includes SnapDiff.session.new_screenshots, name

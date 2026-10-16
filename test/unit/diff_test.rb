@@ -147,8 +147,10 @@ class DiffTest < ActiveSupport::TestCase
       mock = ::Minitest::Mock.new
       mock.expect(:different?, true)
       mock.expect(:different?, true)
-      # The third read is SnapDiff::Reporting.count's, when the test ends.
+      # A third `different?` is SnapDiff::Reporting.count's, when the test ends;
+      # `status` reads `difference` once after each of the two verdicts at verify.
       mock.expect(:different?, true)
+      2.times { mock.expect(:difference, TestDoubles::TestDifference.new(true)) }
       mock.expect(:dimensions_changed?, false)
       mock.expect(:base_image_path, Pathname.new("screenshot.base.png"))
       mock.expect(:error_message, "expected error message")
@@ -185,6 +187,8 @@ class DiffTest < ActiveSupport::TestCase
       comparison.expect(:different?, true) # to find backtrace
       comparison.expect(:different?, true) # to find messages
       comparison.expect(:different?, true) # SnapDiff::Reporting.count, when the test ends
+      # `status` reads `difference` once after each of the two verdicts at verify.
+      2.times { comparison.expect(:difference, TestDoubles::TestDifference.new(true)) }
       comparison.expect(:dimensions_changed?, false)
       comparison.expect(:base_image_path, Pathname.new("screenshot.base.png"))
       comparison.expect(:error_message, "expected error message for non minitest")

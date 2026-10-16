@@ -47,18 +47,10 @@ module SnapDiff
 
       capture_screenshot(capture_options, comparison_options)
 
-      # AFTER the capture, so the path the message tells the user to
-      # `git add` is one that exists by the time they read it (#260).
-      fail_if_new_screenshot
-
       # Pre-computation: No need to compare without base screenshot
-      # NOTE: Consider to return PreValid Assertion Value Object with hard coded valid result
-      unless need_to_compare?
-        record_uncompared_screenshot
-        return
-      end
+      return register_uncompared_screenshot unless need_to_compare?
 
-      create_screenshot_assertion(skip_stack_frames + 1, comparison_options)
+      register(create_screenshot_assertion(skip_stack_frames + 1, comparison_options))
     end
 
     # Captures a screenshot without comparing it to a baseline.
@@ -110,21 +102,31 @@ module SnapDiff
       @snapshot.base_path.exist?
     end
 
-    # `:all` re-records, so nothing was compared and nothing is "new" in the
-    # missing-baseline sense. Reported through its own channel, which counts
-    # only the screenshots that really went down this path.
+    # The matcher is the one registrar: every assertion it builds is
+    # registered here, before any raise, so the end-of-run tally and the
+    # reporters see it however the DSL goes on to validate it.
+    def register(assertion)
+      SnapDiff.session.add_assertion(assertion)
+    end
+
+    # No baseline to compare against: the capture is registered as an
+    # assertion with no comparison (`:new`, or `:rerecorded` under `:all`).
     #
     # Runs after a successful capture, so the file handed to reporters is
-    # really there (#260). A new one is tallied after the session's check,
-    # which raises when the baseline was committed but disappeared (#217):
-    # that one is not new.
-    def record_uncompared_screenshot
+    # really there, and the path the `:none` message tells the user to
+    # `git add` exists by the time they read it (#260). A new one is
+    # registered through the session's check, which raises when the baseline
+    # was committed but disappeared (#217): that one is not new.
+    def register_uncompared_screenshot
       if record_mode == :all
         SnapDiff::Reporting.record_rerecorded_baseline(screenshot_full_name, path: @snapshot.path)
-      else
-        SnapDiff.session.record_new_screenshot(screenshot_full_name)
-        warn_no_committed_baseline if SnapDiff::Reporting.record_missing_baseline(screenshot_full_name, path: @snapshot.path)
+        return register(SnapDiff::ScreenshotAssertion.new(screenshot_full_name, record_mode: record_mode, path: @snapshot.path))
       end
+
+      assertion = SnapDiff.session.record_new_screenshot(screenshot_full_name, path: @snapshot.path)
+      fail_if_new_screenshot
+      warn_no_committed_baseline if SnapDiff::Reporting.record_missing_baseline(screenshot_full_name, path: @snapshot.path)
+      assertion
     end
 
     def prepare_screenshot_options
@@ -153,17 +155,11 @@ module SnapDiff
       @snapshot.base_path.delete if @snapshot.base_path.exist?
     end
 
-    # Runs AFTER the capture, so `@snapshot.path` names a file that is
-    # really there and `git add` on it is a command the user can run on this
-    # very test run (#260). Before, the raise came first and the screenshot
-    # was never written -- the instruction was unfollowable in CI, the one
-    # place fail_if_new is on by default.
+    # The `:none` raise: immediate whatever `delayed` says, and after the
+    # capture, so `git add` on the path it names is a command the user can
+    # run on this very test run (#260). The screenshot is registered by then.
     def fail_if_new_screenshot
-      return if @snapshot.base_path.exist?
       return unless record_mode == :none
-      # Committed, then moved by a same-name test: not new. Left to the
-      # session, which raises that it disappeared (#217).
-      return if SnapDiff.session.baseline_checked_out?(screenshot_full_name)
 
       # Tallied here because it is the last moment it can be: this raise
       # ends the screenshot, and the run's summary and report still owe the
@@ -199,7 +195,7 @@ module SnapDiff
     end
 
     def create_screenshot_assertion(skip_stack_frames, comparison_options)
-      assertion = SnapDiff::ScreenshotAssertion.new(screenshot_full_name)
+      assertion = SnapDiff::ScreenshotAssertion.new(screenshot_full_name, record_mode: record_mode)
       assertion.caller = caller(skip_stack_frames + 1)
       assertion.compare = Comparison.new(@snapshot.path, @snapshot.base_path, comparison_options)
       assertion

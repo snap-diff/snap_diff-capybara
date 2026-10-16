@@ -55,9 +55,11 @@ class RegistryConcurrencyTest < ActiveSupport::TestCase
 
         names.each do |name|
           SnapDiff.session.add_assertion(build_assertion(name))
-          SnapDiff.session.record_new_screenshot(name)
           observed << SnapDiff.session.assertions.map(&:name)
         end
+
+        new_names = names.map { |name| "#{name}_new" }
+        new_names.each { |name| SnapDiff.session.record_new_screenshot(name) }
 
         SnapDiff.session.verify # all compares pass -> must not raise
 
@@ -67,7 +69,7 @@ class RegistryConcurrencyTest < ActiveSupport::TestCase
         SnapDiff.reset
         after_reset = SnapDiff.session.assertions.size + SnapDiff.session.new_screenshots.size
 
-        {names: names, observed: observed, final_names: final_names,
+        {names: names, new_names: new_names, observed: observed, final_names: final_names,
          new_screenshots: new_screenshots, after_reset: after_reset}
       end
     end
@@ -77,8 +79,8 @@ class RegistryConcurrencyTest < ActiveSupport::TestCase
       result[:observed].each_with_index do |snapshot_of_names, index|
         assert_equal result[:names].first(index + 1), snapshot_of_names
       end
-      assert_equal result[:names], result[:final_names]
-      assert_equal result[:names], result[:new_screenshots]
+      assert_equal result[:names] + result[:new_names], result[:final_names]
+      assert_equal result[:new_names], result[:new_screenshots]
       assert_equal 0, result[:after_reset], "reset must clear only the calling thread's registry"
     end
 
@@ -90,6 +92,8 @@ class RegistryConcurrencyTest < ActiveSupport::TestCase
   test "a failing assertion in one thread does not fail verify in another" do
     failing_compare = Struct.new(:name) {
       def different? = true
+
+      def difference = TestDoubles::TestDifference.new(true)
 
       def error_message = "boom"
     }

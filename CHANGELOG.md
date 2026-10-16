@@ -342,6 +342,14 @@ One removal 2.0 cannot warn about, written down instead: the legacy `LOADED_DRIV
   rollback)
 
 ### Changed
+- **Reporters now receive every screenshot, each with a `status`.** New and re-recorded
+  (`record: :all`) captures used to bypass them; now every capture is a
+  `SnapDiff::ScreenshotAssertion` whose `status` is `:passed`, `:changed`, `:new` or
+  `:rerecorded` (`compare` is nil when there was no baseline). Reading `status` never
+  forces a comparison. A custom reporter that treated "has an assertion" as "was
+  compared" should test `assertion.status == :changed`, as the documented idiom and
+  `AISimple` now do. `pending_if_new` now also sees a new screenshot under `record: :none`,
+  where it is registered before the "no existing screenshot" failure, not only under `:once`
 - **No `activesupport` at runtime.** 1.15.1's `snap_manager.rb` required
   `active_support/core_ext/module/attribute_accessors` while `activesupport` was only a
   *development* dependency, so a bundle without Rails died at

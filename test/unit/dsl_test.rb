@@ -197,6 +197,26 @@ class DSLTest < ActiveSupport::TestCase
     end
   end
 
+  test "#screenshot returns false for a new screenshot, which is registered as a :new assertion" do
+    SnapDiff::Vcs.stub(:checkout_vcs, false) do
+      assert_not screenshot("a")
+
+      assert_equal [:new], SnapDiff.session.assertions.map(&:status)
+    end
+  end
+
+  test "#screenshot with delayed: false still raises immediately for a new screenshot under record: :none, and registers it" do
+    SnapDiff.config.record = :none
+
+    SnapDiff::Vcs.stub(:checkout_vcs, false) do
+      assert_raises(SnapDiff::ExpectationNotMet) { screenshot("a", delayed: false) }
+
+      assert_equal [:new], SnapDiff.session.assertions.map(&:status)
+    end
+  ensure
+    SnapDiff.config.record = nil
+  end
+
   test "SnapDiff.reset clears new_screenshots" do
     SnapDiff::Vcs.stub(:checkout_vcs, false) do
       screenshot "a"

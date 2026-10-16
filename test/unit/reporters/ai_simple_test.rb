@@ -17,7 +17,6 @@ class AISimpleReporterTest < Minitest::Test
     def to_h = {area_size: 42, region: [0, 0, 10, 10]}
   end
   StubCompare = Struct.new(:difference)
-  StubAssertion = Struct.new(:name, :compare)
 
   # Minimal ScreenshotAssertion surface for gate tests.
   GateCompare = Struct.new(:difference) do
@@ -44,7 +43,9 @@ class AISimpleReporterTest < Minitest::Test
   end
 
   def build_assertion(name, different: true)
-    StubAssertion.new(name, StubCompare.new(StubDifference.new(different: different)))
+    SnapDiff::ScreenshotAssertion.new(name).tap do |a|
+      a.compare = StubCompare.new(StubDifference.new(different: different))
+    end
   end
 
   def similarity_backend(value)
@@ -59,7 +60,8 @@ class AISimpleReporterTest < Minitest::Test
     build_reporter(similarity_backend(0.5)).record([
       build_assertion("changed"),
       build_assertion("same", different: false),
-      StubAssertion.new("pending", StubCompare.new(nil))
+      SnapDiff::ScreenshotAssertion.new("pending").tap { |a| a.compare = StubCompare.new(nil) },
+      SnapDiff::ScreenshotAssertion.new("brand_new")
     ])
 
     assert_equal ["changed"], SnapDiff::AI.results.map { |r| r[:name] }

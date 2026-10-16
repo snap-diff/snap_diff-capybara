@@ -44,10 +44,9 @@ module SnapDiff
         return unless @backend
 
         assertions.each do |a|
-          difference = a.compare&.difference
-          next unless difference&.different?
+          next unless a.status == :changed
 
-          analyze_once(a.name, difference)
+          analyze_once(a.name, a.compare.difference)
         end
       end
 

@@ -85,7 +85,7 @@ class RecordModesTest < ActiveSupport::TestCase
 
     capture_io do
       SnapDiff::Vcs.stub(:checkout_vcs, false) do
-        assert_nil SnapDiff::ScreenshotMatcher.new(name).build_screenshot_assertion
+        assert_equal :new, SnapDiff::ScreenshotMatcher.new(name).build_screenshot_assertion.status
       end
     end
 
@@ -102,7 +102,7 @@ class RecordModesTest < ActiveSupport::TestCase
 
     capture_io do
       SnapDiff::Vcs.stub(:checkout_vcs, false) do
-        assert_nil SnapDiff::ScreenshotMatcher.new(name).build_screenshot_assertion
+        assert_equal :new, SnapDiff::ScreenshotMatcher.new(name).build_screenshot_assertion.status
       end
     end
 
@@ -152,6 +152,21 @@ class RecordModesTest < ActiveSupport::TestCase
 
     assert_predicate path, :exist?
     assert_includes error.message, "SnapDiff.config.record = :once"
+  end
+
+  # The raise is immediate, but the capture is still an assertion: the
+  # matcher registers it first, so reporters and the tally see it.
+  test ":none registers the :new assertion before it raises" do
+    SnapDiff.config.record = :none
+    name = "c_#{Time.now.nsec}"
+
+    SnapDiff::Vcs.stub(:checkout_vcs, false) do
+      assert_raises(SnapDiff::ExpectationNotMet) do
+        SnapDiff::ScreenshotMatcher.new(name).build_screenshot_assertion
+      end
+    end
+
+    assert_equal [[name, :new]], SnapDiff.session.assertions.map { |a| [a.name, a.status] }
   end
 
   test ":none does not also warn about the missing baseline" do
@@ -259,11 +274,13 @@ class RecordModesTest < ActiveSupport::TestCase
     SnapDiff::Vcs.stub(:checkout_vcs, true) do
       snap = create_snapshot_for(:a, :c)
 
-      assert_nil SnapDiff::ScreenshotMatcher.new(snap.full_name).build_screenshot_assertion
+      assertion = SnapDiff::ScreenshotMatcher.new(snap.full_name).build_screenshot_assertion
 
       assert_captured(:c, snap.path, "the re-recorded screenshot must be the new capture")
       assert_not_captured(:a, snap.path, "the old baseline must not survive a re-record")
-      assert_not_predicate SnapDiff.session, :assertions_present?
+      assert_nil assertion.compare
+      assert_equal :rerecorded, assertion.status
+      assert_equal [assertion], SnapDiff.session.assertions
     end
   end
 
@@ -292,7 +309,7 @@ class RecordModesTest < ActiveSupport::TestCase
     name = "c_#{Time.now.nsec}"
 
     SnapDiff::Vcs.stub(:checkout_vcs, false) do
-      assert_nil SnapDiff::ScreenshotMatcher.new(name).build_screenshot_assertion
+      assert_equal :rerecorded, SnapDiff::ScreenshotMatcher.new(name).build_screenshot_assertion.status
     end
 
     assert_predicate SnapDiff::SnapManager.path_for(name).path, :exist?
@@ -353,7 +370,7 @@ class RecordModesTest < ActiveSupport::TestCase
     with_ci("") do
       SnapDiff::Vcs.stub(:checkout_vcs, true) do
         snap = create_snapshot_for(:a, :c)
-        assert_nil SnapDiff::ScreenshotMatcher.new(snap.full_name).build_screenshot_assertion
+        assert_equal :rerecorded, SnapDiff::ScreenshotMatcher.new(snap.full_name).build_screenshot_assertion.status
       end
     end
   end
@@ -380,7 +397,7 @@ class RecordModesTest < ActiveSupport::TestCase
 
       capture_io do
         SnapDiff::Vcs.stub(:checkout_vcs, false) do
-          assert_nil SnapDiff::ScreenshotMatcher.new("c_#{Time.now.nsec}").build_screenshot_assertion
+          assert_equal :new, SnapDiff::ScreenshotMatcher.new("c_#{Time.now.nsec}").build_screenshot_assertion.status
         end
       end
     end
@@ -392,7 +409,7 @@ class RecordModesTest < ActiveSupport::TestCase
     SnapDiff.config.record = :none
 
     SnapDiff::Vcs.stub(:checkout_vcs, false) do
-      assert_nil SnapDiff::ScreenshotMatcher.new("c_#{Time.now.nsec}", record: :all).build_screenshot_assertion
+      assert_equal :rerecorded, SnapDiff::ScreenshotMatcher.new("c_#{Time.now.nsec}", record: :all).build_screenshot_assertion.status
     end
   end
 

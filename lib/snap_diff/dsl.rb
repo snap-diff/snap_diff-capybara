@@ -76,7 +76,8 @@ module SnapDiff
     #   so a preceding `preload_all_images` still costs its browser
     #   round-trips while the block costs nothing. Readiness work belongs
     #   inside the same switch as the capture it serves.
-    # @return [Boolean] True if the screenshot was successfully captured and processed.
+    # @return [Boolean] True if the screenshot was compared against a baseline; false when it had none (it is
+    #   captured and registered as a `:new` assertion) or screenshots are disabled.
     # @raise [SnapDiff::ExpectationNotMet] If comparison fails and immediate validation is enabled.
     # @raise [SnapDiff::UnstableImage] If the image comparison is unstable.
     # @raise [SnapDiff::WindowSizeMismatchError] If the window size doesn't match expectations.
@@ -94,15 +95,11 @@ module SnapDiff
         .new(full_name, options)
         .build_screenshot_assertion(skip_stack_frames: skip_stack_frames + 1)
 
-      return false unless assertion
-
-      # Registered either way: the end-of-run tally and the reporters see
-      # every finished assertion, immediate ones included. An immediate one
-      # validates here and is a no-op when the registry verifies at teardown.
-      SnapDiff.session.add_assertion(assertion)
+      # Already registered by the matcher. An immediate one validates here
+      # and is a no-op when the registry verifies at teardown.
       assertion.validate! unless options.fetch(:delayed, SnapDiff.config.delayed)
 
-      true
+      !assertion.compare.nil?
     end
 
     # Convenience wrapper around {#assert_matches_screenshot} and {#capture_screenshot}.
