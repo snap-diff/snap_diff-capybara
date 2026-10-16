@@ -55,6 +55,48 @@ class BaselineDisappearedTest < ActiveSupport::TestCase
 
     assert_empty SnapDiff.session.new_screenshots,
       "a vanished baseline must not be recorded as a never-committed one"
+    assert_equal 0, SnapDiff::Reporting.missing_baselines_count,
+      "nor counted as new, nor offered for `git add` in the report"
+  end
+
+  # The baseline can go between the checkout and the first look at it, too.
+  def vanishing_checkout
+    lambda do |root, screenshot_path, checkout_path|
+      checking_out.call(root, screenshot_path, checkout_path)
+      checkout_path.delete
+      true
+    end
+  end
+
+  # Whichever window the baseline vanishes in, and in either mode, it was
+  # committed: the error says it disappeared (not "no baseline, git add
+  # it"), no no-baseline warning, and nothing counted or listed as new.
+  {"during the capture" => :stealing, "right after the checkout" => :vanishing}.each do |window, race|
+    %i[once none].each do |mode|
+      test "record: :#{mode}, a baseline that vanishes #{window} is reported as disappeared, not new" do
+        SnapDiff.config.record = mode
+        checkout = (race == :vanishing) ? vanishing_checkout : checking_out
+        screenshoter = (race == :stealing) ? stealing_screenshoter : ScreenshoterStub
+
+        error = nil
+        _out, err = capture_io do
+          SnapDiff::Vcs.stub(:checkout_vcs, checkout) do
+            SnapDiff.config.stub(:screenshoter, screenshoter) do
+              error = assert_raises(SnapDiff::Error) do
+                SnapDiff::ScreenshotMatcher.new("a_#{Time.now.nsec}").build_screenshot_assertion
+              end
+            end
+          end
+        end
+
+        assert_match(/disappeared/i, error.message)
+        refute_match(/No committed baseline/, err)
+        assert_equal 0, SnapDiff::Reporting.missing_baselines_count
+        assert_empty SnapDiff.session.new_screenshots
+      ensure
+        SnapDiff.config.record = nil
+      end
+    end
   end
 
   # The legitimate half of the distinction stays legitimate: no checkout

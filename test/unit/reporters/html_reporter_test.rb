@@ -2,6 +2,7 @@
 
 require "test_helper"
 require "snap_diff/reporters/html"
+require "unit/support_load_probe_test" # single source of truth for the -w probe
 
 class HTMLReporterTest < ActiveSupport::TestCase
   include DSLStub
@@ -12,6 +13,7 @@ class HTMLReporterTest < ActiveSupport::TestCase
   end
 
   teardown do
+    @restore_root&.call
     FileUtils.remove_entry(@output_dir)
   end
 
@@ -237,6 +239,141 @@ class HTMLReporterTest < ActiveSupport::TestCase
     assert_nil reporter.summary, "nothing was written, so there is no path to name"
   end
 
+  # --- new screenshots (no committed baseline) ---------------------------
+  #
+  # Read from SnapDiff::Reporting.uncompared -- the entries behind the
+  # summary line's "N new" -- so the report and the terminal agree.
+
+  test "a run with only new screenshots writes a report listing them" do
+    reporter = SnapDiff::Reporters::HTML.new(output_path: @output_path)
+    path = capture_new_screenshot("signup")
+
+    reporter.finalize
+
+    assert_predicate @output_path, :exist?
+    entry = report_data.sole
+    assert_equal({"name" => "signup", "new_screenshot" => true,
+                  "new" => path.relative_path_from(@output_dir).to_s,
+                  "git_add" => "git add -- screenshots/signup.png"}, entry)
+    assert_equal "[snap_diff] Report: #{@output_path}", reporter.summary
+  end
+
+  test "new screenshots are listed after the failures" do
+    reporter = SnapDiff::Reporters::HTML.new(output_path: @output_path)
+    capture_new_screenshot("signup")
+    reporter.record([build_failing_assertion("index"), build_passing_assertion("ok")])
+
+    reporter.finalize
+
+    assert_equal [["index", nil], ["signup", true]], report_data.map { |e| [e["name"], e["new_screenshot"]] }
+    html = @output_path.read
+    assert_includes html, "1 failed"
+    assert_includes html, "1 passed"
+    assert_includes html, "2 total"
+    assert_includes html, "1 new"
+    assert_includes html, "<title>SnapDiff Report — 1 failures, 1 new</title>"
+  end
+
+  # Copy-pasted into a shell from the report, so it must survive any path.
+  test "the git add command quotes the path for the shell" do
+    reporter = SnapDiff::Reporters::HTML.new(output_path: @output_path)
+    capture_new_screenshot("sign up")
+
+    reporter.finalize
+
+    assert_equal "git add -- screenshots/sign\\ up.png", report_data.sole["git_add"]
+  end
+
+  # save_path "." puts captures at the root, and a name may start with a
+  # dash: without `--`, git would take the path for an option.
+  test "the git add command can't mistake the path for an option" do
+    reporter = SnapDiff::Reporters::HTML.new(output_path: @output_path)
+    capture_new_screenshot("-signup", dir: ".")
+
+    reporter.finalize
+
+    assert_equal "git add -- -signup.png", report_data.sole["git_add"]
+  end
+
+  # The template reads locals from the binding, which Ruby can't see: a
+  # local assigned only for it warns on every suite run with warnings on.
+  test "no other reporter can change what the report lists" do
+    reporter = SnapDiff::Reporters::HTML.new(output_path: @output_path)
+    capture_new_screenshot("signup")
+    assert_raises(FrozenError) { SnapDiff::Reporting.uncompared.first.reason = :rerecorded }
+
+    reporter.finalize
+
+    assert_equal ["signup"], report_data.map { |e| e["name"] }
+  end
+
+  test "the reporter loads without warnings under -w" do
+    noise = SupportLoadProbeTest.verbose_load("snap_diff/reporters/html").lines.grep(%r{lib/snap_diff/})
+
+    assert_empty noise
+  end
+
+  test "a screenshot outside the project root is named by its absolute path" do
+    outside = Pathname.new(Dir.mktmpdir) / "elsewhere.png"
+    FileUtils.cp(File.expand_path("a.png", TEST_IMAGES_DIR), outside)
+    reporter = SnapDiff::Reporters::HTML.new(output_path: @output_path)
+    SnapDiff::Reporting.record_missing_baseline("elsewhere", path: outside)
+
+    SnapDiff.config.stub(:root, @output_dir) { reporter.finalize }
+
+    assert_equal "git add -- #{Shellwords.escape(outside.to_s)}", report_data.sole["git_add"]
+  ensure
+    FileUtils.remove_entry(outside.dirname) if outside
+  end
+
+  # #260: never show a file or a command that live state doesn't back. The
+  # file is gone by the time the report is written: still listed -- the
+  # count must match the summary -- with nothing to show and nothing to run.
+  test "a new screenshot with no capture on disk is listed without image or command" do
+    reporter = SnapDiff::Reporters::HTML.new(output_path: @output_path)
+    SnapDiff::Reporting.record_missing_baseline("deleted", path: @output_dir / "screenshots/deleted.png")
+
+    SnapDiff.config.stub(:root, @output_dir) { reporter.finalize }
+
+    assert_equal [{"name" => "deleted", "new_screenshot" => true}], report_data
+  end
+
+  test "the report shows how many were re-recorded, only when some were" do
+    reporter = SnapDiff::Reporters::HTML.new(output_path: @output_path)
+    capture_new_screenshot("signup")
+    reporter.finalize
+    refute_includes @output_path.read, "re-recorded"
+
+    @output_path.delete
+    reporter = SnapDiff::Reporters::HTML.new(output_path: @output_path)
+    SnapDiff::Reporting.record_rerecorded_baseline("accepted", path: @output_dir / "accepted.png")
+    reporter.finalize
+    assert_includes @output_path.read, "1 re-recorded"
+    assert_equal ["signup"], report_data.map { |e| e["name"] }, "counted, not listed"
+  end
+
+  # Re-recorded screenshots are counted, not listed: alone, there is nothing
+  # to show, and the summary line already names them.
+  test "a run with only re-recorded screenshots writes no report" do
+    reporter = SnapDiff::Reporters::HTML.new(output_path: @output_path)
+    SnapDiff::Reporting.record_rerecorded_baseline("accepted", path: @output_dir / "accepted.png")
+
+    assert_nil reporter.finalize
+    assert_not @output_path.exist?
+  end
+
+  test "a report with failures only lists exactly the failures" do
+    reporter = SnapDiff::Reporters::HTML.new(output_path: @output_path)
+    reporter.record([build_failing_assertion("index")])
+
+    reporter.finalize
+
+    assert_equal reporter.failures.map { |e| e.transform_keys(&:to_s) }, report_data
+    html = @output_path.read
+    assert_includes html, "<title>SnapDiff Report — 1 failures</title>"
+    assert_includes html, "0 new"
+  end
+
   test "#finalize can retry after write_report failure" do
     reporter = SnapDiff::Reporters::HTML.new(output_path: @output_path)
     reporter.record([build_failing_assertion("retry")])
@@ -260,6 +397,25 @@ class HTMLReporterTest < ActiveSupport::TestCase
   end
 
   private
+
+  # A capture under a project rooted at @output_dir, tallied the way
+  # ScreenshotMatcher tallies it. The root is pinned for the rest of the
+  # test so display paths are predictable.
+  def capture_new_screenshot(name, dir: "screenshots")
+    path = @output_dir / dir / "#{name}.png"
+    path.dirname.mkpath
+    FileUtils.cp(File.expand_path("a.png", TEST_IMAGES_DIR), path)
+    SnapDiff::Reporting.record_missing_baseline(name, path: path)
+    original_root = SnapDiff.config.root
+    SnapDiff.config.root = @output_dir
+    @restore_root = -> { SnapDiff.config.root = original_root }
+    path
+  end
+
+  def report_data
+    json = @output_path.read[/^\s*var DATA = (.*);$/, 1]
+    JSON.parse(json.gsub("<\\/", "</"))
+  end
 
   def build_passing_assertion(name)
     compare = make_comparison(:a, :a, destination: "pass_#{name}")

@@ -5,6 +5,7 @@ require "erb"
 require "fileutils"
 require "pathname"
 require "json"
+require "shellwords"
 # The auto-registration block at the bottom of this file registers with
 # SnapDiff::Reporting.
 require "snap_diff/reporting"
@@ -59,7 +60,7 @@ module SnapDiff
       def finalize
         @mutex.synchronize do
           return if @finalized
-          return if failures.empty?
+          return if failures.empty? && new_count.zero?
 
           write_report
           @finalized = true
@@ -89,6 +90,11 @@ module SnapDiff
 
       def passed = total - failures.size
       def failed = failures.size
+      # Screenshots captured but not compared: new ones are listed,
+      # re-recorded ones only counted.
+      def new_screenshots = SnapDiff::Reporting.uncompared.select { |screenshot| screenshot.reason == :new }
+      def new_count = new_screenshots.size
+      def rerecorded_count = SnapDiff::Reporting.uncompared.size - new_count
 
       # Both customer personas named this path as the best output in the
       # product, so it gets its own line -- but only when a report was
@@ -106,6 +112,7 @@ module SnapDiff
       # Attach available contributions and return the rendered HTML report.
       def render
         attach_annotations
+        @entries = failures + new_screenshot_entries
         ERB.new(File.read(self.class.template_path)).result(binding)
       end
 
@@ -162,6 +169,28 @@ module SnapDiff
           annotations = SnapDiff::Contributions.annotations_for(entry[:name])
           entry[:annotations] ||= annotations unless annotations.empty?
         end
+      end
+
+      # Built at render time: the image and the `git add` are offered only
+      # for a file that is on disk now (#260).
+      def new_screenshot_entries
+        new_screenshots.map { |screenshot| new_screenshot_entry(screenshot.name, screenshot.path) }
+      end
+
+      def new_screenshot_entry(name, path)
+        entry = {name: name, new_screenshot: true}
+        image = resolve_image(path)
+        return entry unless image
+
+        entry.merge(new: image, git_add: "git add -- #{Shellwords.escape(display_path(path))}")
+      end
+
+      # Relative to the project root, where the user runs `git add` -- the
+      # same form as the failure messages. Absolute when the file is outside
+      # the root, where a relative path would mislead.
+      def display_path(path)
+        relative = Pathname(path).relative_path_from(SnapDiff.config.root).to_path
+        relative.start_with?("..") ? path.to_s : relative
       end
 
       def resolve_image(path)

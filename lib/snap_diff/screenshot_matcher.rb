@@ -113,11 +113,17 @@ module SnapDiff
     # `:all` re-records, so nothing was compared and nothing is "new" in the
     # missing-baseline sense. Reported through its own channel, which counts
     # only the screenshots that really went down this path.
+    #
+    # Runs after a successful capture, so the file handed to reporters is
+    # really there (#260). A new one is tallied after the session's check,
+    # which raises when the baseline was committed but disappeared (#217):
+    # that one is not new.
     def record_uncompared_screenshot
       if record_mode == :all
-        SnapDiff::Reporting.record_rerecorded_baseline(screenshot_full_name)
+        SnapDiff::Reporting.record_rerecorded_baseline(screenshot_full_name, path: @snapshot.path)
       else
         SnapDiff.session.record_new_screenshot(screenshot_full_name)
+        warn_no_committed_baseline if SnapDiff::Reporting.record_missing_baseline(screenshot_full_name, path: @snapshot.path)
       end
     end
 
@@ -129,10 +135,9 @@ module SnapDiff
       driver_options[:driver] = SnapDiff::Drivers.for(driver_options[:driver])
     end
 
-    # The git checkout that drives #need_to_compare?, plus the half of the
-    # no-baseline reporting that MUST run before the capture: it is the only
-    # moment at which `@snapshot.path` still tells us whether the user had a
-    # PNG sitting there already -- the case that confuses people most.
+    # The git checkout that drives #need_to_compare?, plus the one fact the
+    # no-baseline warning needs from before the capture: whether the user
+    # had a PNG sitting there already -- the case that confuses people most.
     def check_base_screenshot
       # `:all` does not ask git for a baseline -- there is nothing to
       # compare against. A `.base.<fmt>` left by an earlier failing run
@@ -141,13 +146,7 @@ module SnapDiff
       return discard_base_screenshot if record_mode == :all
 
       @snapshot.checkout_base_screenshot
-      return if @snapshot.base_path.exist?
-      # fail_if_new_screenshot raises after the capture and says the same
-      # thing with the fix attached; two messages for one missing baseline
-      # is one too many.
-      return if record_mode == :none
-
-      warn_no_committed_baseline
+      @file_already_there = @snapshot.path.exist?
     end
 
     def discard_base_screenshot
@@ -162,7 +161,14 @@ module SnapDiff
     def fail_if_new_screenshot
       return if @snapshot.base_path.exist?
       return unless record_mode == :none
+      # Committed, then moved by a same-name test: not new. Left to the
+      # session, which raises that it disappeared (#217).
+      return if SnapDiff.session.baseline_checked_out?(screenshot_full_name)
 
+      # Tallied here because it is the last moment it can be: this raise
+      # ends the screenshot, and the run's summary and report still owe the
+      # user the capture it names.
+      SnapDiff::Reporting.record_missing_baseline(screenshot_full_name, path: @snapshot.path)
       raise SnapDiff::ExpectationNotMet.new(<<~ERROR.chomp, caller)
         No existing screenshot found for #{@snapshot.path}!
         To record it: `git add #{@snapshot.path}` and commit -- baselines are read from git.
@@ -174,11 +180,11 @@ module SnapDiff
     # must not break a local run. The cost is that nothing is compared and
     # the test passes whatever the page looks like, while the capture
     # overwrites the file on disk -- a green run that proves nothing. Say so
-    # once per screenshot, and name what to do about it.
+    # once per screenshot, and name what to do about it. Not under
+    # `record: :none`: fail_if_new_screenshot raises the same thing with the
+    # fix attached.
     def warn_no_committed_baseline
-      return unless SnapDiff::Reporting.record_missing_baseline(screenshot_full_name)
-
-      already_there = @snapshot.path.exist? ? " (the file already there is not a baseline until it is committed)" : ""
+      already_there = @file_already_there ? " (the file already there is not a baseline until it is committed)" : ""
       warn "[snap_diff] No committed baseline for #{@snapshot.path}#{already_there} -- nothing was compared. " \
         "Commit it to enable comparison."
     end
