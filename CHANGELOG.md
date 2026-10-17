@@ -363,6 +363,19 @@ One removal 2.0 cannot warn about, written down instead: the legacy `LOADED_DRIV
   and omitted the README
 
 ### Fixed
+- **Screenshots asserted with `delayed: false` are now counted and reported.** They
+  validated immediately but never reached the registry, so a suite run that way ended
+  on `0 verified ... NOTHING WAS VERIFIED` and its failures were missing from the
+  report. The failure still raises inside the test, once
+- **A capture that disappears before it is compared no longer crashes the comparison.**
+  `different?` raised `TypeError` (the missing-image result carried a String where
+  the readers index a Hash). It now reads as different, and the error message names
+  the missing file
+- **The summary never counts a comparison that did not run.** With
+  `fail_on_difference = false` nothing validated the screenshots at teardown, so a
+  differing one was tallied as `verified`, with no diff files and no report entry. The
+  tally now runs the comparison, so the summary says `changed` and the report lists it.
+  The flag still never fails a test
 - **`CI: ""` means "not CI" for the HTML report too.** The report embedded every image
   whenever the `CI` variable merely existed, so the documented opt-out (`CI: ""` in the
   update-baselines job) still produced a report with inlined images while the record mode

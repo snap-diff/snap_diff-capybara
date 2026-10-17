@@ -65,6 +65,7 @@ module SnapDiff
     # Return an annotated failure message for an unsuppressed screenshot mismatch.
     # Return nil for absent, matching, or suppressed comparisons; archive matching baselines.
     def validate
+      return if @validated
       return unless compare
 
       if compare.different?
@@ -98,12 +99,14 @@ module SnapDiff
       FileUtils.mv(compare.base_image_path, compare.image_path, force: true)
     end
 
+    # Raise on an unsuppressed mismatch. An assertion raised here (delayed:
+    # false) is still registered, so the registry re-visits it at teardown:
+    # the flag makes that second #validate a no-op instead of a second failure.
     def validate!
       error_msg = validate
+      @validated = true
 
-      if error_msg
-        raise SnapDiff::ExpectationNotMet.new(error_msg, caller)
-      end
+      raise SnapDiff::ExpectationNotMet.new(error_msg, caller) if error_msg
     end
 
     # Verifies that all scheduled screenshots do not show any unintended differences.

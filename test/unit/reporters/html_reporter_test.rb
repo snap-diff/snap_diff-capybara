@@ -118,6 +118,25 @@ class HTMLReporterTest < ActiveSupport::TestCase
     assert_includes @output_path.read, "resized"
   end
 
+  # A capture that vanished before the comparison has nothing to diff or
+  # annotate. Without an explicit error the template infers "pass" from the
+  # missing diff keys, so the entry says what went wrong instead.
+  test "#record shows a vanished capture as an error, not a pass" do
+    reporter = SnapDiff::Reporters::HTML.new(output_path: @output_path)
+    compare = make_comparison(:a, :b, destination: "gone")
+    FileUtils.rm compare.image_path
+    compare.processed
+    assertion = SnapDiff::ScreenshotAssertion.new("gone").tap { |a| a.compare = compare }
+
+    reporter.record([assertion])
+
+    entry = reporter.failures.sole
+    assert_match(/missing/i, entry[:error])
+    assert_nil entry[:diff]
+    assert_nil entry[:new], "there is no capture to show"
+    assert entry[:original], "the baseline is still there to show"
+  end
+
   # Annotated and heatmap images are only drawn for same-size images. Any
   # on disk for this name are left over from an earlier, same-size failure
   # and describe a different comparison, so the entry must not link them.

@@ -62,7 +62,7 @@ The entry point for test code. `assert_matches_screenshot` is the primary assert
 1. Checks if screenshots are `active?` (returns `false` if disabled)
 2. Builds a full screenshot name via `ScreenshotNamer` (handles sections, groups, counters)
 3. Delegates to `ScreenshotMatcher` to capture and prepare comparison
-4. Creates a `ScreenshotAssertion` — either adds it to the thread-local registry (delayed validation) or validates immediately
+4. Creates a `ScreenshotAssertion` and adds it to the thread-local registry; with `delayed: false` it also validates it right away (the registry skips it at teardown)
 
 ### 2. ScreenshotMatcher (`lib/snap_diff/screenshot_matcher.rb`)
 
@@ -187,8 +187,8 @@ Test begins
     ├─ test body:
     │    └─ screenshot("name")
     │         ├─ ScreenshotMatcher builds assertion
-    │         ├─ delayed=true → add to Thread-local registry
-    │         └─ delayed=false → validate immediately
+    │         ├─ add to Thread-local registry (always)
+    │         └─ delayed=false → also validate immediately
     │
     ├─ teardown:
     │    ├─ SnapDiff.session.verify
