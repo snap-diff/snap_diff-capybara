@@ -22,12 +22,28 @@ module SnapDiff
       assert_equal :new, build.status
     end
 
-    test "#status is :rerecorded without a comparison under record: :all" do
-      assert_equal :rerecorded, build(record_mode: :all).status
+    test "#status is :new without a comparison under record: :all" do
+      assert_equal :new, build(record_mode: :all).status
+    end
+
+    test "#status is :passed for a matching comparison under record: :all" do
+      assert_equal :passed, build(compare: make_comparison(:a, :a).tap(&:processed), record_mode: :all).status
     end
 
     test "#status is :rerecorded for a differing comparison under record: :all" do
       assert_equal :rerecorded, build(compare: make_comparison(:a, :b).tap(&:processed), record_mode: :all).status
+    end
+
+    # A capture that vanished is not a difference anyone accepted: `:rerecorded`
+    # would pass the test and tell the user to `git add` a path that no longer
+    # exists, which commits the deletion of the tracked baseline.
+    test "#status is :changed for a vanished capture, under record: :all too" do
+      comparison = make_comparison(:a, :b)
+      comparison.image_path.delete
+      comparison.processed
+
+      assert_equal :changed, build(compare: comparison, record_mode: :all).status
+      assert_equal :changed, build(compare: comparison).status
     end
 
     test "#status reads :passed for an unprocessed comparison without processing it" do

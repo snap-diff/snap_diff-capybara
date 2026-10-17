@@ -60,24 +60,29 @@ class ReportingCountsTest < ActiveSupport::TestCase
       SnapDiff::Reporting.counts_summary
   end
 
-  # `record: :all` (#274) re-records without comparing, so those screenshots
-  # are neither verified nor changed -- and they are not "new" either, which
-  # is a different fact with its own line. The counts line has to say what
-  # happened, and must NOT cry NOTHING WAS VERIFIED at a user who asked for
-  # exactly this: a false alarm here trains people to ignore the real one.
-  test "re-recorded screenshots are counted, and explain a zero verified" do
+  # `record: :all` compares, and accepts what differs: those screenshots are
+  # verified and changed, and the line says how many of the changed ones were
+  # accepted. The parenthesis exists only when some were.
+  test "re-recorded screenshots are verified and changed, and counted in parentheses" do
     SnapDiff::Reporting.notify([build_rerecorded_assertion("a"), build_rerecorded_assertion("b")])
 
-    summary = SnapDiff::Reporting.counts_summary
-
-    assert_includes summary, "0 verified, 0 changed, 0 new (not verified)."
-    assert_includes summary, "2 re-recorded"
-    refute_includes summary, "NOTHING WAS VERIFIED"
+    assert_equal "[snap_diff] 2 verified, 2 changed (2 re-recorded), 0 new (not verified).",
+      SnapDiff::Reporting.counts_summary
   end
 
-  # The shout is for an UNEXPLAINED zero -- that is the whole point of it.
-  test "a zero verified with nothing re-recorded still shouts" do
-    assert_includes SnapDiff::Reporting.counts_summary, "NOTHING WAS VERIFIED"
+  test "no parenthesis when nothing was re-recorded" do
+    SnapDiff::Reporting.notify([build_passing_assertion("ok"), build_failing_assertion("fail")])
+
+    refute_includes SnapDiff::Reporting.counts_summary, "re-recorded"
+  end
+
+  # Accepting a change is not the same as nothing having been compared.
+  test "a bootstrap run where everything is new under :all still shouts" do
+    SnapDiff::Reporting.notify([build_new_assertion("a", record_mode: :all), build_new_assertion("b", record_mode: :all)])
+
+    assert_equal "[snap_diff] 0 verified, 0 changed, 2 new (not verified). " \
+      "NOTHING WAS VERIFIED -- no screenshot was compared to a committed baseline.",
+      SnapDiff::Reporting.counts_summary
   end
 
   # `record:` is a per-screenshot option too, so a run can mix both.
@@ -86,8 +91,7 @@ class ReportingCountsTest < ActiveSupport::TestCase
 
     summary = SnapDiff::Reporting.counts_summary
 
-    assert_includes summary, "1 verified, 0 changed, 0 new (not verified)."
-    assert_includes summary, "1 re-recorded"
+    assert_equal "[snap_diff] 2 verified, 1 changed (1 re-recorded), 0 new (not verified).", summary
   end
 
   test "counts screenshots captured with no committed baseline even when nothing was verified" do
@@ -107,10 +111,11 @@ class ReportingCountsTest < ActiveSupport::TestCase
     assert_equal 1, SnapDiff::Reporting.missing_baselines_count
   end
 
-  test "uncompared marks re-recorded screenshots as such, after the new ones" do
-    SnapDiff::Reporting.notify([build_rerecorded_assertion("b", path: "/app/b.png"), build_new_assertion("a", path: "/app/a.png")])
+  # A re-recorded screenshot was compared, so it is not "uncompared".
+  test "uncompared lists new screenshots only" do
+    SnapDiff::Reporting.notify([build_rerecorded_assertion("b"), build_new_assertion("a", path: "/app/a.png")])
 
-    assert_equal [[:new, "a"], [:rerecorded, "b"]], SnapDiff::Reporting.uncompared.map { |s| [s.status, s.name] }
+    assert_equal [[:new, "a"]], SnapDiff::Reporting.uncompared.map { |s| [s.status, s.name] }
   end
 
   # Every reporter reads the same entries: none can change what another sees.
@@ -125,7 +130,7 @@ class ReportingCountsTest < ActiveSupport::TestCase
   end
 
   test "reset_run_totals! forgets the uncompared screenshots" do
-    SnapDiff::Reporting.notify([build_new_assertion("a", path: "/app/a.png"), build_rerecorded_assertion("b", path: "/app/b.png"), build_passing_assertion("ok")])
+    SnapDiff::Reporting.notify([build_new_assertion("a", path: "/app/a.png"), build_rerecorded_assertion("b"), build_passing_assertion("ok")])
 
     SnapDiff::Reporting.reset_run_totals!
 
@@ -143,8 +148,9 @@ class ReportingCountsTest < ActiveSupport::TestCase
     refute SnapDiff::Reporting.record_rerecorded_baseline("b"), "seen before, and counted once"
     SnapDiff::Reporting.notify([build_new_assertion("a"), build_new_assertion("c")])
 
-    assert_equal [[:new, "a"], [:new, "c"], [:rerecorded, "b"]], SnapDiff::Reporting.uncompared.map { |s| [s.status, s.name] }
-    assert_includes SnapDiff::Reporting.counts_summary, "0 verified, 0 changed, 2 new (not verified). 1 re-recorded"
+    assert_equal [[:new, "a"], [:new, "c"]], SnapDiff::Reporting.uncompared.map { |s| [s.status, s.name] }
+    assert_includes SnapDiff::Reporting.counts_summary, "1 verified, 1 changed (1 re-recorded), 2 new (not verified)."
+    assert_includes SnapDiff::Reporting.rerecorded_baselines_summary, "b"
   end
 
   # The reason this moved: the gem's one and only `register` call site is in
@@ -320,12 +326,12 @@ class ReportingCountsTest < ActiveSupport::TestCase
 
   private
 
-  def build_new_assertion(name, path: nil)
-    SnapDiff::ScreenshotAssertion.new(name, path: path && Pathname(path))
+  def build_new_assertion(name, path: nil, record_mode: nil)
+    SnapDiff::ScreenshotAssertion.new(name, path: path && Pathname(path), record_mode: record_mode)
   end
 
-  def build_rerecorded_assertion(name, path: nil)
-    SnapDiff::ScreenshotAssertion.new(name, path: path && Pathname(path), record_mode: :all)
+  def build_rerecorded_assertion(name)
+    build_assertion(name, :a, :b, "rerecorded", record_mode: :all)
   end
 
   def build_passing_assertion(name)
@@ -336,10 +342,10 @@ class ReportingCountsTest < ActiveSupport::TestCase
     build_assertion(name, :a, :b, "fail")
   end
 
-  def build_assertion(name, base, new, prefix)
+  def build_assertion(name, base, new, prefix, record_mode: nil)
     compare = make_comparison(base, new, destination: "#{prefix}_#{name}")
     compare.processed
 
-    SnapDiff::ScreenshotAssertion.new(name).tap { |assertion| assertion.compare = compare }
+    SnapDiff::ScreenshotAssertion.new(name, record_mode: record_mode).tap { |assertion| assertion.compare = compare }
   end
 end

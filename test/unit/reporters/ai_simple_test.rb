@@ -12,6 +12,7 @@ class AISimpleReporterTest < Minitest::Test
   # need vips, fixtures and a checked-out baseline for no extra coverage.
   StubDifference = Struct.new(:different, keyword_init: true) do
     def different? = different
+    def failed_by = nil
     def original_image_path = Pathname("/nonexistent/base.png")
     def new_image_path = Pathname("/nonexistent/current.png")
     def to_h = {area_size: 42, region: [0, 0, 10, 10]}
@@ -298,6 +299,7 @@ end
 # The mix: AISimple writes the shared store, HTML annotates from it.
 class AIHtmlReporterMixTest < Minitest::Test
   HtmlDifference = Struct.new(:ratio, keyword_init: true) do
+    def failed_by = nil
     def different? = true
     def region_area_size = 42
     def meta = {max_color_distance: 3.21}
@@ -313,7 +315,9 @@ class AIHtmlReporterMixTest < Minitest::Test
     def dimensions_changed? = false
     def reporter = HtmlReporterStub.new
   end
-  HtmlAssertion = Struct.new(:name, :compare)
+  HtmlAssertion = Struct.new(:name, :compare) do
+    def status = :changed
+  end
 
   # Clear AI results and save annotation providers before testing HTML rendering.
   def setup

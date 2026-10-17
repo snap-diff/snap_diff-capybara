@@ -63,7 +63,7 @@ SnapDiff.config.record = :once   # what a local run already does; see Precedence
 |------|------------------|------------------|-------------------|
 | `:once` | recorded, not compared | compared | the default — you want a normal run |
 | `:none` | **fails** with the `git add` command attached | compared | every screenshot must already be recorded |
-| `:all` | recorded | **re-recorded, not compared** | you changed the UI on purpose and want the new rendering to become the baseline |
+| `:all` | recorded | compared; **re-recorded on difference, never fails** | you changed the UI on purpose and want the new rendering to become the baseline |
 
 ### `:all` — the bulk-accept verb
 
@@ -82,19 +82,22 @@ SnapDiff.config.record = :all unless ENV["ACCEPT_SCREENSHOTS"].to_s.empty?
 ACCEPT_SCREENSHOTS=1 bin/rails test:system     # with the line above in test_helper.rb
 ```
 
-Every screenshot is written to its baseline path and nothing is compared, so `git status` lists
-exactly what changed. Review the images, then commit them — see
+Every screenshot is compared to its committed baseline, as under `:once`. One that differs is kept
+as the new baseline instead of failing the test, and leaves the usual `.base.png` and diff files
+(ignored by the recommended `.gitignore`); one that matches changes nothing. So `git status` lists
+exactly what changed, and the HTML report shows each change as "re-recorded". Review the images, then commit them — see
 [Accepting an intentional change](../README.md#accepting-an-intentional-change).
 
 At the end of the run the gem names what it accepted:
 
 ```
-[snap_diff] record: :all re-recorded 3 screenshots WITHOUT comparing: checkout/cart, checkout/payment, checkout/review. Review the result before committing -- an unintended change is accepted just as silently.
+[snap_diff] 212 verified, 3 changed (3 re-recorded), 0 new (not verified).
+[snap_diff] record: :all compared 3 screenshots, found them different and accepted them as the new baseline: checkout/cart, checkout/payment, checkout/review. `git add` the file(s) to keep the change, `git restore -- <path>` to discard it. The `.base.<fmt>` and diff files left beside each one are covered by the recommended .gitignore.
 ```
 
 > **`:all` refuses to run under CI** (when `ENV['CI']` is set to a non-empty value). It accepts
-> every rendering by design, so a mode left in a committed config file would buy you a build that
-> compares nothing and passes forever, with the "recorded" screenshots discarded when the runner
+> every difference by design, so a mode left in a committed config file would buy you a build that
+> never fails, with the "recorded" screenshots discarded when the runner
 > is torn down. Re-record locally, where you can look at the result.
 >
 > A CI job that needs to record screenshots with **no baseline yet** does not need `:all`:

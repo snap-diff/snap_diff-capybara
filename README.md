@@ -211,15 +211,16 @@ SnapDiff.config.record = :all unless ENV["ACCEPT_SCREENSHOTS"].to_s.empty?
 
 ```bash
 ACCEPT_SCREENSHOTS=1 bin/rails test:system
-# [snap_diff] record: :all re-recorded 40 screenshots WITHOUT comparing: ...
+# [snap_diff] 212 verified, 40 changed (40 re-recorded), 0 new (not verified).
 
 git status                     # forty modified baselines, and nothing else
 git add doc/screenshots/
 git commit -m "chore: re-record baselines after the checkout redesign"
 ```
 
-`:all` writes every capture straight to its baseline path and compares nothing, so `git status`
-is the review surface — look at the images before you commit. It **refuses to run under CI**,
+`:all` compares every capture to its committed baseline like `:once` does, but a screenshot that
+differs is accepted as the new baseline instead of failing the test — the report lists what changed,
+and `git status` is the review surface — look at the images before you commit. It **refuses to run under CI**,
 where there would be nobody to look. The other modes are `:once` (the default) and `:none`
 (strict — a missing baseline always fails); see
 [Record modes](docs/configuration.md#record-modes--accepting-changes).

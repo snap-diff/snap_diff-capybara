@@ -190,15 +190,16 @@ module SnapDiff
     end
 
     # THE ACCEPT WORKFLOW (#259). What to do about a screenshot whose
-    # baseline is missing -- or, for +:all+, about every screenshot there
-    # is. VCR-shaped: modes in config, because there is no runner to hang a
+    # baseline is missing -- or, for +:all+, about every screenshot that
+    # differs. VCR-shaped: modes in config, because there is no runner to hang a
     # CLI flag on.
     #
     # +:once+:: (default) record a screenshot that has no committed
     #           baseline; compare against the baseline when there is one.
     # +:none+:: strict. A missing baseline always fails.
-    # +:all+::  re-record. Every screenshot is written as the new baseline
-    #           and nothing is compared -- the bulk-accept verb, for the
+    # +:all+::  +:once+ that accepts instead of fails. Every baseline is
+    #           compared; a screenshot that differs is kept as the new
+    #           baseline and never raises -- the bulk-accept verb, for the
     #           redesign that changed forty screenshots at once. Refused
     #           under CI (see {SnapDiff::ScreenshotMatcher}).
     #

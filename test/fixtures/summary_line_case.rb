@@ -56,7 +56,7 @@ class SummaryLineCase < Minitest::Test
   include SnapDiff::Minitest::Assertions
 
   # `record: :all` accepts whatever rendered as the new baseline. This one
-  # has a COMMITTED baseline that differs, and the mode ignores it -- the
+  # has a COMMITTED baseline that differs, and the mode accepts it -- the
   # interaction worth asserting on a finished process.
   RECORD_ALL = %w[rerecorded].freeze
 

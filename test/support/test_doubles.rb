@@ -108,6 +108,12 @@ module TestDoubles
     def different?
       @different_value
     end
+
+    # A real ComparisonResult says here what failed, if anything; this double
+    # stands for a pixel difference, so nothing did.
+    def failed_by
+      nil
+    end
   end
 
   # Simple test double for comparison objects

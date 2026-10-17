@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>SnapDiff Report — <%= failed %> failures<%= ", #{new_count} new" if new_count.positive? %></title>
+  <title>SnapDiff Report — <%= changed_count %> changed<%= " (#{rerecorded_count} re-recorded)" if rerecorded_count.positive? %><%= ", #{new_count} new" if new_count.positive? %></title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
@@ -23,6 +23,7 @@
       --green:      #4ade80;
       --green-dim:  rgba(74,222,128,.15);
       --orange:     #fb923c;
+      --orange-dim: rgba(251,146,60,.15);
       --surface:    #13151f;
       --radius:     8px;
       --radius-sm:  5px;
@@ -45,15 +46,16 @@
     .nav-counter { font-size: .6875rem; font-family: var(--font-mono); color: var(--text2); padding: 0 .25rem; }
     #topbar-title { font-size: .75rem; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
     .diff-badge { font-size: .625rem; font-family: var(--font-mono); font-weight: 600; padding: .1rem .375rem; border-radius: 10px; white-space: nowrap; flex-shrink: 0; }
-    .diff-badge-fail { background: var(--red-dim); color: var(--red); }
+    .diff-badge-changed, .diff-badge-error { background: var(--red-dim); color: var(--red); }
+    .diff-badge-rerecorded { background: var(--orange-dim); color: var(--orange); }
     .diff-badge-pass { background: var(--green-dim); color: var(--green); }
     .diff-badge-new { background: var(--accent-bg); color: var(--accent); }
     .spacer { flex: 1; }
     .stats { display: flex; gap: .3rem; align-items: center; flex-shrink: 0; }
     .stat-pill { font-size: .625rem; font-family: var(--font-mono); font-weight: 500; padding: .125rem .4rem; border-radius: 10px; display: flex; align-items: center; gap: .2rem; }
     .stat-pill .dot { width: 5px; height: 5px; border-radius: 50%; }
-    .stat-fail { background: var(--red-dim); color: var(--red); }
-    .stat-fail .dot { background: var(--red); }
+    .stat-changed { background: var(--red-dim); color: var(--red); }
+    .stat-changed .dot { background: var(--red); }
     .stat-pass { background: var(--green-dim); color: var(--green); }
     .stat-pass .dot { background: var(--green); }
     .stat-total { background: var(--bg4); color: var(--text2); }
@@ -81,7 +83,8 @@
     .thumb-footer { display: flex; align-items: center; justify-content: space-between; margin-top: .25rem; gap: .2rem; }
     .thumb-name { font-size: .625rem; font-weight: 500; color: var(--text2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0; }
     .thumb-badge { font-size: .5rem; font-family: var(--font-mono); font-weight: 600; padding: .0625rem .25rem; border-radius: 8px; flex-shrink: 0; }
-    .thumb-badge-fail { background: var(--red-dim); color: var(--red); }
+    .thumb-badge-changed, .thumb-badge-error { background: var(--red-dim); color: var(--red); }
+    .thumb-badge-rerecorded { background: var(--orange-dim); color: var(--orange); }
     .thumb-badge-pass { background: var(--green-dim); color: var(--green); }
     .thumb-badge-new { background: var(--accent-bg); color: var(--accent); }
 
@@ -181,16 +184,13 @@
     <button class="nav-btn" id="nav-next" aria-label="Next"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg></button>
   </div>
   <span id="topbar-title"></span>
-  <span id="topbar-badge" class="diff-badge diff-badge-fail"></span>
+  <span id="topbar-badge" class="diff-badge diff-badge-changed"></span>
   <div class="spacer"></div>
   <div class="stats">
-    <span class="stat-pill stat-fail"><span class="dot"></span><%= failed %> failed</span>
+    <span class="stat-pill stat-changed"<%= ' title="Differed from the baseline; re-recorded ones were accepted as the new baseline by record: :all"' if rerecorded_count.positive? %>><span class="dot"></span><%= changed_count %> changed<%= " (#{rerecorded_count} re-recorded)" if rerecorded_count.positive? %></span>
     <span class="stat-pill stat-pass"><span class="dot"></span><%= passed %> passed</span>
     <span class="stat-pill stat-total"><span class="dot"></span><%= total %> total</span>
     <span class="stat-pill stat-new" title="Captured with no committed baseline: not compared"><span class="dot"></span><%= new_count %> new</span>
-<% if rerecorded_count.positive? %>
-    <span class="stat-pill stat-total" title="Re-recorded by record: :all, not compared; listed on the terminal"><span class="dot"></span><%= rerecorded_count %> re-recorded</span>
-<% end %>
   </div>
 </header>
 
@@ -265,6 +265,8 @@
 
   /* ── Sidebar ──────────────────────────────────────────────────────── */
   function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+  /* What colours an entry's badge: an entry the report could not render is an error, whatever its status. */
+  function badgeKind(item) { return item.error ? 'error' : item.status; }
   var AI_VERDICTS = ['real_bug', 'intentional', 'flaky', 'unknown'];
   /* Class suffix only for known verdicts: a backend's verdict is model
      output, and model output is not trusted enough for a class attribute. */
@@ -280,10 +282,15 @@
       btn.dataset.idx = idx;
       /* Thumbnail: annotated mode → heatmap; normal → new image (no annotation) */
       var thumb = state.annotated ? (item.heatmap || item.new || item.original || '') : (item.new || item.original || '');
+      /* item.status is changed, rerecorded or new: what became of the capture.
+         A new screenshot was not compared; a re-recorded one was, and was
+         accepted. item.error is separate: the report could not render the
+         entry, whatever its status. Either one picks the badge. */
       var badgeText = item.error ? 'error'
         : item.dimensions_changed ? 'resized'
-        : status(item) === 'fail' ? (item.diff_level != null ? item.diff_level + '%' : 'changed')
-        : status(item);
+        : item.status === 'rerecorded' ? 're-recorded'
+        : item.status === 'changed' ? (item.diff_level != null ? item.diff_level + '%' : 'changed')
+        : item.status;
       btn.innerHTML =
         '<div class="thumb-img-wrap">' + (thumb ? '<img src="' + esc(thumb) + '" alt="" loading="lazy"/>' : '') + '</div>' +
         '<div class="thumb-footer">' +
@@ -297,7 +304,7 @@
               (v ? ': ' + v.replace('_', ' ') : (note.text ? ': ' + note.text : ''));
             return '<span class="ai-badge' + (v ? aiClass(v) : '') + '">' + esc(label) + '</span>';
           }).join(' ') +
-          '<span class="thumb-badge thumb-badge-' + status(item) + '">' + badgeText + '</span>' +
+          '<span class="thumb-badge thumb-badge-' + badgeKind(item) + '">' + badgeText + '</span>' +
         '</div>';
       btn.addEventListener('click', function() { selectItem(+this.dataset.idx); });
       sidebarList.appendChild(btn);
@@ -317,13 +324,6 @@
   function selectNext() { var p = filtered.indexOf(state.current); if (p < filtered.length - 1) selectItem(filtered[p + 1]); }
   function selectPrev() { var p = filtered.indexOf(state.current); if (p > 0) selectItem(filtered[p - 1]); }
 
-  /* fail, pass or new: the badge colour in the sidebar and the top bar.
-     A new screenshot was not compared, so it is neither a pass nor a fail. */
-  function status(item) {
-    if (item.diff || item.heatmap || item.dimensions_changed || item.error) return 'fail';
-    return item.new_screenshot ? 'new' : 'pass';
-  }
-
   /* A new screenshot has no committed baseline: the Baseline side says so,
      and how to make this capture the baseline -- only when the report found
      the capture on disk. */
@@ -336,7 +336,7 @@
   /* A failure has no heatmap when the images differ in size, or when the
      image driver produced no difference mask. Say which, and what to do. */
   function noHeatmapReason(item) {
-    if (item.new_screenshot) return 'No heatmap: there is no baseline to compare against.';
+    if (item.status === 'new') return 'No heatmap: there is no baseline to compare against.';
     if (item.dimensions_changed) {
       return 'No heatmap: the screenshot changed size (' + item.dimensions_changed + '). ' +
         'Heatmaps and annotations compare pixel by pixel, so they need both images at the same size; ' +
@@ -355,19 +355,20 @@
     topTitle.textContent = item.name;
     var pos = filtered.indexOf(state.current);
     navCounter.textContent = (pos + 1) + '/' + filtered.length;
-    var hasDiff = status(item) === 'fail';
+    var hasDiff = item.status === 'changed' || item.status === 'rerecorded';
     if (item.error) {
       topBadge.textContent = 'could not render';
     } else if (item.dimensions_changed) {
       topBadge.textContent = 'dimensions changed: ' + item.dimensions_changed;
     } else if (hasDiff && item.diff_level != null) {
       topBadge.textContent = item.diff_level + '% diff';
-    } else if (item.new_screenshot) {
+    } else if (item.status === 'new') {
       topBadge.textContent = 'new \u00b7 not compared';
     } else {
-      topBadge.textContent = hasDiff ? 'changed' : 'pass';
+      topBadge.textContent = 'changed';
     }
-    topBadge.className = 'diff-badge diff-badge-' + status(item);
+    if (item.status === 'rerecorded' && !item.error) topBadge.textContent += ' \u00b7 re-recorded';
+    topBadge.className = 'diff-badge diff-badge-' + badgeKind(item);
 
     /* Contribution strip: the verdict layout when a contributor supplied
        one (AI triage), source + text for text-only annotations */
@@ -404,12 +405,12 @@
     var heatImg = item.heatmap || '';
 
     /* Label what is shown: without annotated files the toggle falls back to the plain images */
-    var baseLbl = !ann || item.new_screenshot ? 'Baseline' : item.base_diff ? 'Annotated Base' : 'Baseline (not annotated)';
+    var baseLbl = !ann || item.status === 'new' ? 'Baseline' : item.base_diff ? 'Annotated Base' : 'Baseline (not annotated)';
     var newLbl  = !ann ? 'Current'  : item.diff      ? 'Annotated New'  : 'Current (not annotated)';
-    var baseBox = item.new_screenshot
+    var baseBox = item.status === 'new'
       ? '<div class="img-empty"><p>' + noBaselineMessage(item) + '</p></div>'
       : '<img src="' + esc(baseImg) + '" alt="Base"/>';
-    var newBox = item.new_screenshot && !item.new
+    var newBox = item.status === 'new' && !item.new
       ? '<div class="img-empty"><p>No capture file was found for this screenshot.</p></div>'
       : '<img src="' + esc(newImg) + '" alt="New"/>';
 

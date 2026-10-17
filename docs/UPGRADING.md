@@ -319,7 +319,7 @@ actually want, which is *accept this change*. 2.0 adds the verb:
 ```ruby
 SnapDiff.config.record = :once   # default. Record a screenshot that has no baseline.
 SnapDiff.config.record = :none   # strict. A missing baseline always fails.
-SnapDiff.config.record = :all    # re-record everything. THE BULK-ACCEPT MODE.
+SnapDiff.config.record = :all    # compare, and accept what differs. THE BULK-ACCEPT MODE.
 ```
 
 | Old | New | Note |
@@ -342,8 +342,8 @@ missing-baseline default is deliberately unchanged; `:none` is how you opt into 
 explicitly. **Precedence:** an explicitly set mode outranks `fail_if_new`, and `fail_if_new`
 decides only when no mode was set — the same rule `fail_if_new` itself has over the `CI` sniff.
 
-`record = :all` **refuses to run under CI**: it accepts every rendering by design, so left in a
-committed config file it would be a build that compares nothing and passes forever. See
+`record = :all` **refuses to run under CI**: it accepts every difference by design, so left in a
+committed config file it would be a build that never fails. See
 [Record modes](configuration.md#record-modes--accepting-changes).
 
 #### Silent by design

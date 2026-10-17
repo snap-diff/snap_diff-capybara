@@ -194,7 +194,7 @@ Test begins
     ├─ teardown:
     │    ├─ SnapDiff.session.verify
     │    │    ├─ iterates the fiber-local assertions
-    │    │    ├─ calls validate on each (new/re-recorded ones have no comparison and pass)
+    │    │    ├─ calls validate on each (new and re-recorded ones do not fail)
     │    │    └─ raises SnapDiff::ExpectationNotMet if any differed
     │    │
     │    └─ SnapDiff.reset (always, in an ensure)

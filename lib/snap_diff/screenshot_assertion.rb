@@ -63,13 +63,16 @@ module SnapDiff
     #   :passed     compared against a committed baseline, same
     #   :changed    compared, differs
     #   :new        no baseline, nothing to compare
-    #   :rerecorded `record: :all` accepted it
+    #   :rerecorded compared, differs, and `record: :all` accepted the capture
+    #
+    # A capture that vanished before the comparison is :changed in every
+    # mode: there is nothing on disk for `record: :all` to accept.
     def status
-      unless compare
-        # `:all` still discards the baseline, so its captures have no comparison; this goes once `record: :all` compares.
-        return (record_mode == :all) ? :rerecorded : :new
-      end
-      return :passed unless compare.difference&.different?
+      return :new unless compare
+
+      difference = compare.difference
+      return :passed unless difference&.different?
+      return :changed if difference.failed_by&.[](:missing_image)
 
       (record_mode == :all) ? :rerecorded : :changed
     end

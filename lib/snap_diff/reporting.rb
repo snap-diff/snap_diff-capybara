@@ -16,11 +16,12 @@ module SnapDiff
   # reporters/reporters_mutex/finalize_reporters! methods as thin shims
   # over this module.
   module Reporting
-    # A screenshot the run lists by name instead of only counting, as
-    # returned by {uncompared}: its `name`, the captured file's `path` (a
-    # Pathname, nil when unknown) and its `status` -- the assertion's:
-    # `:new` (no committed baseline) or `:rerecorded` (`record: :all`).
-    # Frozen: every reporter reads the same ones.
+    # A screenshot the run keeps a row for, by name: its `name`, the
+    # captured file's `path` (a Pathname, nil when unknown) and its `status`
+    # -- the assertion's: `:new` (no committed baseline, never
+    # compared) or `:rerecorded` (`record: :all`: compared, differed, and
+    # was accepted). {uncompared} returns the `:new` rows only. Frozen:
+    # every reporter reads the same ones.
     Outcome = Struct.new(:name, :path, :status, keyword_init: true)
 
     # The statuses that get an {Outcome} row. A fork-parallel fragment
@@ -32,8 +33,9 @@ module SnapDiff
     @mutex = Mutex.new
     # THE store: the one place a run's outcomes are tallied (see {count}).
     # `@counts` is how many assertions ended in each status (:new is not
-    # kept there); `@outcomes` keeps a row per listed screenshot, by name,
-    # first sighting wins, and the "new" count is derived from those rows.
+    # kept there); `@outcomes` keeps a row per `:new` or `:rerecorded`
+    # screenshot, by name, first sighting wins, and the "new" count is
+    # derived from those rows.
     @counts = Hash.new(0)
     @outcomes = {}
     @matched_selectors = Set.new
@@ -56,9 +58,11 @@ module SnapDiff
       # signal for either. It shipped inside Reporters::HTML, the gem's one
       # and only `register` call site, so the documented Rails setup (which
       # requires just the Minitest integration) printed nothing at all.
-      def verified = @counts[:passed] + @counts[:changed]
+      def verified = @counts[:passed] + @counts[:changed] + @counts[:rerecorded]
 
-      def changed = @counts[:changed]
+      # Differed from the baseline: `:changed` plus the ones `record: :all`
+      # accepted.
+      def changed = @counts[:changed] + @counts[:rerecorded]
 
       # Remembers a screenshot that had no COMMITTED baseline and was
       # therefore never compared.
@@ -81,15 +85,15 @@ module SnapDiff
         @mutex.synchronize { outcome_count(:new) }
       end
 
-      # The screenshots captured but not compared this run -- new ones
-      # first, then re-recorded ones -- the entries behind the summary
-      # line's "new" and "re-recorded" counts. Complete by the time
-      # reporters `finalize`, fork-parallel workers included, so a reporter
-      # that lists them lists what the terminal counts.
+      # The screenshots captured but not compared this run (no committed
+      # baseline): the entries behind the summary line's "new" count.
+      # Complete by the time reporters `finalize`, fork-parallel workers
+      # included, so a reporter that lists them lists what the terminal
+      # counts.
       #
       # @return [Array<Outcome>] frozen
       def uncompared
-        @mutex.synchronize { @outcomes.each_value.partition { |row| row.status == :new }.flatten(1).freeze }
+        @mutex.synchronize { @outcomes.each_value.select { |row| row.status == :new }.freeze }
       end
 
       # Remembers whether a CSS selector (`skip_area`, `crop`) found
@@ -235,7 +239,8 @@ module SnapDiff
       # actually did:
       #
       #   verified -- a committed baseline existed and was compared
-      #   changed  -- of those, the ones that differed
+      #   changed  -- of those, the ones that differed; with `record: :all`
+      #               some of them were accepted, shown as "(R re-recorded)"
       #   new      -- captured but NOT compared, for want of a committed
       #               baseline: not a pass (under record: :none it also
       #               fails its test)
@@ -247,21 +252,15 @@ module SnapDiff
       # case worth shouting about.
       def counts_summary
         verified, changed, new_count, rerecorded = @mutex.synchronize {
-          [@counts[:passed] + @counts[:changed], @counts[:changed], outcome_count(:new), @counts[:rerecorded]]
+          [self.verified, self.changed, outcome_count(:new), @counts[:rerecorded]]
         }
-        line = "[snap_diff] #{verified} verified, #{changed} changed, #{new_count} new (not verified)."
+        accepted = " (#{rerecorded} re-recorded)" if rerecorded.positive?
+        line = "[snap_diff] #{verified} verified, #{changed} changed#{accepted}, #{new_count} new (not verified)."
 
-        # `record: :all` (#274) accepts the rendering as the new baseline
-        # without comparing, so those are neither verified nor changed --
-        # and not "new" either, which is a different fact. Only shown when
-        # it happened; the names are on their own line below.
-        line += " #{rerecorded} re-recorded (not verified)." if rerecorded.positive?
-
-        # The shout is for an UNEXPLAINED zero -- a suite that ran no system
-        # tests, a GIT_DIR pointed at the wrong repository. Re-recording
-        # explains it, and the user asked for it: shouting there is a false
-        # alarm, and false alarms are how the real one stops being read.
-        if verified.zero? && rerecorded.zero?
+        # An unexplained zero -- a suite that ran no system tests, a GIT_DIR
+        # pointed at the wrong repository. A run where every screenshot was
+        # new (a `record: :all` bootstrap too) compared nothing, and says so.
+        if verified.zero?
           return "#{line} NOTHING WAS VERIFIED -- no screenshot was compared to a committed baseline."
         end
 
@@ -354,7 +353,7 @@ module SnapDiff
           # per-status counts: the parent sums the counts and merges the
           # rows (which is also where its "new" count comes from).
           "counts" => @mutex.synchronize { @counts.dup },
-          "outcomes" => uncompared.map { |entry| {"name" => entry.name, "path" => entry.path&.to_s, "status" => entry.status.to_s} },
+          "outcomes" => outcome_rows.map { |entry| {"name" => entry.name, "path" => entry.path&.to_s, "status" => entry.status.to_s} },
           # Both halves, not the subtraction: `img` may match in this worker
           # and miss in the next, and only the parent that merged every
           # fragment can tell whether it matched anywhere in the run.
@@ -417,6 +416,11 @@ module SnapDiff
         FileUtils.rm_rf(parallel_fragments_dir)
       end
 
+      def outcome_rows
+        @mutex.synchronize { @outcomes.values }
+      end
+      private :outcome_rows
+
       def outcome_names(status)
         @mutex.synchronize { @outcomes.select { |_name, row| row.status == status }.keys }
       end
@@ -437,20 +441,19 @@ module SnapDiff
           "#{names.join(", ")}. Commit the captured file(s) to enable comparison."
       end
 
-      # The other half of "nothing was compared", and the louder one:
-      # `record: :all` accepts whatever the page rendered as the new
-      # baseline. Names the screenshots that really went down that path this
-      # run, so `git add` lands on the right files -- and so nobody commits
-      # forty accepted regressions without being told they were accepted.
+      # What `record: :all` did, named: the screenshots that differed from
+      # their baseline and were accepted as the new one, so nobody commits
+      # forty accepted regressions without having been told.
       #
       # @return [String, nil] nil when nothing was re-recorded
       def rerecorded_baselines_summary
         names = outcome_names(:rerecorded)
         return if names.empty?
 
-        label = (names.size == 1) ? "1 screenshot" : "#{names.size} screenshots"
-        "[snap_diff] record: :all re-recorded #{label} WITHOUT comparing: #{names.join(", ")}. " \
-          "Review the result before committing -- an unintended change is accepted just as silently."
+        label, pronoun = names.one? ? ["1 screenshot", "it"] : ["#{names.size} screenshots", "them"]
+        "[snap_diff] record: :all compared #{label}, found #{pronoun} different and accepted #{pronoun} as the new baseline: " \
+          "#{names.join(", ")}. `git add` the file(s) to keep the change, `git restore -- <path>` to discard it. " \
+          "The `.base.<fmt>` and diff files left beside each one are covered by the recommended .gitignore."
       end
 
       # The selectors that matched nothing in EVERY screenshot of the run.

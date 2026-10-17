@@ -14,12 +14,16 @@ require "snap_diff/config"
 module SnapDiff
   module Reporters
     class HTML
-      attr_reader :failures, :total
+      # One entry per screenshot that was not a plain pass, each with a
+      # `status` ("changed", "rerecorded" or "new") and, when the report
+      # could not render it, an `error` beside it.
+      attr_reader :entries, :total
 
       def initialize(output_path: nil, embed_images: false)
         @explicit_output_path = output_path
         @embed_images = embed_images
-        @failures = []
+        @entries = []
+        @new_names = Set.new
         @total = 0
         @finalized = false
         @mutex = Mutex.new
@@ -28,39 +32,38 @@ module SnapDiff
       def record(assertions)
         return if @finalized
 
-        failures = []
+        entries = []
         total = 0
 
         assertions.each do |assertion|
-          counted = false
-          compare = assertion.compare
-          next unless compare
+          status = assertion.status
+          entry = begin
+            entry_for(assertion, status) unless status == :passed
+          rescue => e
+            # A report bug must not hide a screenshot: warn, and keep it
+            # listed with the status it has and the error beside it. The
+            # error says the report could not render it, not what became of
+            # the screenshot.
+            error = "#{e.class}: #{e.message}"
+            warn "[snap_diff] HTML report: could not render '#{assertion.name}' (#{error})"
+            {name: assertion.name, status: status.to_s, error: error}
+          end
 
-          total += 1
-          counted = true
-          next unless compare.difference&.different?
-
-          failures << failure_entry_for(assertion.name, compare)
-        rescue => e
-          # A report bug must not hide a screenshot: warn, and keep it listed
-          # (counted as failed: the report can't vouch for it).
-          error = "#{e.class}: #{e.message}"
-          warn "[snap_diff] HTML report: could not render '#{assertion.name}' (#{error})"
-          total += 1 unless counted
-          failures << {name: assertion.name, error: error}
+          total += 1 unless status == :new
+          entries << entry if entry
         end
 
         @mutex.synchronize do
           return if @finalized
           @total += total
-          @failures.concat(failures)
+          add_entries(entries)
         end
       end
 
       def finalize
         @mutex.synchronize do
           return if @finalized
-          return if failures.empty? && new_count.zero?
+          return if entries.empty?
 
           write_report
           @finalized = true
@@ -78,23 +81,34 @@ module SnapDiff
       # file is discarded rather than half-read. Image paths were resolved
       # against `output_path`, which is the same in both processes.
       def dump_state
-        @mutex.synchronize { {"total" => @total, "failures" => @failures} }
+        @mutex.synchronize { {"total" => @total, "entries" => @entries} }
       end
 
       def merge_state!(state)
         @mutex.synchronize do
-          @total += state["total"]
-          @failures.concat(state["failures"].map { |entry| entry.transform_keys(&:to_sym) })
+          @total += state.fetch("total")
+          add_entries(state.fetch("entries").map { |entry| entry.transform_keys(&:to_sym) })
         end
       end
 
-      def passed = total - failures.size
-      def failed = failures.size
-      # Screenshots captured but not compared: new ones are listed,
-      # re-recorded ones only counted.
-      def new_screenshots = SnapDiff::Reporting.uncompared.select { |screenshot| screenshot.status == :new }
-      def new_count = new_screenshots.size
-      def rerecorded_count = SnapDiff::Reporting.uncompared.size - new_count
+      # The entries that were compared and differed, and not accepted:
+      # `:changed`. (Ones the report could not render keep their status.)
+      def changed_entries = entries.select { |entry| entry[:status] == "changed" }
+
+      def new_count = count_entries("new")
+      def rerecorded_count = count_entries("rerecorded")
+
+      # What the report shows as "changed", like the terminal summary: the
+      # ones that differed, re-recorded included.
+      def changed_count = changed_entries.size + rerecorded_count
+
+      # Shipped names (2.0.0.beta4), kept as shims: what is "changed" here
+      # was "failures" there, and the re-recorded ones are not part of it.
+      def failures = changed_entries
+
+      def failed = changed_entries.size
+
+      def passed = total - changed_count
 
       # Both customer personas named this path as the best output in the
       # product, so it gets its own line -- but only when a report was
@@ -112,7 +126,6 @@ module SnapDiff
       # Attach available contributions and return the rendered HTML report.
       def render
         attach_annotations
-        @entries = failures + new_screenshot_entries
         ERB.new(File.read(self.class.template_path)).result(binding)
       end
 
@@ -127,8 +140,28 @@ module SnapDiff
 
       private
 
+      # Under the mutex. A name with no baseline is one new screenshot
+      # however many times it was captured (as Reporting counts it).
+      def add_entries(entries)
+        entries.each do |entry|
+          next if entry[:status] == "new" && !@new_names.add?(entry[:name])
+
+          @entries << entry
+        end
+      end
+
+      def count_entries(status) = entries.count { |entry| entry[:status] == status }
+
+      def entry_for(assertion, status)
+        if status == :new
+          new_screenshot_entry(assertion.name, assertion.path)
+        else
+          compared_entry_for(assertion.name, assertion.compare).merge(status: status.to_s)
+        end
+      end
+
       # Build a report entry from a comparison, omitting unavailable images and metrics.
-      def failure_entry_for(name, compare)
+      def compared_entry_for(name, compare)
         {
           name: name,
           original: resolve_image(compare.base_image_path),
@@ -147,11 +180,11 @@ module SnapDiff
       end
 
       # An input that vanished before the comparison leaves nothing to diff
-      # or annotate. The entry carries the error so the page says so, instead
-      # of inferring "pass" from the absent diff keys. resolve_image already
-      # drops the missing file from original/new.
+      # or annotate. The entry keeps its status (it was compared and differs)
+      # and carries the error so the page says why there is nothing to show.
+      # resolve_image already drops the missing file from original/new.
       def missing_input_details(compare)
-        {error: compare.error_message.lines.first.strip}
+        {error: compare.processed.error_message.lines.first.strip}
       end
 
       # Images of different sizes get no annotated or heatmap images, and
@@ -180,7 +213,7 @@ module SnapDiff
       # HTML never names a contributor -- it renders whatever
       # SnapDiff::Contributions returns, empty by default.
       def attach_annotations
-        failures.each do |entry|
+        entries.each do |entry|
           # ||= would create a nil :annotations key on misses; keep the
           # entry clean.
           annotations = SnapDiff::Contributions.annotations_for(entry[:name])
@@ -188,14 +221,10 @@ module SnapDiff
         end
       end
 
-      # Built at render time: the image and the `git add` are offered only
-      # for a file that is on disk now (#260).
-      def new_screenshot_entries
-        new_screenshots.map { |screenshot| new_screenshot_entry(screenshot.name, screenshot.path) }
-      end
-
+      # The image and the `git add` are offered only for a file that is on
+      # disk now (#260).
       def new_screenshot_entry(name, path)
-        entry = {name: name, new_screenshot: true}
+        entry = {name: name, status: "new"}
         image = resolve_image(path)
         return entry unless image
 

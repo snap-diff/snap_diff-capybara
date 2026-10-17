@@ -179,8 +179,8 @@ and assigning `nil` hands the setting back to the environment.
 - **Accepting an intentional change is one setting, not folklore.** `record` replaces
   `fail_if_new` (removed in 2.1): `:once` records a missing baseline and compares the rest —
   what a local run already did; `:none` **fails** on a missing baseline with the `git add`
-  command attached, and is what CI gets by default; `:all` re-records every screenshot and
-  compares nothing, the bulk-accept verb for the run after an intentional redesign. 1.15.1
+  command attached, and is what CI gets by default; `:all` compares like `:once` but accepts
+  what differs instead of failing, the bulk-accept verb for the run after an intentional redesign. 1.15.1
   documented `RECORD_SCREENSHOTS=1` in four files and printed it in its own error message,
   and nothing in the gem ever read that variable — accepting a change was answered in issue
   comments for six years and never in the docs. See `docs/configuration.md` (#259)
@@ -331,17 +331,27 @@ One removal 2.0 cannot warn about, written down instead: the legacy `LOADED_DRIV
   the name to install; the mirror reserves the forward-looking one. **Install one,
   never both.**
 - **Reporters can list the screenshots that were not compared.**
-  `SnapDiff::Reporting.uncompared` returns the ones behind the summary line's "new" and
-  "re-recorded" counts, complete by the time reporters `finalize` (fork-parallel workers
-  included): each with its `name`, the captured file's `path`, and the `status` — `:new`
-  (no committed baseline) or `:rerecorded` (`record: :all`). The bundled HTML report lists
-  new screenshots from it
+  `SnapDiff::Reporting.uncompared` returns the ones behind the summary line's "new"
+  count, complete by the time reporters `finalize` (fork-parallel workers included): each
+  with its `name`, the captured file's `path`, and the `status` (`:new`, no committed
+  baseline). The bundled HTML report lists new screenshots from it
 - New documentation shipped inside the gem:
   [docs/snapdiff.md](docs/snapdiff.md) (canonical API) and
   [docs/UPGRADING.md](docs/UPGRADING.md) (every renamed constant, which names warn,
   rollback)
 
 ### Changed
+- **`record: :all` now compares before re-recording and the report shows what changed.**
+  A screenshot that differs from its committed baseline is accepted as the new baseline
+  (it never fails the run) and leaves the usual `.base.png` and diff/heatmap files,
+  which the recommended `.gitignore` already ignores; a screenshot that matches is left
+  as committed. The summary line counts the accepted ones in a parenthesis —
+  `12 verified, 3 changed (3 re-recorded), 0 new (not verified).` — and the HTML report
+  lists each of them with its baseline, current and heatmap views and a "re-recorded"
+  badge, and its title and pill use the same `N changed (R re-recorded)` wording as the
+  terminal (the title used to say "failures"). Report entries gain a `status` (`changed`,
+  `new` or `rerecorded`) in place of `new_screenshot`; an entry the report could not
+  render also carries an `error`.
 - **Reporters now receive every screenshot, each with a `status`.** New and re-recorded
   (`record: :all`) captures used to bypass them; now every capture is a
   `SnapDiff::ScreenshotAssertion` whose `status` is `:passed`, `:changed`, `:new` or
@@ -458,8 +468,7 @@ One removal 2.0 cannot warn about, written down instead: the legacy `LOADED_DRIV
   baseline appears after the failures, marked `new`, with its capture and the
   `git add` that makes it the baseline; a run whose only finding is a new screenshot
   now writes a report. The report's `new` count is the summary line's, including
-  across `parallelize(workers: N)`. Re-recorded screenshots (`record: :all`) are
-  counted in the report but not yet listed
+  across `parallelize(workers: N)`
 - **Under `record: :none` a new screenshot is counted.** The run still fails as before;
   the summary line now says `1 new` instead of `0 new`
 - **A committed baseline taken by a same-name test is reported as disappeared, in every

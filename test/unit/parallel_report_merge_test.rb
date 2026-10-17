@@ -50,7 +50,7 @@ class ParallelReportMergeTest < ActiveSupport::TestCase
       # parent, and none may cost the others.
       SnapDiff::Reporting.notify([
         build_failing_assertion("worker_b"), build_passing_assertion("worker_b_ok"),
-        build_uncompared_assertion("worker_b_new", :new), build_uncompared_assertion("worker_b_accepted", :rerecorded)
+        build_uncompared_assertion("worker_b_new"), build_rerecorded_assertion("worker_b_accepted")
       ])
     end
 
@@ -60,15 +60,15 @@ class ParallelReportMergeTest < ActiveSupport::TestCase
 
     SnapDiff::Reporting.merge_parallel_fragments!
 
-    assert_equal 3, @reporter.total
+    assert_equal 4, @reporter.total
     assert_equal 2, @reporter.failed
+    assert_equal 1, @reporter.rerecorded_count
     # The counts line must total the MERGED runs -- one worker's numbers
     # would be wrong here.
-    assert_equal "[snap_diff] 3 verified, 2 changed, 1 new (not verified). 1 re-recorded (not verified).",
+    assert_equal "[snap_diff] 4 verified, 3 changed (1 re-recorded), 1 new (not verified).",
       SnapDiff::Reporting.counts_summary
     assert_includes SnapDiff::Reporting.rerecorded_baselines_summary, "worker_b_accepted"
-    assert_equal [["worker_b_new", :new], ["worker_b_accepted", :rerecorded]],
-      SnapDiff::Reporting.uncompared.map { |row| [row.name, row.status] }
+    assert_equal [["worker_b_new", :new]], SnapDiff::Reporting.uncompared.map { |row| [row.name, row.status] }
 
     # Symbol keys, like an entry recorded in this process: `failures` is
     # public, and an array whose shape depends on which process filled it
@@ -89,7 +89,7 @@ class ParallelReportMergeTest < ActiveSupport::TestCase
     fork_worker do
       capture.dirname.mkpath
       FileUtils.cp(File.expand_path("a.png", TEST_IMAGES_DIR), capture)
-      SnapDiff::Reporting.notify([build_uncompared_assertion("signup", :new, path: capture)])
+      SnapDiff::Reporting.notify([build_uncompared_assertion("signup", path: capture)])
     end
 
     SnapDiff::Reporting.merge_parallel_fragments!
@@ -97,23 +97,26 @@ class ParallelReportMergeTest < ActiveSupport::TestCase
     assert_includes SnapDiff::Reporting.counts_summary, "1 new (not verified)"
     assert_equal [{name: "signup", path: capture, status: :new}], SnapDiff::Reporting.uncompared.map(&:to_h)
     assert_predicate @reporter.finalize, :present?, "a run with only new screenshots writes a report"
-    assert_includes @output_path.read, %("name":"signup","new_screenshot":true)
+    assert_includes @output_path.read, %("name":"signup","status":"new")
     assert_includes @output_path.read, "git add -- "
   end
 
-  test "a re-recorded screenshot captured in a worker reaches the parent with its path" do
-    fork_worker { SnapDiff::Reporting.notify([build_uncompared_assertion("accepted", :rerecorded, path: "/app/accepted.png")]) }
+  test "a re-recorded screenshot captured in a worker reaches the parent" do
+    fork_worker { SnapDiff::Reporting.notify([build_rerecorded_assertion("accepted")]) }
 
     SnapDiff::Reporting.merge_parallel_fragments!
 
-    assert_equal [{name: "accepted", path: Pathname("/app/accepted.png"), status: :rerecorded}],
-      SnapDiff::Reporting.uncompared.map(&:to_h)
+    assert_equal 1, SnapDiff::Reporting.verified
+    assert_equal 1, SnapDiff::Reporting.changed
+    assert_includes SnapDiff::Reporting.counts_summary, "1 changed (1 re-recorded)"
+    assert_includes SnapDiff::Reporting.rerecorded_baselines_summary, "accepted"
+    assert_empty SnapDiff::Reporting.uncompared
   end
 
   # The summary line counts names, merged across workers; the report must
   # list the same number.
   test "a new screenshot two workers both captured is listed once" do
-    2.times { fork_worker { SnapDiff::Reporting.notify([build_uncompared_assertion("signup", :new, path: "/app/signup.png")]) } }
+    2.times { fork_worker { SnapDiff::Reporting.notify([build_uncompared_assertion("signup", path: "/app/signup.png")]) } }
 
     SnapDiff::Reporting.merge_parallel_fragments!
     @reporter.finalize
@@ -217,15 +220,14 @@ class ParallelReportMergeTest < ActiveSupport::TestCase
   # Both uncompared statuses in one run, from different workers: neither may
   # swallow the other's count or its row.
   test "a new and a re-recorded screenshot from different workers keep their own counts and rows" do
-    fork_worker { SnapDiff::Reporting.notify([build_uncompared_assertion("fresh", :new, path: "/app/fresh.png")]) }
-    fork_worker { SnapDiff::Reporting.notify([build_uncompared_assertion("accepted", :rerecorded, path: "/app/accepted.png")]) }
+    fork_worker { SnapDiff::Reporting.notify([build_uncompared_assertion("fresh", path: "/app/fresh.png")]) }
+    fork_worker { SnapDiff::Reporting.notify([build_rerecorded_assertion("accepted")]) }
 
     SnapDiff::Reporting.merge_parallel_fragments!
 
-    assert_equal "[snap_diff] 0 verified, 0 changed, 1 new (not verified). 1 re-recorded (not verified).",
+    assert_equal "[snap_diff] 1 verified, 1 changed (1 re-recorded), 1 new (not verified).",
       SnapDiff::Reporting.counts_summary
-    assert_equal [["fresh", :new], ["accepted", :rerecorded]],
-      SnapDiff::Reporting.uncompared.map { |row| [row.name, row.status] }
+    assert_equal [["fresh", :new]], SnapDiff::Reporting.uncompared.map { |row| [row.name, row.status] }
     assert_includes SnapDiff::Reporting.missing_baselines_summary, "fresh"
     assert_includes SnapDiff::Reporting.rerecorded_baselines_summary, "accepted"
   end
@@ -375,10 +377,16 @@ class ParallelReportMergeTest < ActiveSupport::TestCase
     SnapDiff::ScreenshotAssertion.new(name).tap { |a| a.compare = compare }
   end
 
-  # A capture that was never compared: `:new`, or `:rerecorded` (`record:
-  # :all`, which still discards the baseline).
-  def build_uncompared_assertion(name, status, path: nil)
-    SnapDiff::ScreenshotAssertion.new(name, path: path && Pathname(path), record_mode: (status == :rerecorded) ? :all : nil)
+  # A capture that was never compared: `:new`.
+  def build_uncompared_assertion(name, path: nil)
+    SnapDiff::ScreenshotAssertion.new(name, path: path && Pathname(path))
+  end
+
+  def build_rerecorded_assertion(name)
+    compare = make_comparison(:a, :b, destination: "rerecorded_#{name}")
+    compare.processed
+
+    SnapDiff::ScreenshotAssertion.new(name, record_mode: :all).tap { |a| a.compare = compare }
   end
 
   def build_failing_assertion(name)
