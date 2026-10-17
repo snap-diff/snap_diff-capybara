@@ -101,6 +101,12 @@ module SnapDiff
         "unknown record mode #{mode.inspect} -- one of #{RECORD_MODES.map(&:inspect).join(", ")} (or nil)"
     end
 
+    # Are we on CI? Read live, and an empty CI is not CI: `CI: ""` is how a
+    # job opts out (docs/ci-integration.md), so every reader must agree.
+    def self.ci?
+      !ENV["CI"].to_s.empty?
+    end
+
     # shift_distance_limit, driver and the three older new-screenshot
     # booleans are excluded from the generated writers and hand written
     # below (they announce their 2.1 removal, or validate); fail_if_new and
@@ -157,7 +163,7 @@ module SnapDiff
     # ("normally, CLI flags take precedence over environment variables") and
     # the inverse of jest#12288.
     def fail_if_new
-      @fail_if_new.nil? ? !ENV["CI"].to_s.empty? : @fail_if_new
+      @fail_if_new.nil? ? Config.ci? : @fail_if_new
     end
 
     # Announces the 2.1 removal. The writer, not the reader: {#record} reads

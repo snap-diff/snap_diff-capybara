@@ -72,8 +72,10 @@ than accepting them one failure at a time:
 
 ```ruby
 # test_helper.rb. There is no CLI flag — the gem has no runner to hang one on —
-# so gate it on an environment variable of your own if you want one:
-SnapDiff.config.record = ENV["ACCEPT_SCREENSHOTS"] ? :all : :once
+# so gate it on an environment variable of your own if you want one. Set the
+# mode only when asked: an explicit mode, even :once, outranks the
+# :none-under-CI default and would stop CI from failing on a missing baseline.
+SnapDiff.config.record = :all unless ENV["ACCEPT_SCREENSHOTS"].to_s.empty?
 ```
 
 ```bash
