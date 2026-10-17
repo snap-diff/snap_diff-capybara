@@ -184,6 +184,15 @@ class SnapDiffConfigTest < ActiveSupport::TestCase
     ENV["CI"] = original
   end
 
+  # One predicate for "are we on CI". The HTML reporter used `!!ENV["CI"]`,
+  # so the documented `CI: ""` recipe (docs/ci-integration.md) embedded every
+  # image into the report while the record mode read the same value as "not CI".
+  test "Config.ci? is false for an unset or empty CI, true otherwise" do
+    with_env_ci(nil) { assert_equal false, SnapDiff::Config.ci? }
+    with_env_ci("") { assert_equal false, SnapDiff::Config.ci?, "an empty CI is not CI" }
+    with_env_ci("true") { assert_equal true, SnapDiff::Config.ci? }
+  end
+
   test "an unset fail_if_new reads ENV['CI'] live, not once at require time" do
     config.fail_if_new = nil
 

@@ -204,7 +204,9 @@ One failure at a time is fine for one screenshot. After a redesign that changed 
 
 ```ruby
 # test_helper.rb
-SnapDiff.config.record = ENV["ACCEPT_SCREENSHOTS"] ? :all : :once
+# Set the mode only when asked: an explicit mode, even :once, outranks the
+# :none-under-CI default and would stop CI from failing on a missing baseline.
+SnapDiff.config.record = :all unless ENV["ACCEPT_SCREENSHOTS"].to_s.empty?
 ```
 
 ```bash

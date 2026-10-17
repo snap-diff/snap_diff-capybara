@@ -220,5 +220,5 @@ end
 # Framework adapters (Minitest, RSpec, Cucumber) call SnapDiff::Reporting.finalize! via native hooks.
 # For custom frameworks, call SnapDiff::Reporting.finalize! manually.
 unless SnapDiff::Reporting.reporters.any?(SnapDiff::Reporters::HTML)
-  SnapDiff::Reporting.register(SnapDiff::Reporters::HTML.new(embed_images: !!ENV["CI"]))
+  SnapDiff::Reporting.register(SnapDiff::Reporters::HTML.new(embed_images: SnapDiff::Config.ci?))
 end
