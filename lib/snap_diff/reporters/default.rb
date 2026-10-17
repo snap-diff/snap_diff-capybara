@@ -35,8 +35,9 @@ module SnapDiff
           return nil
         end
 
-        if difference.failed? && difference.failed_by[:different_dimensions]
-          return build_error_for_different_dimensions
+        if difference.failed?
+          return build_error_for_missing_image if difference.failed_by[:missing_image]
+          return build_error_for_different_dimensions if difference.failed_by[:different_dimensions]
         end
 
         annotate_and_save_images
@@ -55,6 +56,17 @@ module SnapDiff
       # are listed: annotations on disk are leftovers from an earlier failure.
       def build_error_for_different_dimensions
         ["Dimensions have changed: #{dimension_change}", *artifact_lines(INPUT_ARTIFACTS)].join(NEW_LINE)
+      end
+
+      # A capture that vanished before the comparison ran has no pixels to
+      # annotate: say which input is gone and list the one that is left.
+      def build_error_for_missing_image
+        missing = INPUT_ARTIFACTS.filter_map do |label, path_method|
+          path = send(path_method)
+          "#{label} #{display_path(path)}" unless path.exist?
+        end
+
+        ["Cannot compare, missing: #{missing.join(", ")}", *artifact_lines(INPUT_ARTIFACTS)].join(NEW_LINE)
       end
 
       # "WxH => WxH", baseline first. Public so Reporters::HTML says it the

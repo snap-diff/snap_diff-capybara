@@ -367,6 +367,10 @@ One removal 2.0 cannot warn about, written down instead: the legacy `LOADED_DRIV
   validated immediately but never reached the registry, so a suite run that way ended
   on `0 verified ... NOTHING WAS VERIFIED` and its failures were missing from the
   report. The failure still raises inside the test, once
+- **A capture that disappears before it is compared no longer crashes the comparison.**
+  `different?` raised `TypeError` (the missing-image result carried a String where
+  the readers index a Hash). It now reads as different, and the error message names
+  the missing file
 - **A screenshot with no committed baseline no longer passes silently** — it warns,
   names the file, and is counted as `new (not verified)` rather than as a pass
 - **An inherited `GIT_DIR` / `GIT_WORK_TREE` / `GIT_INDEX_FILE` no longer redirects

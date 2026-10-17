@@ -108,7 +108,7 @@ module SnapDiff
     #
     # @note This method will raise ArgumentError if either image file is missing.
     def quick_equal?
-      return true if identical_files?
+      return true if images_exist? && identical_files?
 
       result, difference = find_difference(quick_mode: true)
       self.difference = difference
@@ -169,8 +169,12 @@ module SnapDiff
     end
 
     def find_difference(quick_mode: false)
-      # Validate images exist
-      return build_null_difference("missing_image") unless images_exist?
+      # A missing input is a failed comparison, in the same shape the
+      # caller asked for: quick mode expects an [equal, result] pair.
+      unless images_exist?
+        missing = build_null_difference(missing_image: true)
+        return quick_mode ? [false, missing] : missing
+      end
 
       # Step 1 of the layered strategy documented on this class: byte-identical
       # files cannot have different pixels. quick_equal? has always checked

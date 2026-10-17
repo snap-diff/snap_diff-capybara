@@ -129,12 +129,29 @@ module SnapDiff
 
       # Build a report entry from a comparison, omitting unavailable images and metrics.
       def failure_entry_for(name, compare)
-        details = compare.dimensions_changed? ? dimension_change_details(compare) : difference_details(compare)
         {
           name: name,
           original: resolve_image(compare.base_image_path),
           new: resolve_image(compare.image_path)
-        }.merge(details).compact
+        }.merge(failure_details(compare)).compact
+      end
+
+      def failure_details(compare)
+        if compare.difference.failed_by&.[](:missing_image)
+          missing_input_details(compare)
+        elsif compare.dimensions_changed?
+          dimension_change_details(compare)
+        else
+          difference_details(compare)
+        end
+      end
+
+      # An input that vanished before the comparison leaves nothing to diff
+      # or annotate. The entry carries the error so the page says so, instead
+      # of inferring "pass" from the absent diff keys. resolve_image already
+      # drops the missing file from original/new.
+      def missing_input_details(compare)
+        {error: compare.error_message.lines.first.strip}
       end
 
       # Images of different sizes get no annotated or heatmap images, and
