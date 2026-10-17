@@ -371,6 +371,11 @@ One removal 2.0 cannot warn about, written down instead: the legacy `LOADED_DRIV
   `different?` raised `TypeError` (the missing-image result carried a String where
   the readers index a Hash). It now reads as different, and the error message names
   the missing file
+- **The summary never counts a comparison that did not run.** With
+  `fail_on_difference = false` nothing validated the screenshots at teardown, so a
+  differing one was tallied as `verified`, with no diff files and no report entry. The
+  tally now runs the comparison, so the summary says `changed` and the report lists it.
+  The flag still never fails a test
 - **A screenshot with no committed baseline no longer passes silently** — it warns,
   names the file, and is counted as `new (not verified)` rather than as a pass
 - **An inherited `GIT_DIR` / `GIT_WORK_TREE` / `GIT_INDEX_FILE` no longer redirects

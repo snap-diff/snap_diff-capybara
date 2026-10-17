@@ -199,6 +199,11 @@ module SnapDiff
       # Tallies a finished test's assertions. An assertion with no
       # `compare` never reached a baseline, so it is neither verified nor
       # changed -- it is counted, if at all, by {record_missing_baseline}.
+      # A comparison that has not run yet (nothing validated it: teardown
+      # skips that when fail_on_difference is off) runs here, so a verified
+      # screenshot is always one that was actually compared. One that cannot
+      # run is warned about by name and left out of the tally; the other
+      # screenshots of the same test still count.
       def count(assertions)
         verified = 0
         changed = 0
@@ -207,8 +212,11 @@ module SnapDiff
           compare = assertion.compare
           next unless compare
 
+          different = compare.different?
           verified += 1
-          changed += 1 if compare.difference&.different?
+          changed += 1 if different
+        rescue => e
+          warn "[snap_diff] Could not tally '#{assertion.name}' (#{e.class}: #{e.message})"
         end
 
         @mutex.synchronize do

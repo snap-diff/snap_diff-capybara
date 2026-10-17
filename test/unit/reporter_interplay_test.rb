@@ -100,6 +100,67 @@ class ReporterInterplayTest < ActiveSupport::TestCase
     end
   end
 
+  # A comparison nobody ran has no verdict yet. With fail_on_difference
+  # off, teardown never validates, so the tally has to force the comparison
+  # itself or it reports a differing screenshot as verified and matching.
+  test "the tally runs a comparison nobody forced" do
+    SnapDiff::Reporting.reset_run_totals!
+    SnapDiff::Vcs.stub(:checkout_vcs, true) do
+      SnapDiff.config.stub(:fail_on_difference, false) do
+        differing = create_snapshot_for(:c, :a)
+        matching = create_snapshot_for(:a, :a)
+
+        assert_matches_screenshot(differing.full_name)
+        assert_matches_screenshot(matching.full_name)
+        assert_nil SnapDiff.session.verify, "fail_on_difference = false never fails the test"
+        SnapDiff.reset
+
+        assert_equal 2, SnapDiff::Reporting.verified
+        assert_equal 1, SnapDiff::Reporting.changed
+      end
+    end
+  end
+
+  # A comparison that blows up costs its own row, not the test's whole tally:
+  # the other screenshots of the same test still count, and the warning names
+  # the one that failed.
+  test "a comparison that raises is skipped on its own, with a warning naming it" do
+    SnapDiff::Reporting.reset_run_totals!
+    SnapDiff::Vcs.stub(:checkout_vcs, true) do
+      good = create_snapshot_for(:a, :a)
+      assert_matches_screenshot(good.full_name)
+
+      broken = SnapDiff::ScreenshotAssertion.new("broken_shot")
+      broken.compare = Object.new.tap { |compare| compare.define_singleton_method(:different?) { raise "boom" } }
+      SnapDiff.session.add_assertion(broken)
+
+      _out, err = capture_io { SnapDiff.reset }
+
+      assert_equal 1, SnapDiff::Reporting.verified
+      assert_match(/Could not tally 'broken_shot' \(RuntimeError: boom\)/, err)
+      assert_equal 2, @spy.recorded.flatten.size, "reporters still get every assertion"
+    end
+  end
+
+  # Nothing the tally does on a healthy run, or on a capture that vanished
+  # before it was compared, is worth a line on stderr.
+  test "reset tallies a match, a difference and a vanished capture without a word" do
+    SnapDiff::Reporting.reset_run_totals!
+    SnapDiff::Vcs.stub(:checkout_vcs, true) do
+      matching = create_snapshot_for(:a, :a)
+      differing = create_snapshot_for(:c, :a)
+      vanished = create_snapshot_for(:c, :a)
+      [matching, differing, vanished].each { |snap| assert_matches_screenshot(snap.full_name) }
+      FileUtils.rm(vanished.path)
+
+      _out, err = capture_io { SnapDiff.reset }
+
+      assert_empty err
+      assert_equal 3, SnapDiff::Reporting.verified
+      assert_equal 2, SnapDiff::Reporting.changed
+    end
+  end
+
   test "reset without assertions does not notify reporters" do
     SnapDiff.reset
 
