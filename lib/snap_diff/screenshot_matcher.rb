@@ -47,18 +47,10 @@ module SnapDiff
 
       capture_screenshot(capture_options, comparison_options)
 
-      # AFTER the capture, so the path the message tells the user to
-      # `git add` is one that exists by the time they read it (#260).
-      fail_if_new_screenshot
-
       # Pre-computation: No need to compare without base screenshot
-      # NOTE: Consider to return PreValid Assertion Value Object with hard coded valid result
-      unless need_to_compare?
-        record_uncompared_screenshot
-        return
-      end
+      return register_uncompared_screenshot unless need_to_compare?
 
-      create_screenshot_assertion(skip_stack_frames + 1, comparison_options)
+      register(create_screenshot_assertion(skip_stack_frames + 1, comparison_options))
     end
 
     # Captures a screenshot without comparing it to a baseline.
@@ -81,12 +73,12 @@ module SnapDiff
       SnapDiff::Config.validate_record_mode!(per_screenshot) || SnapDiff.config.record
     end
 
-    # `:all` accepts every rendering as correct -- that is the feature. On
-    # CI there is nobody to review the result and the re-recorded files go
-    # away with the box, so a mode left in a committed config file buys a
-    # build that compares nothing and passes, forever. That is precisely how
-    # Percy goes green on a job that lost its token; refuse it rather than
-    # shipping our own version.
+    # `:all` accepts every differing rendering as the new baseline -- that is
+    # the feature. On CI there is nobody to review the result and the
+    # re-recorded files go away with the box, so a mode left in a committed
+    # config file buys a build that never fails, forever. That is precisely
+    # how Percy goes green on a job that lost its token; refuse it rather
+    # than shipping our own version.
     #
     # A CI job that must record NEW baselines does not need `:all` at all:
     # `record: :once` records them and still compares everything that has a
@@ -95,36 +87,39 @@ module SnapDiff
       return unless SnapDiff::Config.ci?
 
       raise SnapDiff::ExpectationNotMet.new(<<~ERROR.chomp, caller)
-        `record: :all` re-records every baseline WITHOUT comparing, so it refuses to run under CI (ENV["CI"] is set).
-        Nothing would be verified and the recorded screenshots would be discarded with the runner.
+        `record: :all` re-records every screenshot that differs from its baseline without failing, so it refuses to run under CI (ENV["CI"] is set).
+        No difference could fail the build and the re-recorded screenshots would be discarded with the runner.
         Re-record locally, review the result, and commit the screenshots.
         To let a CI job record screenshots that have no baseline yet: SnapDiff.config.record = :once
       ERROR
     end
 
-    # No `record_mode != :all` clause here on purpose: mutation testing
-    # showed one guards nothing. #check_base_screenshot already leaves `:all`
-    # with no base file at all, so this reads false for it either way, and a
-    # second condition that cannot fire is a second thing to keep true.
     def need_to_compare?
       @snapshot.base_path.exist?
     end
 
-    # `:all` re-records, so nothing was compared and nothing is "new" in the
-    # missing-baseline sense. Reported through its own channel, which counts
-    # only the screenshots that really went down this path.
+    # The matcher is the one registrar: every assertion it builds is
+    # registered here, before any raise, so the end-of-run tally and the
+    # reporters see it however the DSL goes on to validate it.
+    def register(assertion)
+      SnapDiff.session.add_assertion(assertion)
+    end
+
+    # No baseline to compare against: the capture is registered as a `:new`
+    # assertion with no comparison, in every mode.
     #
     # Runs after a successful capture, so the file handed to reporters is
-    # really there (#260). A new one is tallied after the session's check,
-    # which raises when the baseline was committed but disappeared (#217):
-    # that one is not new.
-    def record_uncompared_screenshot
-      if record_mode == :all
-        SnapDiff::Reporting.record_rerecorded_baseline(screenshot_full_name, path: @snapshot.path)
-      else
-        SnapDiff.session.record_new_screenshot(screenshot_full_name)
-        warn_no_committed_baseline if SnapDiff::Reporting.record_missing_baseline(screenshot_full_name, path: @snapshot.path)
-      end
+    # really there, and the path the `:none` message tells the user to
+    # `git add` exists by the time they read it (#260). A new one is
+    # registered through the session's check, which raises when the baseline
+    # was committed but disappeared (#217): that one is not new. The tally is
+    # not done here: Reporting counts every registered assertion at reset.
+    def register_uncompared_screenshot
+      first_sighting = !SnapDiff.session.new_screenshots.include?(screenshot_full_name)
+      assertion = SnapDiff.session.record_new_screenshot(screenshot_full_name, path: @snapshot.path)
+      fail_if_new_screenshot
+      warn_no_committed_baseline if first_sighting
+      assertion
     end
 
     def prepare_screenshot_options
@@ -139,36 +134,16 @@ module SnapDiff
     # no-baseline warning needs from before the capture: whether the user
     # had a PNG sitting there already -- the case that confuses people most.
     def check_base_screenshot
-      # `:all` does not ask git for a baseline -- there is nothing to
-      # compare against. A `.base.<fmt>` left by an earlier failing run
-      # would otherwise sit beside the re-recorded screenshot and land in
-      # the user's `git add`.
-      return discard_base_screenshot if record_mode == :all
-
       @snapshot.checkout_base_screenshot
       @file_already_there = @snapshot.path.exist?
     end
 
-    def discard_base_screenshot
-      @snapshot.base_path.delete if @snapshot.base_path.exist?
-    end
-
-    # Runs AFTER the capture, so `@snapshot.path` names a file that is
-    # really there and `git add` on it is a command the user can run on this
-    # very test run (#260). Before, the raise came first and the screenshot
-    # was never written -- the instruction was unfollowable in CI, the one
-    # place fail_if_new is on by default.
+    # The `:none` raise: immediate whatever `delayed` says, and after the
+    # capture, so `git add` on the path it names is a command the user can
+    # run on this very test run (#260). The screenshot is registered by then.
     def fail_if_new_screenshot
-      return if @snapshot.base_path.exist?
       return unless record_mode == :none
-      # Committed, then moved by a same-name test: not new. Left to the
-      # session, which raises that it disappeared (#217).
-      return if SnapDiff.session.baseline_checked_out?(screenshot_full_name)
 
-      # Tallied here because it is the last moment it can be: this raise
-      # ends the screenshot, and the run's summary and report still owe the
-      # user the capture it names.
-      SnapDiff::Reporting.record_missing_baseline(screenshot_full_name, path: @snapshot.path)
       raise SnapDiff::ExpectationNotMet.new(<<~ERROR.chomp, caller)
         No existing screenshot found for #{@snapshot.path}!
         To record it: `git add #{@snapshot.path}` and commit -- baselines are read from git.
@@ -199,7 +174,7 @@ module SnapDiff
     end
 
     def create_screenshot_assertion(skip_stack_frames, comparison_options)
-      assertion = SnapDiff::ScreenshotAssertion.new(screenshot_full_name)
+      assertion = SnapDiff::ScreenshotAssertion.new(screenshot_full_name, record_mode: record_mode)
       assertion.caller = caller(skip_stack_frames + 1)
       assertion.compare = Comparison.new(@snapshot.path, @snapshot.base_path, comparison_options)
       assertion

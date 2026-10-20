@@ -16,8 +16,9 @@ require "snap_diff"
 #          structural fact rather than a claim.
 #   :none  strict. A missing baseline always fails, whatever `fail_if_new`
 #          says.
-#   :all   re-record. Every screenshot becomes the new baseline and nothing
-#          is compared. THE BULK-ACCEPT VERB.
+#   :all   :once that accepts instead of fails. The baseline is compared as
+#          always; a capture that differs is kept as the new baseline and
+#          never raises. THE BULK-ACCEPT VERB.
 #
 # PRECEDENCE, in one line: an explicitly set mode outranks `fail_if_new`,
 # and `fail_if_new` is what decides when nothing was set. Same property
@@ -85,7 +86,7 @@ class RecordModesTest < ActiveSupport::TestCase
 
     capture_io do
       SnapDiff::Vcs.stub(:checkout_vcs, false) do
-        assert_nil SnapDiff::ScreenshotMatcher.new(name).build_screenshot_assertion
+        assert_equal :new, SnapDiff::ScreenshotMatcher.new(name).build_screenshot_assertion.status
       end
     end
 
@@ -102,7 +103,7 @@ class RecordModesTest < ActiveSupport::TestCase
 
     capture_io do
       SnapDiff::Vcs.stub(:checkout_vcs, false) do
-        assert_nil SnapDiff::ScreenshotMatcher.new(name).build_screenshot_assertion
+        assert_equal :new, SnapDiff::ScreenshotMatcher.new(name).build_screenshot_assertion.status
       end
     end
 
@@ -154,6 +155,21 @@ class RecordModesTest < ActiveSupport::TestCase
     assert_includes error.message, "SnapDiff.config.record = :once"
   end
 
+  # The raise is immediate, but the capture is still an assertion: the
+  # matcher registers it first, so reporters and the tally see it.
+  test ":none registers the :new assertion before it raises" do
+    SnapDiff.config.record = :none
+    name = "c_#{Time.now.nsec}"
+
+    SnapDiff::Vcs.stub(:checkout_vcs, false) do
+      assert_raises(SnapDiff::ExpectationNotMet) do
+        SnapDiff::ScreenshotMatcher.new(name).build_screenshot_assertion
+      end
+    end
+
+    assert_equal [[name, :new]], SnapDiff.session.assertions.map { |a| [a.name, a.status] }
+  end
+
   test ":none does not also warn about the missing baseline" do
     SnapDiff.config.record = :none
 
@@ -182,8 +198,9 @@ class RecordModesTest < ActiveSupport::TestCase
         SnapDiff::ScreenshotMatcher.new(name).build_screenshot_assertion
       end
     end
+    SnapDiff::Reporting.notify(SnapDiff.session.assertions)
 
-    assert_equal [{name: name, path: SnapDiff::SnapManager.path_for(name).path, reason: :new}], SnapDiff::Reporting.uncompared.map(&:to_h)
+    assert_equal [{name: name, path: SnapDiff::SnapManager.path_for(name).path, status: :new}], SnapDiff::Reporting.uncompared.map(&:to_h)
   end
 
   # A file left by an earlier run sits at the path; the capture then fails.
@@ -231,57 +248,68 @@ class RecordModesTest < ActiveSupport::TestCase
         SnapDiff::ScreenshotMatcher.new(name).build_screenshot_assertion
       end
     end
+    SnapDiff::Reporting.notify(SnapDiff.session.assertions)
 
-    assert_equal [{name: name, path: SnapDiff::SnapManager.path_for(name).path, reason: :new}], SnapDiff::Reporting.uncompared.map(&:to_h)
+    assert_equal [{name: name, path: SnapDiff::SnapManager.path_for(name).path, status: :new}], SnapDiff::Reporting.uncompared.map(&:to_h)
     assert_includes SnapDiff::Reporting.counts_summary, "1 new (not verified)"
   end
 
-  test ":all reports a re-recorded screenshot, not a new one" do
+  # No baseline, nothing to compare: `:all` has nothing to accept, so the
+  # capture is `:new` -- the same fact as under `:once`.
+  test ":all records a screenshot that has no baseline as :new, like :once" do
     SnapDiff.config.record = :all
     name = "c_#{Time.now.nsec}"
 
-    SnapDiff::Vcs.stub(:checkout_vcs, false) do
-      SnapDiff::ScreenshotMatcher.new(name).build_screenshot_assertion
+    capture_io do
+      SnapDiff::Vcs.stub(:checkout_vcs, false) do
+        assert_equal :new, SnapDiff::ScreenshotMatcher.new(name).build_screenshot_assertion.status
+      end
     end
+    SnapDiff::Reporting.notify(SnapDiff.session.assertions)
 
-    assert_equal [{name: name, path: SnapDiff::SnapManager.path_for(name).path, reason: :rerecorded}], SnapDiff::Reporting.uncompared.map(&:to_h)
-    assert_equal 0, SnapDiff::Reporting.missing_baselines_count
+    assert_equal [{name: name, path: SnapDiff::SnapManager.path_for(name).path, status: :new}], SnapDiff::Reporting.uncompared.map(&:to_h)
+    assert_equal 1, SnapDiff::Reporting.missing_baselines_count
   end
 
   # --- :all, the bulk-accept verb ---------------------------------------
 
   # THE ONE THAT MATTERS: a baseline exists AND differs, and :all accepts it.
-  # Asserted on the BYTES on disk, not on the absence of an exception --
-  # "no assertion was built" would also be true if the capture never ran.
-  test ":all leaves the newly captured bytes on disk without comparing them" do
+  # Asserted on the BYTES on disk and the artifacts a failing run leaves --
+  # "nothing raised" would also be true if the capture never ran.
+  test ":all compares, keeps the capture as the baseline, leaves the usual artifacts and never raises" do
     SnapDiff.config.record = :all
 
     SnapDiff::Vcs.stub(:checkout_vcs, true) do
       snap = create_snapshot_for(:a, :c)
 
-      assert_nil SnapDiff::ScreenshotMatcher.new(snap.full_name).build_screenshot_assertion
+      assertion = SnapDiff::ScreenshotMatcher.new(snap.full_name).build_screenshot_assertion
+      assert_nil SnapDiff.session.verify
 
+      assert_equal :rerecorded, assertion.status
       assert_captured(:c, snap.path, "the re-recorded screenshot must be the new capture")
-      assert_not_captured(:a, snap.path, "the old baseline must not survive a re-record")
-      assert_not_predicate SnapDiff.session, :assertions_present?
+      assert_captured(:a, snap.base_path, "the old baseline is kept beside it, as after a failing run")
+      reporter = assertion.compare.reporter
+      assert_predicate reporter.annotated_image_path, :exist?
+      assert_predicate reporter.annotated_base_image_path, :exist?
+      assert_equal [assertion], SnapDiff.session.assertions
     end
   end
 
-  # :all does not ask git for a baseline -- there is nothing to compare
-  # against. A `.base.<fmt>` from an earlier run would otherwise sit beside
-  # the re-recorded screenshot and land in the user's `git add`.
-  test ":all asks VCS for nothing and leaves no .base file behind" do
+  # Same as :once: a capture that matches (here, within tolerance) puts the
+  # committed bytes back, so `git status` does not list a baseline that was
+  # not accepted.
+  test ":all within tolerance is :passed, restores the committed bytes and leaves no .base file" do
     SnapDiff.config.record = :all
-    asked = []
 
-    SnapDiff::Vcs.stub(:checkout_vcs, ->(*args) {
-      asked << args
-      true
-    }) do
-      snap = create_snapshot_for(:a, :c)
-      SnapDiff::ScreenshotMatcher.new(snap.full_name).build_screenshot_assertion
+    SnapDiff::Vcs.stub(:checkout_vcs, true) do
+      snap = create_snapshot_for(:a, :b)
+      committed = snap.base_path.binread
 
-      assert_empty asked, ":all must not spend a git process on a baseline it will not use"
+      assertion = SnapDiff::ScreenshotMatcher.new(snap.full_name, tolerance: 0.02).build_screenshot_assertion
+      SnapDiff.session.verify
+
+      assert_equal :passed, assertion.status
+      assert_equal committed, snap.path.binread
       assert_not_predicate snap.base_path, :exist?
     end
   end
@@ -291,29 +319,39 @@ class RecordModesTest < ActiveSupport::TestCase
     SnapDiff.config.record = :all
     name = "c_#{Time.now.nsec}"
 
-    SnapDiff::Vcs.stub(:checkout_vcs, false) do
-      assert_nil SnapDiff::ScreenshotMatcher.new(name).build_screenshot_assertion
+    capture_io do
+      SnapDiff::Vcs.stub(:checkout_vcs, false) do
+        assert_equal :new, SnapDiff::ScreenshotMatcher.new(name).build_screenshot_assertion.status
+      end
     end
 
     assert_predicate SnapDiff::SnapManager.path_for(name).path, :exist?
   end
 
-  # What :all reports has to be what actually happened: the names that went
-  # down the re-record path this run, and no others.
+  # What :all reports has to be what actually happened: the names that
+  # differed and were accepted this run, and no others.
   test ":all summarises exactly the screenshots it re-recorded" do
     SnapDiff.config.record = :all
     names = nil
+    same = nil
 
     SnapDiff::Vcs.stub(:checkout_vcs, true) do
       names = 3.times.map { create_snapshot_for(:a, :c).full_name }
-      names.each { |n| SnapDiff::ScreenshotMatcher.new(n).build_screenshot_assertion }
+      same = create_snapshot_for(:a, :a).full_name
+      (names + [same]).each { |n| SnapDiff::ScreenshotMatcher.new(n).build_screenshot_assertion }
     end
 
+    SnapDiff.session.verify
+    SnapDiff::Reporting.notify(SnapDiff.session.assertions)
     summary = SnapDiff::Reporting.rerecorded_baselines_summary
 
     assert_match(/3 screenshots/, summary)
     names.each { |n| assert_includes summary, n }
-    assert_match(/[Rr]eview/, summary, "accepting 3 baselines unreviewed is the thing to say out loud")
+    assert_not_includes summary, same
+    assert_match(/accepted/, summary)
+    assert_match(/git restore/, summary, "accepting 3 baselines unreviewed is the thing to say out loud")
+    assert_match(/\.gitignore/, summary, "the artifacts left beside each baseline are accounted for")
+    assert_equal "[snap_diff] 4 verified, 3 changed (3 re-recorded), 0 new (not verified).", SnapDiff::Reporting.counts_summary
   end
 
   test "no re-record summary when nothing was re-recorded" do
@@ -353,7 +391,9 @@ class RecordModesTest < ActiveSupport::TestCase
     with_ci("") do
       SnapDiff::Vcs.stub(:checkout_vcs, true) do
         snap = create_snapshot_for(:a, :c)
-        assert_nil SnapDiff::ScreenshotMatcher.new(snap.full_name).build_screenshot_assertion
+        assertion = SnapDiff::ScreenshotMatcher.new(snap.full_name).build_screenshot_assertion
+        SnapDiff.session.verify
+        assert_equal :rerecorded, assertion.status
       end
     end
   end
@@ -380,7 +420,7 @@ class RecordModesTest < ActiveSupport::TestCase
 
       capture_io do
         SnapDiff::Vcs.stub(:checkout_vcs, false) do
-          assert_nil SnapDiff::ScreenshotMatcher.new("c_#{Time.now.nsec}").build_screenshot_assertion
+          assert_equal :new, SnapDiff::ScreenshotMatcher.new("c_#{Time.now.nsec}").build_screenshot_assertion.status
         end
       end
     end
@@ -391,8 +431,10 @@ class RecordModesTest < ActiveSupport::TestCase
   test "a per-screenshot record: outranks the configured mode" do
     SnapDiff.config.record = :none
 
-    SnapDiff::Vcs.stub(:checkout_vcs, false) do
-      assert_nil SnapDiff::ScreenshotMatcher.new("c_#{Time.now.nsec}", record: :all).build_screenshot_assertion
+    capture_io do
+      SnapDiff::Vcs.stub(:checkout_vcs, false) do
+        assert_equal :new, SnapDiff::ScreenshotMatcher.new("c_#{Time.now.nsec}", record: :all).build_screenshot_assertion.status
+      end
     end
   end
 
@@ -464,12 +506,12 @@ class RecordModesTest < ActiveSupport::TestCase
 
       SnapDiff.configure { |config| config.record = :all }
 
-      # false is what every "nothing was compared" path already returns --
-      # the same answer a screenshot with no baseline gives today.
-      assert_equal false, assert_matches_screenshot(snap.full_name)
+      # Compared, so true -- the answer a screenshot with no baseline
+      # (false) cannot give.
+      assert_equal true, assert_matches_screenshot(snap.full_name)
     end
 
-    SnapDiff.session.verify
+    assert_nil SnapDiff.session.verify
 
     assert_captured(:c, snap.path, "the accepted rendering is what the user is left to `git add`")
   end

@@ -102,7 +102,7 @@ Build your own reporter by implementing `record`, `finalize` and `summary`:
 class MyReporter
   def record(assertions)
     assertions.each do |assertion|
-      next unless assertion.compare&.difference&.different?
+      next unless assertion.status == :changed
       # process the failure — send to Slack, write JSON, etc.
     end
   end
@@ -130,11 +130,15 @@ the framework's end-of-suite hook (`Minitest.after_run`, RSpec `after(:suite)`, 
 finalized and then warned about. A reporter that raises is warned about and skipped — the others
 still run.
 
-`record` receives every assertion, but only a compared one carries a `compare`; the rest have
-`compare: nil` and no path or reason of their own. Those — each new (`reason: :new`) or
-re-recorded (`reason: :rerecorded`) screenshot, with its `name` and captured `path` — are in
-`SnapDiff::Reporting.uncompared`, complete by the time `finalize` runs (fork-parallel workers
-included). The HTML report lists new screenshots from it.
+`record` receives every assertion — one per capture. `assertion.status` says what you hold:
+`:passed` (matches its committed baseline), `:changed` (differs), `:new` (no committed
+baseline) or `:rerecorded` (accepted by `record: :all`). `compare` is nil for a screenshot
+without a baseline; `assertion.path` is the captured file either way. Test `status`, not
+`compare`, to find failures: the tally has already run every comparison by the time `record`
+is called, and reading `status` never forces one. `:rerecorded` was compared and differed,
+like `:changed`, but `record: :all` accepted it. The new screenshots are also in
+`SnapDiff::Reporting.uncompared` (each with `name`, `path` and `status`), complete by the time
+`finalize` runs (fork-parallel workers included); `status` is the contract for everything else.
 
 Full details in [Custom reporters](snapdiff.md#custom-reporters).
 
@@ -145,5 +149,8 @@ failed comparison as `flaky` / `intentional` / `real_bug` (offline CLIP by
 default, pluggable backends) and its verdicts show up in this HTML report as
 badges. Advisory by default — it never changes pass/fail unless you opt in
 with `fail_on: %w[real_bug]`. Setup and recipes: [AI triage](ai.md).
+
+It triages `:changed` comparisons only. A `:rerecorded` one was accepted by `record: :all`, so it is
+not analysed, on purpose: a bulk accept should not cost a backend call per screenshot.
 
 [← Back to README](../README.md)

@@ -186,14 +186,15 @@ Test begins
     │
     ├─ test body:
     │    └─ screenshot("name")
-    │         ├─ ScreenshotMatcher builds assertion
-    │         ├─ add to Thread-local registry (always)
-    │         └─ delayed=false → also validate immediately
+    │         ├─ ScreenshotMatcher builds an assertion for every capture
+    │         │    (compared, new, or re-recorded) and registers it in the
+    │         │    Thread-local registry — before any raise
+    │         └─ delayed=false → the DSL also validates it immediately
     │
     ├─ teardown:
     │    ├─ SnapDiff.session.verify
     │    │    ├─ iterates the fiber-local assertions
-    │    │    ├─ calls validate on each
+    │    │    ├─ calls validate on each (new and re-recorded ones do not fail)
     │    │    └─ raises SnapDiff::ExpectationNotMet if any differed
     │    │
     │    └─ SnapDiff.reset (always, in an ensure)

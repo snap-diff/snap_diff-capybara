@@ -41,13 +41,52 @@ module SnapDiff
   end
 
   class ScreenshotAssertion
-    attr_reader :name, :args
+    attr_reader :name, :args, :record_mode
     attr_accessor :compare, :caller
 
-    def initialize(name, **args)
+    def initialize(name, record_mode: nil, path: nil, **args)
       @name = name
+      @record_mode = record_mode
+      @path = path
       @args = args
     end
+
+    # Where the capture lives: given for a capture that was never compared,
+    # otherwise the comparison's.
+    def path = @path || compare&.image_path
+
+    # What became of this capture, derived on every call (never memoized:
+    # `compare=` may still assign the comparison). Reading it never forces a
+    # comparison: an unprocessed one counts as :passed until #validate or the
+    # tally has run it.
+    #
+    #   :passed     compared against a committed baseline, same
+    #   :changed    compared, differs
+    #   :new        no baseline, nothing to compare
+    #   :rerecorded compared, differs, and `record: :all` accepted the capture
+    #
+    # A capture that vanished before the comparison is :changed in every
+    # mode: there is nothing on disk for `record: :all` to accept.
+    def status
+      return :new unless compare
+
+      difference = compare.difference
+      return :passed unless difference&.different?
+      return :changed if difference.failed_by&.[](:missing_image)
+
+      (record_mode == :all) ? :rerecorded : :changed
+    end
+
+    # #status after judging: forces the comparison (which also writes the
+    # `.diff` and `.heatmap` files), so it is what anything that needs a
+    # verdict asks for. Reading #status alone never does.
+    def verdict
+      compare&.different?
+      status
+    end
+
+    # True once #validate! has judged this assertion (an immediate one).
+    def validated? = !!@validated
 
     # One-line debugging summary. Never triggers the (expensive, file-touching)
     # comparison itself: an unprocessed comparison shows as "pending".
@@ -66,9 +105,9 @@ module SnapDiff
     # Return nil for absent, matching, or suppressed comparisons; archive matching baselines.
     def validate
       return if @validated
-      return unless compare
 
-      if compare.different?
+      case verdict
+      when :changed
         # Optional contribution gate (e.g. AI triage with fail_on:): a
         # registered suppressor runs BEFORE the message is built, so a
         # waived diff never fails and a standing failure can quote what
@@ -82,8 +121,11 @@ module SnapDiff
         # The call site goes last, after what contributors say about the diff.
         notes = Contributions.annotations_for(name).map { |note| "  #{note[:source].upcase} triage: #{note[:text]}" }
         ["Screenshot does not match for '#{name}': #{compare.error_message}", *notes, call_site].compact.join("\n")
-      else
+      when :passed
         archive_baseline!
+        nil
+      when :new, :rerecorded
+        # Accepted as is: the capture and its artifacts stay where they are.
         nil
       end
     end
@@ -167,11 +209,10 @@ module SnapDiff
   end
 
   class AssertionRegistry
-    attr_reader :assertions, :screenshot_namer, :new_screenshots
+    attr_reader :assertions, :screenshot_namer
 
     def initialize
       @assertions = []
-      @new_screenshots = []
       @checked_out_baselines = Set.new
       @screenshot_namer = SnapDiff::ScreenshotNamer.new
     end
@@ -191,7 +232,7 @@ module SnapDiff
     end
 
     def add_assertion(assertion)
-      return unless assertion&.compare
+      return unless assertion
 
       @assertions.push(assertion)
 
@@ -202,7 +243,13 @@ module SnapDiff
       !@assertions.empty?
     end
 
-    # "No baseline exists" reaches here for two very different reasons. One
+    # Names of the captures that had no baseline to compare against.
+    def new_screenshots
+      assertions.select { |assertion| assertion.status == :new }.map(&:name)
+    end
+
+    # Registers a `:new` assertion for `name` (extra keywords go to the
+    # assertion). "No baseline exists" reaches here for two very different reasons. One
     # is legitimate and warned about: nothing was ever committed for this
     # name. The other is impossible in a correct run -- git gave us a
     # baseline moments ago and it is gone now -- and used to be recorded as
@@ -210,18 +257,18 @@ module SnapDiff
     # That is the silently-wrong case measured in #217: two concurrent
     # tests asserting the SAME name, where one's archive_baseline! moves
     # the baseline the other just checked out.
-    def record_new_screenshot(name)
+    def record_new_screenshot(name, **attributes)
       raise SnapDiff::Error.new(<<~ERROR.chomp, caller) if baseline_checked_out?(name)
         The baseline for '#{name}' was checked out and then disappeared before it could be compared -- nothing was verified.
         Every artifact path derives from the screenshot name alone, so two tests asserting '#{name}' at the same time race on one set of files: the one that finishes first archives the baseline the other is still using.
         Give those screenshots distinct names, or do not run them concurrently.
       ERROR
 
-      @new_screenshots.push(name)
+      add_assertion(ScreenshotAssertion.new(name, **attributes))
     end
 
     def new_screenshots_present?
-      !@new_screenshots.empty?
+      assertions.any? { |assertion| assertion.status == :new }
     end
 
     def verify(screenshots = assertions)
@@ -231,13 +278,15 @@ module SnapDiff
       raise SnapDiff::ExpectationNotMet.new(result.join("\n\n"), failed_assertions.first.caller)
     end
 
+    # The assertions that still owe the test a failure. This is a verdict
+    # (#status alone would read an unprocessed comparison as :passed); an
+    # assertion already judged by validate! is not failed twice.
     def failed_assertions
-      assertions.filter { |screenshot_assert| screenshot_assert.compare&.different? }
+      assertions.reject(&:validated?).select { |assertion| assertion.verdict == :changed }
     end
 
     def reset
       @assertions.clear
-      @new_screenshots.clear
       @checked_out_baselines.clear
       @screenshot_namer = SnapDiff::ScreenshotNamer.new
     end

@@ -273,7 +273,7 @@ jobs:
 > than relying on the files being there.
 >
 > **`record = :all` is not the mode for this job** — it refuses to run under CI, because it
-> would accept every *changed* rendering unreviewed as well. `:once` records what is new and
+> would accept every *changed* rendering unreviewed and never fail. `:once` records what is new and
 > keeps comparing everything that already has a baseline.
 
 **How it works:**

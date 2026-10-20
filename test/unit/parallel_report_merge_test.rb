@@ -45,12 +45,13 @@ class ParallelReportMergeTest < ActiveSupport::TestCase
   test "records and counts from forked workers reach the parent" do
     fork_worker { SnapDiff::Reporting.notify([build_failing_assertion("worker_a")]) }
     fork_worker do
-      SnapDiff::Reporting.notify([build_failing_assertion("worker_b"), build_passing_assertion("worker_b_ok")])
-      SnapDiff::Reporting.record_missing_baseline("worker_b_new")
-      # Rides the same fragment as the counts above (#274 + #269). Both
-      # tallies are written by the same worker and merged by the same
-      # parent, and neither may cost the other.
-      SnapDiff::Reporting.record_rerecorded_baseline("worker_b_accepted")
+      # Compared, new and re-recorded captures ride the same fragment
+      # (#274 + #269): written by the same worker, merged by the same
+      # parent, and none may cost the others.
+      SnapDiff::Reporting.notify([
+        build_failing_assertion("worker_b"), build_passing_assertion("worker_b_ok"),
+        build_uncompared_assertion("worker_b_new"), build_rerecorded_assertion("worker_b_accepted")
+      ])
     end
 
     # The bug, restated as an assertion: the parent holds nothing of its own.
@@ -59,13 +60,15 @@ class ParallelReportMergeTest < ActiveSupport::TestCase
 
     SnapDiff::Reporting.merge_parallel_fragments!
 
-    assert_equal 3, @reporter.total
+    assert_equal 4, @reporter.total
     assert_equal 2, @reporter.failed
+    assert_equal 1, @reporter.rerecorded_count
     # The counts line must total the MERGED runs -- one worker's numbers
     # would be wrong here.
-    assert_equal "[snap_diff] 3 verified, 2 changed, 1 new (not verified). 1 re-recorded (not verified).",
+    assert_equal "[snap_diff] 4 verified, 3 changed (1 re-recorded), 1 new (not verified).",
       SnapDiff::Reporting.counts_summary
     assert_includes SnapDiff::Reporting.rerecorded_baselines_summary, "worker_b_accepted"
+    assert_equal [["worker_b_new", :new]], SnapDiff::Reporting.uncompared.map { |row| [row.name, row.status] }
 
     # Symbol keys, like an entry recorded in this process: `failures` is
     # public, and an array whose shape depends on which process filled it
@@ -86,31 +89,34 @@ class ParallelReportMergeTest < ActiveSupport::TestCase
     fork_worker do
       capture.dirname.mkpath
       FileUtils.cp(File.expand_path("a.png", TEST_IMAGES_DIR), capture)
-      SnapDiff::Reporting.record_missing_baseline("signup", path: capture)
+      SnapDiff::Reporting.notify([build_uncompared_assertion("signup", path: capture)])
     end
 
     SnapDiff::Reporting.merge_parallel_fragments!
 
     assert_includes SnapDiff::Reporting.counts_summary, "1 new (not verified)"
-    assert_equal [{name: "signup", path: capture, reason: :new}], SnapDiff::Reporting.uncompared.map(&:to_h)
+    assert_equal [{name: "signup", path: capture, status: :new}], SnapDiff::Reporting.uncompared.map(&:to_h)
     assert_predicate @reporter.finalize, :present?, "a run with only new screenshots writes a report"
-    assert_includes @output_path.read, %("name":"signup","new_screenshot":true)
+    assert_includes @output_path.read, %("name":"signup","status":"new")
     assert_includes @output_path.read, "git add -- "
   end
 
-  test "a re-recorded screenshot captured in a worker reaches the parent with its path" do
-    fork_worker { SnapDiff::Reporting.record_rerecorded_baseline("accepted", path: "/app/accepted.png") }
+  test "a re-recorded screenshot captured in a worker reaches the parent" do
+    fork_worker { SnapDiff::Reporting.notify([build_rerecorded_assertion("accepted")]) }
 
     SnapDiff::Reporting.merge_parallel_fragments!
 
-    assert_equal [{name: "accepted", path: Pathname("/app/accepted.png"), reason: :rerecorded}],
-      SnapDiff::Reporting.uncompared.map(&:to_h)
+    assert_equal 1, SnapDiff::Reporting.verified
+    assert_equal 1, SnapDiff::Reporting.changed
+    assert_includes SnapDiff::Reporting.counts_summary, "1 changed (1 re-recorded)"
+    assert_includes SnapDiff::Reporting.rerecorded_baselines_summary, "accepted"
+    assert_empty SnapDiff::Reporting.uncompared
   end
 
   # The summary line counts names, merged across workers; the report must
   # list the same number.
   test "a new screenshot two workers both captured is listed once" do
-    2.times { fork_worker { SnapDiff::Reporting.record_missing_baseline("signup", path: "/app/signup.png") } }
+    2.times { fork_worker { SnapDiff::Reporting.notify([build_uncompared_assertion("signup", path: "/app/signup.png")]) } }
 
     SnapDiff::Reporting.merge_parallel_fragments!
     @reporter.finalize
@@ -170,7 +176,7 @@ class ParallelReportMergeTest < ActiveSupport::TestCase
   end
 
   test "the parent removes the fragments it merged" do
-    fork_worker { @reporter.record([build_failing_assertion("cleaned")]) }
+    fork_worker { SnapDiff::Reporting.notify([build_failing_assertion("cleaned")]) }
 
     assert_predicate Pathname.new(SnapDiff::Reporting.parallel_fragments_dir), :exist?
 
@@ -183,10 +189,10 @@ class ParallelReportMergeTest < ActiveSupport::TestCase
   # written to a `.tmp` name and renamed into place, so a partial file never
   # carries the name the merge globs for.
   test "a fragment left half-written by a dead worker is ignored" do
-    fork_worker { @reporter.record([build_failing_assertion("survivor")]) }
+    fork_worker { SnapDiff::Reporting.notify([build_failing_assertion("survivor")]) }
 
     dir = SnapDiff::Reporting.parallel_fragments_dir
-    File.write(File.join(dir, "99999.json.tmp"), '{"missing_baselines":["trunc')
+    File.write(File.join(dir, "99999.json.tmp"), '{"counts":{"passed')
 
     SnapDiff::Reporting.merge_parallel_fragments!
 
@@ -194,46 +200,89 @@ class ParallelReportMergeTest < ActiveSupport::TestCase
     assert_equal 0, SnapDiff::Reporting.missing_baselines_count
   end
 
-  # The fragments directory is keyed by pid under the system temp dir, so a
-  # recycled pid can hand this merge a fragment written by an older version
-  # of the gem -- one with none of the keys added since. Every key but
-  # "missing_baselines" is read with a default for exactly this.
-  test "a fragment written before the newer tallies existed still merges" do
-    fork_worker { SnapDiff::Reporting.notify([build_failing_assertion("current")]) }
+  # A fragment is what the worker tallied (one counts hash, one row per
+  # listed screenshot) and nothing derived from it: the parent sums the
+  # counts and gets its "new" count from the merged rows.
+  test "a fragment carries the status counts and the listed rows, and merging sums them" do
+    2.times do |i|
+      fork_worker { SnapDiff::Reporting.notify([build_failing_assertion("changed_#{i}"), build_passing_assertion("ok_#{i}")]) }
+    end
 
-    dir = SnapDiff::Reporting.parallel_fragments_dir
-    File.write(File.join(dir, "99998.json"), JSON.generate({"missing_baselines" => ["ancient"], "reporters" => []}))
+    payloads = Dir[File.join(SnapDiff::Reporting.parallel_fragments_dir, "*.json")].map { |file| JSON.parse(File.read(file)) }
+    assert_equal [{"passed" => 1, "changed" => 1}] * 2, payloads.map { |payload| payload["counts"] }
+    assert_empty payloads.flat_map(&:keys) & %w[verified changed missing_baselines rerecorded_baselines]
 
     SnapDiff::Reporting.merge_parallel_fragments!
 
-    assert_equal 1, SnapDiff::Reporting.verified, "the current worker's counts survived the old fragment"
-    assert_equal 1, SnapDiff::Reporting.missing_baselines_count
-    assert_includes SnapDiff::Reporting.missing_baselines_summary, "ancient"
-    assert_equal [{name: "ancient", path: nil, reason: :new}], SnapDiff::Reporting.uncompared.map(&:to_h),
-      "listed, with no capture to show"
+    assert_equal [4, 2], [SnapDiff::Reporting.verified, SnapDiff::Reporting.changed]
   end
 
-  # Only older versions' missing keys are tolerated; an entry no version
-  # writes is a bug, and it fails loudly instead of being guessed at.
-  test "an uncompared entry with an unknown reason fails the merge loudly" do
+  # Both uncompared statuses in one run, from different workers: neither may
+  # swallow the other's count or its row.
+  test "a new and a re-recorded screenshot from different workers keep their own counts and rows" do
+    fork_worker { SnapDiff::Reporting.notify([build_uncompared_assertion("fresh", path: "/app/fresh.png")]) }
+    fork_worker { SnapDiff::Reporting.notify([build_rerecorded_assertion("accepted")]) }
+
+    SnapDiff::Reporting.merge_parallel_fragments!
+
+    assert_equal "[snap_diff] 1 verified, 1 changed (1 re-recorded), 1 new (not verified).",
+      SnapDiff::Reporting.counts_summary
+    assert_equal [["fresh", :new]], SnapDiff::Reporting.uncompared.map { |row| [row.name, row.status] }
+    assert_includes SnapDiff::Reporting.missing_baselines_summary, "fresh"
+    assert_includes SnapDiff::Reporting.rerecorded_baselines_summary, "accepted"
+  end
+
+  # A status nobody writes is a bug, and it fails loudly instead of being
+  # guessed at.
+  test "an outcome with an unknown status fails the merge loudly" do
     dir = SnapDiff::Reporting.parallel_fragments_dir
     fork_worker { SnapDiff::Reporting.notify([build_failing_assertion("current")]) }
     File.write(File.join(dir, "99997.json"), JSON.generate({
-      "missing_baselines" => [], "reporters" => [],
-      "uncompared" => [{"name" => "signup", "path" => nil, "reason" => "bogus"}]
+      "outcomes" => [{"name" => "signup", "path" => nil, "status" => "bogus"}]
     }))
 
-    error = assert_raises(KeyError) { SnapDiff::Reporting.merge_parallel_fragments! }
+    error = assert_raises(ArgumentError) { SnapDiff::Reporting.merge_parallel_fragments! }
     assert_includes error.message, "bogus"
   ensure
     FileUtils.rm_rf(dir)
+  end
+
+  # The fragments directory is keyed by the parent's pid, and only a
+  # successful merge removes it. A run killed before that leaves its
+  # fragments behind, and a later run whose pid is recycled would merge
+  # them: counts from a run that is not this one, or -- for a fragment in an
+  # older shape -- a KeyError in `after_run` that costs the whole summary.
+  # Installing the hooks happens in the parent before any fork, so that is
+  # where the directory starts out empty.
+  test "a fragment left behind by an earlier run never reaches the merge" do
+    skip "Rails' fork-parallel mode needs Kernel#fork, which #{RUBY_ENGINE} does not implement" unless Process.respond_to?(:fork)
+
+    owner = SnapDiff::Reporting.instance_variable_get(:@parallel_owner_pid)
+    hooks = ActiveSupport::Testing::Parallelization.run_cleanup_hooks
+    hooks_before = hooks.size
+    SnapDiff::Reporting.instance_variable_set(:@parallel_owner_pid, Process.pid)
+    dir = SnapDiff::Reporting.parallel_fragments_dir
+    FileUtils.mkdir_p(dir)
+    File.write(File.join(dir, "99998.json"), JSON.generate({"verified" => 7, "changed" => 7}))
+    SnapDiff::Reporting.instance_variable_set(:@parallel_owner_pid, nil)
+
+    assert SnapDiff::Reporting.install_parallel_hooks!
+    assert_empty Dir[File.join(dir, "*.json")], "installing the hooks starts the run with an empty directory"
+
+    fork_worker { SnapDiff::Reporting.notify([build_failing_assertion("this_run")]) }
+    SnapDiff::Reporting.merge_parallel_fragments!
+
+    assert_equal [1, 1], [SnapDiff::Reporting.verified, SnapDiff::Reporting.changed]
+  ensure
+    hooks.pop while hooks.size > hooks_before
+    SnapDiff::Reporting.instance_variable_set(:@parallel_owner_pid, owner)
   end
 
   # Serial and `parallelize(with: :threads)` both record in the process that
   # finalizes; they never write a fragment, and the merge must leave them
   # exactly as they were.
   test "merging is a no-op when no worker ever forked" do
-    @reporter.record([build_failing_assertion("serial")])
+    SnapDiff::Reporting.notify([build_failing_assertion("serial")])
 
     SnapDiff::Reporting.merge_parallel_fragments!
 
@@ -263,7 +312,7 @@ class ParallelReportMergeTest < ActiveSupport::TestCase
   # Merging there would delete the other workers' fragments before the
   # parent ever sees them.
   test "a worker that finalizes does not consume the parent's fragments" do
-    fork_worker { @reporter.record([build_failing_assertion("kept")]) }
+    fork_worker { SnapDiff::Reporting.notify([build_failing_assertion("kept")]) }
 
     pid = fork do
       SnapDiff::Reporting.merge_parallel_fragments!
@@ -326,6 +375,18 @@ class ParallelReportMergeTest < ActiveSupport::TestCase
     compare.processed
 
     SnapDiff::ScreenshotAssertion.new(name).tap { |a| a.compare = compare }
+  end
+
+  # A capture that was never compared: `:new`.
+  def build_uncompared_assertion(name, path: nil)
+    SnapDiff::ScreenshotAssertion.new(name, path: path && Pathname(path))
+  end
+
+  def build_rerecorded_assertion(name)
+    compare = make_comparison(:a, :b, destination: "rerecorded_#{name}")
+    compare.processed
+
+    SnapDiff::ScreenshotAssertion.new(name, record_mode: :all).tap { |a| a.compare = compare }
   end
 
   def build_failing_assertion(name)

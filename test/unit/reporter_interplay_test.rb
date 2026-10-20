@@ -161,6 +161,17 @@ class ReporterInterplayTest < ActiveSupport::TestCase
     end
   end
 
+  test "reporters receive a new screenshot as a :new assertion with no comparison" do
+    SnapDiff::Vcs.stub(:checkout_vcs, false) do
+      capture_io { screenshot("a") }
+      SnapDiff.reset
+    end
+
+    received = @spy.recorded.flatten
+    assert_equal [["a", :new]], received.map { |a| [a.name, a.status] }
+    assert_nil received.first.compare
+  end
+
   test "reset without assertions does not notify reporters" do
     SnapDiff.reset
 
@@ -180,6 +191,8 @@ class ReporterInterplayTest < ActiveSupport::TestCase
         SnapDiff::ScreenshotMatcher.new(name).build_screenshot_assertion
       end
     end
+
+    SnapDiff.reset # the tally: Reporting counts the registered assertions
 
     out, _err = capture_io { SnapDiff::Reporting.finalize! }
 

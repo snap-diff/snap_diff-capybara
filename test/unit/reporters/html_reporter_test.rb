@@ -66,36 +66,59 @@ class HTMLReporterTest < ActiveSupport::TestCase
     reporter.finalize
 
     html = @output_path.read
-    assert_includes html, "2 failed"
+    assert_includes html, "2 changed"
     assert_includes html, "1 passed"
     assert_includes html, "3 total"
+  end
+
+  # The reporter is usable on its own (record + finalize, no Reporting.count
+  # behind it): its totals are what it recorded itself, never negative.
+  test "#total and #passed come from what the reporter recorded, not from Reporting" do
+    reporter = SnapDiff::Reporters::HTML.new(output_path: @output_path)
+
+    reporter.record([build_failing_assertion("page_a"), build_passing_assertion("page_b")])
+
+    assert_equal [2, 1, 1], [reporter.total, reporter.failed, reporter.passed]
+    assert_equal 0, SnapDiff::Reporting.verified
   end
 
   # An entry that fails to build must not vanish, nor sink the report: it is
   # warned about, kept as "could not render", and counted as failed.
   test "#record keeps an entry it could not build, says so, and renders the rest" do
     reporter = SnapDiff::Reporters::HTML.new(output_path: @output_path)
-    broken = SnapDiff::ScreenshotAssertion.new("broken").tap { |a| a.compare = Object.new }
+    build_entry = reporter.method(:entry_for)
+    reporter.define_singleton_method(:entry_for) do |assertion, status|
+      raise "boom" if assertion.name == "broken"
+      build_entry.call(assertion, status)
+    end
 
-    _out, err = capture_io { reporter.record([broken, build_failing_assertion("valid")]) }
+    _out, err = capture_io { reporter.record([build_failing_assertion("broken"), build_failing_assertion("valid")]) }
 
-    assert_match(/\[snap_diff\] HTML report: could not render 'broken' \(NoMethodError: .*difference/, err)
+    assert_match(/\[snap_diff\] HTML report: could not render 'broken' \(RuntimeError: boom\)/, err)
     entry = reporter.failures.find { |e| e[:name] == "broken" }
-    assert_match(/\ANoMethodError: .*difference/, entry[:error])
+    assert_equal "RuntimeError: boom", entry[:error]
     assert_equal [2, 0], [reporter.failed, reporter.passed], "an entry the report can't vouch for is not a pass"
 
     reporter.finalize
     assert_includes @output_path.read, "valid"
   end
 
-  test "#record counts an entry that fails before its comparison is read" do
+  # The error is a fact about the report, not about the screenshot: a new
+  # capture whose entry fails to build is still a new one, so the report and
+  # the terminal agree on what it counted (1 new, nothing changed).
+  test "#record keeps the real status of an entry it could not build" do
     reporter = SnapDiff::Reporters::HTML.new(output_path: @output_path)
-    broken = SnapDiff::ScreenshotAssertion.new("broken")
-    broken.define_singleton_method(:compare) { raise "no compare" }
+    unbuildable = SnapDiff::ScreenshotAssertion.new("unbuildable", path: Pathname("/app/unbuildable.png"))
+    reporter.define_singleton_method(:resolve_image) { |_path| raise "boom" }
 
-    capture_io { reporter.record([broken]) }
+    capture_io { reporter.record([unbuildable]) }
+    SnapDiff::Reporting.count([unbuildable])
 
-    assert_equal [1, 1, 0], [reporter.total, reporter.failed, reporter.passed]
+    entry = reporter.entries.sole
+    assert_equal ["new", true], [entry[:status], entry.key?(:error)]
+    assert_equal [0, 0, 0, 1], [reporter.total, reporter.changed_count, reporter.passed, reporter.new_count]
+    assert_equal 1, SnapDiff::Reporting.missing_baselines_count
+    assert_equal 0, SnapDiff::Reporting.changed
   end
 
   # A dimension change fails with a frozen null ComparisonResult (no
@@ -121,16 +144,19 @@ class HTMLReporterTest < ActiveSupport::TestCase
   # A capture that vanished before the comparison has nothing to diff or
   # annotate. Without an explicit error the template infers "pass" from the
   # missing diff keys, so the entry says what went wrong instead.
-  test "#record shows a vanished capture as an error, not a pass" do
+  # Only the quick check ran here: the difference is known, the message is
+  # not yet. Building the entry must not depend on who processed what.
+  test "#record shows a vanished capture as a changed entry with an error" do
     reporter = SnapDiff::Reporters::HTML.new(output_path: @output_path)
     compare = make_comparison(:a, :b, destination: "gone")
     FileUtils.rm compare.image_path
-    compare.processed
+    compare.quick_equal?
     assertion = SnapDiff::ScreenshotAssertion.new("gone").tap { |a| a.compare = compare }
 
     reporter.record([assertion])
 
-    entry = reporter.failures.sole
+    entry = reporter.changed_entries.sole
+    assert_equal "changed", entry[:status]
     assert_match(/missing/i, entry[:error])
     assert_nil entry[:diff]
     assert_nil entry[:new], "there is no capture to show"
@@ -260,43 +286,43 @@ class HTMLReporterTest < ActiveSupport::TestCase
 
   # --- new screenshots (no committed baseline) ---------------------------
   #
-  # Read from SnapDiff::Reporting.uncompared -- the entries behind the
-  # summary line's "N new" -- so the report and the terminal agree.
+  # One entry per `:new` assertion, with `status: "new"`, so the report and
+  # the terminal count the same.
 
   test "a run with only new screenshots writes a report listing them" do
     reporter = SnapDiff::Reporters::HTML.new(output_path: @output_path)
-    path = capture_new_screenshot("signup")
+    path = capture_new_screenshot(reporter, "signup")
 
     reporter.finalize
 
     assert_predicate @output_path, :exist?
     entry = report_data.sole
-    assert_equal({"name" => "signup", "new_screenshot" => true,
+    assert_equal({"name" => "signup", "status" => "new",
                   "new" => path.relative_path_from(@output_dir).to_s,
                   "git_add" => "git add -- screenshots/signup.png"}, entry)
     assert_equal "[snap_diff] Report: #{@output_path}", reporter.summary
   end
 
-  test "new screenshots are listed after the failures" do
+  test "new screenshots are listed after the failures they were recorded behind" do
     reporter = SnapDiff::Reporters::HTML.new(output_path: @output_path)
-    capture_new_screenshot("signup")
     reporter.record([build_failing_assertion("index"), build_passing_assertion("ok")])
+    capture_new_screenshot(reporter, "signup")
 
     reporter.finalize
 
-    assert_equal [["index", nil], ["signup", true]], report_data.map { |e| [e["name"], e["new_screenshot"]] }
+    assert_equal [["index", "changed"], ["signup", "new"]], report_data.map { |e| [e["name"], e["status"]] }
     html = @output_path.read
-    assert_includes html, "1 failed"
+    assert_includes html, "1 changed"
     assert_includes html, "1 passed"
     assert_includes html, "2 total"
     assert_includes html, "1 new"
-    assert_includes html, "<title>SnapDiff Report — 1 failures, 1 new</title>"
+    assert_includes html, "<title>SnapDiff Report — 1 changed, 1 new</title>"
   end
 
   # Copy-pasted into a shell from the report, so it must survive any path.
   test "the git add command quotes the path for the shell" do
     reporter = SnapDiff::Reporters::HTML.new(output_path: @output_path)
-    capture_new_screenshot("sign up")
+    capture_new_screenshot(reporter, "sign up")
 
     reporter.finalize
 
@@ -307,19 +333,19 @@ class HTMLReporterTest < ActiveSupport::TestCase
   # dash: without `--`, git would take the path for an option.
   test "the git add command can't mistake the path for an option" do
     reporter = SnapDiff::Reporters::HTML.new(output_path: @output_path)
-    capture_new_screenshot("-signup", dir: ".")
+    capture_new_screenshot(reporter, "-signup", dir: ".")
 
     reporter.finalize
 
     assert_equal "git add -- -signup.png", report_data.sole["git_add"]
   end
 
-  # The template reads locals from the binding, which Ruby can't see: a
-  # local assigned only for it warns on every suite run with warnings on.
-  test "no other reporter can change what the report lists" do
+  # A name with no baseline is one new screenshot, however many times it
+  # was captured: the same rule the summary line counts by.
+  test "a new screenshot captured twice is listed once" do
     reporter = SnapDiff::Reporters::HTML.new(output_path: @output_path)
-    capture_new_screenshot("signup")
-    assert_raises(FrozenError) { SnapDiff::Reporting.uncompared.first.reason = :rerecorded }
+    capture_new_screenshot(reporter, "signup")
+    capture_new_screenshot(reporter, "signup")
 
     reporter.finalize
 
@@ -336,9 +362,11 @@ class HTMLReporterTest < ActiveSupport::TestCase
     outside = Pathname.new(Dir.mktmpdir) / "elsewhere.png"
     FileUtils.cp(File.expand_path("a.png", TEST_IMAGES_DIR), outside)
     reporter = SnapDiff::Reporters::HTML.new(output_path: @output_path)
-    SnapDiff::Reporting.record_missing_baseline("elsewhere", path: outside)
 
-    SnapDiff.config.stub(:root, @output_dir) { reporter.finalize }
+    SnapDiff.config.stub(:root, @output_dir) do
+      reporter.record([SnapDiff::ScreenshotAssertion.new("elsewhere", path: outside)])
+    end
+    reporter.finalize
 
     assert_equal "git add -- #{Shellwords.escape(outside.to_s)}", report_data.sole["git_add"]
   ensure
@@ -346,39 +374,77 @@ class HTMLReporterTest < ActiveSupport::TestCase
   end
 
   # #260: never show a file or a command that live state doesn't back. The
-  # file is gone by the time the report is written: still listed -- the
+  # file is gone when the screenshot is recorded: still listed -- the
   # count must match the summary -- with nothing to show and nothing to run.
   test "a new screenshot with no capture on disk is listed without image or command" do
     reporter = SnapDiff::Reporters::HTML.new(output_path: @output_path)
-    SnapDiff::Reporting.record_missing_baseline("deleted", path: @output_dir / "screenshots/deleted.png")
 
-    SnapDiff.config.stub(:root, @output_dir) { reporter.finalize }
+    SnapDiff.config.stub(:root, @output_dir) do
+      reporter.record([SnapDiff::ScreenshotAssertion.new("deleted", path: @output_dir / "screenshots/deleted.png")])
+    end
+    reporter.finalize
 
-    assert_equal [{"name" => "deleted", "new_screenshot" => true}], report_data
+    assert_equal [{"name" => "deleted", "status" => "new"}], report_data
   end
 
   test "the report shows how many were re-recorded, only when some were" do
     reporter = SnapDiff::Reporters::HTML.new(output_path: @output_path)
-    capture_new_screenshot("signup")
+    capture_new_screenshot(reporter, "signup")
     reporter.finalize
-    refute_includes @output_path.read, "re-recorded"
+    refute_match(/re-recorded\)/, @output_path.read)
 
     @output_path.delete
     reporter = SnapDiff::Reporters::HTML.new(output_path: @output_path)
-    SnapDiff::Reporting.record_rerecorded_baseline("accepted", path: @output_dir / "accepted.png")
+    reporter.record([build_rerecorded_assertion("accepted")])
     reporter.finalize
-    assert_includes @output_path.read, "1 re-recorded"
-    assert_equal ["signup"], report_data.map { |e| e["name"] }, "counted, not listed"
+    html = @output_path.read
+    assert_includes html, "1 changed (1 re-recorded)</span>"
+    assert_includes html, "<title>SnapDiff Report — 1 changed (1 re-recorded)</title>"
   end
 
-  # Re-recorded screenshots are counted, not listed: alone, there is nothing
-  # to show, and the summary line already names them.
-  test "a run with only re-recorded screenshots writes no report" do
+  # A re-recorded screenshot was compared and differed: it has everything a
+  # changed one has (both images, metrics, annotated files), and a status.
+  test "a run with only re-recorded screenshots writes a report with their entries" do
     reporter = SnapDiff::Reporters::HTML.new(output_path: @output_path)
-    SnapDiff::Reporting.record_rerecorded_baseline("accepted", path: @output_dir / "accepted.png")
+    reporter.record([build_rerecorded_assertion("accepted")])
 
+    assert_predicate reporter.finalize, :present?
+    entry = report_data.sole
+    assert_equal ["accepted", "rerecorded"], entry.values_at("name", "status")
+    assert entry["original"], "the baseline must be shown"
+    assert entry["new"], "the capture must be shown"
+    assert entry["area_size"], "the metrics are reported like any change"
+    assert_empty reporter.failures, "accepted, not failed"
+    assert_equal 0, reporter.failed
+    assert_equal 0, reporter.passed
+  end
+
+  # One static file: relative paths locally, data URIs when embedded; nothing
+  # is fetched and no script or stylesheet is loaded from anywhere.
+  test "the report is a single self-sufficient file, re-recorded entries included" do
+    [false, true].each do |embed|
+      reporter = SnapDiff::Reporters::HTML.new(output_path: @output_path, embed_images: embed)
+      reporter.record([build_rerecorded_assertion("accepted"), build_failing_assertion("changed")])
+      capture_new_screenshot(reporter, "signup")
+      reporter.finalize
+      html = @output_path.read
+
+      assert_no_match(/fetch\(|XMLHttpRequest|<script[^>]*\ssrc=|<link\b|@import|url\(/, html)
+      assert_no_match(/(?:src|href)="https?:/, html.gsub(%r{<a href="https://github\.com/snap-diff/snap_diff-capybara/issues">}, ""))
+      assert_equal embed, html.include?("data:image/png;base64,")
+      @output_path.delete
+    end
+  end
+
+  test "a screenshot that matches its baseline has no entry, whatever the mode" do
+    reporter = SnapDiff::Reporters::HTML.new(output_path: @output_path)
+    passing = build_passing_assertion("same")
+    passing.define_singleton_method(:record_mode) { :all }
+
+    reporter.record([passing])
+
+    assert_empty reporter.entries
     assert_nil reporter.finalize
-    assert_not @output_path.exist?
   end
 
   test "a report with failures only lists exactly the failures" do
@@ -387,9 +453,10 @@ class HTMLReporterTest < ActiveSupport::TestCase
 
     reporter.finalize
 
-    assert_equal reporter.failures.map { |e| e.transform_keys(&:to_s) }, report_data
+    assert_equal reporter.entries.map { |e| e.transform_keys(&:to_s) }, report_data
+    assert_equal ["changed"], report_data.map { |e| e["status"] }
     html = @output_path.read
-    assert_includes html, "<title>SnapDiff Report — 1 failures</title>"
+    assert_includes html, "<title>SnapDiff Report — 1 changed</title>"
     assert_includes html, "0 new"
   end
 
@@ -420,14 +487,14 @@ class HTMLReporterTest < ActiveSupport::TestCase
   # A capture under a project rooted at @output_dir, tallied the way
   # ScreenshotMatcher tallies it. The root is pinned for the rest of the
   # test so display paths are predictable.
-  def capture_new_screenshot(name, dir: "screenshots")
+  def capture_new_screenshot(reporter, name, dir: "screenshots")
     path = @output_dir / dir / "#{name}.png"
     path.dirname.mkpath
     FileUtils.cp(File.expand_path("a.png", TEST_IMAGES_DIR), path)
-    SnapDiff::Reporting.record_missing_baseline(name, path: path)
     original_root = SnapDiff.config.root
     SnapDiff.config.root = @output_dir
-    @restore_root = -> { SnapDiff.config.root = original_root }
+    @restore_root ||= -> { SnapDiff.config.root = original_root }
+    reporter.record([SnapDiff::ScreenshotAssertion.new(name, path: path)])
     path
   end
 
@@ -448,6 +515,13 @@ class HTMLReporterTest < ActiveSupport::TestCase
     compare.processed
 
     SnapDiff::ScreenshotAssertion.new(name).tap { |a| a.compare = compare }
+  end
+
+  def build_rerecorded_assertion(name)
+    compare = make_comparison(:a, :b, destination: "rerecorded_#{name}")
+    compare.processed
+
+    SnapDiff::ScreenshotAssertion.new(name, record_mode: :all).tap { |a| a.compare = compare }
   end
 
   # a.png is 80x80, a_cropped.png is 80x60.

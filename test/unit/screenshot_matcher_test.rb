@@ -27,16 +27,19 @@ class ScreenshotMatcherTest < ActiveSupport::TestCase
     end
   end
 
-  # D4: dual return shape — nil for the new-screenshot path, after
-  # side-effecting record_new_screenshot into the registry.
-  test "#build_screenshot_assertion returns nil and records a new screenshot when no baseline exists" do
+  # D4: the new-screenshot path returns a registered, compare-less :new
+  # assertion rather than nil.
+  test "#build_screenshot_assertion returns a registered :new assertion when no baseline exists" do
     # ScreenshoterStub resolves "c_<digits>" to the c.png fixture.
     name = "c_#{Time.now.nsec}"
 
     SnapDiff::Vcs.stub(:checkout_vcs, false) do
       assertion = SnapDiff::ScreenshotMatcher.new(name).build_screenshot_assertion
 
-      assert_nil assertion
+      assert_equal :new, assertion.status
+      assert_nil assertion.compare
+      assert_equal SnapDiff::SnapManager.path_for(name).path, assertion.path
+      assert_equal [assertion], SnapDiff.session.assertions
       assert_includes SnapDiff.session.new_screenshots, name
       assert_predicate SnapDiff::SnapManager.path_for(name).path, :exist?,
         "the screenshot is still captured on the new-screenshot path"
@@ -44,7 +47,7 @@ class ScreenshotMatcherTest < ActiveSupport::TestCase
   end
 
   # D4: the other return shape — a fully wired ScreenshotAssertion.
-  test "#build_screenshot_assertion returns an assertion with compare and caller when a baseline exists" do
+  test "#build_screenshot_assertion returns a registered assertion with compare and caller when a baseline exists" do
     SnapDiff::Vcs.stub(:checkout_vcs, true) do
       snap = create_snapshot_for(:a, :c)
 
@@ -56,6 +59,7 @@ class ScreenshotMatcherTest < ActiveSupport::TestCase
       assert_match(/screenshot_matcher_test\.rb/, assertion.caller.first)
       assert_equal snap.path, assertion.compare.image_path
       assert_equal snap.base_path, assertion.compare.base_image_path
+      assert_equal [assertion], SnapDiff.session.assertions
     end
   end
 

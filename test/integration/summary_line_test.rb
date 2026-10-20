@@ -36,7 +36,7 @@ class SummaryLineTest < ActiveSupport::TestCase
     # The report's numbers are the terminal's: total = verified, failed =
     # changed, and the new screenshot is counted and listed.
     assert_includes report, "2 total"
-    assert_includes report, "1 failed"
+    assert_includes report, "1 changed"
     assert_includes report, "1 new"
     assert_includes report, '"git_add":"git add -- screenshots/new.png"'
   end
@@ -49,7 +49,7 @@ class SummaryLineTest < ActiveSupport::TestCase
     assert status.success?, out
     assert_includes out, "[snap_diff] 0 verified, 0 changed, 1 new (not verified)."
     assert_match(%r{^\[snap_diff\] Report: /\S+snap_diff_report\.html$}, out)
-    assert_includes report, '"name":"new","new_screenshot":true'
+    assert_includes report, '"name":"new","status":"new"'
     assert_includes report, '"git_add":"git add -- screenshots/new.png"'
   end
 
@@ -98,27 +98,25 @@ class SummaryLineTest < ActiveSupport::TestCase
     assert_includes out, "NOTHING WAS VERIFIED"
   end
 
-  # `record: :all` (#274) re-records without comparing. Through the summary
-  # path (#269) that is neither verified nor changed, and NOT "new" either
-  # -- there was a baseline, it was just not consulted. Asserted on a
-  # finished process because the two features never met before this branch.
-  test "a run that only re-recorded says so instead of crying NOTHING WAS VERIFIED" do
+  # `record: :all` compares, then accepts what differs: it is verified and
+  # changed (the parenthesis says how many of the changed were accepted),
+  # never "new", and never the NOTHING WAS VERIFIED alarm.
+  test "a run that only re-recorded counts it as verified and changed, and lists it in the report" do
     out, status, report = run_case("rerecorded")
 
     assert status.success?, out
-    assert_includes out, "[snap_diff] 0 verified, 0 changed, 0 new (not verified). 1 re-recorded (not verified)."
-    # The shout is for an UNEXPLAINED zero. The user asked for this one, and
-    # a false alarm here is how the real alarm stops being read.
+    assert_includes out, "[snap_diff] 1 verified, 1 changed (1 re-recorded), 0 new (not verified)."
     refute_includes out, "NOTHING WAS VERIFIED"
-    assert_includes out, "record: :all re-recorded 1 screenshot WITHOUT comparing: rerecorded"
-    assert_nil report, "re-recorded screenshots are counted, not listed: alone, there is nothing to show"
+    assert_includes out, "record: :all compared 1 screenshot, found it different and accepted it as the new baseline: rerecorded"
+    assert_includes report, '"name":"rerecorded"'
+    assert_includes report, '"status":"rerecorded"'
   end
 
   test "a mixed run counts verified and re-recorded separately" do
     out, status = run_case("verified,rerecorded")
 
     assert status.success?, out
-    assert_includes out, "[snap_diff] 1 verified, 0 changed, 0 new (not verified). 1 re-recorded (not verified)."
+    assert_includes out, "[snap_diff] 2 verified, 1 changed (1 re-recorded), 0 new (not verified)."
   end
 
   private

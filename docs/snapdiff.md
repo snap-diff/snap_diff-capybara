@@ -231,7 +231,7 @@ class SlackReporter
   # Called once per finished test, with that test's assertions.
   def record(assertions)
     assertions.each do |assertion|
-      next unless assertion.compare&.difference&.different?
+      next unless assertion.status == :changed
       @failures << assertion.name
     end
   end
@@ -258,16 +258,19 @@ and then warned about (`[snap_diff] Reporter … failed (NoMethodError: undefine
 
 A reporter that raises is warned about and skipped — the other reporters still run.
 
-`record` receives every assertion, but a screenshot that was not compared arrives with
-`compare: nil` and nothing else. Those — the summary line's "new" and "re-recorded" — are in
-`SnapDiff::Reporting.uncompared`, complete by the time `finalize` runs (fork-parallel workers
-included):
+`record` receives every assertion — one per capture. `assertion.status` says what you hold:
+`:passed`, `:changed`, `:new` (no committed baseline) or `:rerecorded` (differs, accepted by `record: :all`).
+`compare` is nil for a screenshot without a baseline; `assertion.path` is the captured file
+either way. The tally has already run every comparison by the time `record` is called, so
+test `status == :changed` rather than digging into `compare`; reading `status` never forces one.
+The new screenshots — the summary line's "new" — are also in `SnapDiff::Reporting.uncompared`,
+complete by the time `finalize` runs (fork-parallel workers included):
 
 ```ruby
   def finalize
-    new_ones = SnapDiff::Reporting.uncompared.select { |s| s.reason == :new }
+    new_ones = SnapDiff::Reporting.uncompared
     # each has #name, #path (the captured file as a Pathname, or nil when it isn't known)
-    # and #reason (:new or :rerecorded); check s.path&.exist? before reading it
+    # and #status (:new); check s.path&.exist? before reading it
   end
 ```
 
