@@ -140,7 +140,7 @@ class SummaryLineTest < ActiveSupport::TestCase
       Open3.capture2e(*git, "commit", "-qm", "baselines")
 
       out, status = Open3.capture2e(
-        {"SNAP_ROOT" => repo, "SNAP_IMAGES" => TEST_IMAGES_DIR.to_s, "SNAP_CASES" => cases, "CI" => nil,
+        {"SNAP_ROOT" => repo, "SNAP_IMAGES" => TEST_IMAGES_DIR.to_s, "SNAP_CASES" => cases, "CI" => nil, "SNAP_DIFF_ACCEPT_SCREENSHOTS" => nil,
          "SNAP_NO_REPORTER" => (reporter ? nil : "1"), "SNAP_RECORD" => record},
         RbConfig.ruby, "-Ilib", "-Itest", file_fixture("summary_line_case.rb").to_s
       )

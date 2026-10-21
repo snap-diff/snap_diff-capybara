@@ -84,6 +84,16 @@ module SnapDiff
         "ArgumentError for it. Check the spelling against the option list in docs/configuration.md."
     end
 
+    # Is the environment variable +name+ switched on? Truthy is "1" or "true"
+    # (any case); anything else, empty included, is off. The one rule for the
+    # gem's own on/off switches, so a value that stops failures is never
+    # enabled by "0" or "false" (+CI+ keeps its non-empty rule: it is not
+    # ours, and "false" is how some runners spell it). Lives here because this
+    # file loads under every entry point, Config included.
+    def self.truthy_env?(name)
+      %w[1 true].include?(ENV[name].to_s.downcase)
+    end
+
     MUTEX = Mutex.new
     @seen = {}
     @suppressed = false
@@ -147,13 +157,7 @@ module SnapDiff
     #   either via the {silence_deprecations} accessor or the
     #   SNAP_DIFF_SILENCE_DEPRECATIONS env var (truthy = "1"/"true").
     def silence_deprecations?
-      !!silence_deprecations || truthy_env?(ENV["SNAP_DIFF_SILENCE_DEPRECATIONS"])
-    end
-
-    private
-
-    def truthy_env?(value)
-      %w[1 true].include?(value.to_s.downcase)
+      !!silence_deprecations || Removal.truthy_env?("SNAP_DIFF_SILENCE_DEPRECATIONS")
     end
   end
 end

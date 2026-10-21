@@ -68,19 +68,17 @@ SnapDiff.config.record = :once   # what a local run already does; see Precedence
 ### `:all` — the bulk-accept verb
 
 After an intentional redesign that changed forty screenshots, re-record them in one run rather
-than accepting them one failure at a time:
-
-```ruby
-# test_helper.rb. There is no CLI flag — the gem has no runner to hang one on —
-# so gate it on an environment variable of your own if you want one. Set the
-# mode only when asked: an explicit mode, even :once, outranks the
-# :none-under-CI default and would stop CI from failing on a missing baseline.
-SnapDiff.config.record = :all unless ENV["ACCEPT_SCREENSHOTS"].to_s.empty?
-```
+than accepting them one failure at a time. Set `SNAP_DIFF_ACCEPT_SCREENSHOTS` for that run:
 
 ```bash
-ACCEPT_SCREENSHOTS=1 bin/rails test:system     # with the line above in test_helper.rb
+SNAP_DIFF_ACCEPT_SCREENSHOTS=1 bin/rails test:system
 ```
+
+The variable selects `:all` for the run that sees it. `1` and `true` (any case) turn it on; any
+other value, including `0`, `false` and empty, is the same as not setting it. It wins over
+`record =` and `fail_if_new` (see Precedence below), so a suite that pins `record = :none` accepts
+with the same command. Do not write `record = :all` in `test_helper.rb` instead: a mode written
+there applies to every run, including the ones that are supposed to fail.
 
 Every screenshot is compared to its committed baseline, as under `:once`. One that differs is kept
 as the new baseline instead of failing the test, and leaves the usual `.base.png` and diff files
@@ -100,7 +98,7 @@ At the end of the run the gem names what it accepted:
 > never fails, with the "recorded" screenshots discarded when the runner
 > is torn down. Re-record locally, where you can look at the result.
 >
-> A CI job that needs to record screenshots with **no baseline yet** does not need `:all`:
+> A CI job that only needs to record screenshots with **no baseline yet** does not need `:all`:
 > `record = :once` records those and still compares everything that has a baseline. See
 > [CI integration](ci-integration.md).
 
@@ -112,9 +110,16 @@ assert_matches_screenshot "flaky_widget", record: :none   # this one must alread
 
 ### Precedence
 
-**An explicitly set mode outranks `fail_if_new`; `fail_if_new` decides only when no mode was set.**
-That is the same rule `fail_if_new` itself has over the `CI` sniff — explicit outranks implicit, all
-the way down. Per screenshot outranks the config; the config outranks `fail_if_new`.
+First match wins:
+
+1. `record:` on the screenshot
+2. `SNAP_DIFF_ACCEPT_SCREENSHOTS=1`, which means `:all`
+3. `SnapDiff.config.record =`
+4. `fail_if_new`, when set
+5. the default: `:none` under CI, `:once` off it
+
+A setting written for one screenshot beats the run's variable, the run's variable beats the
+suite's configuration, and an explicitly set mode beats the legacy `fail_if_new` boolean.
 
 With **nothing** set, `record` reads back as `:none` under CI and `:once` off it — which is exactly
 what `fail_if_new` has always done, so a suite that never mentions `record` behaves as it always
@@ -126,9 +131,11 @@ laptop is often worthless on another OS. `:none` makes strictness an explicit ch
 |-----------|----------------|------------------|
 | nothing, off CI | `:once` | recorded |
 | nothing, under CI | `:none` | fails |
+| nothing, `SNAP_DIFF_ACCEPT_SCREENSHOTS=1` | `:all` | recorded; a changed baseline is re-recorded |
 | `record = :once` | `:once` | recorded, on CI too |
 | `record = :none` | `:none` | fails, off CI too |
 | `record = :once`, `fail_if_new = true` | `:once` | recorded — the mode wins |
+| `record = :none`, `SNAP_DIFF_ACCEPT_SCREENSHOTS=1` | `:all` | recorded — the variable wins |
 | `record = nil`, `fail_if_new = true` | `:none` | fails — nil hands it back |
 
 A misspelt mode raises `ArgumentError` at the point you set it, rather than reading back as

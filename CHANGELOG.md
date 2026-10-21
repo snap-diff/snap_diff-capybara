@@ -20,6 +20,11 @@ kept as history. This entry is the one to read if you are coming from **1.15.1**
 
 ### Added
 
+- **`SNAP_DIFF_ACCEPT_SCREENSHOTS=1` re-records changed baselines for one run.** The variable
+  selects `record = :all` for the run that sees it, outranking `record =` and `fail_if_new`; a
+  `record:` on the screenshot still outranks it. `1` and `true` turn it on; any other value is the
+  same as not setting it. Unset, the mode reads as before (`:none` under CI, `:once` off it).
+
 - **AI triage (optional, offline-first, advisory by default).** `SnapDiff::Reporters::AISimple`
   classifies every failed comparison as `flaky` / `intentional` / `real_bug`,
   logs one line per diff, quotes the verdict in the failure message, and
