@@ -74,23 +74,27 @@ module SnapDiff
     end
 
     # `:all` accepts every differing rendering as the new baseline -- that is
-    # the feature. On CI there is nobody to review the result and the
-    # re-recorded files go away with the box, so a mode left in a committed
-    # config file buys a build that never fails, forever. That is precisely
-    # how Percy goes green on a job that lost its token; refuse it rather
-    # than shipping our own version.
+    # the feature. A mode written in code (a config line, a per-screenshot
+    # option) applies to every run, so left on CI it buys a build that never
+    # fails, forever. That is precisely how Percy goes green on a job that
+    # lost its token; refuse it rather than shipping our own version.
     #
-    # A CI job that must record NEW baselines does not need `:all` at all:
-    # `record: :once` records them and still compares everything that has a
-    # baseline (docs/ci-integration.md).
+    # The per-run variable is the operator asking for this run to record, so
+    # a deliberate recording job (docs/ci-integration.md) gets through. With
+    # it set, the whole run is `:all` already; where the mode was written no
+    # longer matters, so the guard looks only at the variable.
+    #
+    # A CI job that must record only NEW baselines does not need `:all`:
+    # `record: :once` records them and still fails on everything that differs.
     def refuse_bulk_record_under_ci!
       return unless SnapDiff::Config.ci?
+      return if SnapDiff::Config.accept_screenshots?
 
       raise SnapDiff::ExpectationNotMet.new(<<~ERROR.chomp, caller)
-        `record: :all` re-records every screenshot that differs from its baseline without failing, so it refuses to run under CI (ENV["CI"] is set).
-        No difference could fail the build and the re-recorded screenshots would be discarded with the runner.
-        Re-record locally, review the result, and commit the screenshots.
-        To let a CI job record screenshots that have no baseline yet: SnapDiff.config.record = :once
+        `record: :all` re-records every screenshot that differs from its baseline without failing, and it was set in code, so it refuses to run under CI (ENV["CI"] is set).
+        Left in committed config, no difference could fail this build, ever.
+        To record on CI for one run: SNAP_DIFF_ACCEPT_SCREENSHOTS=1
+        To record only the screenshots that have no baseline yet: SnapDiff.config.record = :once
       ERROR
     end
 

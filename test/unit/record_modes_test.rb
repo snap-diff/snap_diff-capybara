@@ -424,7 +424,7 @@ class RecordModesTest < ActiveSupport::TestCase
   # nothing and passes, with the "recorded" files thrown away with the box.
   # Refuse it under CI instead of building our own version of Percy.
 
-  test ":all refuses to run under CI" do
+  test "a :all written in code refuses to run under CI" do
     SnapDiff.config.record = :all
 
     error = with_ci("true") do
@@ -435,6 +435,31 @@ class RecordModesTest < ActiveSupport::TestCase
 
     assert_match(/record/, error.message)
     assert_match(/CI/, error.message)
+  end
+
+  test "a :all from SNAP_DIFF_ACCEPT_SCREENSHOTS runs under CI" do
+    SnapDiff.config.record = nil
+
+    with_ci("true") do
+      with_env("SNAP_DIFF_ACCEPT_SCREENSHOTS", "1") do
+        SnapDiff::Vcs.stub(:checkout_vcs, true) do
+          snap = create_snapshot_for(:a, :c)
+          assertion = SnapDiff::ScreenshotMatcher.new(snap.full_name).build_screenshot_assertion
+          SnapDiff.session.verify
+          assert_equal :rerecorded, assertion.status
+        end
+      end
+    end
+  end
+
+  test "a per-screenshot record: :all is refused under CI even with the variable falsy" do
+    with_ci("true") do
+      with_env("SNAP_DIFF_ACCEPT_SCREENSHOTS", "0") do
+        assert_raises(SnapDiff::ExpectationNotMet) do
+          SnapDiff::ScreenshotMatcher.new("c_#{Time.now.nsec}", record: :all).build_screenshot_assertion
+        end
+      end
+    end
   end
 
   test ":all runs off CI" do

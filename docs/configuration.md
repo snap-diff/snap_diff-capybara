@@ -93,14 +93,14 @@ At the end of the run the gem names what it accepted:
 [snap_diff] record: :all compared 3 screenshots, found them different and accepted them as the new baseline: checkout/cart, checkout/payment, checkout/review. `git add` the file(s) to keep the change, `git restore -- <path>` to discard it. The `.base.<fmt>` and diff files left beside each one are covered by the recommended .gitignore.
 ```
 
-> **`:all` refuses to run under CI** (when `ENV['CI']` is set to a non-empty value). It accepts
-> every difference by design, so a mode left in a committed config file would buy you a build that
-> never fails, with the "recorded" screenshots discarded when the runner
-> is torn down. Re-record locally, where you can look at the result.
+> **Under CI (`ENV['CI']` non-empty), `:all` runs only when `SNAP_DIFF_ACCEPT_SCREENSHOTS` is
+> set.** When the variable is not set, a `:all` written in code (a config line or a per-screenshot
+> option) raises there, because a committed `:all` would make every build pass. When it is set, the
+> whole run records, whatever the code says. To re-record baselines on CI, set
+> the variable on a dedicated job: see [Update baselines in CI](ci-integration.md#update-baselines-in-ci).
 >
 > A CI job that only needs to record screenshots with **no baseline yet** does not need `:all`:
-> `record = :once` records those and still compares everything that has a baseline. See
-> [CI integration](ci-integration.md).
+> `record = :once` records those and still compares everything that has a baseline.
 
 ### Per screenshot
 

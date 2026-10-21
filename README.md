@@ -214,7 +214,8 @@ git commit -m "chore: re-record baselines after the checkout redesign"
 The variable puts the run in the `:all` **record mode**: every screenshot is still compared to its
 committed baseline, but one that differs becomes the new baseline instead of failing the test. The
 report lists what changed and `git status` is the review surface — look at the images before you
-commit. It **refuses to run under CI**, where there would be nobody to look. The other modes are `:once` (the
+commit. To do the same on CI, set the variable on a dedicated job; see
+[CI integration](docs/ci-integration.md#update-baselines-in-ci). The other modes are `:once` (the
 default off CI) and `:none` (the default under CI; a missing baseline always fails); see
 [Record modes](docs/configuration.md#record-modes--accepting-changes).
 

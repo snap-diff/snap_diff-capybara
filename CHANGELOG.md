@@ -346,6 +346,10 @@ One removal 2.0 cannot warn about, written down instead: the legacy `LOADED_DRIV
   rollback)
 
 ### Changed
+- **`SNAP_DIFF_ACCEPT_SCREENSHOTS=1` lets `record: :all` run under CI.** A job that re-records
+  baselines sets the variable and nothing else: no `CI: ""`, no `continue-on-error`, and a failing
+  unrelated test still fails the job. A `record = :all` that comes from code is still refused under
+  CI when the variable is not set. The update-baselines recipe in `docs/ci-integration.md` uses it.
 - **`record: :all` now compares before re-recording and the report shows what changed.**
   A screenshot that differs from its committed baseline is accepted as the new baseline
   (it never fails the run) and leaves the usual `.base.png` and diff/heatmap files,

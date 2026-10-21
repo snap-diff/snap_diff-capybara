@@ -205,8 +205,9 @@ module SnapDiff
     # +:all+::  +:once+ that accepts instead of fails. Every baseline is
     #           compared; a screenshot that differs is kept as the new
     #           baseline and never raises -- the bulk-accept verb, for the
-    #           redesign that changed forty screenshots at once. Refused
-    #           under CI (see {SnapDiff::ScreenshotMatcher}).
+    #           redesign that changed forty screenshots at once. Written in
+    #           code, it is refused under CI; the variable below is how a
+    #           CI job records (see {SnapDiff::ScreenshotMatcher}).
     #
     # PRECEDENCE: the per-screenshot +record:+ option outranks everything.
     # Then <tt>SNAP_DIFF_ACCEPT_SCREENSHOTS=1</tt> selects +:all+ for this one

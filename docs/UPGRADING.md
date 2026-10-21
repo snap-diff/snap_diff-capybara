@@ -343,10 +343,6 @@ explicitly. An explicitly set mode outranks `fail_if_new`, and `SNAP_DIFF_ACCEPT
 outranks both for the run that sets it; the full chain is under
 [Precedence](configuration.md#precedence).
 
-`record = :all` **refuses to run under CI**: it accepts every difference by design, so left in a
-committed config file it would be a build that never fails. See
-[Record modes](configuration.md#record-modes--accepting-changes).
-
 #### Silent by design
 
 Some legacy names never warn individually, and that is deliberate — the migration notice above is

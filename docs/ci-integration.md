@@ -243,9 +243,8 @@ jobs:
 
       - name: Record baselines
         run: bin/rails test:system
-        continue-on-error: true    # the run fails by design; it rewrites the baselines
         env:
-          CI: ""                   # see below — without this, a NEW screenshot is never written
+          SNAP_DIFF_ACCEPT_SCREENSHOTS: "1"    # record: :all for this job only
 
       - name: Commit updated baselines
         run: |
@@ -258,23 +257,26 @@ jobs:
 
 </details>
 
-> **Set the record mode, or clear `CI`, to let this job record a *new* baseline.** With
-> nothing set, a missing baseline fails whenever `ENV["CI"]` is set and non-empty — so on a
-> stock GitHub Actions runner a screenshot with no committed baseline raises `No existing
-> screenshot found for …`. `SnapDiff.config.record = :once`
-> (or clearing `CI` for this one step, or the older `SnapDiff.config.fail_if_new = false`)
-> records new baselines instead. *Changed* baselines are rewritten either way; only new ones
-> need this. See [Record modes](configuration.md#record-modes--accepting-changes).
->
-> The screenshot itself **is** written before the raise ([`screenshot_matcher.rb`](https://github.com/snap-diff/snap_diff-capybara/blob/master/lib/snap_diff/screenshot_matcher.rb)
-> — `capture_screenshot` precedes `fail_if_new_screenshot`), so the `git add` the message names
-> is a command you can actually run. But the raise still fails the test it happened in, and a red
-> job usually never reaches the commit step — which is why a recording job sets the mode rather
-> than relying on the files being there.
->
-> **`record = :all` is not the mode for this job** — it refuses to run under CI, because it
-> would accept every *changed* rendering unreviewed and never fail. `:once` records what is new and
-> keeps comparing everything that already has a baseline.
+`SNAP_DIFF_ACCEPT_SCREENSHOTS` puts the run in the `:all` record mode: every screenshot is
+compared to its committed baseline, one that differs becomes the new baseline, one with no
+baseline yet is recorded, and the run exits green with a summary of what it re-recorded
+(`3 changed (3 re-recorded)`). A failing test that has nothing to do with screenshots still fails
+the job. See [Record modes](configuration.md#record-modes--accepting-changes) for the mode itself.
+
+Set the variable on this job only. The gem cannot tell a variable set on one job from one exported
+to every job, and on a verification job it would accept every change. Do not put
+`record = :all` in `test_helper.rb` for the same reason; under CI the gem refuses a `:all` that
+comes from code.
+
+Record in the same environment that verifies (OS, browser, fonts). A baseline recorded elsewhere
+is often worthless, which is why this job runs on CI at all.
+
+Two things this minimal recipe does not do:
+
+- It keeps the committed PNGs, not the HTML report or the diff images. Add an
+  [upload step](#2-reusable-composite-action-recommended) without an `if: failure()` guard if you want them.
+- A push made with the default `GITHUB_TOKEN` does not start the ordinary verification
+  workflow. Review the images in the pushed commit, then run the normal check against it.
 
 **How it works:**
 1. Go to Actions → "Update Screenshot Baselines" → "Run workflow"
