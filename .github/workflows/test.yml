@@ -85,11 +85,14 @@ jobs:
           ruby-version: "4.0"
           cache-apt-packages: true
 
-      - run: bin/rake test
+      # e2e only: the browser tests alone, so the report root is always test/fixtures/app
+      - run: bin/rake test TEST=test/integration/browser_screenshot_test.rb
         env:
-          COVERAGE: enabled
+          # e2e only: one file cannot meet the suite's coverage minimum, and SimpleCov's exit would skip the report
           DISABLE_SKIP_TESTS: 1
           SCREENSHOT_DRIVER: vips
+          # e2e only: keep the failing captures so the report artifact carries them
+          DISABLE_ROLLBACK_COMPARISON_RUNTIME_FILES: 1
 
       - uses: ./.github/actions/upload-screenshots
         if: failure()
