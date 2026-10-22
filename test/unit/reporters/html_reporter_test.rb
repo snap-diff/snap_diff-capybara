@@ -485,18 +485,19 @@ class HTMLReporterTest < ActiveSupport::TestCase
   # --- snap_diff_manifest.json: what a reviewer page may accept ----------
 
   test "the manifest names the changed capture and the baseline it replaces" do
-    reporter = SnapDiff::Reporters::HTML.new(output_path: @output_path)
     assertion = build_failing_assertion("index")
+    report_dir = assertion.compare.image_path.dirname
+    reporter = SnapDiff::Reporters::HTML.new(output_path: report_dir / "report.html")
     reporter.record([assertion])
     reporter.finalize
 
-    entry = manifest.fetch("entries").sole
-    assert_equal 1, manifest.fetch("version")
+    entry = manifest(report_dir).fetch("entries").sole
+    assert_equal 1, manifest(report_dir).fetch("version")
     assert_equal %w[index changed], entry.values_at("name", "status")
     git_root = Pathname(SnapDiff::Vcs.git_root_for(SnapDiff.config.root.to_s)).realpath
     assert_equal assertion.compare.image_path.realpath.relative_path_from(git_root).to_s, entry["path"]
     assert_no_match(/\.base\.png\z/, entry["path"])
-    assert_equal assertion.compare.image_path.to_s, (@output_dir / entry["file"]).realpath.to_s
+    assert_equal assertion.compare.image_path.to_s, (report_dir / entry["file"]).realpath.to_s
   end
 
   test "the manifest lists a new capture with its status" do
@@ -532,10 +533,34 @@ class HTMLReporterTest < ActiveSupport::TestCase
     assert_empty manifest.fetch("entries")
   end
 
+  # Several tests may capture the same name: one file on disk, so one entry
+  # (the last recorded) -- duplicate tree paths would 422 the accept commit.
+  test "the manifest lists one entry per path" do
+    first = build_failing_assertion("index")
+    report_dir = first.compare.image_path.dirname
+    reporter = SnapDiff::Reporters::HTML.new(output_path: report_dir / "report.html")
+    reporter.record([first])
+    reporter.record([build_failing_assertion("index")])
+    reporter.finalize
+
+    assert_equal 2, reporter.entries.size
+    assert_equal 1, manifest(report_dir).fetch("entries").size
+  end
+
+  # The artifact is the report directory: a capture outside it cannot be fetched.
+  test "the manifest leaves out captures outside the report directory" do
+    git_init_output_dir
+    reporter = SnapDiff::Reporters::HTML.new(output_path: @output_dir / "report/report.html")
+    capture_new_screenshot(reporter, "outside")
+    reporter.finalize
+
+    assert_empty JSON.parse((@output_dir / "report/snap_diff_manifest.json").read).fetch("entries")
+  end
+
   test "the manifest carries file paths when images are embedded" do
     git_init_output_dir
     reporter = SnapDiff::Reporters::HTML.new(output_path: @output_path, embed_images: true)
-    reporter.record([build_failing_assertion("index")])
+    capture_new_screenshot(reporter, "index")
     capture_new_screenshot(reporter, "signup")
     reporter.finalize
 
@@ -568,7 +593,7 @@ class HTMLReporterTest < ActiveSupport::TestCase
   test "the manifest survives the fork-parallel dump and merge" do
     git_init_output_dir
     worker = SnapDiff::Reporters::HTML.new(output_path: @output_path)
-    worker.record([build_failing_assertion("index")])
+    capture_new_screenshot(worker, "index")
     capture_new_screenshot(worker, "signup")
     state = JSON.parse(JSON.generate(worker.dump_state))
 
@@ -576,7 +601,7 @@ class HTMLReporterTest < ActiveSupport::TestCase
     parent.merge_state!(state)
     parent.finalize
 
-    assert_equal [%w[index changed], %w[signup new]], manifest.fetch("entries").map { |e| e.values_at("name", "status") }
+    assert_equal [%w[index new], %w[signup new]], manifest.fetch("entries").map { |e| e.values_at("name", "status") }
     manifest.fetch("entries").each { |e| assert_predicate @output_dir / e["file"], :exist? }
   end
 
@@ -594,8 +619,8 @@ class HTMLReporterTest < ActiveSupport::TestCase
     system("git", "-C", @output_dir.to_s, "init", "-q", exception: true)
   end
 
-  def manifest
-    JSON.parse((@output_dir / "snap_diff_manifest.json").read)
+  def manifest(dir = @output_dir)
+    JSON.parse((dir / "snap_diff_manifest.json").read)
   end
 
   # A capture under a project rooted at @output_dir, tallied the way

@@ -254,7 +254,10 @@ module SnapDiff
         git_root = SnapDiff::Vcs.git_root_for(SnapDiff.config.root.to_s)
         return unless git_root
 
-        {"path" => Pathname(capture).realpath.relative_path_from(Pathname(git_root).realpath).to_s, "file" => Pathname(capture).expand_path.relative_path_from(output_path.dirname.expand_path).to_s}
+        file = Pathname(capture).expand_path.relative_path_from(output_path.dirname.expand_path).to_s
+        return if file.start_with?("..") # outside the report dir, so not in the artifact
+
+        {"path" => Pathname(capture).realpath.relative_path_from(Pathname(git_root).realpath).to_s, "file" => file}
       end
 
       def resolve_image(path)
@@ -281,6 +284,7 @@ module SnapDiff
       # What a reviewer page may accept: the captures that differ or are new.
       def write_manifest
         accepted = entries.select { |entry| %w[changed new].include?(entry[:status]) && entry[:accept] }
+        accepted = accepted.reverse.uniq { |entry| entry[:accept]["path"] }.reverse # one file, one entry: the last capture
         manifest = accepted.map { |entry| {"name" => entry[:name], "status" => entry[:status]}.merge(entry[:accept]) }
         File.write(output_path.dirname / "snap_diff_manifest.json", JSON.pretty_generate("version" => 1, "entries" => manifest))
       end
