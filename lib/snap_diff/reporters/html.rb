@@ -165,7 +165,8 @@ module SnapDiff
         {
           name: name,
           original: resolve_image(compare.base_image_path),
-          new: resolve_image(compare.image_path)
+          new: resolve_image(compare.image_path),
+          accept: accept_paths(compare.image_path)
         }.merge(failure_details(compare)).compact
       end
 
@@ -228,7 +229,8 @@ module SnapDiff
         image = resolve_image(path)
         return entry unless image
 
-        entry.merge(new: image, git_add: "git add -- #{Shellwords.escape(display_path(path))}")
+        entry.merge(new: image, accept: accept_paths(path),
+          git_add: "git add -- #{Shellwords.escape(display_path(path))}")
       end
 
       # Relative to the project root, where the user runs `git add` -- the
@@ -237,6 +239,16 @@ module SnapDiff
       def display_path(path)
         relative = Pathname(path).relative_path_from(SnapDiff.config.root).to_path
         relative.start_with?("..") ? path.to_s : relative
+      end
+
+      # Raw paths for snap_diff_manifest.json (the template leaves them out):
+      # the capture is both what is committed (`path`, the baseline's own
+      # path, which the failing run already overwrote) and what the report
+      # dir holds (`file`). String keys: entries pass through JSON in dump_state.
+      def accept_paths(capture)
+        return unless capture && File.exist?(capture)
+
+        {"path" => display_path(capture), "file" => Pathname(capture).expand_path.relative_path_from(output_path.dirname.expand_path).to_s}
       end
 
       def resolve_image(path)
@@ -257,6 +269,14 @@ module SnapDiff
       def write_report
         FileUtils.mkdir_p(output_path.dirname)
         File.write(output_path, render)
+        write_manifest
+      end
+
+      # What a reviewer page may accept: the captures that differ or are new.
+      def write_manifest
+        accepted = entries.select { |entry| %w[changed new].include?(entry[:status]) && entry[:accept] }
+        manifest = accepted.map { |entry| {"name" => entry[:name], "status" => entry[:status]}.merge(entry[:accept]) }
+        File.write(output_path.dirname / "snap_diff_manifest.json", JSON.pretty_generate("version" => 1, "entries" => manifest))
       end
     end
   end

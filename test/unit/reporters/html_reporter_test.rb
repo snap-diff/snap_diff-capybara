@@ -453,7 +453,7 @@ class HTMLReporterTest < ActiveSupport::TestCase
 
     reporter.finalize
 
-    assert_equal reporter.entries.map { |e| e.transform_keys(&:to_s) }, report_data
+    assert_equal reporter.entries.map { |e| e.except(:accept).transform_keys(&:to_s) }, report_data
     assert_equal ["changed"], report_data.map { |e| e["status"] }
     html = @output_path.read
     assert_includes html, "<title>SnapDiff Report — 1 changed</title>"
@@ -482,7 +482,90 @@ class HTMLReporterTest < ActiveSupport::TestCase
     assert @output_path.exist?
   end
 
+  # --- snap_diff_manifest.json: what a reviewer page may accept ----------
+
+  test "the manifest names the changed capture and the baseline it replaces" do
+    reporter = SnapDiff::Reporters::HTML.new(output_path: @output_path)
+    assertion = build_failing_assertion("index")
+    reporter.record([assertion])
+    reporter.finalize
+
+    entry = manifest.fetch("entries").sole
+    assert_equal 1, manifest.fetch("version")
+    assert_equal %w[index changed], entry.values_at("name", "status")
+    assert_equal reporter.send(:display_path, assertion.compare.image_path), entry["path"]
+    assert_no_match(/\.base\.png\z/, entry["path"])
+    assert_equal assertion.compare.image_path.to_s, (@output_dir / entry["file"]).realpath.to_s
+  end
+
+  test "the manifest lists a new capture with its status" do
+    reporter = SnapDiff::Reporters::HTML.new(output_path: @output_path)
+    capture_new_screenshot(reporter, "signup")
+    reporter.finalize
+
+    assert_equal [{"name" => "signup", "status" => "new", "path" => "screenshots/signup.png", "file" => "screenshots/signup.png"}],
+      manifest.fetch("entries")
+    assert_predicate @output_dir / "screenshots/signup.png", :exist?
+  end
+
+  test "the manifest carries file paths when images are embedded" do
+    reporter = SnapDiff::Reporters::HTML.new(output_path: @output_path, embed_images: true)
+    reporter.record([build_failing_assertion("index")])
+    capture_new_screenshot(reporter, "signup")
+    reporter.finalize
+
+    manifest.fetch("entries").each do |entry|
+      assert_no_match(/^data:/, entry["file"])
+      assert_predicate @output_dir / entry["file"], :exist?
+    end
+    assert_equal 2, manifest.fetch("entries").size
+  end
+
+  test "the manifest leaves out re-recorded entries and entries with no capture on disk" do
+    reporter = SnapDiff::Reporters::HTML.new(output_path: @output_path)
+    reporter.record([build_rerecorded_assertion("accepted")])
+    reporter.record([SnapDiff::ScreenshotAssertion.new("gone", path: @output_dir / "screenshots/gone.png")])
+    capture_new_screenshot(reporter, "kept")
+    reporter.finalize
+
+    assert_equal ["kept"], manifest.fetch("entries").map { |e| e["name"] }
+  end
+
+  test "the report data does not carry the manifest paths" do
+    reporter = SnapDiff::Reporters::HTML.new(output_path: @output_path)
+    reporter.record([build_failing_assertion("index")])
+    reporter.finalize
+
+    assert_not_includes report_data.sole.keys, "accept"
+  end
+
+  test "the manifest survives the fork-parallel dump and merge" do
+    worker = SnapDiff::Reporters::HTML.new(output_path: @output_path)
+    worker.record([build_failing_assertion("index")])
+    capture_new_screenshot(worker, "signup")
+    state = JSON.parse(JSON.generate(worker.dump_state))
+
+    parent = SnapDiff::Reporters::HTML.new(output_path: @output_path)
+    parent.merge_state!(state)
+    parent.finalize
+
+    assert_equal [%w[index changed], %w[signup new]], manifest.fetch("entries").map { |e| e.values_at("name", "status") }
+    manifest.fetch("entries").each { |e| assert_predicate @output_dir / e["file"], :exist? }
+  end
+
+  test "no report means no manifest" do
+    reporter = SnapDiff::Reporters::HTML.new(output_path: @output_path)
+    reporter.record([build_passing_assertion("ok")])
+    reporter.finalize
+
+    assert_not (@output_dir / "snap_diff_manifest.json").exist?
+  end
+
   private
+
+  def manifest
+    JSON.parse((@output_dir / "snap_diff_manifest.json").read)
+  end
 
   # A capture under a project rooted at @output_dir, tallied the way
   # ScreenshotMatcher tallies it. The root is pinned for the rest of the

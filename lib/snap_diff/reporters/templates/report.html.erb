@@ -244,7 +244,7 @@
 <script>
 (function() {
   'use strict';
-  var DATA = <%= @entries.to_json.gsub("</", "<\\/") %>;
+  var DATA = <%= @entries.map { |entry| entry.except(:accept) }.to_json.gsub("</", "<\\/") %>;
   var state = { current: 0, view: 'both', annotated: false, zoom: 100, search: '' };
   var $ = function(id) { return document.getElementById(id); };
 
