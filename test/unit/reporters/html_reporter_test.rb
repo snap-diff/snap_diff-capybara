@@ -613,7 +613,59 @@ class HTMLReporterTest < ActiveSupport::TestCase
     assert_not (@output_dir / "snap_diff_manifest.json").exist?
   end
 
+  # --- review controls: only in a CI run, only for manifest files ---------
+
+  test "in a CI run the report carries the run id and the files a reviewer may accept" do
+    first = build_failing_assertion("index")
+    report_dir = first.compare.image_path.dirname
+    reporter = SnapDiff::Reporters::HTML.new(output_path: report_dir / "report.html")
+    reporter.record([first])
+    reporter.record([build_failing_assertion("index")])
+    with_run_id("4242") { reporter.finalize }
+
+    file = manifest(report_dir).fetch("entries").sole.fetch("file")
+    html = (report_dir / "report.html").read
+    assert_includes html, "Copy review command"
+    assert_equal({"run" => "4242", "files" => [file]}, report_review(report_dir / "report.html"))
+    assert_equal [file, file], report_data(report_dir / "report.html").map { |e| e["file"] }
+  end
+
+  test "outside a CI run the report has no review controls" do
+    reporter = SnapDiff::Reporters::HTML.new(output_path: @output_path)
+    reporter.record([build_failing_assertion("index")])
+    with_run_id(nil) { reporter.finalize }
+
+    html = @output_path.read
+    assert_not_includes html, "Copy review command"
+    assert_not_includes html, "var REVIEW"
+    assert_not_includes report_data.sole.keys, "file"
+  end
+
+  test "a re-recorded entry and a capture outside the report directory get no review controls" do
+    git_init_output_dir
+    reporter = SnapDiff::Reporters::HTML.new(output_path: @output_dir / "report/report.html")
+    reporter.record([build_rerecorded_assertion("accepted")])
+    capture_new_screenshot(reporter, "outside")
+    with_run_id("7") { reporter.finalize }
+
+    path = @output_dir / "report/report.html"
+    assert_equal({"run" => "7", "files" => []}, report_review(path))
+    assert_equal [nil, nil], report_data(path).map { |e| e["file"] }
+  end
+
   private
+
+  def with_run_id(id)
+    original = ENV["GITHUB_RUN_ID"]
+    ENV["GITHUB_RUN_ID"] = id
+    yield
+  ensure
+    ENV["GITHUB_RUN_ID"] = original
+  end
+
+  def report_review(path)
+    JSON.parse(path.read[/^\s*var REVIEW = (.*);$/, 1])
+  end
 
   def git_init_output_dir
     system("git", "-C", @output_dir.to_s, "init", "-q", exception: true)
@@ -637,8 +689,8 @@ class HTMLReporterTest < ActiveSupport::TestCase
     path
   end
 
-  def report_data
-    json = @output_path.read[/^\s*var DATA = (.*);$/, 1]
+  def report_data(path = @output_path)
+    json = path.read[/^\s*var DATA = (.*);$/, 1]
     JSON.parse(json.gsub("<\\/", "</"))
   end
 

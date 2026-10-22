@@ -153,6 +153,18 @@
     .zoom-fit { font-size: .625rem; font-family: var(--font); font-weight: 500; background: none; border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text2); padding: .2rem .5rem; cursor: pointer; transition: all .1s; }
     .zoom-fit:hover { background: var(--bg4); color: var(--text); }
 
+<% if review %>
+    /* Review controls (CI runs only) */
+    .review-btn { padding: .3rem .625rem; font-size: .625rem; font-family: var(--font); font-weight: 500; background: var(--bg); color: var(--text3); border: 1px solid var(--border); border-radius: var(--radius); cursor: pointer; white-space: nowrap; }
+    .review-btn:hover { color: var(--text2); border-color: var(--text3); }
+    .review-btn.accept.active { background: var(--green-dim); color: var(--green); border-color: var(--green); }
+    .review-btn.reject.active { background: var(--red-dim); color: var(--red); border-color: var(--red); }
+    #review-panel { display: flex; align-items: flex-start; gap: .5rem; padding: .375rem .75rem; background: var(--bg2); border-top: 1px solid var(--border); flex-shrink: 0; }
+    #review-side { display: flex; flex-direction: column; gap: .25rem; align-items: flex-start; }
+    #review-count, #review-hint { font-size: .625rem; color: var(--text2); }
+    #review-command { flex: 1; min-width: 0; height: 2.75rem; resize: none; font-family: var(--font-mono); font-size: .625rem; background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: .25rem .4rem; }
+<% end %>
+
     /* Scrollbar */
     ::-webkit-scrollbar { width: 5px; height: 5px; }
     ::-webkit-scrollbar-track { background: transparent; }
@@ -224,6 +236,12 @@
       <button class="toggle-btn" id="annotate-toggle" title="Show annotated versions (A)">
         <span class="toggle-pip"></span> Annotated
       </button>
+<% if review %>
+      <div class="sep"></div>
+      <span class="toolbar-label">Review</span>
+      <button class="review-btn accept" id="review-accept" title="Accept (Y)" hidden>Accept</button>
+      <button class="review-btn reject" id="review-reject" title="Reject (N)" hidden>Reject</button>
+<% end %>
     </div>
 
     <div id="ai-bar"><span id="ai-verdict" class="ai-badge"></span><span id="ai-text"></span></div>
@@ -231,6 +249,17 @@
     <div id="view-area">
       <div id="view-inner"></div>
     </div>
+
+<% if review %>
+    <div id="review-panel">
+      <div id="review-side">
+        <span id="review-count"></span>
+        <button class="review-btn" id="review-copy">Copy review command</button>
+        <span id="review-hint">Paste this as a comment on the pull request.</span>
+      </div>
+      <textarea id="review-command" readonly aria-label="Review command"></textarea>
+    </div>
+<% end %>
 
     <div id="zoom-bar">
       <button class="zoom-btn" id="zoom-out" title="Zoom out (-)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M8 11h6"/></svg></button>
@@ -244,7 +273,10 @@
 <script>
 (function() {
   'use strict';
-  var DATA = <%= @entries.map { |entry| entry.except(:accept) }.to_json.gsub("</", "<\\/") %>;
+  var DATA = <%= report_data.to_json.gsub("</", "<\\/") %>;
+<% if review %>
+  var REVIEW = <%= review.to_json.gsub("</", "<\\/") %>;
+<% end %>
   var state = { current: 0, view: 'both', annotated: false, zoom: 100, search: '' };
   var $ = function(id) { return document.getElementById(id); };
 
@@ -449,7 +481,54 @@
     /* Update button states */
     viewBtns.forEach(function(b) { b.classList.toggle('active', b.dataset.view === state.view); });
     annotateBtn.classList.toggle('active', state.annotated);
+<% if review %>
+    syncReview();
+<% end %>
   }
+
+<% if review %>
+  /* ── Review (CI runs): build the PR comment command ───────────────────
+     Decisions are keyed by manifest file, so entries sharing a file share
+     the decision. */
+  var decisions = {};
+  var reviewAccept = $('review-accept'), reviewReject = $('review-reject');
+  var reviewCommand = $('review-command'), reviewCount = $('review-count');
+
+  function reviewText() {
+    var accepted = REVIEW.files.filter(function(f) { return decisions[f] === 'accept'; });
+    var rejected = REVIEW.files.filter(function(f) { return decisions[f] === 'reject'; });
+    var lines = [];
+    if (accepted.length) lines.push('/snap-diff accept run=' + REVIEW.run + ' ' + accepted.join(' '));
+    if (rejected.length) lines.push('/snap-diff reject ' + rejected.join(' '));
+    return { text: lines.join('\n'), accepted: accepted.length, rejected: rejected.length };
+  }
+  function syncReview() {
+    var file = DATA[state.current] && DATA[state.current].file;
+    [[reviewAccept, 'accept'], [reviewReject, 'reject']].forEach(function(pair) {
+      pair[0].hidden = !file;
+      pair[0].classList.toggle('active', !!file && decisions[file] === pair[1]);
+    });
+    var r = reviewText();
+    reviewCount.textContent = r.accepted + ' accepted \u00b7 ' + r.rejected + ' rejected';
+    reviewCommand.value = r.text;
+  }
+  function decide(choice) {
+    var file = DATA[state.current] && DATA[state.current].file;
+    if (!file) return;
+    if (decisions[file] === choice) delete decisions[file]; else decisions[file] = choice;
+    syncReview();
+  }
+  reviewAccept.addEventListener('click', function() { decide('accept'); });
+  reviewReject.addEventListener('click', function() { decide('reject'); });
+  $('review-copy').addEventListener('click', function() {
+    var text = reviewCommand.value;
+    if (!text) return;
+    var select = function() { reviewCommand.focus(); reviewCommand.select(); };
+    try {
+      navigator.clipboard.writeText(text).catch(select);
+    } catch (e) { select(); }
+  });
+<% end %>
 
   /* ── View switching ───────────────────────────────────────────────── */
   viewBtns.forEach(function(btn) {
@@ -554,7 +633,7 @@
 
   /* ── Keyboard ──────────────────────────────────────────────────────── */
   document.addEventListener('keydown', function(e) {
-    if (e.target.tagName === 'INPUT') { if (e.key === 'Escape') searchEl.blur(); return; }
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') { if (e.key === 'Escape') searchEl.blur(); return; }
     switch (e.key) {
       case 'ArrowRight': case 'ArrowDown': e.preventDefault(); selectNext(); break;
       case 'ArrowLeft':  case 'ArrowUp':   e.preventDefault(); selectPrev(); break;
@@ -563,6 +642,10 @@
       case '3': state.view = 'new'; render(); buildSidebar(); break;
       case '4': state.view = 'heatmap'; render(); buildSidebar(); break;
       case 'a': case 'A': state.annotated = !state.annotated; render(); buildSidebar(); break;
+<% if review %>
+      case 'y': case 'Y': decide('accept'); break;
+      case 'n': case 'N': decide('reject'); break;
+<% end %>
       case '/': e.preventDefault(); searchEl.focus(); break;
       case '+': case '=': zoomTo(state.zoom + 25); break;
       case '-': zoomTo(state.zoom - 25); break;

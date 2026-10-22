@@ -130,6 +130,25 @@ module SnapDiff
         ERB.new(File.read(self.class.template_path)).result(binding)
       end
 
+      # Review controls (Accept/Reject, the PR comment command) exist only in
+      # a CI run, where the run id names the artifact the bot reads.
+      def review
+        run = ENV["GITHUB_RUN_ID"].to_s
+        return if run.empty?
+
+        {run: run, files: manifest_entries.map { |entry| entry[:accept]["file"] }}
+      end
+
+      # The entries the page shows. In a CI run those a reviewer may accept
+      # carry their manifest `file`; the rest of :accept stays internal.
+      def report_data
+        entries.map do |entry|
+          data = entry.except(:accept)
+          data[:file] = entry[:accept]["file"] if review && manifest_entry?(entry)
+          data
+        end
+      end
+
       def self.template_path
         File.expand_path("templates/report.html.erb", __dir__)
       end
@@ -279,11 +298,16 @@ module SnapDiff
         write_manifest
       end
 
+      def manifest_entry?(entry) = %w[changed new].include?(entry[:status]) && entry[:accept]
+
+      # One file, one entry: the last capture.
+      def manifest_entries
+        entries.select { |entry| manifest_entry?(entry) }.reverse.uniq { |entry| entry[:accept]["path"] }.reverse
+      end
+
       # What a reviewer page may accept: the captures that differ or are new.
       def write_manifest
-        accepted = entries.select { |entry| %w[changed new].include?(entry[:status]) && entry[:accept] }
-        accepted = accepted.reverse.uniq { |entry| entry[:accept]["path"] }.reverse # one file, one entry: the last capture
-        manifest = accepted.map { |entry| {"name" => entry[:name], "status" => entry[:status]}.merge(entry[:accept]) }
+        manifest = manifest_entries.map { |entry| {"name" => entry[:name], "status" => entry[:status]}.merge(entry[:accept]) }
         File.write(output_path.dirname / "snap_diff_manifest.json", JSON.pretty_generate("version" => 1, "entries" => manifest))
       end
     end
