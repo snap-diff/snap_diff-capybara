@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <!-- script-src carries the sha256 (base64) of the exact text of the one inline script element below. Recompute it whenever that script changes, or the page will not run. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-kFkAY+0J3mvs3+iH1JY0RXC8LrKjgogdjhlwH6hlPy4='; style-src 'unsafe-inline'; img-src blob:; connect-src https://api.github.com https://*.blob.core.windows.net; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-wpjmEhx8OPozWD40aKg4vHv7DVPpOX4rvBY086X2M4Y='; style-src 'unsafe-inline'; img-src blob:; connect-src https://api.github.com https://*.blob.core.windows.net; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer">
 <title>snap_diff review</title>
 <style>
@@ -208,11 +208,15 @@ async function baseline(path) {
     if (e.status === 404) return null;
     throw e;
   }
-  const tooBig = new Error(`The committed ${path} is larger than 20 MB.`);
-  if (Number(res.headers.get("content-length")) > MAX_FILE) throw tooBig;
-  const bytes = new Uint8Array(await res.arrayBuffer());
-  if (bytes.length > MAX_FILE) throw tooBig;
-  return bytes;
+  return new Uint8Array(await body(res, MAX_FILE, `The committed ${path} is larger than 20 MB.`));
+}
+
+// The declared length stops a big download before it starts; the real length catches a missing header.
+async function body(res, max, tooBig) {
+  if (Number(res.headers.get("content-length")) > max) throw new Error(tooBig);
+  const buf = await res.arrayBuffer();
+  if (buf.byteLength > max) throw new Error(tooBig);
+  return buf;
 }
 
 async function readEntry(m, zip) {
@@ -279,12 +283,8 @@ async function load() {
   head = await verifyLink();
 
   say(`Downloading artifact ${artifact}…`);
-  const tooBig = new Error(`Artifact ${artifact} is larger than 100 MB; the review page refuses it.`);
   const res = await api("GET", `/repos/${repo}/actions/artifacts/${artifact}/zip`, null, PERM.actions);
-  if (Number(res.headers.get("content-length")) > MAX_ZIP) throw tooBig;
-  const buf = await res.arrayBuffer();
-  if (buf.byteLength > MAX_ZIP) throw tooBig;
-  const zip = unzip(buf);
+  const zip = unzip(await body(res, MAX_ZIP, `Artifact ${artifact} is larger than 100 MB; the review page refuses it.`));
   const manifestFile = zip.get("snap_diff_manifest.json");
   if (!manifestFile) throw new Error("The artifact has no snap_diff_manifest.json. The report was made by a snap_diff version without the review page.");
   const manifest = JSON.parse(new TextDecoder().decode(await inflate(manifestFile)));

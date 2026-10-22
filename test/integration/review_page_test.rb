@@ -135,8 +135,6 @@ class ReviewPageTest < Minitest::Test
     zip = FakeGithub.zip({"snap_diff_manifest.json" => JSON.generate(version: 1, entries: entries)}.merge(files))
     @fake = FakeGithub.new(zip: zip)
     yield @fake if block_given?
-    # the zip size is read when the fake is built; keep the artifact record honest
-    @fake.artifact[:size_in_bytes] = zip.bytesize
 
     @session = Capybara::Session.new(Capybara.javascript_driver, @fake)
     @session.config.default_max_wait_time = 10

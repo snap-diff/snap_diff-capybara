@@ -197,9 +197,9 @@ A static page, hosted on your repository's own GitHub Pages, that lists every ch
 screenshot of a CI run with its diff. A reviewer marks each one Accept or Reject and presses
 Submit. The accepted images land as **one commit on the PR branch**, byte-identical to what CI
 captured, and **one PR comment** lists what was accepted (with the commit SHA) and rejected. The
-check stays red for the rejected ones. Once the page is installed and served,
-[`upload-screenshots`](#2-reusable-composite-action-recommended) adds a "Review & accept" link to the job summary, and to the PR comment when
-`pr-comment: 'true'`. The link appears only when the page URL actually answers 200.
+check stays red for the rejected ones. Once the page URL answers,
+[`upload-screenshots`](#2-reusable-composite-action-recommended) links to it from the job summary,
+and from the PR comment when `pr-comment: 'true'`.
 
 ### Install
 
@@ -254,8 +254,6 @@ Developer settings -> Fine-grained tokens:
 - Same-repository PRs only. A PR from a fork is refused: the token cannot write to the fork.
 - It reads the run's report artifact, so it works until `retention-days` (default `2`) expires.
   After that, re-run CI.
-- The page works only for the repository that hosts it, and refuses to run inside a frame or a
-  window opened by another page.
 - Pages must be served from the `gh-pages` branch (root) of this repository: not the "GitHub
   Actions" source, not `main`:`/docs`. A user-site repository named `<owner>.github.io` is not
   supported.
@@ -268,7 +266,8 @@ Developer settings -> Fine-grained tokens:
 The page cross-checks the ids in its link (run, PR and artifact) against GitHub before it writes
 anything. It writes only `.png` and `.webp` image bytes, only at the screenshot paths CI listed in
 `snap_diff_manifest.json`. It never force-pushes: a moved branch is an error, not an overwrite. The
-token is kept in memory for the page load and is never stored.
+token is kept in memory for the page load and is never stored. The page serves only the
+repository that hosts it, and refuses to run inside a frame or a window opened by another page.
 
 ## Update Baselines in CI
 

@@ -242,12 +242,10 @@ module SnapDiff
         relative.start_with?("..") ? path.to_s : relative
       end
 
-      # Raw paths for snap_diff_manifest.json (the template leaves them out):
-      # the capture is both what is committed (`path`, the baseline's own
-      # path, which the failing run already overwrote) and what the report
-      # dir holds (`file`). `path` is relative to the git root, the form
-      # Vcs hands `git show HEAD:`; with no repository nothing can be
-      # committed. String keys: entries pass through JSON in dump_state.
+      # For snap_diff_manifest.json: the capture overwrote the baseline, so it
+      # is both what to commit (`path`, from the git root) and what the
+      # artifact holds (`file`, from the report dir). String keys: entries
+      # pass through JSON in dump_state.
       def accept_paths(capture)
         return unless capture && File.exist?(capture)
 
