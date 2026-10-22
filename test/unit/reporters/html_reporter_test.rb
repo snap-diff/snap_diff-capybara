@@ -493,12 +493,14 @@ class HTMLReporterTest < ActiveSupport::TestCase
     entry = manifest.fetch("entries").sole
     assert_equal 1, manifest.fetch("version")
     assert_equal %w[index changed], entry.values_at("name", "status")
-    assert_equal reporter.send(:display_path, assertion.compare.image_path), entry["path"]
+    git_root = Pathname(SnapDiff::Vcs.git_root_for(SnapDiff.config.root.to_s)).realpath
+    assert_equal assertion.compare.image_path.realpath.relative_path_from(git_root).to_s, entry["path"]
     assert_no_match(/\.base\.png\z/, entry["path"])
     assert_equal assertion.compare.image_path.to_s, (@output_dir / entry["file"]).realpath.to_s
   end
 
   test "the manifest lists a new capture with its status" do
+    git_init_output_dir
     reporter = SnapDiff::Reporters::HTML.new(output_path: @output_path)
     capture_new_screenshot(reporter, "signup")
     reporter.finalize
@@ -508,7 +510,30 @@ class HTMLReporterTest < ActiveSupport::TestCase
     assert_predicate @output_dir / "screenshots/signup.png", :exist?
   end
 
+  # The reviewer page commits `path` at the git root, where vcs.rb reads
+  # `git show HEAD:<path>` -- not at the project root, which may be a subdirectory.
+  test "the manifest path is relative to the git root when the project root is a subdirectory" do
+    git_init_output_dir
+    project = @output_dir / "sub"
+    project.mkpath
+    SnapDiff::Vcs.instance_variable_get(:@git_roots).delete(project.to_s)
+    reporter = SnapDiff::Reporters::HTML.new(output_path: @output_path)
+    capture_new_screenshot(reporter, "x", root: project)
+    reporter.finalize
+
+    assert_equal "sub/screenshots/x.png", manifest.fetch("entries").sole["path"]
+  end
+
+  test "an entry outside any git repository is not in the manifest" do
+    reporter = SnapDiff::Reporters::HTML.new(output_path: @output_path)
+    SnapDiff::Vcs.stub(:git_root_for, false) { capture_new_screenshot(reporter, "x") }
+    reporter.finalize
+
+    assert_empty manifest.fetch("entries")
+  end
+
   test "the manifest carries file paths when images are embedded" do
+    git_init_output_dir
     reporter = SnapDiff::Reporters::HTML.new(output_path: @output_path, embed_images: true)
     reporter.record([build_failing_assertion("index")])
     capture_new_screenshot(reporter, "signup")
@@ -522,6 +547,7 @@ class HTMLReporterTest < ActiveSupport::TestCase
   end
 
   test "the manifest leaves out re-recorded entries and entries with no capture on disk" do
+    git_init_output_dir
     reporter = SnapDiff::Reporters::HTML.new(output_path: @output_path)
     reporter.record([build_rerecorded_assertion("accepted")])
     reporter.record([SnapDiff::ScreenshotAssertion.new("gone", path: @output_dir / "screenshots/gone.png")])
@@ -540,6 +566,7 @@ class HTMLReporterTest < ActiveSupport::TestCase
   end
 
   test "the manifest survives the fork-parallel dump and merge" do
+    git_init_output_dir
     worker = SnapDiff::Reporters::HTML.new(output_path: @output_path)
     worker.record([build_failing_assertion("index")])
     capture_new_screenshot(worker, "signup")
@@ -563,6 +590,10 @@ class HTMLReporterTest < ActiveSupport::TestCase
 
   private
 
+  def git_init_output_dir
+    system("git", "-C", @output_dir.to_s, "init", "-q", exception: true)
+  end
+
   def manifest
     JSON.parse((@output_dir / "snap_diff_manifest.json").read)
   end
@@ -570,12 +601,12 @@ class HTMLReporterTest < ActiveSupport::TestCase
   # A capture under a project rooted at @output_dir, tallied the way
   # ScreenshotMatcher tallies it. The root is pinned for the rest of the
   # test so display paths are predictable.
-  def capture_new_screenshot(reporter, name, dir: "screenshots")
-    path = @output_dir / dir / "#{name}.png"
+  def capture_new_screenshot(reporter, name, dir: "screenshots", root: @output_dir)
+    path = root / dir / "#{name}.png"
     path.dirname.mkpath
     FileUtils.cp(File.expand_path("a.png", TEST_IMAGES_DIR), path)
     original_root = SnapDiff.config.root
-    SnapDiff.config.root = @output_dir
+    SnapDiff.config.root = root
     @restore_root ||= -> { SnapDiff.config.root = original_root }
     reporter.record([SnapDiff::ScreenshotAssertion.new(name, path: path)])
     path

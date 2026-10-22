@@ -10,6 +10,7 @@ require "shellwords"
 # SnapDiff::Reporting.
 require "snap_diff/reporting"
 require "snap_diff/config"
+require "snap_diff/vcs"
 
 module SnapDiff
   module Reporters
@@ -244,11 +245,16 @@ module SnapDiff
       # Raw paths for snap_diff_manifest.json (the template leaves them out):
       # the capture is both what is committed (`path`, the baseline's own
       # path, which the failing run already overwrote) and what the report
-      # dir holds (`file`). String keys: entries pass through JSON in dump_state.
+      # dir holds (`file`). `path` is relative to the git root, the form
+      # Vcs hands `git show HEAD:`; with no repository nothing can be
+      # committed. String keys: entries pass through JSON in dump_state.
       def accept_paths(capture)
         return unless capture && File.exist?(capture)
 
-        {"path" => display_path(capture), "file" => Pathname(capture).expand_path.relative_path_from(output_path.dirname.expand_path).to_s}
+        git_root = SnapDiff::Vcs.git_root_for(SnapDiff.config.root.to_s)
+        return unless git_root
+
+        {"path" => Pathname(capture).realpath.relative_path_from(Pathname(git_root).realpath).to_s, "file" => Pathname(capture).expand_path.relative_path_from(output_path.dirname.expand_path).to_s}
       end
 
       def resolve_image(path)
