@@ -197,9 +197,9 @@ A static page, hosted on your repository's own GitHub Pages, that lists every ch
 screenshot of a CI run with its diff. A reviewer marks each one Accept or Reject and presses
 Submit. The accepted images land as **one commit on the PR branch**, byte-identical to what CI
 captured, and **one PR comment** lists what was accepted (with the commit SHA) and rejected. The
-check stays red for the rejected ones. Once the page is installed,
-[`upload-screenshots`](#2-reusable-composite-action-recommended) adds a "Review & accept" link to
-the job summary, and to the PR comment when `pr-comment: 'true'`.
+check stays red for the rejected ones. Once the page is installed and served,
+[`upload-screenshots`](#2-reusable-composite-action-recommended) adds a "Review & accept" link to the job summary, and to the PR comment when
+`pr-comment: 'true'`. The link appears only when the page URL actually answers 200.
 
 ### Install
 

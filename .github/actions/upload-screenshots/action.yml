@@ -79,23 +79,24 @@ runs:
       if: steps.check-report.outputs.exists == 'true' && github.event_name == 'pull_request'
       shell: bash
       env:
-        GH_TOKEN: ${{ github.token }}
         REPO: ${{ github.repository }}
         PR: ${{ github.event.pull_request.number }}
         RUN_ID: ${{ github.run_id }}
         ARTIFACT_ID: ${{ steps.upload-report-full.outputs.artifact-id }}
       run: |
-        # 404 = deploy-review-page never ran here: silent. Anything else is worth a warning, but never fails the job.
-        code=$(curl -s -o /dev/null -w '%{http_code}' -H "Authorization: Bearer $GH_TOKEN" \
-          "https://api.github.com/repos/$REPO/contents/snap-diff/index.html?ref=gh-pages") || code="curl failed"
+        # Probe the page we are about to link: a file on gh-pages proves nothing if Pages serves
+        # something else. 404 = not installed (silent); anything else is a warning, never a failure.
+        owner=$(printf '%s' "${REPO%%/*}" | tr '[:upper:]' '[:lower:]')
+        page="https://${owner}.github.io/${REPO#*/}/snap-diff/"
+        # -L: a custom domain redirects from github.io
+        code=$(curl -sL --max-time 10 -o /dev/null -w '%{http_code}' "$page") || code="curl failed"
         case "$code" in
           200)
-            owner=$(printf '%s' "${REPO%%/*}" | tr '[:upper:]' '[:lower:]')
-            url="https://${owner}.github.io/${REPO#*/}/snap-diff/?repo=${REPO}&pr=${PR}&run=${RUN_ID}&artifact=${ARTIFACT_ID}"
+            url="${page}?repo=${REPO}&pr=${PR}&run=${RUN_ID}&artifact=${ARTIFACT_ID}"
             echo "row=| [Review & accept]($url) | Accept or reject in the browser |" >> "$GITHUB_OUTPUT"
             ;;
           404) ;;
-          *) echo "::warning::Could not check for the review page (status: $code); no Review & accept link." ;;
+          *) echo "::warning::Could not check the review page at $page (status: $code); no Review & accept link." ;;
         esac
 
     - name: Job summary
