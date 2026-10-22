@@ -199,18 +199,11 @@ diff next to the code that caused it.
 
 ### Accepting many at once
 
-One failure at a time is fine for one screenshot. After a redesign that changed forty, set the
-**record mode** to `:all` and re-record them in a single run:
-
-```ruby
-# test_helper.rb
-# Set the mode only when asked: an explicit mode, even :once, outranks the
-# :none-under-CI default and would stop CI from failing on a missing baseline.
-SnapDiff.config.record = :all unless ENV["ACCEPT_SCREENSHOTS"].to_s.empty?
-```
+One failure at a time is fine for one screenshot. After a redesign that changed forty, re-record
+them in a single run:
 
 ```bash
-ACCEPT_SCREENSHOTS=1 bin/rails test:system
+SNAP_DIFF_ACCEPT_SCREENSHOTS=1 bin/rails test:system
 # [snap_diff] 212 verified, 40 changed (40 re-recorded), 0 new (not verified).
 
 git status                     # forty modified baselines, and nothing else
@@ -218,11 +211,12 @@ git add doc/screenshots/
 git commit -m "chore: re-record baselines after the checkout redesign"
 ```
 
-`:all` compares every capture to its committed baseline like `:once` does, but a screenshot that
-differs is accepted as the new baseline instead of failing the test — the report lists what changed,
-and `git status` is the review surface — look at the images before you commit. It **refuses to run under CI**,
-where there would be nobody to look. The other modes are `:once` (the default) and `:none`
-(strict — a missing baseline always fails); see
+The variable puts the run in the `:all` **record mode**: every screenshot is still compared to its
+committed baseline, but one that differs becomes the new baseline instead of failing the test. The
+report lists what changed and `git status` is the review surface — look at the images before you
+commit. To do the same on CI, set the variable on a dedicated job; see
+[CI integration](docs/ci-integration.md#update-baselines-in-ci). The other modes are `:once` (the
+default off CI) and `:none` (the default under CI; a missing baseline always fails); see
 [Record modes](docs/configuration.md#record-modes--accepting-changes).
 
 ## Web UI for Reviewing Screenshot Changes

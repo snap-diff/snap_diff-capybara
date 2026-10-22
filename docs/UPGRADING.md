@@ -339,12 +339,9 @@ process, from the point you set it:
 **Nothing changes if you set none of them.** With no `record` line, `record` reads back as `:none`
 under CI and `:once` off it — exactly what `fail_if_new` already did, sniff and all. The
 missing-baseline default is deliberately unchanged; `:none` is how you opt into strictness
-explicitly. **Precedence:** an explicitly set mode outranks `fail_if_new`, and `fail_if_new`
-decides only when no mode was set — the same rule `fail_if_new` itself has over the `CI` sniff.
-
-`record = :all` **refuses to run under CI**: it accepts every difference by design, so left in a
-committed config file it would be a build that never fails. See
-[Record modes](configuration.md#record-modes--accepting-changes).
+explicitly. An explicitly set mode outranks `fail_if_new`, and `SNAP_DIFF_ACCEPT_SCREENSHOTS=1`
+outranks both for the run that sets it; the full chain is under
+[Precedence](configuration.md#precedence).
 
 #### Silent by design
 

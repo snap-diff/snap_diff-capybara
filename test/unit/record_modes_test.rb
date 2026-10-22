@@ -78,6 +78,58 @@ class RecordModesTest < ActiveSupport::TestCase
     assert_equal :none, SnapDiff.config.record
   end
 
+  # --- SNAP_DIFF_ACCEPT_SCREENSHOTS --------------------------------------
+  #
+  # The bulk-accept verb is a per-run decision, so it is an environment
+  # variable, not a line in test_helper.rb: the run's own intent outranks the
+  # permanent settings, which would otherwise decide every run.
+
+  test "SNAP_DIFF_ACCEPT_SCREENSHOTS selects :all for this run, on CI or off it" do
+    SnapDiff.config.record = nil
+
+    %w[1 true TRUE].each do |value|
+      with_env("SNAP_DIFF_ACCEPT_SCREENSHOTS", value) do
+        assert_equal :all, SnapDiff.config.record, value
+        with_ci("true") { assert_equal :all, SnapDiff.config.record, value }
+      end
+    end
+  end
+
+  test "SNAP_DIFF_ACCEPT_SCREENSHOTS only counts when truthy" do
+    SnapDiff.config.record = nil
+    SnapDiff.config.fail_if_new = nil
+
+    ["", "0", "false", "no"].each do |value|
+      with_env("SNAP_DIFF_ACCEPT_SCREENSHOTS", value) do
+        assert_equal :once, SnapDiff.config.record, value.inspect
+        with_ci("true") { assert_equal :none, SnapDiff.config.record, value.inspect }
+      end
+    end
+  end
+
+  test "SNAP_DIFF_ACCEPT_SCREENSHOTS outranks an explicit record mode and fail_if_new" do
+    with_env("SNAP_DIFF_ACCEPT_SCREENSHOTS", "1") do
+      SnapDiff.config.record = :none
+      assert_equal :all, SnapDiff.config.record
+
+      SnapDiff.config.record = nil
+      SnapDiff.config.fail_if_new = true
+      assert_equal :all, SnapDiff.config.record
+    end
+  end
+
+  test "a per-screenshot record: outranks SNAP_DIFF_ACCEPT_SCREENSHOTS" do
+    SnapDiff.config.record = nil
+
+    with_env("SNAP_DIFF_ACCEPT_SCREENSHOTS", "1") do
+      SnapDiff::Vcs.stub(:checkout_vcs, false) do
+        assert_raises(SnapDiff::ExpectationNotMet) do
+          SnapDiff::ScreenshotMatcher.new("c_#{Time.now.nsec}", record: :none).build_screenshot_assertion
+        end
+      end
+    end
+  end
+
   # --- :once ------------------------------------------------------------
 
   test ":once records a screenshot that has no committed baseline, and does not compare it" do
@@ -372,7 +424,7 @@ class RecordModesTest < ActiveSupport::TestCase
   # nothing and passes, with the "recorded" files thrown away with the box.
   # Refuse it under CI instead of building our own version of Percy.
 
-  test ":all refuses to run under CI" do
+  test "a :all written in code refuses to run under CI" do
     SnapDiff.config.record = :all
 
     error = with_ci("true") do
@@ -383,6 +435,31 @@ class RecordModesTest < ActiveSupport::TestCase
 
     assert_match(/record/, error.message)
     assert_match(/CI/, error.message)
+  end
+
+  test "a :all from SNAP_DIFF_ACCEPT_SCREENSHOTS runs under CI" do
+    SnapDiff.config.record = nil
+
+    with_ci("true") do
+      with_env("SNAP_DIFF_ACCEPT_SCREENSHOTS", "1") do
+        SnapDiff::Vcs.stub(:checkout_vcs, true) do
+          snap = create_snapshot_for(:a, :c)
+          assertion = SnapDiff::ScreenshotMatcher.new(snap.full_name).build_screenshot_assertion
+          SnapDiff.session.verify
+          assert_equal :rerecorded, assertion.status
+        end
+      end
+    end
+  end
+
+  test "a per-screenshot record: :all is refused under CI even with the variable falsy" do
+    with_ci("true") do
+      with_env("SNAP_DIFF_ACCEPT_SCREENSHOTS", "0") do
+        assert_raises(SnapDiff::ExpectationNotMet) do
+          SnapDiff::ScreenshotMatcher.new("c_#{Time.now.nsec}", record: :all).build_screenshot_assertion
+        end
+      end
+    end
   end
 
   test ":all runs off CI" do
@@ -549,18 +626,24 @@ class RecordModesTest < ActiveSupport::TestCase
   def setup
     super
     @original_ci = ENV.delete("CI")
+    @original_accept = ENV.delete("SNAP_DIFF_ACCEPT_SCREENSHOTS")
   end
 
   def teardown
     ENV["CI"] = @original_ci
+    ENV["SNAP_DIFF_ACCEPT_SCREENSHOTS"] = @original_accept
     super
   end
 
-  def with_ci(value)
-    original = ENV["CI"]
-    ENV["CI"] = value
+  def with_ci(value, &block)
+    with_env("CI", value, &block)
+  end
+
+  def with_env(name, value)
+    original = ENV[name]
+    ENV[name] = value
     yield
   ensure
-    ENV["CI"] = original
+    ENV[name] = original
   end
 end

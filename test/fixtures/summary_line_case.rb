@@ -12,6 +12,7 @@
 #   SNAP_IMAGES -- directory holding the fixture PNGs a.png / b.png
 #   SNAP_CASES  -- comma-separated subset of verified,changed,new (may be empty)
 #   SNAP_RECORD -- optional record mode for the whole run (once, none, all)
+#   SNAP_FAIL_ONE -- when set, adds one unrelated test that fails
 require "minitest/autorun"
 require "snap_diff/integrations/minitest"
 # The HTML report is a FEATURE and stays opt-in; the summary line is core
@@ -67,6 +68,12 @@ class SummaryLineCase < Minitest::Test
       else
         assert_matches_screenshot(name)
       end
+    end
+  end
+
+  if ENV["SNAP_FAIL_ONE"]
+    def test_unrelated
+      assert false, "unrelated failure"
     end
   end
 end

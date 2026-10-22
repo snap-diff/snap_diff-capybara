@@ -119,13 +119,48 @@ class SummaryLineTest < ActiveSupport::TestCase
     assert_includes out, "[snap_diff] 2 verified, 1 changed (1 re-recorded), 0 new (not verified)."
   end
 
+  # The documented accept run: the variable on CI, no `record` line anywhere. What differs is
+  # accepted and kept as the baseline, so a run with nothing else wrong exits green, which is
+  # what lets the recipe reach its commit step -- and an unrelated failure still fails it.
+  test "SNAP_DIFF_ACCEPT_SCREENSHOTS on CI accepts what differs and the run succeeds" do
+    out, status, report, baseline = accept_run_on_ci
+
+    assert status.success?, out
+    assert_accepted_on_ci(out, report, baseline)
+  end
+
+  test "SNAP_DIFF_ACCEPT_SCREENSHOTS on CI still fails the run for an unrelated failing test" do
+    out, status, report, baseline = accept_run_on_ci("SNAP_FAIL_ONE" => "1")
+
+    refute status.success?, out
+    assert_includes out, "unrelated failure"
+    assert_match(/1 failures, 0 errors/, out)
+    assert_accepted_on_ci(out, report, baseline)
+  end
+
   private
+
+  def accept_run_on_ci(extra_env = {})
+    baseline = nil
+    env = {"CI" => "1", "SNAP_DIFF_ACCEPT_SCREENSHOTS" => "1"}.merge(extra_env)
+    out, status, report = run_case("verified,changed", env: env) do |repo|
+      baseline = File.binread("#{repo}/screenshots/changed.png")
+    end
+    [out, status, report, baseline]
+  end
+
+  def assert_accepted_on_ci(out, report, baseline)
+    assert_includes out, "[snap_diff] 2 verified, 1 changed (1 re-recorded), 0 new (not verified)."
+    assert_includes out, "accepted it as the new baseline: changed"
+    assert_includes report, '"status":"rerecorded"'
+    assert_equal File.binread(fixture_image_path_from("b")), baseline
+  end
 
   # Builds a throwaway git repo with COMMITTED baselines for `verified` and
   # `changed` (none for `new`), then runs the user's test file against it.
   # Returns the run's output, its exit status, and the HTML report it wrote
   # (nil when none was written).
-  def run_case(cases, reporter: true, record: nil)
+  def run_case(cases, reporter: true, record: nil, env: {})
     Dir.mktmpdir do |dir|
       # macOS hands out /var/... symlinks; git reports the physical path, and
       # baseline lookup is a relative_path_from between the two.
@@ -140,10 +175,12 @@ class SummaryLineTest < ActiveSupport::TestCase
       Open3.capture2e(*git, "commit", "-qm", "baselines")
 
       out, status = Open3.capture2e(
-        {"SNAP_ROOT" => repo, "SNAP_IMAGES" => TEST_IMAGES_DIR.to_s, "SNAP_CASES" => cases, "CI" => nil,
-         "SNAP_NO_REPORTER" => (reporter ? nil : "1"), "SNAP_RECORD" => record},
+        {"SNAP_ROOT" => repo, "SNAP_IMAGES" => TEST_IMAGES_DIR.to_s, "SNAP_CASES" => cases,
+         "CI" => nil, "SNAP_DIFF_ACCEPT_SCREENSHOTS" => nil,
+         "SNAP_NO_REPORTER" => (reporter ? nil : "1"), "SNAP_RECORD" => record}.merge(env),
         RbConfig.ruby, "-Ilib", "-Itest", file_fixture("summary_line_case.rb").to_s
       )
+      yield repo if block_given?
       report = Pathname("#{repo}/screenshots/snap_diff_report.html")
       [out, status, (report.read if report.exist?)]
     end

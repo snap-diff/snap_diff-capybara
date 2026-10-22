@@ -107,6 +107,11 @@ module SnapDiff
       !ENV["CI"].to_s.empty?
     end
 
+    # The per-run spelling of <tt>record = :all</tt>; see {#record}.
+    def self.accept_screenshots?
+      Removal.truthy_env?("SNAP_DIFF_ACCEPT_SCREENSHOTS")
+    end
+
     # shift_distance_limit, driver and the three older new-screenshot
     # booleans are excluded from the generated writers and hand written
     # below (they announce their 2.1 removal, or validate); fail_if_new and
@@ -200,13 +205,17 @@ module SnapDiff
     # +:all+::  +:once+ that accepts instead of fails. Every baseline is
     #           compared; a screenshot that differs is kept as the new
     #           baseline and never raises -- the bulk-accept verb, for the
-    #           redesign that changed forty screenshots at once. Refused
-    #           under CI (see {SnapDiff::ScreenshotMatcher}).
+    #           redesign that changed forty screenshots at once. Written in
+    #           code, it is refused under CI; the variable below is how a
+    #           CI job records (see {SnapDiff::ScreenshotMatcher}).
     #
-    # PRECEDENCE: an explicitly set mode outranks +fail_if_new+; nil means
-    # nobody said, and only then does +fail_if_new+ answer -- so a setup
-    # with no +record+ line behaves EXACTLY as it did before this setting
-    # existed, CI sniff and all. +:none+ is the mode spelling of
+    # PRECEDENCE: the per-screenshot +record:+ option outranks everything.
+    # Then <tt>SNAP_DIFF_ACCEPT_SCREENSHOTS=1</tt> selects +:all+ for this one
+    # run: the bulk-accept verb is a per-run decision, so the run's own
+    # intent beats a mode written into test_helper.rb, which lasts forever.
+    # Then an explicit +record =+, then +fail_if_new+ -- so a setup with no
+    # variable behaves EXACTLY as it did before this setting existed, CI
+    # sniff and all. +:none+ is the mode spelling of
     # <tt>fail_if_new = true</tt> and +:once+ of <tt>= false</tt>, which is
     # why the fallback can express today's behaviour without a special case
     # anywhere downstream: the matcher branches on the mode alone.
@@ -217,6 +226,8 @@ module SnapDiff
     # worthless across OS. +:none+ makes strictness an explicit choice
     # instead; that is the whole point of having the mode.
     def record
+      return :all if Config.accept_screenshots?
+
       @record || (fail_if_new ? :none : :once)
     end
 
