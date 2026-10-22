@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <!-- script-src carries the sha256 (base64) of the exact text of the one inline script element below. Recompute it whenever that script changes, or the page will not run. -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-MW6NpEd5ZbwAohpVGXi77Ygw4qUokSaEtb0r/RfQOQ0='; style-src 'unsafe-inline'; img-src blob:; connect-src https://api.github.com https://*.blob.core.windows.net; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-kFkAY+0J3mvs3+iH1JY0RXC8LrKjgogdjhlwH6hlPy4='; style-src 'unsafe-inline'; img-src blob:; connect-src https://api.github.com https://*.blob.core.windows.net; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer">
 <title>snap_diff review</title>
 <style>
@@ -327,7 +327,8 @@ function render() {
   const viewButton = (v, label) => el("button", { type: "button", className: "view" + (view === v ? " on" : ""), textContent: label, onclick: () => { view = v; render(); } });
   const shown = !hasBase ? ["new"] : view === "side" ? ["base", "new"] : [flipped ? "base" : "new"];
   const extras = ["diff", "heatmap", "baseDiff"].filter((k) => e.images[k]);
-  $("viewer").replaceChildren(
+  // replaceChildren would print a null as the text "null": optional parts are filtered out.
+  $("viewer").replaceChildren(...[
     el("div", { className: "toolbar" },
       el("strong", { textContent: e.name }), el("span", { className: "muted", textContent: `${e.status} · ${e.path} · ${current + 1}/${entries.length}` }),
       el("span", { className: "spacer" }), decide("accept", "Accept"), decide("reject", "Reject")),
@@ -335,7 +336,7 @@ function render() {
       view === "toggle" ? el("button", { type: "button", textContent: `Showing ${flipped ? "baseline" : "new"} — flip (T)`, onclick: flip }) : null) : null,
     el("div", { className: "images" }, ...shown.map((k) => figure(e, k))),
     extras.length ? el("h3", { textContent: "Differences" }) : null,
-    el("div", { className: "images" }, ...extras.map((k) => figure(e, k))));
+    el("div", { className: "images" }, ...extras.map((k) => figure(e, k)))].filter((c) => c != null));
 
   const counts = { accept: 0, reject: 0, none: 0 };
   entries.forEach((x) => counts[x.decision || "none"]++);

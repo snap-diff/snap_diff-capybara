@@ -29,6 +29,8 @@ class ReviewPageTest < Minitest::Test
     page.find("#list button", text: "homepage").click
     page.click_button "Accept", exact: true
     page.find("#list button", text: "signup").click
+    page.assert_text "New capture"
+    refute_match(/\bnull\b/, page.text)
     page.click_button "Reject", exact: true
     submit
 
