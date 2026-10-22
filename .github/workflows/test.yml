@@ -95,6 +95,8 @@ jobs:
         if: failure()
         with:
           name: base-screenshots
+          # The suite writes its report under its own SnapDiff root.
+          report-path: test/fixtures/app/doc/screenshots
           pr-comment: 'true'
 
       - name: Uploading Coverage Report
