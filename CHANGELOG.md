@@ -24,6 +24,13 @@ kept as history. This entry is the one to read if you are coming from **1.15.1**
   selects `record = :all` for the run that sees it, outranking `record =` and `fail_if_new`; a
   `record:` on the screenshot still outranks it. `1` and `true` turn it on; any other value is the
   same as not setting it. Unset, the mode reads as before (`:none` under CI, `:once` off it).
+- **Accept or reject screenshots in the browser.** The HTML report now writes
+  `snap_diff_manifest.json` beside it, and `deploy-review-page` publishes a review page
+  (shipped in the gem, `lib/snap_diff/review/`) to your `gh-pages` at `snap-diff/`, kept
+  current from the version in `Gemfile.lock`. A reviewer marks each changed or new screenshot
+  Accept or Reject; the accepted ones become one commit on the PR branch and a PR comment
+  lists the decisions. `upload-screenshots` links to it once it is installed. See
+  [docs/ci-integration.md](docs/ci-integration.md#accept-or-reject-screenshots-in-the-browser)
 
 - **AI triage (optional, offline-first, advisory by default).** `SnapDiff::Reporters::AISimple`
   classifies every failed comparison as `flaky` / `intentional` / `real_bug`,

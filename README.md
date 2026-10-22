@@ -115,6 +115,7 @@ Add diff artifacts to `.gitignore` — these are generated at runtime and should
 *.diff.webp
 *.base.webp
 snap_diff_report.html
+snap_diff_manifest.json
 ```
 
 If you skip Step 2 and push to CI, the build will fail — `fail_if_new` is `true` by default in CI.

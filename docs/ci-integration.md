@@ -191,6 +191,85 @@ jobs:
 
 </details>
 
+## Accept or reject screenshots in the browser
+
+A static page, hosted on your repository's own GitHub Pages, that lists every changed and new
+screenshot of a CI run with its diff. A reviewer marks each one Accept or Reject and presses
+Submit. The accepted images land as **one commit on the PR branch**, byte-identical to what CI
+captured, and **one PR comment** lists what was accepted (with the commit SHA) and rejected. The
+check stays red for the rejected ones. Once the page is installed,
+[`upload-screenshots`](#2-reusable-composite-action-recommended) adds a "Review & accept" link to
+the job summary, and to the PR comment when `pr-comment: 'true'`.
+
+### Install
+
+Copy this workflow:
+
+```yaml
+# .github/workflows/review-page.yml
+name: Review page
+on:
+  push:
+    branches: [ main ]       # your default branch
+    paths: [ Gemfile.lock ]
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: snap-diff-review-page   # two racing runs would reject one push
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: snap-diff/snap_diff-capybara/.github/actions/deploy-review-page@master
+```
+
+Run it once with "Run workflow". It publishes `snap-diff/index.html` to the `gh-pages` branch
+(created if missing, everything else on the branch is left alone) and prints the page URL
+(`https://<owner>.github.io/<repo>/snap-diff/`) in the job summary. Then, once the branch exists,
+enable Pages: Settings -> Pages -> Build and deployment -> Deploy from a branch -> `gh-pages` /
+`(root)`.
+
+### Auto-update
+
+The page ships inside the gem. The workflow reads the `snap_diff-capybara` version locked in
+`Gemfile.lock` (or `gems.locked`) and publishes the page from that exact release. A Dependabot
+bundler bump changes `Gemfile.lock`, so merging it republishes the page. A gem that is locked from
+git or a path has no release to read: pass `page:` with a path to an `index.html` instead.
+
+### The token
+
+The page asks the reviewer for a fine-grained personal access token. Create it under Settings ->
+Developer settings -> Fine-grained tokens:
+
+- Repository access: only this repository
+- Actions: Read
+- Contents: Read and write
+- Pull requests: Read and write
+- A short expiry
+
+### Limits
+
+- Same-repository PRs only. A PR from a fork is refused: the token cannot write to the fork.
+- It reads the run's report artifact, so it works until `retention-days` (default `2`) expires.
+  After that, re-run CI.
+- The page works only for the repository that hosts it, and refuses to run inside a frame or a
+  window opened by another page.
+- Pages must be served from the `gh-pages` branch (root) of this repository: not the "GitHub
+  Actions" source, not `main`:`/docs`. A user-site repository named `<owner>.github.io` is not
+  supported.
+- A custom-domain site must keep the `/<repo>/` path segment, so the page stays at
+  `/<repo>/snap-diff/`.
+- If the PR branch has new commits since the CI run, nothing is written: re-run CI and review again.
+
+### Security model
+
+The page cross-checks the ids in its link (run, PR and artifact) against GitHub before it writes
+anything. It writes only `.png` and `.webp` image bytes, only at the screenshot paths CI listed in
+`snap_diff_manifest.json`. It never force-pushes: a moved branch is an error, not an overwrite. The
+token is kept in memory for the page load and is never stored.
+
 ## Update Baselines in CI
 
 When intentional UI changes are made, baselines need to be re-recorded. Baselines are

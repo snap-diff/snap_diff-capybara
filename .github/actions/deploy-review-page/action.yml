@@ -1,0 +1,101 @@
+---
+name: 'Deploy the SnapDiff review page'
+description: 'Publish the click-to-accept review page to gh-pages at snap-diff/index.html'
+inputs:
+  page:
+    description: 'Path to an index.html to publish (skips the snap_diff-capybara gem lookup)'
+    default: ''
+  token:
+    description: 'Token that can push to gh-pages (the job needs contents: write)'
+    default: ${{ github.token }}
+runs:
+  using: 'composite'
+  steps:
+    - name: Resolve the review page
+      id: resolve
+      shell: bash
+      env:
+        PAGE: ${{ inputs.page }}
+      run: |
+        set -euo pipefail
+        if [ -n "$PAGE" ]; then
+          echo "file=$(realpath "$PAGE")" >> "$GITHUB_OUTPUT"
+          echo "source=from $PAGE" >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
+
+        # No checkout assumed beyond the lockfile: the version the app locks is the
+        # version whose page it gets, so a Dependabot bump republishes the page.
+        lock=$(ls Gemfile.lock gems.locked 2>/dev/null | head -n 1 || true)
+        [ -n "$lock" ] || { echo "::error::No Gemfile.lock or gems.locked here (is actions/checkout before this step?). Pass page: to publish a file instead."; exit 1; }
+
+        # Only a GEM section is a released version; GIT and PATH entries have no .gem to fetch.
+        # The gem publishes under both names; fetch whichever one the app locks. tr: CRLF lockfiles.
+        found=$(tr -d '\r' < "$lock" | awk '/^[A-Z][A-Z ]*$/ {section=$0} section=="GEM" && /^    (snap_diff-capybara|capybara-screenshot-diff) \(/ {gsub(/[()]/, "", $2); print $1, $2; exit}')
+        if [ -z "$found" ]; then
+          echo "::error::snap_diff-capybara (or capybara-screenshot-diff) is not under a GEM section of $lock (it is a GIT/PATH gem or missing). Pass page: with a path to a review page index.html."
+          exit 1
+        fi
+        name=${found% *}
+        version=${found#* }
+
+        work=$(mktemp -d "$RUNNER_TEMP/snap-diff-gem.XXXXXX")
+        (cd "$work" && gem fetch "$name" -v "$version" && gem unpack "$name-$version.gem" --target .)
+        file="$work/$name-$version/lib/snap_diff/review/index.html"
+        [ -f "$file" ] || { echo "::error::$name $version has no review page; upgrade."; exit 1; }
+        echo "file=$file" >> "$GITHUB_OUTPUT"
+        echo "source=($name $version)" >> "$GITHUB_OUTPUT"
+
+    - name: Publish to gh-pages
+      shell: bash
+      env:
+        PAGE_FILE: ${{ steps.resolve.outputs.file }}
+        SOURCE: ${{ steps.resolve.outputs.source }}
+        TOKEN: ${{ inputs.token }}
+        REPO: ${{ github.repository }}
+      run: |
+        set -euo pipefail
+        # A scratch clone, so it works whatever checkout ran (or none) and never
+        # touches the caller's working tree or branch.
+        work=$(mktemp -d "$RUNNER_TEMP/gh-pages.XXXXXX")
+        cd "$work"
+        git init -q .
+        git remote add origin "https://x-access-token:${TOKEN}@github.com/${REPO}.git"
+
+        # 0 = branch exists, 2 = it does not; anything else (bad token) must fail, not create a branch.
+        status=0
+        git ls-remote --exit-code --heads origin gh-pages > /dev/null 2>&1 || status=$?
+        case "$status" in
+          0)
+            git fetch -q --depth=1 origin gh-pages
+            git checkout -q -b gh-pages FETCH_HEAD
+            ;;
+          2)
+            git checkout -q --orphan gh-pages
+            touch .nojekyll
+            ;;
+          *)
+            echo "::error::Could not reach $REPO to look for gh-pages (git exit $status). Check the token and contents: write."
+            exit 1
+            ;;
+        esac
+
+        mkdir -p snap-diff
+        cp "$PAGE_FILE" snap-diff/index.html
+        git add .
+        if git diff --cached --quiet; then
+          echo "snap-diff/index.html is already up to date."
+        else
+          git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
+            commit -q -m "Update the snap_diff review page $SOURCE"
+          git push -q origin gh-pages
+        fi
+
+        owner=$(printf '%s' "${REPO%%/*}" | tr '[:upper:]' '[:lower:]')
+        cat >> "$GITHUB_STEP_SUMMARY" <<EOF
+        ### SnapDiff review page
+
+        https://${owner}.github.io/${REPO#*/}/snap-diff/
+
+        First time? Settings -> Pages -> Build and deployment -> Deploy from a branch -> gh-pages / (root).
+        EOF
