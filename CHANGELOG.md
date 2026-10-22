@@ -20,10 +20,10 @@ kept as history. This entry is the one to read if you are coming from **1.15.1**
 
 ### Added
 
-- **Accept screenshots from a pull request comment.** On GitHub Actions, the HTML report gets
-  Accept/Reject buttons and a "Copy review command" button. Pasting the command as a PR comment runs
-  the new `accept-screenshots` action, which commits the exact CI pixels to the PR branch with the
-  repository's `GITHUB_TOKEN`. The report also writes `snap_diff_manifest.json`, and
+- **Accept screenshots from the CI report.** On GitHub Actions, the HTML report gets Accept/Reject
+  buttons and a "Commit decisions" button that opens a prefilled GitHub issue. Submitting it (or pasting
+  the copied command as a PR comment) runs the new `accept-screenshots` action, which commits the exact
+  CI pixels to the PR branch with the repository's `GITHUB_TOKEN`. The report also writes `snap_diff_manifest.json`, and
   `upload-screenshots` adds a how-to-accept line to its PR comment and job summary. See
   [CI integration](docs/ci-integration.md#accept-screenshots-from-the-pull-request).
 

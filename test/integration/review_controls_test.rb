@@ -7,19 +7,22 @@ require "support/setup_capybara_drivers"
 # The report's review controls, driven in a real browser: a reviewer clicks
 # Accept and Reject and the read-only field shows the PR comment command.
 class ReviewControlsTest < ActiveSupport::TestCase
+  # Pinned: CI sets these for real. No GITHUB_REF unless a test sets one.
+  CI_ENV = {"GITHUB_RUN_ID" => "99", "GITHUB_REF" => nil, "GITHUB_REPOSITORY" => "o/r", "GITHUB_SERVER_URL" => "https://github.com"}.freeze
+
   setup do
     @dir = Pathname.new(Dir.mktmpdir).realpath
     system("git", "-C", @dir.to_s, "init", "-q", exception: true)
     @original_root = SnapDiff.config.root
     SnapDiff.config.root = @dir
-    @original_run_id = ENV["GITHUB_RUN_ID"]
-    ENV["GITHUB_RUN_ID"] = "99"
+    @original_env = CI_ENV.keys.to_h { |k| [k, ENV[k]] }
+    CI_ENV.each { |k, v| ENV[k] = v }
     @session = Capybara::Session.new(Capybara.javascript_driver)
   end
 
   teardown do
     @session.quit
-    ENV["GITHUB_RUN_ID"] = @original_run_id
+    @original_env.each { |k, v| ENV[k] = v }
     SnapDiff.config.root = @original_root
     FileUtils.remove_entry(@dir)
   end
@@ -73,6 +76,56 @@ class ReviewControlsTest < ActiveSupport::TestCase
     assert_equal "", command
   end
 
+  test "Commit decisions opens the prefilled new-issue page in a new tab" do
+    ENV["GITHUB_REF"] = "refs/pull/313/merge"
+    visit_with_window_open_spy(write_report(%w[one two three]))
+    assert @session.has_button?("Commit decisions", disabled: true), "nothing to commit yet"
+
+    @session.find("body").send_keys("y", :right, "n", :right, "y")
+    @session.click_button "Commit decisions"
+
+    url, target, features = opened
+    assert_equal ["_blank", "noopener"], [target, features]
+    assert_equal "https://github.com/o/r/issues/new", url[/\A[^?]*/]
+    assert_equal({"title" => "snap-diff review: PR #313 (run 99)",
+                  "body" => "/snap-diff accept run=99 pr=313 screenshots/one.png@#{sha16} screenshots/three.png@#{sha16}\n" \
+                            "/snap-diff reject screenshots/two.png"}, query(url))
+    assert @session.has_css?("#review-hint", text: "Opens a GitHub issue with your decisions; submit it to commit.")
+  end
+
+  test "a reject-only review names the run and PR on its reject line" do
+    ENV["GITHUB_REF"] = "refs/pull/313/merge"
+    visit_with_window_open_spy(write_report(%w[one two]))
+
+    @session.find("body").send_keys("n")
+    @session.click_button "Commit decisions"
+
+    assert_equal "/snap-diff reject run=99 pr=313 screenshots/one.png", query(opened.first)["body"]
+    assert_equal "/snap-diff reject run=99 pr=313 screenshots/one.png", command
+  end
+
+  test "without a PR in the run the command and title leave it out" do
+    ENV["GITHUB_REF"] = "refs/heads/main"
+    visit_with_window_open_spy(write_report(%w[one]))
+
+    @session.find("body").send_keys("y")
+    @session.click_button "Commit decisions"
+
+    assert_equal({"title" => "snap-diff review: (run 99)", "body" => "/snap-diff accept run=99 screenshots/one.png@#{sha16}"}, query(opened.first))
+  end
+
+  test "a link too long for GitHub leaves only the copy fallback" do
+    names = (1..40).map { |i| "#{"long" * 45}#{i}" } # ~190-char names: 40 accepts pass 7000 chars
+    visit_with_window_open_spy(write_report(names))
+
+    @session.find("body").send_keys(*names.flat_map { ["y", :right] })
+
+    assert @session.has_button?("Commit decisions", disabled: true)
+    assert @session.has_css?("#review-commit-note", text: "Too many files for one link: copy the command and paste it as a PR comment.")
+    assert_equal 40, command.scan("@#{sha16}").size, "the command itself is complete"
+    assert @session.has_button?("Copy review command")
+  end
+
   test "a local report has no review controls" do
     ENV["GITHUB_RUN_ID"] = nil
     @session.visit "file://#{write_report(%w[one])}"
@@ -85,6 +138,15 @@ class ReviewControlsTest < ActiveSupport::TestCase
   private
 
   def command = @session.find("#review-command").value
+
+  def visit_with_window_open_spy(report)
+    @session.visit "file://#{report}"
+    @session.execute_script("window.open = function(u, t, f) { window.__opened = [u, t, f]; return null; }")
+  end
+
+  def opened = @session.evaluate_script("window.__opened")
+
+  def query(url) = URI.decode_www_form(URI(url).query).to_h
 
   # aria-pressed of [Accept, Reject], which must follow the visual state.
   def pressed = %w[#review-accept #review-reject].map { |id| @session.find(id)["aria-pressed"] }

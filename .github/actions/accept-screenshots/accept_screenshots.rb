@@ -1,9 +1,14 @@
 # frozen_string_literal: true
 
-# Accept screenshot baselines from a PR comment:
+# Accept screenshot baselines from a PR comment or a new issue (the report's
+# "Commit decisions" button opens one prefilled):
 #
-#   /snap-diff accept run=<run_id> <file>@<sha16> <file>@<sha16> ...
+#   /snap-diff accept run=<run_id> [pr=<n>] <file>@<sha16> <file>@<sha16> ...
 #   /snap-diff reject <file> ...            (optional, informational)
+#
+# or, rejecting only (nothing is committed; the list goes on the PR):
+#
+#   /snap-diff reject run=<run_id> [pr=<n>] <file> ...
 #
 # <file> is a `file` from the report's snap_diff_manifest.json; <sha16> is the
 # first 16 hex digits of the SHA-256 of its bytes, as the report showed them.
@@ -17,15 +22,19 @@
 #   GH_TOKEN             token for gh and git (contents/pull-requests/actions)
 #   GITHUB_REPOSITORY    owner/name
 #   GITHUB_SERVER_URL    optional, default https://github.com
-#   COMMENT_BODY         the PR comment
-#   COMMENT_AUTHOR       commenter login
+#   EVENT_NAME           issue_comment (a PR comment) or issues (a new issue)
+#   ISSUE_NUMBER         the commented PR, or the new issue
+#   BODY                 the comment or issue body: the command
+#   AUTHOR               its author's login
 #   AUTHOR_ASSOCIATION   pre-filter: OWNER, MEMBER or COLLABORATOR
-#   PR_NUMBER            the pull request number
 #   SCREENSHOTS_PATH     optional, default doc/screenshots: every target must be under it
 #   CI_WORKFLOW          optional: workflow file to dispatch on the branch after the push
 #   RUNNER_TEMP          optional: scratch dir, default a fresh Dir.mktmpdir
 #
-# Every refusal is a reply comment on the PR plus exit status 1. Replies and
+# The PR is the commented one, or in an issue `pr=`, or else the single open
+# same-repository PR on the run's branch. Every refusal is a reply on the
+# comment's PR or the issue (then closed as not planned) plus exit status 1;
+# a done issue gets a link to the PR and is closed as completed. Replies and
 # logs carry only validated strings or fixed text, never raw input.
 
 require "json"
@@ -50,8 +59,8 @@ module AcceptScreenshots
   # No spaces: the command is whitespace-split, so a name with one cannot be written.
   SAFE_PATH = %r{\A[A-Za-z0-9._/-]+\z}
   LOGIN = /\A[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})\z/
-  ACCEPT_LINE = %r{\A/snap-diff accept(?: |\z)}
-  ACCEPT = %r{\A/snap-diff accept run=(\d+)((?: +\S+)*)\z}
+  FIRST_LINE = %r{\A/snap-diff (?:accept|reject)(?: |\z)}
+  HEAD_LINE = %r{\A/snap-diff (accept|reject) run=(\d+)(?: pr=(\d+))?((?: +\S+)*)\z}
   REJECT = %r{\A/snap-diff reject((?: +\S+)*)\z}
   HASHED = /\A([^@]+)@([0-9a-f]{16})\z/
   MAGIC = {".png" => ["PNG", /\A\x89PNG\r\n\x1A\n/n], ".webp" => ["WebP", /\ARIFF....WEBP/mn]}.freeze
@@ -59,22 +68,29 @@ module AcceptScreenshots
 
   module_function
 
-  # {run:, accept: {file => sha16}, reject: [file]}
+  # {run:, pr: nil | digits, accept: {file => sha16}, reject: [file]}
   def parse(body)
     raise Refusal, "Comment too long (over #{MAX_BODY} characters)." if body.length > MAX_BODY
 
     lines = body.lines.map(&:strip).reject(&:empty?)
-    raise Refusal, "The first line must be `/snap-diff accept run=<run id> <file>@<hash> ...`." unless lines.first&.match?(ACCEPT_LINE)
+    unless lines.first&.match?(FIRST_LINE)
+      raise Refusal, "The first line must be `/snap-diff accept run=<run id> <file>@<hash> ...` or `/snap-diff reject run=<run id> <file> ...`."
+    end
 
-    accept = lines.first.match(ACCEPT) or raise Refusal, "Missing or invalid `run=<run id>` (digits only)."
-    reject = []
+    head = lines.first.match(HEAD_LINE) or raise Refusal, "Missing or invalid `run=<run id>` (digits only)."
+    kind, run, pr, rest = head.captures
+    tokens = rest.split.uniq
+    raise Refusal, "Invalid `pr=<number>` (digits only, right after `run=`)." if tokens.any? { |t| t.start_with?("pr=", "run=") }
+    raise Refusal, "The command needs at least one file." if tokens.empty?
+    raise Refusal, "Too many files (#{tokens.size}, max #{MAX_FILES})." if tokens.size > MAX_FILES
+
+    reject = (kind == "reject") ? tokens : []
     lines.drop(1).each do |line|
-      match = line.match(REJECT) or raise Refusal, "Unexpected line after the accept line; only `/snap-diff reject <file> ...` may follow."
+      match = (kind == "accept") && line.match(REJECT) or raise Refusal, "Unexpected line after the first line; only `/snap-diff reject <file> ...` may follow an accept line."
       reject.concat(match[1].split)
     end
-    tokens = accept[2].split.uniq
-    raise Refusal, "Accept needs at least one file." if tokens.empty?
-    raise Refusal, "Too many files (#{tokens.size}, max #{MAX_FILES})." if tokens.size > MAX_FILES
+    reject.each_with_index { |file, i| raise Refusal, "Rejected file ##{i + 1} is not allowed (#{ALLOWED_CHARS})." unless safe_path?(file) }
+    return {run: run, pr: pr, accept: {}, reject: reject.uniq} if kind == "reject"
 
     files = tokens.each_with_index.with_object({}) do |(token, i), acc|
       match = token.match(HASHED) or raise Refusal, "Accepted file ##{i + 1} lacks its @<hash> (16 lowercase hex); copy the command from the report again."
@@ -84,8 +100,23 @@ module AcceptScreenshots
 
       acc[file] = sha16
     end
-    reject.each_with_index { |file, i| raise Refusal, "Rejected file ##{i + 1} is not allowed (#{ALLOWED_CHARS})." unless safe_path?(file) }
-    {run: accept[1], accept: files, reject: reject.uniq}
+    {run: run, pr: pr, accept: files, reject: reject.uniq}
+  end
+
+  # A comment acts on the PR it is posted on; a `pr=` in it must agree.
+  def comment_pr(command, issue_number)
+    raise Refusal, "The command names PR ##{command[:pr]} but was posted on PR ##{issue_number}." if command[:pr] && command[:pr] != issue_number
+
+    issue_number
+  end
+
+  # An issue without `pr=`: the single open same-repository PR on the run's branch.
+  def resolve_pr(pulls, repo, head_branch)
+    matches = pulls.select { |p| p.dig("head", "repo", "full_name") == repo && p.dig("head", "ref") == head_branch }
+    raise Refusal, "No open pull request of this repository is on the run's branch." if matches.empty?
+    raise Refusal, "More than one open pull request is on the run's branch; add `pr=<number>`." if matches.size > 1
+
+    matches.first["number"].to_s
   end
 
   # Relative, no empty / `.` / `..` segments, conservative characters.
@@ -229,6 +260,10 @@ module AcceptScreenshots
     lines.join("\n")
   end
 
+  def reject_summary(command)
+    (["Rejected in run #{command[:run]} (not committed):"] + command[:reject].map { |file| "- `#{file}`" }).join("\n")
+  end
+
   def commit_message(targets, run_id, login, pr)
     bullets = targets.map { |file, path| "- #{file} -> #{path}" }.join("\n")
     "Accept screenshot baselines\n\nAccepted by @#{login} in PR ##{pr} from run #{run_id}:\n#{bullets}\n"
@@ -261,8 +296,12 @@ module AcceptScreenshots
 
   def gh_json(path) = JSON.parse(sh!("gh", "api", path))
 
-  def reply(repo, pr, text)
-    sh!("gh", "api", "-X", "POST", "repos/#{repo}/issues/#{pr}/comments", "--input", "-", stdin: JSON.generate(body: text))
+  def reply(repo, number, text)
+    sh!("gh", "api", "-X", "POST", "repos/#{repo}/issues/#{number}/comments", "--input", "-", stdin: JSON.generate(body: text))
+  end
+
+  def close_issue(repo, number, reason)
+    sh!("gh", "api", "-X", "PATCH", "repos/#{repo}/issues/#{number}", "--input", "-", stdin: JSON.generate(state: "closed", state_reason: reason))
   end
 
   # A fresh, isolated git: no global or system config, no hooks, no LFS
@@ -284,25 +323,27 @@ module AcceptScreenshots
 
   def run!
     repo = env("GITHUB_REPOSITORY")
-    pr = env("PR_NUMBER")
-    raise "PR_NUMBER is not a number" unless pr.match?(/\A\d+\z/)
+    issue = env("ISSUE_NUMBER")
+    raise "ISSUE_NUMBER is not a number" unless issue.match?(/\A\d+\z/)
+    issue_mode = {"issues" => true, "issue_comment" => false}.fetch(env("EVENT_NAME"))
 
-    exit 1 unless accept!(repo, pr)
+    exit 1 unless accept!(repo, issue, issue_mode)
   rescue Refusal => e
     log(e.message)
-    reply(repo, pr, "Screenshot accept refused: #{e.message}")
+    reply(repo, issue, "Screenshot accept refused: #{e.message}")
+    close_issue(repo, issue, "not_planned") if issue_mode
     exit 1
   rescue => e
     log("#{e.class}: #{e.message}")
-    reply(repo, pr, "Screenshot accept failed; see the workflow log.") if repo && pr
+    reply(repo, issue, "Screenshot accept failed; see the workflow log.") if repo && issue
     exit 1
   end
 
   # True unless the commit landed but the CI dispatch failed.
-  def accept!(repo, pr)
+  def accept!(repo, issue, issue_mode)
     raise Refusal, "Only owners, members and collaborators can accept screenshots." unless ALLOWED_ASSOCIATIONS.include?(env("AUTHOR_ASSOCIATION"))
 
-    login = env("COMMENT_AUTHOR")
+    login = env("AUTHOR")
     raise Refusal, "Only people with write access can accept screenshots." unless login.match?(LOGIN)
     # MEMBER/COLLABORATOR includes read-only people; the permission API does not.
     raise Refusal, "Only people with write access can accept screenshots." unless writer?(gh_json("repos/#{repo}/collaborators/#{login}/permission"))
@@ -312,15 +353,26 @@ module AcceptScreenshots
     workflow = ENV["CI_WORKFLOW"].to_s
     raise "CI_WORKFLOW must be a workflow file name" unless workflow.empty? || workflow.match?(/\A[\w.-]+\.ya?ml\z/)
 
-    command = parse(env("COMMENT_BODY"))
+    command = parse(env("BODY"))
     run_id = command[:run]
     files = command[:accept].keys
 
     run = gh_json("repos/#{repo}/actions/runs/#{run_id}")
+    pr = if !issue_mode then comment_pr(command, issue)
+    elsif command[:pr] then command[:pr]
+    else
+      raise Refusal, "Run #{run_id} has no branch; add `pr=<number>`." unless run["head_branch"].is_a?(String)
+
+      pulls = sh!("gh", "api", "-X", "GET", "repos/#{repo}/pulls", "-f", "state=open", "-f", "per_page=100",
+        "-f", "head=#{repo.split("/").first}:#{run["head_branch"]}")
+      resolve_pr(JSON.parse(pulls), repo, run["head_branch"])
+    end
     pull = gh_json("repos/#{repo}/pulls/#{pr}")
     branch = pull.dig("head", "ref")
     check_run!(run, repo, pr, run_id, branch)
     raise Refusal, "The pull request is not open." unless pull["state"] == "open"
+    return finish(repo, issue, issue_mode, pr, reject_summary(command), "Recorded on PR ##{pr}.") if files.empty?
+
     raise Refusal, "The pull request comes from a fork." unless pull.dig("head", "repo", "full_name") == repo
     raise Refusal, "PR has new commits since run #{run_id} — review the new report." unless pull.dig("head", "sha") == run["head_sha"]
     raise "unexpected head_sha" unless run["head_sha"].to_s.match?(/\A\h{40}\z/)
@@ -347,13 +399,23 @@ module AcceptScreenshots
       message: commit_message(targets, run_id, login, pr), git_env: git_env(auth))
 
     ci_line = workflow.empty? ? "Re-run CI to verify." : "Dispatching `#{workflow}` on the PR branch to verify."
-    reply(repo, pr, summary(command, targets, sha, ci_line))
+    finish(repo, issue, issue_mode, pr, summary(command, targets, sha, ci_line), "Applied to PR ##{pr}: #{sha || "nothing to commit"}.")
     puts "accepted #{targets.size} file(s): #{sha || "no change"}"
     return true unless sha && !workflow.empty?
 
     dispatch_ci(repo, pr, workflow, branch)
   ensure
     FileUtils.rm_rf(work) if work # nothing of this run outlives it on a persistent runner
+  end
+
+  # The outcome goes on the PR; an issue also gets a link to it and is closed.
+  def finish(repo, issue, issue_mode, pr, pr_text, issue_text)
+    reply(repo, pr, pr_text)
+    return true unless issue_mode
+
+    reply(repo, issue, issue_text)
+    close_issue(repo, issue, "completed")
+    true
   end
 
   # Best effort, after the reply: a failure must not hide the pushed commit.

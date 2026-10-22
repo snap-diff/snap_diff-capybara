@@ -647,7 +647,7 @@ class HTMLReporterTest < ActiveSupport::TestCase
     assert_includes html, "Copy review command"
     # The hash binds the command to the bytes the artifact holds: the file on disk, the last capture.
     assert_equal Digest::SHA256.file(report_dir / file).hexdigest, entry.fetch("sha256")
-    assert_equal({"run" => "4242", "files" => [file], "sha16" => {file => entry["sha256"][0, 16]}}, report_review(report_dir / "report.html"))
+    assert_equal({"run" => "4242", "pr" => nil, "issue_url" => nil, "files" => [file], "sha16" => {file => entry["sha256"][0, 16]}}, report_review(report_dir / "report.html"))
     # Only the last capture of a file is on disk and in the manifest: the
     # earlier entry points at it instead of offering its own controls.
     data = report_data(report_dir / "report.html")
@@ -685,6 +685,30 @@ class HTMLReporterTest < ActiveSupport::TestCase
     assert_equal 3, manifest.fetch("entries").size
   end
 
+  # The "Commit decisions" button opens <server>/<repo>/issues/new; the PR
+  # number comes from a pull_request run's merge ref.
+  test "in a pull_request run the review data names the PR and the new-issue page" do
+    reporter = SnapDiff::Reporters::HTML.new(output_path: @output_path)
+    reporter.record([build_failing_assertion("index")])
+    with_run_id("7", ref: "refs/pull/313/merge", repo: "o/r", server: "https://ghe.example.com") { reporter.finalize }
+
+    assert_equal({"pr" => "313", "issue_url" => "https://ghe.example.com/o/r/issues/new"}, report_review.slice("pr", "issue_url"))
+  end
+
+  test "outside a pull_request run, or without a usable repository, those are left out" do
+    {
+      {ref: "refs/heads/main", repo: "o/r"} => {"pr" => nil, "issue_url" => "https://github.com/o/r/issues/new"},
+      {ref: "refs/pull/313/head", repo: "o/r\"><x"} => {"pr" => nil, "issue_url" => nil},
+      {ref: "refs/pull/313/merge", repo: "o/r", server: "javascript:alert(1)//"} => {"pr" => "313", "issue_url" => nil}
+    }.each do |env, expected|
+      reporter = SnapDiff::Reporters::HTML.new(output_path: @output_path)
+      reporter.record([build_failing_assertion("index")])
+      with_run_id("7", **env) { reporter.finalize }
+
+      assert_equal expected, report_review.slice("pr", "issue_url"), env.inspect
+    end
+  end
+
   test "outside a CI run the report has no review controls" do
     reporter = SnapDiff::Reporters::HTML.new(output_path: @output_path)
     reporter.record([build_failing_assertion("index")])
@@ -704,22 +728,24 @@ class HTMLReporterTest < ActiveSupport::TestCase
     with_run_id("7") { reporter.finalize }
 
     path = @output_dir / "report/report.html"
-    assert_equal({"run" => "7", "files" => [], "sha16" => {}}, report_review(path))
+    assert_equal({"run" => "7", "pr" => nil, "issue_url" => nil, "files" => [], "sha16" => {}}, report_review(path))
     assert_equal [nil, nil], report_data(path).map { |e| e["file"] }
     assert_equal %w[rerecorded no_capture], report_data(path).map { |e| e["review_reason"] }
   end
 
   private
 
-  def with_run_id(id)
-    original = ENV["GITHUB_RUN_ID"]
-    ENV["GITHUB_RUN_ID"] = id
+  # The review controls read these; pin all of them, since CI sets them too.
+  def with_run_id(id, ref: nil, repo: nil, server: nil)
+    vars = {"GITHUB_RUN_ID" => id, "GITHUB_REF" => ref, "GITHUB_REPOSITORY" => repo, "GITHUB_SERVER_URL" => server}
+    original = vars.keys.to_h { |k| [k, ENV[k]] }
+    vars.each { |k, v| ENV[k] = v }
     yield
   ensure
-    ENV["GITHUB_RUN_ID"] = original
+    original.each { |k, v| ENV[k] = v }
   end
 
-  def report_review(path)
+  def report_review(path = @output_path)
     JSON.parse(path.read[/^\s*var REVIEW = (.*);$/, 1])
   end
 

@@ -90,7 +90,7 @@ runs:
         | Full report with images | ${{ steps.upload-report-full.outputs.artifact-url || 'N/A' }} |
         EOF
         if [ "$HEAD_REPO" = "$REPO" ]; then
-          printf '\nTo accept: open the HTML report, mark screenshots Accept/Reject, Copy review command, and paste it as a comment on the pull request.\n' >> "$GITHUB_STEP_SUMMARY"
+          printf '\nTo accept: open the HTML report, mark Accept/Reject, then Commit decisions.\n' >> "$GITHUB_STEP_SUMMARY"
         fi
 
     - name: Find existing PR comment
@@ -118,4 +118,4 @@ runs:
           | Full report with images | ${{ steps.upload-report-full.outputs.artifact-url || 'N/A' }} |
           | [All artifacts](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}#artifacts) | Browse all |
 
-          ${{ steps.check-report.outputs.exists == 'true' && github.event.pull_request.head.repo.full_name == github.repository && 'To accept: open the HTML report, mark screenshots Accept/Reject, Copy review command, and paste it as a comment here.' || '' }}
+          ${{ steps.check-report.outputs.exists == 'true' && github.event.pull_request.head.repo.full_name == github.repository && 'To accept: open the HTML report, mark Accept/Reject, then Commit decisions.' || '' }}

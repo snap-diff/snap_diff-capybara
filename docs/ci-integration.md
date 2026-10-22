@@ -287,11 +287,14 @@ Two things this minimal recipe does not do:
 
 When a CI run fails on screenshot diffs, a reviewer can accept the new pixels without checking out the
 branch. In the HTML report (the inline link in the PR comment), each changed or new screenshot has
-Accept and Reject buttons (keys `Y` and `N`). The "Copy review command" button copies a line like
-`/snap-diff accept run=123 linux/cuprite/index.png@0123456789abcdef`. Pasting it as a PR comment starts
-a workflow that commits those exact files from that run's report artifact to the PR branch with the
-repository's own `GITHUB_TOKEN`, replies with the commit, and re-runs CI. The buttons appear only in
-reports built on GitHub Actions.
+Accept and Reject buttons (keys `Y` and `N`). "Commit decisions" opens a new GitHub issue already
+filled in with a command like `/snap-diff accept run=123 pr=45 linux/cuprite/index.png@0123456789abcdef`.
+Click Submit. A workflow commits those exact files from that run's report artifact to the PR branch
+with the repository's own `GITHUB_TOKEN`, posts the result on the PR, closes the issue and re-runs CI.
+The buttons appear only in reports built on GitHub Actions.
+
+If the link would be too long for GitHub, the button is disabled. Use "Copy review command" and paste
+the command as a comment on the pull request instead; it does the same thing.
 
 To install it, copy this workflow. Set `screenshots-path` to your `save_path`. `ci-workflow` is
 optional: it names your test workflow, which needs an `on: workflow_dispatch` trigger. Without it the
@@ -304,18 +307,24 @@ name: Accept screenshots
 on:
   issue_comment:
     types: [created]
+  issues:
+    types: [opened]
 
 jobs:
   accept:
     if: >-
-      github.event.issue.pull_request &&
-      startsWith(github.event.comment.body, '/snap-diff accept') &&
-      contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association)
+      (github.event_name == 'issue_comment' && github.event.issue.pull_request &&
+       startsWith(github.event.comment.body, '/snap-diff ') &&
+       contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association)) ||
+      (github.event_name == 'issues' &&
+       startsWith(github.event.issue.body, '/snap-diff ') &&
+       contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.issue.author_association))
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
       contents: write
       pull-requests: write
+      issues: write
       actions: write   # read is enough if you leave out ci-workflow
     concurrency:
       group: snap-diff-accept-${{ github.event.issue.number }}
@@ -327,11 +336,11 @@ jobs:
           ci-workflow: test.yml
 ```
 
-`issue_comment` workflows run only from the default branch, so merge this file first. Until then the
-comment does nothing.
+`issue_comment` and `issues` workflows run only from the default branch, so merge this file first.
+Until then the issue or comment does nothing.
 
-Commenters need write access to the repository. The workflow checks the permission API as well as the
-comment's `author_association`, so read-only collaborators are refused.
+Reviewers need write access to the repository. The workflow checks the permission API as well as the
+`author_association`, so read-only collaborators are refused, and their issue is closed with the reason.
 
 Limits:
 

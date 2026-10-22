@@ -131,14 +131,25 @@ module SnapDiff
         ERB.new(File.read(self.class.template_path)).result(binding)
       end
 
-      # Review controls (Accept/Reject, the PR comment command) exist only in
-      # a CI run, where the run id names the artifact the bot reads.
+      # Review controls (Accept/Reject, the review command) exist only in a
+      # CI run, where the run id names the artifact the bot reads. A
+      # pull_request run's merge ref names the PR; the repository gives the
+      # new-issue page that "Commit decisions" opens.
       def review
         run = ENV["GITHUB_RUN_ID"].to_s
         return if run.empty?
 
         files = manifest_entries.map { |entry| entry[:accept]["file"] }
-        {run: run, files: files, sha16: files.to_h { |file| [file, file_sha256(file)[0, 16]] }}
+        {run: run, pr: ENV["GITHUB_REF"].to_s[%r{\Arefs/pull/(\d+)/merge\z}, 1], issue_url: new_issue_url,
+         files: files, sha16: files.to_h { |file| [file, file_sha256(file)[0, 16]] }}
+      end
+
+      def new_issue_url
+        repo = ENV["GITHUB_REPOSITORY"].to_s
+        server = ENV.fetch("GITHUB_SERVER_URL", "https://github.com").to_s
+        return unless repo.match?(%r{\A[\w.-]+/[\w.-]+\z}) && server.match?(%r{\Ahttps://[\w.-]+(?::\d+)?\z})
+
+        "#{server}/#{repo}/issues/new"
       end
 
       # The entries the page shows. In a CI run the manifest's entry for a

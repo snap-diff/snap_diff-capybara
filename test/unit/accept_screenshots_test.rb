@@ -23,11 +23,28 @@ class AcceptScreenshotsTest < Minitest::Test
   def test_parse_accept_and_reject
     body = "/snap-diff accept run=123 linux/a.png@0123abcd0123abcd linux/b.webp@ffffffffffffffff\r\n/snap-diff reject linux/c.png\n"
 
-    assert_equal({run: "123", accept: {"linux/a.png" => "0123abcd0123abcd", "linux/b.webp" => "ffffffffffffffff"}, reject: %w[linux/c.png]}, A.parse(body))
+    assert_equal({run: "123", pr: nil, accept: {"linux/a.png" => "0123abcd0123abcd", "linux/b.webp" => "ffffffffffffffff"}, reject: %w[linux/c.png]}, A.parse(body))
   end
 
   def test_parse_without_reject_line
-    assert_equal({run: "7", accept: {"a.png" => "0123abcd0123abcd"}, reject: []}, A.parse("/snap-diff accept run=7 a.png@0123abcd0123abcd"))
+    assert_equal({run: "7", pr: nil, accept: {"a.png" => "0123abcd0123abcd"}, reject: []}, A.parse("/snap-diff accept run=7 a.png@0123abcd0123abcd"))
+  end
+
+  def test_parse_pr
+    assert_equal({run: "7", pr: "12", accept: {"a.png" => "0123abcd0123abcd"}, reject: %w[b.png]},
+      A.parse("/snap-diff accept run=7 pr=12 a.png@0123abcd0123abcd\n/snap-diff reject b.png"))
+    assert_match(/pr=/, refusal { A.parse("/snap-diff accept run=7 pr=x a.png@0123abcd0123abcd") })
+  end
+
+  def test_parse_reject_only
+    assert_equal({run: "7", pr: "12", accept: {}, reject: %w[a.png b.png]}, A.parse("/snap-diff reject run=7 pr=12 a.png b.png"))
+    assert_equal({run: "7", pr: nil, accept: {}, reject: %w[a.png]}, A.parse("/snap-diff reject run=7 a.png"))
+  end
+
+  def test_parse_refuses_reject_only_without_run_or_files
+    assert_match(/run=/, refusal { A.parse("/snap-diff reject a.png") })
+    assert_match(/at least one file/, refusal { A.parse("/snap-diff reject run=7") })
+    assert_match(/unexpected line/i, refusal { A.parse("/snap-diff reject run=7 a.png\n/snap-diff reject b.png") })
   end
 
   def test_parse_drops_duplicate_files
@@ -304,7 +321,35 @@ class AcceptScreenshotsTest < Minitest::Test
     assert_match(/not a run of this pull request/, refusal { A.check_run!(run, "o/r", "5", "9", "feat") })
   end
 
+  # -- which pull request ------------------------------------------------------
+
+  def pull(number, repo: "o/r", ref: "feat") = {"number" => number, "head" => {"ref" => ref, "repo" => {"full_name" => repo}}}
+
+  def test_resolve_pr_takes_the_single_open_same_repo_pr_on_the_branch
+    pulls = [pull(3), pull(4, repo: "fork/r"), pull(5, ref: "other")]
+
+    assert_equal "3", A.resolve_pr(pulls, "o/r", "feat")
+  end
+
+  def test_resolve_pr_refuses_none_or_several
+    assert_match(/No open pull request/, refusal { A.resolve_pr([pull(4, repo: "fork/r")], "o/r", "feat") })
+    assert_match(/More than one/, refusal { A.resolve_pr([pull(3), pull(6)], "o/r", "feat") })
+  end
+
+  def test_comment_pr_is_the_commented_pr
+    assert_equal "5", A.comment_pr({pr: nil}, "5")
+    assert_equal "5", A.comment_pr({pr: "5"}, "5")
+    assert_match(/names PR #6 but was posted on PR #5/, refusal { A.comment_pr({pr: "6"}, "5") })
+  end
+
   # -- text that reaches replies and logs -------------------------------------
+
+  def test_reject_summary
+    text = A.reject_summary({run: "7", accept: {}, reject: %w[a.png b.png]})
+
+    assert_includes text, "run 7"
+    assert_includes text, "- `a.png`\n- `b.png`"
+  end
 
   def test_lfs_paths
     out = "a/x.png: filter: lfs\nc.png: filter: unspecified\nd.webp: filter: other\n"
