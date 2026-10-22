@@ -1,0 +1,471 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- script-src carries the sha256 (base64) of the exact text of the one inline script element below. Recompute it whenever that script changes, or the page will not run. -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-MW6NpEd5ZbwAohpVGXi77Ygw4qUokSaEtb0r/RfQOQ0='; style-src 'unsafe-inline'; img-src blob:; connect-src https://api.github.com https://*.blob.core.windows.net; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<title>snap_diff review</title>
+<style>
+  :root { --bg: #fff; --fg: #1f2328; --muted: #59636e; --line: #d1d9e0; --panel: #f6f8fa;
+    --accept: #1a7f37; --reject: #cf222e; --accent: #0969da; color-scheme: light dark; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #0d1117; --fg: #e6edf3; --muted: #9198a1; --line: #3d444d; --panel: #151b23;
+      --accept: #3fb950; --reject: #f85149; --accent: #4493f8; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg); font: 14px/1.5 system-ui, sans-serif; }
+  header, footer { padding: 8px 16px; border-bottom: 1px solid var(--line); display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  footer { border-top: 1px solid var(--line); border-bottom: 0; position: sticky; bottom: 0; background: var(--bg); }
+  h1 { font-size: 16px; margin: 0; }
+  .muted { color: var(--muted); }
+  .spacer { flex: 1; }
+  button { font: inherit; padding: 4px 12px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); color: var(--fg); cursor: pointer; }
+  button:disabled { opacity: .5; cursor: default; }
+  button.on.accept, .badge.accept { background: var(--accept); border-color: var(--accept); color: #fff; }
+  button.on.reject, .badge.reject { background: var(--reject); border-color: var(--reject); color: #fff; }
+  button.on.view { border-color: var(--accent); color: var(--accent); }
+  input { font: inherit; padding: 4px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--fg); width: 32em; max-width: 100%; }
+  #msg { margin: 16px; padding: 8px 12px; border-radius: 6px; border: 1px solid var(--line); background: var(--panel); white-space: pre-wrap; }
+  #msg.error { border-color: var(--reject); }
+  #msg:empty { display: none; }
+  #token-form { margin: 16px; display: flex; gap: 8px; flex-wrap: wrap; }
+  main { display: grid; grid-template-columns: 260px 1fr; min-height: calc(100vh - 120px); }
+  nav { border-right: 1px solid var(--line); overflow-y: auto; }
+  nav button { display: flex; width: 100%; gap: 6px; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; background: none; text-align: left; padding: 6px 12px; }
+  nav button.current { background: var(--panel); box-shadow: inset 3px 0 var(--accent); }
+  nav .name { flex: 1; overflow-wrap: anywhere; }
+  .badge { font-size: 12px; padding: 0 6px; border-radius: 10px; border: 1px solid var(--line); white-space: nowrap; }
+  #viewer { padding: 12px 16px; min-width: 0; }
+  .toolbar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
+  .images { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+  figure { margin: 0; }
+  figcaption { font-size: 12px; color: var(--muted); }
+  img { max-width: 100%; border: 1px solid var(--line); display: block; cursor: zoom-in; }
+  #confirm { width: 100%; display: flex; gap: 8px; align-items: flex-start; flex-wrap: wrap; }
+  #confirm ul { max-height: 30vh; overflow: auto; margin: 4px 0; }
+  [hidden] { display: none !important; }
+  a { color: var(--accent); }
+</style>
+</head>
+<body>
+<header>
+  <h1>snap_diff review</h1>
+  <span id="where" class="muted"></span>
+  <span class="spacer"></span>
+  <button id="forget" type="button" hidden>Forget token</button>
+</header>
+<div id="msg" role="status"></div>
+<form id="token-form" hidden>
+  <label for="token">GitHub token (fine-grained: Actions read, Contents write, Pull requests write). Kept in memory for this page load only.</label>
+  <input id="token" type="password" autocomplete="off" required>
+  <button type="submit">Load screenshots</button>
+</form>
+<main id="review" hidden>
+  <nav id="list"></nav>
+  <section id="viewer"></section>
+</main>
+<footer id="bar" hidden>
+  <span id="counter"></span>
+  <span class="muted">Keys: A accept, R reject, J/K next/previous, T flip base/new</span>
+  <span class="spacer"></span>
+  <button id="submit" type="button" disabled>Submit review</button>
+  <div id="confirm" hidden><div id="confirm-text"></div><button id="confirm-yes" type="button">Yes, submit</button><button id="confirm-no" type="button">Cancel</button></div>
+</footer>
+<script>
+(() => {
+"use strict";
+const API = "https://api.github.com";
+// Captured before anything else runs, so a page holding a handle to this window cannot swap it later.
+const doFetch = fetch.bind(window);
+const MAX_ZIP = 100 * 1024 * 1024, MAX_FILE = 20 * 1024 * 1024, MAX_TOTAL = 200 * 1024 * 1024, MAX_ENTRIES = 500;
+const PERM = { actions: "Actions: read", contents: "Contents: write", pullsRead: "Pull requests: read", pulls: "Pull requests: write", user: "read your own user profile" };
+const $ = (id) => document.getElementById(id);
+const params = new URLSearchParams(location.search);
+const repo = params.get("repo"), pr = params.get("pr"), run = params.get("run"), artifact = params.get("artifact");
+let token = null, inflatedTotal = 0, head = null, entries = [], current = 0, view = "side", flipped = false, busy = false;
+
+function el(tag, props, ...children) {
+  const node = Object.assign(document.createElement(tag), props);
+  node.append(...children.filter((c) => c != null));
+  return node;
+}
+
+function say(text, isError) {
+  $("msg").textContent = text;
+  $("msg").className = isError ? "error" : "";
+}
+
+// Only https links from the API go into an href.
+function link(text, url) {
+  return /^https:\/\//.test(url || "") ? el("a", { href: url, textContent: text, target: "_blank", rel: "noopener" }) : text;
+}
+
+// Names come from the artifact: no markdown, mentions or issue refs reach the commit or comment.
+const clean = (s) => String(s).replace(/[^\w .\/-]/g, "?").slice(0, 80);
+const sameRepo = (fullName) => typeof fullName === "string" && fullName.toLowerCase() === repo.toLowerCase();
+const encodePath = (path) => path.split("/").map(encodeURIComponent).join("/");
+
+async function api(method, path, body, perm, accept) {
+  let res;
+  try {
+    res = await doFetch(API + path, {
+      method,
+      headers: { Authorization: "Bearer " + token, Accept: accept || "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28",
+        ...(body ? { "Content-Type": "application/json" } : {}) },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+  } catch (_) {
+    throw Object.assign(new Error(`Could not reach GitHub (${method} ${path}): network failure or the request was blocked (CORS/CSP). Check your connection and try again.`), { fatal: true });
+  }
+  if (res.ok) return res;
+  let detail = "";
+  try { detail = (await res.json()).message || ""; } catch (_) { /* body is not JSON; status says enough */ }
+  const text = res.status === 401 ? "The token is invalid or expired. Paste a new one."
+    : res.status === 403 ? `The token lacks permission: ${perm}. ${detail}`
+    : `GitHub answered ${res.status} to ${method} ${path}. ${detail}`;
+  throw Object.assign(new Error(text), { status: res.status, detail });
+}
+const json = async (promise) => (await promise).json();
+
+// Minimal zip reader: sizes come from the central directory (local headers may defer them to a data descriptor).
+// ponytail: no ZIP64, so artifacts over 4 GB or 65535 files fail loudly; add ZIP64 if a report ever gets that big.
+function unzip(buf) {
+  const v = new DataView(buf), u8 = new Uint8Array(buf), damaged = (why) => new Error(`The artifact zip is damaged (${why}).`);
+  let eocd = -1;
+  for (let i = buf.byteLength - 22; i >= Math.max(0, buf.byteLength - 65557); i--) {
+    if (v.getUint32(i, true) === 0x06054b50) { eocd = i; break; }
+  }
+  if (eocd < 0) throw new Error("The artifact download is not a zip file.");
+  const files = new Map(), names = new TextDecoder();
+  let p = v.getUint32(eocd + 16, true);
+  for (let n = v.getUint16(eocd + 10, true); n > 0; n--) {
+    if (p + 46 > buf.byteLength || v.getUint32(p, true) !== 0x02014b50) throw damaged("bad central directory");
+    const flags = v.getUint16(p + 8, true), method = v.getUint16(p + 10, true);
+    const csize = v.getUint32(p + 20, true), size = v.getUint32(p + 24, true), local = v.getUint32(p + 42, true);
+    const nameLen = v.getUint16(p + 28, true);
+    const name = names.decode(u8.subarray(p + 46, p + 46 + nameLen));
+    p += 46 + nameLen + v.getUint16(p + 30, true) + v.getUint16(p + 32, true);
+    if (name.endsWith("/")) continue;
+    if (local + 30 > buf.byteLength || v.getUint32(local, true) !== 0x04034b50) throw damaged(`bad local header for ${name}`);
+    const start = local + 30 + v.getUint16(local + 26, true) + v.getUint16(local + 28, true);
+    if (start + csize > buf.byteLength) throw damaged(`${name} runs past the end`);
+    files.set(name, { name, method, size, encrypted: (flags & 1) === 1, data: u8.subarray(start, start + csize) });
+  }
+  return files;
+}
+
+// Inflates into a buffer of the declared size and stops the moment the output would exceed it.
+async function inflate(file) {
+  if (file.encrypted) throw new Error(`${file.name} is encrypted.`);
+  if (file.size > MAX_FILE) throw new Error(`${file.name} is larger than 20 MB.`);
+  if ((inflatedTotal += file.size) > MAX_TOTAL) throw Object.assign(new Error("The artifact unpacks to more than 200 MB; the review page refuses it."), { fatal: true });
+  if (file.method === 0) {
+    if (file.data.length !== file.size) throw new Error(`${file.name} does not match its declared size.`);
+    return file.data;
+  }
+  if (file.method !== 8) throw new Error(`Unsupported compression method ${file.method} for ${file.name}.`);
+  const reader = new Blob([file.data]).stream().pipeThrough(new DecompressionStream("deflate-raw")).getReader();
+  const out = new Uint8Array(file.size);
+  let n = 0;
+  for (let r = await reader.read(); !r.done; r = await reader.read()) {
+    if (n + r.value.length > file.size) { reader.cancel(); throw new Error(`${file.name} inflates past its declared size.`); }
+    out.set(r.value, n);
+    n += r.value.length;
+  }
+  if (n !== file.size) throw new Error(`${file.name} does not match its declared size.`);
+  return out;
+}
+
+const MIME = { png: "image/png", webp: "image/webp" };
+const ascii = (b, from, to) => String.fromCharCode(...b.subarray(from, to));
+const MAGIC = {
+  png: (b) => [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a].every((x, i) => b[i] === x),
+  webp: (b) => ascii(b, 0, 4) === "RIFF" && ascii(b, 8, 12) === "WEBP",
+};
+function imageUrl(bytes, ext) {
+  return URL.createObjectURL(new Blob([bytes], { type: MIME[ext] }));
+}
+
+// The manifest path becomes a tree path in a commit: only an image inside the repo, never under .git*.
+function pathProblem(path, ext) {
+  if (typeof path !== "string" || path === "" || path.startsWith("/")) return "is not a relative path";
+  if (!/^[A-Za-z0-9._ \/-]+$/.test(path)) return "has characters other than letters, digits, . _ space / -";
+  const segments = path.split("/");
+  if (segments.some((s) => s === "" || s === "." || s === "..")) return "has empty, . or .. segments";
+  if (segments.some((s) => s.toLowerCase().startsWith(".git"))) return "touches a .git* file";
+  if (path.split(".").pop().toLowerCase() !== ext) return `does not end in .${ext} like its capture`;
+  return null;
+}
+
+// The committed file at the run's commit, or null when the repo has none there (404).
+async function baseline(path) {
+  let res;
+  try {
+    res = await api("GET", `/repos/${repo}/contents/${encodePath(path)}?ref=${head.sha}`, null, PERM.contents, "application/vnd.github.raw");
+  } catch (e) {
+    if (e.status === 404) return null;
+    throw e;
+  }
+  const tooBig = new Error(`The committed ${path} is larger than 20 MB.`);
+  if (Number(res.headers.get("content-length")) > MAX_FILE) throw tooBig;
+  const bytes = new Uint8Array(await res.arrayBuffer());
+  if (bytes.length > MAX_FILE) throw tooBig;
+  return bytes;
+}
+
+async function readEntry(m, zip) {
+  const name = clean(m.name);
+  if (m.status !== "changed" && m.status !== "new") throw new Error(`${name}: unknown status ${clean(m.status)}.`);
+  const ext = typeof m.file === "string" ? m.file.split(".").pop().toLowerCase() : "";
+  if (!Object.hasOwn(MIME, ext)) throw new Error(`${name}: capture ${m.file} is not a .png or .webp.`);
+  const problem = pathProblem(m.path, ext);
+  if (problem) throw new Error(`${name}: refusing path ${m.path}: it ${problem}.`);
+  const capture = zip.get(m.file);
+  if (!capture) throw new Error(`${name}: the artifact is missing ${m.file}.`);
+  const bytes = await inflate(capture);
+  if (!MAGIC[ext](bytes)) throw new Error(`${name}: ${m.file} is not a real .${ext} image.`);
+  // The "before" image is the committed baseline at the run's commit, not a file the artifact claims it is.
+  const before = await baseline(m.path);
+  if (m.status === "new" && before) throw new Error(`${name}: ${m.path} already exists in the repo; it is not new.`);
+  if (m.status === "changed" && !before) throw new Error(`${name}: ${m.path} has no committed baseline at the run's commit.`);
+  const entry = { name, status: m.status, path: m.path, bytes, decision: null, images: { new: imageUrl(bytes, ext) } };
+  if (before) {
+    entry.images.base = imageUrl(before, ext);
+    const stem = m.file.slice(0, -(ext.length + 1));
+    for (const [key, suffix] of [["diff", ".diff."], ["baseDiff", ".base.diff."], ["heatmap", ".heatmap.diff."]]) {
+      const sibling = zip.get(stem + suffix + ext);
+      if (sibling) entry.images[key] = imageUrl(await inflate(sibling), ext);
+    }
+  }
+  return entry;
+}
+
+// The link carries four independent numbers; each must point at the same PR head before anything is shown.
+async function verifyLink() {
+  say(`Reading CI run ${run}…`);
+  const runInfo = await json(api("GET", `/repos/${repo}/actions/runs/${run}`, null, PERM.actions));
+  const headRepo = runInfo.head_repository && runInfo.head_repository.full_name;
+  if (!sameRepo(headRepo)) throw new Error(`This run is from a fork (${headRepo || "unknown repository"}). Fork PRs are not supported yet.`);
+  if (!/^[0-9a-f]{40}$/.test(runInfo.head_sha || "")) throw new Error(`CI run ${run} has no head commit.`);
+
+  const expired = new Error(`Artifact ${artifact} has expired or was not found. Re-run CI to get a fresh report.`);
+  let art;
+  try {
+    art = await json(api("GET", `/repos/${repo}/actions/artifacts/${artifact}`, null, PERM.actions));
+  } catch (e) {
+    throw e.status === 404 || e.status === 410 ? expired : e;
+  }
+  if (art.expired) throw expired;
+  if (!(art.size_in_bytes <= MAX_ZIP)) throw new Error(`Artifact ${artifact} is larger than 100 MB; the review page refuses it.`);
+  if (!art.workflow_run || String(art.workflow_run.id) !== run) throw new Error(`Artifact ${artifact} was not made by CI run ${run}. This link is wrong; use the one from the PR comment.`);
+
+  const pull = await json(api("GET", `/repos/${repo}/pulls/${pr}`, null, PERM.pullsRead));
+  if (pull.state !== "open") throw new Error(`PR #${pr} is ${pull.state}, not open.`);
+  if (!sameRepo(pull.head && pull.head.repo && pull.head.repo.full_name)) throw new Error(`PR #${pr} comes from a fork. Fork PRs are not supported yet.`);
+  if (pull.head.sha !== runInfo.head_sha) throw new Error(`PR #${pr} has new commits since CI run ${run}, or the run is not for this PR. Re-run CI and review the new report.`);
+  const branch = pull.head.ref;
+  if (!branch || branch === pull.base.ref || branch === pull.base.repo.default_branch) throw new Error(`Refusing to commit to ${branch}: it is the PR's base branch or the default branch.`);
+  return { sha: runInfo.head_sha, branch };
+}
+
+async function load() {
+  entries.forEach((e) => Object.values(e.images).forEach((url) => URL.revokeObjectURL(url)));
+  entries = [];
+  current = 0;
+  inflatedTotal = 0;
+  $("review").hidden = $("bar").hidden = true;
+  head = await verifyLink();
+
+  say(`Downloading artifact ${artifact}…`);
+  const tooBig = new Error(`Artifact ${artifact} is larger than 100 MB; the review page refuses it.`);
+  const res = await api("GET", `/repos/${repo}/actions/artifacts/${artifact}/zip`, null, PERM.actions);
+  if (Number(res.headers.get("content-length")) > MAX_ZIP) throw tooBig;
+  const buf = await res.arrayBuffer();
+  if (buf.byteLength > MAX_ZIP) throw tooBig;
+  const zip = unzip(buf);
+  const manifestFile = zip.get("snap_diff_manifest.json");
+  if (!manifestFile) throw new Error("The artifact has no snap_diff_manifest.json. The report was made by a snap_diff version without the review page.");
+  const manifest = JSON.parse(new TextDecoder().decode(await inflate(manifestFile)));
+  if (manifest.version !== 1 || !Array.isArray(manifest.entries)) throw new Error("snap_diff_manifest.json has an unknown format.");
+  if (manifest.entries.length > MAX_ENTRIES) throw new Error(`The manifest lists ${manifest.entries.length} screenshots; the review page handles at most ${MAX_ENTRIES}.`);
+
+  const problems = [];
+  for (const m of manifest.entries) {
+    try {
+      entries.push(await readEntry(m, zip));
+    } catch (e) {
+      // Only a bad entry is left out; an API failure or a blown budget stops the whole load.
+      if (e.status || e.fatal) throw e;
+      problems.push(e.message);
+    }
+  }
+  const note = problems.length ? `Left out ${problems.length} screenshot(s):\n${problems.join("\n")}` : "";
+  if (!entries.length) { say(note || "Nothing to review: this report has no changed or new screenshots.", Boolean(note)); return; }
+  say(note, Boolean(note));
+  $("review").hidden = $("bar").hidden = false;
+  render();
+}
+
+const LABELS = { base: "Baseline (committed)", new: "New capture", diff: "Diff on new", baseDiff: "Diff on baseline", heatmap: "Heatmap" };
+function figure(entry, key) {
+  return el("figure", {}, el("figcaption", { textContent: LABELS[key] }),
+    el("a", { href: entry.images[key], target: "_blank", rel: "noopener" }, el("img", { src: entry.images[key], alt: `${entry.name}: ${LABELS[key]}` })));
+}
+
+function render() {
+  const list = $("list");
+  list.replaceChildren(...entries.map((e, i) =>
+    el("button", { type: "button", className: i === current ? "current" : "", onclick: () => { current = i; flipped = false; render(); } },
+      el("span", { className: "name", textContent: e.name }), el("span", { className: "badge", textContent: e.status }),
+      e.decision ? el("span", { className: "badge " + e.decision, textContent: e.decision === "accept" ? "accepted" : "rejected" }) : null)));
+  list.children[current].scrollIntoView({ block: "nearest" });
+
+  const e = entries[current], hasBase = Boolean(e.images.base);
+  const decide = (d, label) => el("button", { type: "button", className: d + (e.decision === d ? " on" : ""), textContent: label, disabled: busy, onclick: () => mark(d) });
+  const viewButton = (v, label) => el("button", { type: "button", className: "view" + (view === v ? " on" : ""), textContent: label, onclick: () => { view = v; render(); } });
+  const shown = !hasBase ? ["new"] : view === "side" ? ["base", "new"] : [flipped ? "base" : "new"];
+  const extras = ["diff", "heatmap", "baseDiff"].filter((k) => e.images[k]);
+  $("viewer").replaceChildren(
+    el("div", { className: "toolbar" },
+      el("strong", { textContent: e.name }), el("span", { className: "muted", textContent: `${e.status} · ${e.path} · ${current + 1}/${entries.length}` }),
+      el("span", { className: "spacer" }), decide("accept", "Accept"), decide("reject", "Reject")),
+    hasBase ? el("div", { className: "toolbar" }, viewButton("side", "Side by side"), viewButton("toggle", "Toggle"),
+      view === "toggle" ? el("button", { type: "button", textContent: `Showing ${flipped ? "baseline" : "new"} — flip (T)`, onclick: flip }) : null) : null,
+    el("div", { className: "images" }, ...shown.map((k) => figure(e, k))),
+    extras.length ? el("h3", { textContent: "Differences" }) : null,
+    el("div", { className: "images" }, ...extras.map((k) => figure(e, k))));
+
+  const counts = { accept: 0, reject: 0, none: 0 };
+  entries.forEach((x) => counts[x.decision || "none"]++);
+  $("counter").textContent = `${counts.accept} accepted · ${counts.reject} rejected · ${counts.none} undecided`;
+  $("submit").disabled = busy || counts.accept + counts.reject === 0;
+}
+
+function mark(d) {
+  if (busy) return;
+  const e = entries[current];
+  e.decision = e.decision === d ? null : d;
+  $("confirm").hidden = true;
+  $("submit").hidden = false;
+  render();
+}
+function move(step) { current = Math.min(entries.length - 1, Math.max(0, current + step)); flipped = false; render(); }
+function flip() { if (view === "toggle") { flipped = !flipped; render(); } }
+
+function base64(bytes) {
+  let s = "";
+  for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+  return btoa(s);
+}
+
+async function submit() {
+  const accepted = entries.filter((e) => e.decision === "accept"), rejected = entries.filter((e) => e.decision === "reject");
+  const login = (await json(api("GET", "/user", null, PERM.user))).login;
+  let commit = null;
+  if (accepted.length) {
+    const tree = [];
+    for (const e of accepted) {
+      say(`Uploading ${e.name}…`);
+      const blob = await json(api("POST", `/repos/${repo}/git/blobs`, { content: base64(e.bytes), encoding: "base64" }, PERM.contents));
+      tree.push({ path: e.path, mode: "100644", type: "blob", sha: blob.sha });
+    }
+    say("Creating the commit…");
+    const parent = await json(api("GET", `/repos/${repo}/git/commits/${head.sha}`, null, PERM.contents));
+    const newTree = await json(api("POST", `/repos/${repo}/git/trees`, { base_tree: parent.tree.sha, tree }, PERM.contents));
+    const message = `Accept screenshot baselines\n\n${accepted.map((e) => `- ${e.name}`).join("\n")}\n\nReviewed with the snap_diff review page by @${login}`;
+    commit = await json(api("POST", `/repos/${repo}/git/commits`, { message, tree: newTree.sha, parents: [head.sha] }, PERM.contents));
+    const ref = encodePath(head.branch);
+    try {
+      await api("PATCH", `/repos/${repo}/git/refs/heads/${ref}`, { sha: commit.sha, force: false }, PERM.contents);
+    } catch (e) {
+      if (e.status !== 422) throw e;
+      const now = await json(api("GET", `/repos/${repo}/git/ref/heads/${ref}`, null, PERM.contents));
+      if (now.object.sha !== head.sha) throw new Error(`This PR has new commits since CI run ${run}. Re-run CI and review the new report.`);
+      throw new Error(`GitHub refused to update ${head.branch}: ${e.detail || e.message}`);
+    }
+  }
+  say("Posting the PR comment…");
+  const lines = [`Screenshot review by @${login} (CI run ${run}):`, ""];
+  if (accepted.length) lines.push(`Accepted in ${commit.sha}:`, ...accepted.map((e) => `- \`${e.name}\``), "");
+  if (rejected.length) lines.push("Rejected:", ...rejected.map((e) => `- \`${e.name}\``), "");
+  let comment;
+  try {
+    comment = await json(api("POST", `/repos/${repo}/issues/${pr}/comments`, { body: lines.join("\n").trim() }, PERM.pulls));
+  } catch (e) {
+    if (commit) throw Object.assign(new Error(`Committed ${commit.sha}, but the comment failed: ${e.message}`), { locked: true });
+    throw e;
+  }
+
+  $("msg").className = "";
+  $("msg").replaceChildren(
+    `Done. ${accepted.length} accepted, ${rejected.length} rejected. `,
+    commit ? link(`Commit ${commit.sha.slice(0, 7)}`, commit.html_url) : "No commit (nothing accepted).", " · ",
+    link("PR comment", comment.html_url));
+}
+
+function fail(e) {
+  say(e.message, true);
+  if (e.status === 401) { token = null; $("token-form").hidden = false; }
+}
+
+// The page commits with the reviewer's token, so it only serves the repository it is published for.
+function hostAllows() {
+  const host = location.hostname, segment = (location.pathname.split("/")[1] || "").toLowerCase();
+  const [owner, name] = repo.toLowerCase().split("/");
+  if (host === "localhost" || host === "127.0.0.1") return true;
+  if (host.endsWith(".github.io")) return host === `${owner}.github.io` && segment === name;
+  return segment === name;
+}
+
+const DIGITS = /^[1-9][0-9]{0,18}$/;
+const REPO = /^[A-Za-z0-9-]{1,39}\/(?!\.\.?$)[A-Za-z0-9._-]{1,100}$/;
+if (window.opener || window.top !== window) {
+  say("Open this review page directly in its own tab, not from another page or inside a frame.", true);
+} else if (!REPO.test(repo || "") || ![pr, run, artifact].every((n) => DIGITS.test(n || ""))) {
+  say("This link is missing or has invalid parameters. It needs ?repo=owner/name&pr=<number>&run=<run id>&artifact=<artifact id>, as posted in the PR comment by the snap_diff upload-screenshots action.", true);
+} else if (!hostAllows()) {
+  say(`This review page is published for a different repository and will not review ${repo}. Use the review page of ${repo} itself.`, true);
+} else {
+  $("where").textContent = `${repo} · PR #${pr} · run ${run}`;
+  $("token-form").hidden = false;
+  $("token-form").addEventListener("submit", (ev) => {
+    ev.preventDefault();
+    token = $("token").value.trim();
+    $("token").value = "";
+    $("token-form").hidden = true;
+    $("forget").hidden = false;
+    load().catch(fail);
+  });
+  $("forget").addEventListener("click", () => { token = null; location.reload(); });
+  $("submit").addEventListener("click", () => {
+    const paths = entries.filter((e) => e.decision === "accept").map((e) => e.path);
+    $("confirm-text").replaceChildren(...(paths.length
+      ? [`Commit these ${paths.length} file(s) to ${head.branch} and comment on PR #${pr}:`, el("ul", {}, ...paths.map((p) => el("li", { textContent: p })))]
+      : [`Comment the rejections on PR #${pr}?`]));
+    $("confirm").hidden = false;
+    $("submit").hidden = true;
+  });
+  $("confirm-no").addEventListener("click", () => { $("confirm").hidden = true; $("submit").hidden = false; });
+  $("confirm-yes").addEventListener("click", () => {
+    $("confirm").hidden = true;
+    busy = true;
+    render();
+    // Success, or a commit already on the branch, keeps the page locked: a second submit would commit again.
+    submit().then(render, (e) => {
+      if (!e.locked) { busy = false; $("submit").hidden = false; }
+      render();
+      fail(e);
+    });
+  });
+  document.addEventListener("keydown", (ev) => {
+    if (!entries.length || ev.target.tagName === "INPUT" || ev.ctrlKey || ev.metaKey || ev.altKey) return;
+    const action = { a: () => mark("accept"), r: () => mark("reject"), j: () => move(1), k: () => move(-1), t: flip }[ev.key.toLowerCase()];
+    if (action) { ev.preventDefault(); action(); }
+  });
+}
+})();
+</script>
+</body>
+</html>

@@ -20,6 +20,7 @@
 *.diff.png
 *.base.png
 snap_diff_report.html
+snap_diff_manifest.json
 
 *.attempt_*.webp
 *.diff.webp
