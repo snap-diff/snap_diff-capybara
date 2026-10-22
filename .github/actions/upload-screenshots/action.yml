@@ -77,6 +77,9 @@ runs:
     - name: Job summary
       if: steps.check-report.outputs.exists == 'true'
       shell: bash
+      env:
+        HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+        REPO: ${{ github.repository }}
       run: |
         cat >> "$GITHUB_STEP_SUMMARY" <<EOF
         ### SnapDiff Report
@@ -86,6 +89,9 @@ runs:
         | HTML report (inline) | ${{ steps.upload-report.outputs.artifact-url || 'N/A' }} |
         | Full report with images | ${{ steps.upload-report-full.outputs.artifact-url || 'N/A' }} |
         EOF
+        if [ "$HEAD_REPO" = "$REPO" ]; then
+          printf '\nTo accept: open the HTML report, mark screenshots Accept/Reject, Copy review command, and paste it as a comment on the pull request.\n' >> "$GITHUB_STEP_SUMMARY"
+        fi
 
     - name: Find existing PR comment
       if: inputs.pr-comment == 'true' && github.event_name == 'pull_request'
@@ -111,3 +117,5 @@ runs:
           | HTML report (inline) | ${{ steps.upload-report.outputs.artifact-url || 'N/A' }} |
           | Full report with images | ${{ steps.upload-report-full.outputs.artifact-url || 'N/A' }} |
           | [All artifacts](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}#artifacts) | Browse all |
+
+          ${{ steps.check-report.outputs.exists == 'true' && github.event.pull_request.head.repo.full_name == github.repository && 'To accept: open the HTML report, mark screenshots Accept/Reject, Copy review command, and paste it as a comment here.' || '' }}

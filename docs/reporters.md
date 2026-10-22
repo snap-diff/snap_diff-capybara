@@ -24,10 +24,9 @@ committing it is what accepts it). Their count in the report is the summary line
 
 **Note:** The report is not written when every screenshot matched and none is new.
 
-Beside the report it writes `snap_diff_manifest.json`: one entry per changed or new screenshot with
-its `name`, `status`, repo-relative baseline `path` and the capture `file`. The
-[browser review page](ci-integration.md#accept-or-reject-screenshots-in-the-browser) reads it; add
-it to your `.gitignore` next to `snap_diff_report.html`.
+It also writes `snap_diff_manifest.json`, one entry per changed or new screenshot. The
+[accept workflow](ci-integration.md#accept-screenshots-from-the-pull-request) reads it to find where
+each accepted file goes. Add it to your `.gitignore` next to `snap_diff_report.html`.
 
 ## The end-of-run summary
 

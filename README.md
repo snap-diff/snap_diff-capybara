@@ -233,7 +233,7 @@ After tests run, open `doc/screenshots/snap_diff_report.html`:
 
 ![SnapDiff Web UI — annotated diff showing changed regions highlighted in red](docs/images/snap_diff_annotated.png)
 
-See [Web UI & Custom Reporters](docs/reporters.md) for full feature details and [CI Integration](docs/ci-integration.md) for GitHub Actions setup.
+See [Web UI & Custom Reporters](docs/reporters.md) for full feature details and [CI Integration](docs/ci-integration.md) for GitHub Actions setup, including [accepting screenshots from a PR comment](docs/ci-integration.md#accept-screenshots-from-the-pull-request).
 
 ## AI-Assisted Triage (optional)
 

@@ -283,4 +283,72 @@ Two things this minimal recipe does not do:
 2. Enter the branch name (e.g. your PR branch)
 3. The workflow records new and changed baselines, commits, and pushes
 
+## Accept screenshots from the pull request
+
+When a CI run fails on screenshot diffs, a reviewer can accept the new pixels without checking out the
+branch. In the HTML report (the inline link in the PR comment), each changed or new screenshot has
+Accept and Reject buttons (keys `Y` and `N`). The "Copy review command" button copies a line like
+`/snap-diff accept run=123 linux/cuprite/index.png@0123456789abcdef`. Pasting it as a PR comment starts
+a workflow that commits those exact files from that run's report artifact to the PR branch with the
+repository's own `GITHUB_TOKEN`, replies with the commit, and re-runs CI. The buttons appear only in
+reports built on GitHub Actions.
+
+To install it, copy this workflow. Set `screenshots-path` to your `save_path`. `ci-workflow` is
+optional: it names your test workflow, which needs an `on: workflow_dispatch` trigger. Without it the
+reply asks you to re-run CI by hand, because a push made with `GITHUB_TOKEN` does not start workflows.
+
+```yaml
+# .github/workflows/snap-diff-accept.yml
+name: Accept screenshots
+
+on:
+  issue_comment:
+    types: [created]
+
+jobs:
+  accept:
+    if: >-
+      github.event.issue.pull_request &&
+      startsWith(github.event.comment.body, '/snap-diff accept') &&
+      contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      pull-requests: write
+      actions: write   # read is enough if you leave out ci-workflow
+    concurrency:
+      group: snap-diff-accept-${{ github.event.issue.number }}
+      cancel-in-progress: false
+    steps:
+      - uses: snap-diff/snap_diff-capybara/.github/actions/accept-screenshots@master
+        with:
+          screenshots-path: doc/screenshots
+          ci-workflow: test.yml
+```
+
+`issue_comment` workflows run only from the default branch, so merge this file first. Until then the
+comment does nothing.
+
+Commenters need write access to the repository. The workflow checks the permission API as well as the
+comment's `author_association`, so read-only collaborators are refused.
+
+Limits:
+
+- Pull requests from the same repository only. A fork PR is refused.
+- Git LFS paths are refused. Accept those locally.
+- Screenshot paths may use only `A-Z a-z 0-9 . _ - /` (no spaces) and must sit under `screenshots-path`.
+- The report artifact must still exist. `upload-screenshots` keeps it `retention-days` days (default 2).
+- Only the PR's current head can be accepted. After a new push, review the new run's report.
+- Only the last capture of a file can be accepted. Earlier captures of it show a note instead of the buttons.
+
+Security: the workflow never checks out or runs the PR's code. It downloads the report artifact, takes
+the paths from the report's manifest, and commits a file only if its SHA-256 matches the hash in the
+reviewer's command and its bytes are a PNG or WebP. It pushes only to the PR branch, and only while
+that branch is still at the commit the run tested. The design does rely on trust you already extend:
+whoever opens a same-repository PR can already push to the repository, and their CI run produces the
+artifact. Beyond that, the permission check and your branch protection limit the damage. Do not enable
+this for forks, and do not give the bot a ruleset bypass: with branch protection in place, a push the
+rules reject fails instead of landing.
+
 [← Back to README](../README.md)
