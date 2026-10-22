@@ -506,7 +506,8 @@ class HTMLReporterTest < ActiveSupport::TestCase
     capture_new_screenshot(reporter, "signup")
     reporter.finalize
 
-    assert_equal [{"name" => "signup", "status" => "new", "path" => "screenshots/signup.png", "file" => "screenshots/signup.png"}],
+    sha256 = Digest::SHA256.file(@output_dir / "screenshots/signup.png").hexdigest
+    assert_equal [{"name" => "signup", "status" => "new", "path" => "screenshots/signup.png", "file" => "screenshots/signup.png", "sha256" => sha256}],
       manifest.fetch("entries")
     assert_predicate @output_dir / "screenshots/signup.png", :exist?
   end
@@ -623,11 +624,48 @@ class HTMLReporterTest < ActiveSupport::TestCase
     reporter.record([build_failing_assertion("index")])
     with_run_id("4242") { reporter.finalize }
 
-    file = manifest(report_dir).fetch("entries").sole.fetch("file")
+    entry = manifest(report_dir).fetch("entries").sole
+    file = entry.fetch("file")
     html = (report_dir / "report.html").read
     assert_includes html, "Copy review command"
-    assert_equal({"run" => "4242", "files" => [file]}, report_review(report_dir / "report.html"))
-    assert_equal [file, file], report_data(report_dir / "report.html").map { |e| e["file"] }
+    # The hash binds the command to the bytes the artifact holds: the file on disk, the last capture.
+    assert_equal Digest::SHA256.file(report_dir / file).hexdigest, entry.fetch("sha256")
+    assert_equal({"run" => "4242", "files" => [file], "sha16" => {file => entry["sha256"][0, 16]}}, report_review(report_dir / "report.html"))
+    # Only the last capture of a file is on disk and in the manifest: the
+    # earlier entry points at it instead of offering its own controls.
+    data = report_data(report_dir / "report.html")
+    assert_equal [nil, file], data.map { |e| e["file"] }
+    assert_equal [1, nil], data.map { |e| e["superseded_by"] }
+  end
+
+  test "in a CI run an entry with no final capture says why it cannot be accepted" do
+    git_init_output_dir
+    reporter = SnapDiff::Reporters::HTML.new(output_path: @output_path)
+    reporter.record([SnapDiff::ScreenshotAssertion.new("gone", path: @output_dir / "screenshots/gone.png")])
+    reporter.record([build_rerecorded_assertion("accepted")])
+    capture_new_screenshot(reporter, "kept")
+    with_run_id("7") { reporter.finalize }
+
+    data = report_data
+    assert_equal ["no_capture", "rerecorded", nil], data.map { |e| e["review_reason"] }
+    assert_equal [nil, nil, "screenshots/kept.png"], data.map { |e| e["file"] }
+  end
+
+  # The template asks for the review data several times and every entry
+  # looks at it; each file is still read and hashed once per report.
+  test "in a CI run each manifest file is hashed once" do
+    git_init_output_dir
+    reporter = SnapDiff::Reporters::HTML.new(output_path: @output_path)
+    %w[a b c].each { |name| capture_new_screenshot(reporter, name) }
+    hashed = []
+    real = Digest::SHA256.method(:file)
+
+    Digest::SHA256.stub(:file, ->(path) { hashed << path.to_s and real.call(path) }) do
+      with_run_id("7") { reporter.finalize }
+    end
+
+    assert_equal %w[a b c].map { |n| (@output_dir / "screenshots/#{n}.png").to_s }, hashed
+    assert_equal 3, manifest.fetch("entries").size
   end
 
   test "outside a CI run the report has no review controls" do
@@ -649,8 +687,9 @@ class HTMLReporterTest < ActiveSupport::TestCase
     with_run_id("7") { reporter.finalize }
 
     path = @output_dir / "report/report.html"
-    assert_equal({"run" => "7", "files" => []}, report_review(path))
+    assert_equal({"run" => "7", "files" => [], "sha16" => {}}, report_review(path))
     assert_equal [nil, nil], report_data(path).map { |e| e["file"] }
+    assert_equal %w[rerecorded no_capture], report_data(path).map { |e| e["review_reason"] }
   end
 
   private

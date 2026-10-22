@@ -1,0 +1,37 @@
+---
+name: Accept screenshots
+
+# A maintainer pastes the report's review command as a PR comment:
+#   /snap-diff accept run=<run id> <file> ...
+# The action commits those files from that run's report artifact to the PR branch.
+
+on:
+  issue_comment:
+    types: [ created ]
+
+jobs:
+  accept:
+    if: >-
+      github.event.issue.pull_request &&
+      startsWith(github.event.comment.body, '/snap-diff accept') &&
+      contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      pull-requests: write
+      actions: write
+    concurrency:
+      group: snap-diff-accept-${{ github.event.issue.number }}
+      cancel-in-progress: false
+    steps:
+      # The default branch (issue_comment's ref): this repository's trusted
+      # code, needed for the local action. The PR's code is never checked out here.
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: ./.github/actions/accept-screenshots
+        with:
+          screenshots-path: test/fixtures/app/doc/screenshots
+          ci-workflow: test.yml

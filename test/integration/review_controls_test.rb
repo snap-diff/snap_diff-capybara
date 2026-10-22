@@ -25,28 +25,48 @@ class ReviewControlsTest < ActiveSupport::TestCase
   end
 
   test "Accept and Reject build the exact PR comment command" do
-    # "one" and "one again" are two entries of the same file.
-    report = write_report(%w[one one_again two], files: {"one_again" => "one"})
-    @session.visit "file://#{report}"
+    @session.visit "file://#{write_report(%w[one two three])}"
 
     assert_equal "", command, "nothing is decided yet"
+    @session.find("body").send_keys(:right, :right, "y") # the user's flow: 3rd Y, 2nd N, 1st Y
+    @session.find("body").send_keys(:left, "n")
+    @session.find("body").send_keys(:left, "y")
+
+    assert_equal "/snap-diff accept run=99 screenshots/one.png@#{sha16} screenshots/three.png@#{sha16}\n" \
+      "/snap-diff reject screenshots/two.png", command
+    assert_equal "2 accepted · 1 rejected", @session.find("#review-count").text
+
+    @session.click_button "Reject" # one: accept -> reject
+    assert_equal "/snap-diff accept run=99 screenshots/three.png@#{sha16}\n" \
+      "/snap-diff reject screenshots/one.png screenshots/two.png", command
+
+    @session.click_button "Reject" # one: reject -> undecided
+    assert_equal "/snap-diff accept run=99 screenshots/three.png@#{sha16}\n/snap-diff reject screenshots/two.png", command
+  end
+
+  test "an earlier capture of a file points at the last one, which alone has the buttons" do
+    # "one" and "one_again" capture the same file; only the last is on disk.
+    @session.visit "file://#{write_report(%w[one one_again], files: {"one_again" => "one"})}"
+
+    assert @session.has_no_button?("Accept")
+    assert @session.has_css?("#review-note", text: "Superseded by a later capture of this file.")
+    @session.find("body").send_keys("y")
+    assert_equal "", command, "Y does nothing on a superseded entry"
+
+    @session.click_button "Show it"
+    assert @session.has_css?("#topbar-title", text: "one_again")
+    assert @session.has_no_css?("#review-note")
     @session.click_button "Accept"
-    assert_equal "/snap-diff accept run=99 screenshots/one.png", command
-    assert_equal "1 accepted · 0 rejected", @session.find("#review-count").text
+    assert_equal "/snap-diff accept run=99 screenshots/one.png@#{sha16}", command
+  end
 
-    @session.find("body").send_keys(:right) # one_again: shares the decision
-    assert @session.has_css?("#review-accept.active")
+  test "an entry with no final capture says why it cannot be accepted" do
+    @session.visit "file://#{write_report(%w[gone], missing: %w[gone])}"
 
-    @session.find("body").send_keys(:right)
-    @session.click_button "Reject"
-    assert_equal "/snap-diff accept run=99 screenshots/one.png\n/snap-diff reject screenshots/two.png", command
-    assert_equal "1 accepted · 1 rejected", @session.find("#review-count").text
-
-    @session.click_button "Accept" # two: reject -> accept
-    assert_equal "/snap-diff accept run=99 screenshots/one.png screenshots/two.png", command
-
-    @session.find("body").send_keys("n")
-    assert_equal "/snap-diff accept run=99 screenshots/one.png\n/snap-diff reject screenshots/two.png", command
+    assert @session.has_css?("#review-note", text: "No final capture in this report, so it cannot be accepted here.")
+    assert @session.has_no_button?("Accept")
+    @session.find("body").send_keys("y")
+    assert_equal "", command
   end
 
   test "a local report has no review controls" do
@@ -62,12 +82,15 @@ class ReviewControlsTest < ActiveSupport::TestCase
 
   def command = @session.find("#review-command").value
 
-  def write_report(names, files: {})
+  # The same bytes (a.png) for every capture, so one hash.
+  def sha16 = Digest::SHA256.file(File.expand_path("a.png", TEST_IMAGES_DIR)).hexdigest[0, 16]
+
+  def write_report(names, files: {}, missing: [])
     reporter = SnapDiff::Reporters::HTML.new(output_path: @dir / "report.html")
     names.each do |name|
       path = @dir / "screenshots" / "#{files.fetch(name, name)}.png"
       path.dirname.mkpath
-      FileUtils.cp(File.expand_path("a.png", TEST_IMAGES_DIR), path)
+      FileUtils.cp(File.expand_path("a.png", TEST_IMAGES_DIR), path) unless missing.include?(name)
       reporter.record([SnapDiff::ScreenshotAssertion.new(name, path: path)])
     end
     reporter.finalize.to_s

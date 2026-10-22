@@ -161,7 +161,7 @@
     .review-btn.reject.active { background: var(--red-dim); color: var(--red); border-color: var(--red); }
     #review-panel { display: flex; align-items: flex-start; gap: .5rem; padding: .375rem .75rem; background: var(--bg2); border-top: 1px solid var(--border); flex-shrink: 0; }
     #review-side { display: flex; flex-direction: column; gap: .25rem; align-items: flex-start; }
-    #review-count, #review-hint { font-size: .625rem; color: var(--text2); }
+    #review-count, #review-hint, #review-note { font-size: .625rem; color: var(--text2); }
     #review-command { flex: 1; min-width: 0; height: 2.75rem; resize: none; font-family: var(--font-mono); font-size: .625rem; background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: .25rem .4rem; }
 <% end %>
 
@@ -241,6 +241,8 @@
       <span class="toolbar-label">Review</span>
       <button class="review-btn accept" id="review-accept" title="Accept (Y)" hidden>Accept</button>
       <button class="review-btn reject" id="review-reject" title="Reject (N)" hidden>Reject</button>
+      <span id="review-note" hidden></span>
+      <button class="review-btn" id="review-jump" hidden>Show it</button>
 <% end %>
     </div>
 
@@ -498,16 +500,36 @@
     var accepted = REVIEW.files.filter(function(f) { return decisions[f] === 'accept'; });
     var rejected = REVIEW.files.filter(function(f) { return decisions[f] === 'reject'; });
     var lines = [];
-    if (accepted.length) lines.push('/snap-diff accept run=' + REVIEW.run + ' ' + accepted.join(' '));
+    var hashed = accepted.map(function(f) { return f + '@' + REVIEW.sha16[f]; });
+    if (accepted.length) lines.push('/snap-diff accept run=' + REVIEW.run + ' ' + hashed.join(' '));
     if (rejected.length) lines.push('/snap-diff reject ' + rejected.join(' '));
     return { text: lines.join('\n'), accepted: accepted.length, rejected: rejected.length };
   }
+  /* An entry without controls says why: an earlier capture of a file whose
+     last capture is the one on disk, or no final capture at all. */
+  var REASONS = {
+    superseded: 'Superseded by a later capture of this file.',
+    rerecorded: 'Re-recorded in this run, so there is nothing to accept.',
+    no_capture: 'No final capture in this report, so it cannot be accepted here.'
+  };
+  var reviewNote = $('review-note'), reviewJump = $('review-jump');
+  reviewJump.addEventListener('click', function() {
+    var item = DATA[state.current];
+    if (item && item.superseded_by != null) selectItem(item.superseded_by);
+  });
+
   function syncReview() {
-    var file = DATA[state.current] && DATA[state.current].file;
+    var item = DATA[state.current];
+    var file = item && item.file;
     [[reviewAccept, 'accept'], [reviewReject, 'reject']].forEach(function(pair) {
       pair[0].hidden = !file;
       pair[0].classList.toggle('active', !!file && decisions[file] === pair[1]);
     });
+    var superseded = !!item && item.superseded_by != null;
+    var reason = !item || file ? '' : REASONS[superseded ? 'superseded' : item.review_reason] || '';
+    reviewNote.textContent = reason;
+    reviewNote.hidden = !reason;
+    reviewJump.hidden = !superseded;
     var r = reviewText();
     reviewCount.textContent = r.accepted + ' accepted \u00b7 ' + r.rejected + ' rejected';
     reviewCommand.value = r.text;

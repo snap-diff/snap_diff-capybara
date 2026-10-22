@@ -1,0 +1,32 @@
+---
+name: 'Accept SnapDiff screenshots'
+description: >-
+  Commit screenshot baselines accepted in a PR comment
+  (`/snap-diff accept run=<run id> <file> ...`) from that run's report artifact.
+  Run it from an issue_comment workflow gated to OWNER/MEMBER/COLLABORATOR.
+inputs:
+  token:
+    description: 'Token with contents: write, pull-requests: write, actions: read (actions: write to dispatch ci-workflow); reads the commenter''s permission'
+    default: ${{ github.token }}
+  screenshots-path:
+    description: 'Every accepted file must be committed under this directory (relative to the repository root)'
+    default: 'doc/screenshots'
+  ci-workflow:
+    description: >-
+      Optional workflow file name (with workflow_dispatch) to run on the PR branch after the commit.
+      A push made with GITHUB_TOKEN does not start workflows; a workflow_dispatch does.
+    default: ''
+runs:
+  using: 'composite'
+  steps:
+    - name: Accept screenshots
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.token }}
+        CI_WORKFLOW: ${{ inputs.ci-workflow }}
+        SCREENSHOTS_PATH: ${{ inputs.screenshots-path }}
+        COMMENT_BODY: ${{ github.event.comment.body }}
+        COMMENT_AUTHOR: ${{ github.event.comment.user.login }}
+        AUTHOR_ASSOCIATION: ${{ github.event.comment.author_association }}
+        PR_NUMBER: ${{ github.event.issue.number }}
+      run: ruby "$GITHUB_ACTION_PATH/accept_screenshots.rb"

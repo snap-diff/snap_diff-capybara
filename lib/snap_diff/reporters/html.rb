@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "base64"
+require "digest"
 require "erb"
 require "fileutils"
 require "pathname"
@@ -136,15 +137,30 @@ module SnapDiff
         run = ENV["GITHUB_RUN_ID"].to_s
         return if run.empty?
 
-        {run: run, files: manifest_entries.map { |entry| entry[:accept]["file"] }}
+        files = manifest_entries.map { |entry| entry[:accept]["file"] }
+        {run: run, files: files, sha16: files.to_h { |file| [file, file_sha256(file)[0, 16]] }}
       end
 
-      # The entries the page shows. In a CI run those a reviewer may accept
-      # carry their manifest `file`; the rest of :accept stays internal.
+      # The entries the page shows. In a CI run the manifest's entry for a
+      # file (its last capture) carries that `file`; an earlier capture of the
+      # same file points at it (`superseded_by`, an index); any other entry
+      # says why it has no controls (`review_reason`). The rest of :accept
+      # stays internal.
       def report_data
+        in_review = review
+        chosen = in_review ? manifest_entries : []
         entries.map do |entry|
           data = entry.except(:accept)
-          data[:file] = entry[:accept]["file"] if review && manifest_entry?(entry)
+          next data unless in_review
+
+          if chosen.any? { |m| m.equal?(entry) }
+            data[:file] = entry[:accept]["file"]
+          elsif manifest_entry?(entry)
+            later = chosen.find { |m| m[:accept]["path"] == entry[:accept]["path"] }
+            data[:superseded_by] = entries.index { |e| e.equal?(later) }
+          else
+            data[:review_reason] = (entry[:status] == "rerecorded") ? "rerecorded" : "no_capture"
+          end
           data
         end
       end
@@ -292,13 +308,25 @@ module SnapDiff
         "data:#{mime};base64,#{Base64.strict_encode64(pathname.binread)}"
       end
 
+      # One digest per file for the page and the manifest alike.
       def write_report
         FileUtils.mkdir_p(output_path.dirname)
+        @digests = {}
         File.write(output_path, render)
         write_manifest
+      ensure
+        @digests = nil
       end
 
-      def manifest_entry?(entry) = %w[changed new].include?(entry[:status]) && entry[:accept]
+      def manifest_entry?(entry) = %w[changed new].include?(entry[:status]) && entry[:accept] && (output_path.dirname / entry[:accept]["file"]).file?
+
+      # Of the bytes on disk when the report is written -- what the artifact
+      # uploads. The accept command carries its first 16 hex digits, and the
+      # bot refuses a file whose bytes no longer match.
+      def file_sha256(file)
+        digest = -> { Digest::SHA256.file(output_path.dirname / file).hexdigest }
+        @digests ? (@digests[file] ||= digest.call) : digest.call
+      end
 
       # One file, one entry: the last capture.
       def manifest_entries
@@ -307,7 +335,9 @@ module SnapDiff
 
       # What a reviewer page may accept: the captures that differ or are new.
       def write_manifest
-        manifest = manifest_entries.map { |entry| {"name" => entry[:name], "status" => entry[:status]}.merge(entry[:accept]) }
+        manifest = manifest_entries.map do |entry|
+          {"name" => entry[:name], "status" => entry[:status]}.merge(entry[:accept], "sha256" => file_sha256(entry[:accept]["file"]))
+        end
         File.write(output_path.dirname / "snap_diff_manifest.json", JSON.pretty_generate("version" => 1, "entries" => manifest))
       end
     end
