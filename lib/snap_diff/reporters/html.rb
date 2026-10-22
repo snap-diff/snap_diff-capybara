@@ -155,8 +155,8 @@ module SnapDiff
 
           if chosen.any? { |m| m.equal?(entry) }
             data[:file] = entry[:accept]["file"]
-          elsif manifest_entry?(entry)
-            later = chosen.find { |m| m[:accept]["path"] == entry[:accept]["path"] }
+          elsif reviewable_status?(entry) && captured?(entry)
+            later = last_captures.find { |m| m[:accept]["path"] == entry[:accept]["path"] }
             data[:superseded_by] = entries.index { |e| e.equal?(later) }
           else
             data[:review_reason] = (entry[:status] == "rerecorded") ? "rerecorded" : "no_capture"
@@ -318,7 +318,9 @@ module SnapDiff
         @digests = nil
       end
 
-      def manifest_entry?(entry) = %w[changed new].include?(entry[:status]) && entry[:accept] && (output_path.dirname / entry[:accept]["file"]).file?
+      def reviewable_status?(entry) = %w[changed new].include?(entry[:status])
+
+      def captured?(entry) = entry[:accept] && (output_path.dirname / entry[:accept]["file"]).file?
 
       # Of the bytes on disk when the report is written -- what the artifact
       # uploads. The accept command carries its first 16 hex digits, and the
@@ -328,10 +330,13 @@ module SnapDiff
         @digests ? (@digests[file] ||= digest.call) : digest.call
       end
 
-      # One file, one entry: the last capture.
-      def manifest_entries
-        entries.select { |entry| manifest_entry?(entry) }.reverse.uniq { |entry| entry[:accept]["path"] }.reverse
+      # One file, one entry: the last capture, whatever its status -- a changed
+      # one re-recorded afterwards is already accepted.
+      def last_captures
+        entries.select { |entry| captured?(entry) }.reverse.uniq { |entry| entry[:accept]["path"] }.reverse
       end
+
+      def manifest_entries = last_captures.select { |entry| reviewable_status?(entry) }
 
       # What a reviewer page may accept: the captures that differ or are new.
       def write_manifest

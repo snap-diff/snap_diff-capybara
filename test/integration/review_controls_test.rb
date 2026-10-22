@@ -28,6 +28,7 @@ class ReviewControlsTest < ActiveSupport::TestCase
     @session.visit "file://#{write_report(%w[one two three])}"
 
     assert_equal "", command, "nothing is decided yet"
+    assert_equal %w[false false], pressed
     @session.find("body").send_keys(:right, :right, "y") # the user's flow: 3rd Y, 2nd N, 1st Y
     @session.find("body").send_keys(:left, "n")
     @session.find("body").send_keys(:left, "y")
@@ -35,12 +36,15 @@ class ReviewControlsTest < ActiveSupport::TestCase
     assert_equal "/snap-diff accept run=99 screenshots/one.png@#{sha16} screenshots/three.png@#{sha16}\n" \
       "/snap-diff reject screenshots/two.png", command
     assert_equal "2 accepted · 1 rejected", @session.find("#review-count").text
+    assert_equal %w[true false], pressed, "one is accepted"
 
     @session.click_button "Reject" # one: accept -> reject
+    assert_equal %w[false true], pressed
     assert_equal "/snap-diff accept run=99 screenshots/three.png@#{sha16}\n" \
       "/snap-diff reject screenshots/one.png screenshots/two.png", command
 
     @session.click_button "Reject" # one: reject -> undecided
+    assert_equal %w[false false], pressed
     assert_equal "/snap-diff accept run=99 screenshots/three.png@#{sha16}\n/snap-diff reject screenshots/two.png", command
   end
 
@@ -81,6 +85,9 @@ class ReviewControlsTest < ActiveSupport::TestCase
   private
 
   def command = @session.find("#review-command").value
+
+  # aria-pressed of [Accept, Reject], which must follow the visual state.
+  def pressed = %w[#review-accept #review-reject].map { |id| @session.find(id)["aria-pressed"] }
 
   # The same bytes (a.png) for every capture, so one hash.
   def sha16 = Digest::SHA256.file(File.expand_path("a.png", TEST_IMAGES_DIR)).hexdigest[0, 16]

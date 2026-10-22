@@ -523,7 +523,9 @@
     var file = item && item.file;
     [[reviewAccept, 'accept'], [reviewReject, 'reject']].forEach(function(pair) {
       pair[0].hidden = !file;
-      pair[0].classList.toggle('active', !!file && decisions[file] === pair[1]);
+      var on = !!file && decisions[file] === pair[1];
+      pair[0].classList.toggle('active', on);
+      pair[0].setAttribute('aria-pressed', on);
     });
     var superseded = !!item && item.superseded_by != null;
     var reason = !item || file ? '' : REASONS[superseded ? 'superseded' : item.review_reason] || '';

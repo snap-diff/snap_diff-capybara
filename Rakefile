@@ -69,7 +69,7 @@ desc "Remove screenshot diff artifacts (keeps baselines)"
 task "snap_diff:clean" do
   patterns = ["**/*.diff.png", "**/*.base.png", "**/*.base.diff.png", "**/*.heatmap.diff.png",
     "**/*.diff.webp", "**/*.base.webp", "**/*.base.diff.webp", "**/*.heatmap.diff.webp",
-    "**/snap_diff_report.html"]
+    "**/snap_diff_report.html", "**/snap_diff_manifest.json"]
   removed = patterns.flat_map { |p| Dir.glob("tmp/#{p}") + Dir.glob("doc/screenshots/#{p}") }.uniq
   removed.each { |f| FileUtils.rm_f(f) }
   puts "Removed #{removed.size} diff artifacts"

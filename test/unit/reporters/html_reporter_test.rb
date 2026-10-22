@@ -558,6 +558,23 @@ class HTMLReporterTest < ActiveSupport::TestCase
     assert_empty JSON.parse((@output_dir / "report/snap_diff_manifest.json").read).fetch("entries")
   end
 
+  # The file on disk is the last capture: a changed one that was re-recorded
+  # afterwards is already accepted, so it must not be offered again.
+  test "the manifest does not list a changed capture that a later re-recorded one replaced" do
+    changed = build_failing_assertion("index")
+    compare = make_comparison(:a, :b, destination: "fail_index")
+    compare.processed
+    rerecorded = SnapDiff::ScreenshotAssertion.new("index_again", record_mode: :all).tap { |a| a.compare = compare }
+    report_dir = changed.compare.image_path.dirname
+    reporter = SnapDiff::Reporters::HTML.new(output_path: report_dir / "report.html")
+    reporter.record([changed])
+    reporter.record([rerecorded])
+    reporter.finalize
+
+    assert_equal %w[changed rerecorded], reporter.entries.map { |e| e[:status] }
+    assert_empty manifest(report_dir).fetch("entries")
+  end
+
   test "the manifest carries file paths when images are embedded" do
     git_init_output_dir
     reporter = SnapDiff::Reporters::HTML.new(output_path: @output_path, embed_images: true)
