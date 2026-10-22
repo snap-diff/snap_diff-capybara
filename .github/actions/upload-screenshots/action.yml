@@ -74,31 +74,6 @@ runs:
         retention-days: ${{ inputs.retention-days }}
         path: ${{ inputs.report-path }}/
 
-    - name: Check for the review page
-      id: review
-      if: steps.check-report.outputs.exists == 'true' && github.event_name == 'pull_request'
-      shell: bash
-      env:
-        REPO: ${{ github.repository }}
-        PR: ${{ github.event.pull_request.number }}
-        RUN_ID: ${{ github.run_id }}
-        ARTIFACT_ID: ${{ steps.upload-report-full.outputs.artifact-id }}
-      run: |
-        # Probe the page we are about to link: a file on gh-pages proves nothing if Pages serves
-        # something else. 404 = not installed (silent); anything else is a warning, never a failure.
-        owner=$(printf '%s' "${REPO%%/*}" | tr '[:upper:]' '[:lower:]')
-        page="https://${owner}.github.io/${REPO#*/}/snap-diff/"
-        # -L: a custom domain redirects from github.io
-        code=$(curl -sL --max-time 10 -o /dev/null -w '%{http_code}' "$page") || code="curl failed"
-        case "$code" in
-          200)
-            url="${page}?repo=${REPO}&pr=${PR}&run=${RUN_ID}&artifact=${ARTIFACT_ID}"
-            echo "row=| [Review & accept]($url) | Accept or reject in the browser |" >> "$GITHUB_OUTPUT"
-            ;;
-          404) ;;
-          *) echo "::warning::Could not check the review page at $page (status: $code); no Review & accept link." ;;
-        esac
-
     - name: Job summary
       if: steps.check-report.outputs.exists == 'true'
       shell: bash
@@ -110,7 +85,6 @@ runs:
         |----------|------|
         | HTML report (inline) | ${{ steps.upload-report.outputs.artifact-url || 'N/A' }} |
         | Full report with images | ${{ steps.upload-report-full.outputs.artifact-url || 'N/A' }} |
-        ${{ steps.review.outputs.row }}
         EOF
 
     - name: Find existing PR comment
@@ -137,4 +111,3 @@ runs:
           | HTML report (inline) | ${{ steps.upload-report.outputs.artifact-url || 'N/A' }} |
           | Full report with images | ${{ steps.upload-report-full.outputs.artifact-url || 'N/A' }} |
           | [All artifacts](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}#artifacts) | Browse all |
-          ${{ steps.review.outputs.row }}
