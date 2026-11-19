@@ -14,11 +14,20 @@ module SnapDiff
     end
 
     def self.resize_to(window_size)
-      if session.driver.respond_to?(:resize)
+      if BrowserHelpers.cuprite?
+        # Cuprite 0.20 deprecated Driver#resize in favour of Capybara's window
+        # API and removes it in 0.21, so Cuprite is detected by class: a
+        # respond_to?(:resize) check would stop sizing the window after that.
+        session.current_window.resize_to(*window_size)
+      elsif session.driver.respond_to?(:resize)
         session.driver.resize(*window_size)
       elsif BrowserHelpers.selenium?
         session.driver.browser.manage.window.resize_to(*window_size)
       end
+    end
+
+    def self.cuprite?
+      defined?(Capybara::Cuprite::Driver) && current_capybara_driver_class <= Capybara::Cuprite::Driver
     end
 
     def self.selenium?
