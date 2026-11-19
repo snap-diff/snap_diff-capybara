@@ -484,6 +484,10 @@ One removal 2.0 cannot warn about, written down instead: the legacy `LOADED_DRIV
   mode.** Before, if it vanished right after the checkout, the run also warned there was
   no committed baseline and counted it as new; under `record: :none` it failed with
   "No existing screenshot found … `git add` it" instead of saying it disappeared
+- **Setting `window_size` under Cuprite no longer prints a deprecation warning.** The
+  resize went through `Driver#resize`, which Cuprite 0.20 deprecated and 0.21 removes;
+  it now calls Capybara's `current_window.resize_to`. Other drivers that expose
+  `resize` are still sized through it
 
 ### Known limitations
 - **One process per worker** (`parallel_tests`, RSpec, CI sharding) still writes one
